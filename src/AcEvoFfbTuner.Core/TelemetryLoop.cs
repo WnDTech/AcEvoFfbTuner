@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using AcEvoFfbTuner.Core.DirectInput;
 using AcEvoFfbTuner.Core.FfbProcessing;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
+using AcEvoFfbTuner.Core.Profiles;
 using AcEvoFfbTuner.Core.SharedMemory;
 using AcEvoFfbTuner.Core.SharedMemory.Structs;
 using AcEvoFfbTuner.Core.TrackMapping;
@@ -46,6 +47,9 @@ public sealed class TelemetryLoop : IDisposable
 
     private FfbRawData? _latestRaw;
     private FfbProcessedData? _latestProcessed;
+    private SPageFilePhysicsEvo _latestPhysicsRaw;
+    private SPageFileGraphicEvo _latestGraphicsRaw;
+    private SPageFileStaticEvo _latestStaticRaw;
     private readonly object _dataLock = new();
 
     private int _packetsPerSecond;
@@ -126,6 +130,15 @@ public sealed class TelemetryLoop : IDisposable
     public FfbProcessedData? LatestProcessed
     {
         get { lock (_dataLock) return _latestProcessed; }
+    }
+
+    public TelemetrySnapshotDto? CaptureTelemetrySnapshot()
+    {
+        lock (_dataLock)
+        {
+            if (_latestRaw == null) return null;
+            return TelemetrySnapshotDto.Capture(_latestPhysicsRaw, _latestGraphicsRaw, _latestStaticRaw);
+        }
     }
 
     public event Action<FfbRawData, FfbProcessedData>? DataUpdated;
@@ -215,6 +228,8 @@ public sealed class TelemetryLoop : IDisposable
                             var sessionName = DecodeString(staticData.SessionName);
                             float officialLength = staticData.TrackLengthM;
 
+                            _latestStaticRaw = staticData;
+
                             StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
                             StaticDataReceived?.Invoke(_lastDetectedTrackName, trackConfig, officialLength);
                         }
@@ -255,6 +270,8 @@ public sealed class TelemetryLoop : IDisposable
                     {
                         _latestRaw = raw;
                         _latestProcessed = processed;
+                        _latestPhysicsRaw = physics;
+                        _latestGraphicsRaw = graphics;
                     }
 
                     _packetCount++;

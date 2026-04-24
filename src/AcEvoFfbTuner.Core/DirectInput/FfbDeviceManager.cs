@@ -8,6 +8,8 @@ public sealed class FfbDeviceInfo
     public string ProductName { get; init; } = string.Empty;
     public bool IsFfbCapable { get; init; }
     public DI.DeviceInstance DeviceInstance { get; init; } = null!;
+
+    public override string ToString() => ProductName;
 }
 
 public sealed class FfbDeviceManager : IDisposable

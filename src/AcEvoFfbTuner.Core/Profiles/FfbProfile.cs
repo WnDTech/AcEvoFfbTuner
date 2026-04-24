@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 5;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -21,6 +21,8 @@ public sealed class FfbProfile
     {
         return Name.GetHashCode();
     }
+
+    public override string ToString() => Name;
 
     public FfbMixModeDto MixMode { get; set; } = FfbMixModeDto.Replace;
     public float OutputGain { get; set; } = 1.0f;
@@ -59,6 +61,7 @@ public sealed class FfbProfile
     public VibrationConfig Vibrations { get; set; } = new();
     public AdvancedConfig Advanced { get; set; } = new();
     public LedEffectConfigDto LedEffects { get; set; } = new();
+    public TelemetrySnapshotDto? LastTelemetrySnapshot { get; set; }
 
     public void ApplyToPipeline(FfbPipeline pipeline)
     {
@@ -332,6 +335,11 @@ public sealed class FfbProfile
         if (Version < 4)
         {
             Advanced = new AdvancedConfig();
+        }
+
+        if (Version < 5)
+        {
+            LastTelemetrySnapshot = null;
         }
 
         Version = CurrentVersion;

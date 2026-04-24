@@ -675,6 +675,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         });
         _profileManager.SaveProfileFromPipeline(_pipeline, SelectedProfile.Name);
         SelectedProfile.WheelMaxTorqueNm = WheelMaxTorqueNm;
+        SelectedProfile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
+        _profileManager.SaveProfile(SelectedProfile);
         _profileManager.SetActiveProfile(SelectedProfile);
     }
 
@@ -695,6 +697,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             var profile = _profileManager.SaveProfileFromPipeline(_pipeline, dialog.Result!);
             profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
+            profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
+            _profileManager.SaveProfile(profile);
             _profileManager.SetActiveProfile(profile);
             RefreshProfiles();
             SelectedProfile = profile;

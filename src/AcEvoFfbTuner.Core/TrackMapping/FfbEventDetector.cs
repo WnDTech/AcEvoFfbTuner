@@ -28,6 +28,7 @@ public sealed class FfbEventDetector
 
     private readonly float[] _recentDeltas = new float[OscillationWindow];
     private int _deltaIdx;
+    private double _lastOscillationTime;
 
     public FfbDiagnosticEvent? LastEvent { get; private set; }
 
@@ -77,9 +78,6 @@ public sealed class FfbEventDetector
         bool forceSignificant = absForce > MinForceForEvents ||
             MathF.Abs(_prevForce) > MinForceForEvents;
 
-        _recentDeltas[_deltaIdx % OscillationWindow] = forceDelta;
-        _deltaIdx++;
-
         var drivingState = ClassifyDrivingState(
             steerAngle, _prevSteerAngle, speedKmh, _prevSpeed,
             brakeInput, _prevBrake, gasInput, _prevGas,
@@ -98,8 +96,13 @@ public sealed class FfbEventDetector
             _prevMzFront = mzFront;
             _prevFxFront = fxFront;
             _prevFyFront = fyFront;
+            _recentDeltas[_deltaIdx % OscillationWindow] = 0f;
+            _deltaIdx++;
             return events;
         }
+
+        _recentDeltas[_deltaIdx % OscillationWindow] = forceDelta;
+        _deltaIdx++;
 
         if (isClipping && speedKmh > 20f)
         {
@@ -147,7 +150,7 @@ public sealed class FfbEventDetector
             });
         }
 
-        if (_deltaIdx >= OscillationWindow)
+        if (_deltaIdx >= OscillationWindow && (now - _lastOscillationTime) > 0.5)
         {
             int signFlips = 0;
             for (int i = 1; i < OscillationWindow; i++)
@@ -162,6 +165,7 @@ public sealed class FfbEventDetector
 
             if (signFlips >= OscillationSignFlipThreshold)
             {
+                _lastOscillationTime = now;
                 var cls = ClassifyEvent(FfbEventType.OscillationCluster, absDelta, speedKmh,
                     absSteer, inCorner, slipAngleFront, drivingState);
 
@@ -359,6 +363,7 @@ public sealed class FfbEventDetector
         _prevBrake = 0f;
         _prevGas = 0f;
         _deltaIdx = 0;
+        _lastOscillationTime = 0;
         Array.Clear(_recentDeltas);
         LastEvent = null;
         _sw.Restart();
