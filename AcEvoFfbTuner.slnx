@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AcEvoFfbTuner.Core/AcEvoFfbTuner.Core.csproj" />
+    <Project Path="src/AcEvoFfbTuner.Tests/AcEvoFfbTuner.Tests.csproj" />
+    <Project Path="src/AcEvoFfbTuner/AcEvoFfbTuner.csproj" />
+  </Folder>
+</Solution>

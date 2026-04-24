@@ -1,0 +1,5 @@
+C:\Users\paul_\OneDrive\Documents\APP\ACEVO - Telemetry FFB\tools\obj\Debug\net8.0-windows\CheckOffsets.csproj.AssemblyReference.cache
+C:\Users\paul_\OneDrive\Documents\APP\ACEVO - Telemetry FFB\tools\obj\Debug\net8.0-windows\CheckOffsets.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\paul_\OneDrive\Documents\APP\ACEVO - Telemetry FFB\tools\obj\Debug\net8.0-windows\CheckOffsets.AssemblyInfoInputs.cache
+C:\Users\paul_\OneDrive\Documents\APP\ACEVO - Telemetry FFB\tools\obj\Debug\net8.0-windows\CheckOffsets.AssemblyInfo.cs
+C:\Users\paul_\OneDrive\Documents\APP\ACEVO - Telemetry FFB\tools\obj\Debug\net8.0-windows\CheckOffsets.csproj.CoreCompileInputs.cache

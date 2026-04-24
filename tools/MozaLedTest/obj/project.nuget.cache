@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "MTwOPufuD+4=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\paul_\\OneDrive\\Documents\\APP\\ACEVO - Telemetry FFB\\tools\\MozaLedTest\\MozaLedTest.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\paul_\\.nuget\\packages\\system.codedom\\8.0.0\\system.codedom.8.0.0.nupkg.sha512",
+    "C:\\Users\\paul_\\.nuget\\packages\\system.management\\8.0.0\\system.management.8.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
