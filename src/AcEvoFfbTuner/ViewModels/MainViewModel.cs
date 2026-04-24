@@ -26,6 +26,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly TelemetryLoop _telemetryLoop;
     private readonly ProfileManager _profileManager;
 
+    public string AppVersion { get; } =
+        System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
+
     [ObservableProperty]
     private string _statusText = "Ready";
 

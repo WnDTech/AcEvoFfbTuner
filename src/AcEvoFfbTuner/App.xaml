@@ -9,7 +9,7 @@
             <SolidColorBrush x:Key="BgPanel" Color="#FF1A1A2E" />
             <SolidColorBrush x:Key="BgCard" Color="#FF22223A" />
             <SolidColorBrush x:Key="BgInput" Color="#FF2A2A45" />
-            <SolidColorBrush x:Key="AccentBrush" Color="#FFFF4500" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#FFE67E22" />
             <SolidColorBrush x:Key="GreenBrush" Color="#FF00E676" />
             <SolidColorBrush x:Key="YellowBrush" Color="#FFFFD600" />
             <SolidColorBrush x:Key="TextBrush" Color="#FFE0E0E0" />
@@ -231,11 +231,11 @@
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#33FF4500" />
+                                    <Setter Property="Background" Value="#33E67E22" />
                                     <Setter Property="Foreground" Value="White" />
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter Property="Background" Value="#FF4500" />
+                                    <Setter Property="Background" Value="#F08C5A" />
                                     <Setter Property="Foreground" Value="White" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
@@ -280,15 +280,15 @@
                                                 <Thumb.Template>
                                                     <ControlTemplate TargetType="Thumb">
                                                         <Grid>
-                                                            <Ellipse Width="36" Height="36" Fill="#33FF4500" />
-                                                            <Ellipse x:Name="ThumbFill" Width="28" Height="28" Fill="#FFFF4500" Stroke="White" StrokeThickness="2" />
+                                                            <Ellipse Width="36" Height="36" Fill="#33E67E22" />
+                                                            <Ellipse x:Name="ThumbFill" Width="28" Height="28" Fill="#FFE67E22" Stroke="White" StrokeThickness="2" />
                                                         </Grid>
                                                         <ControlTemplate.Triggers>
                                                             <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter TargetName="ThumbFill" Property="Fill" Value="#FFFF6622" />
+                                                                <Setter TargetName="ThumbFill" Property="Fill" Value="#FFF0A050" />
                                                             </Trigger>
                                                             <Trigger Property="IsDragging" Value="True">
-                                                                <Setter TargetName="ThumbFill" Property="Fill" Value="#FFFFAA00" />
+                                                                <Setter TargetName="ThumbFill" Property="Fill" Value="#FFFBC4A0" />
                                                             </Trigger>
                                                         </ControlTemplate.Triggers>
                                                     </ControlTemplate>
