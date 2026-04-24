@@ -138,9 +138,9 @@ public sealed class FfbChannelMixer
         // Fast EMA (alpha 0.20) keeps transient steering detail.
         // Slow EMA (alpha 0.05) kills physics oscillation.
         // Blend toward slow at high speed — smooth without cascading phase lag.
-        // At <150 km/h: pure fast signal. At 250+ km/h: 83% slow + 17% fast.
+        // At <150 km/h: pure fast signal. At 250+ km/h: 55% slow + 45% fast.
         float highSpeedBlend = raw.SpeedKmh > HighSpeedMzSmoothKmh
-            ? Math.Clamp((raw.SpeedKmh - HighSpeedMzSmoothKmh) / 120.0f, 0f, 0.85f)
+            ? Math.Clamp((raw.SpeedKmh - HighSpeedMzSmoothKmh) / 120.0f, 0f, 0.55f)
             : 0f;
 
         float mzFastAlphaS = MzAlpha * speedAlphaScale;

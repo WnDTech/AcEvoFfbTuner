@@ -140,7 +140,7 @@ public sealed class FfbPipeline
             _hysteresisHoldCount++;
             if (_hysteresisHoldCount >= HysteresisWatchdogFrames)
             {
-                _hysteresisOutput = output;
+                _hysteresisOutput = _hysteresisOutput * 0.5f + output * 0.5f;
                 _hysteresisHoldCount = 0;
             }
             output = _hysteresisOutput;
@@ -179,7 +179,7 @@ public sealed class FfbPipeline
             float speedFactor = Math.Clamp((raw.SpeedKmh - 150.0f) / 100.0f, 0f, 1f);
             float centerFactor = 1.0f - absSteerForSlew / 0.03f;
             float nearCenterScale = speedFactor * centerFactor;
-            effectiveSlewRate *= 1.0f - 0.6f * nearCenterScale;
+            effectiveSlewRate *= 1.0f - 0.5f * nearCenterScale;
         }
 
         if (_gearShiftCounter > 0)
@@ -209,7 +209,7 @@ public sealed class FfbPipeline
         {
             float sign = finalOutput >= 0f ? 1f : -1f;
             if (Math.Abs(finalOutput) < 0.01f)
-                sign = 1f;
+                sign = Math.Abs(raw.SteerAngle) > SteerDirDeadzone ? -Math.Sign(raw.SteerAngle) : 1f;
             finalOutput = Math.Clamp(finalOutput + absMod * sign, -1f, 1f);
         }
 
