@@ -193,6 +193,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _vibrationMasterGain = 0.7f;
 
     [ObservableProperty]
+    private float _suspensionRoadGain = 1.5f;
+
+    [ObservableProperty]
     private float _maxForceLimit = 0.8f;
 
     [ObservableProperty]
@@ -1036,6 +1039,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             case "MzFrontGain": MzFrontGain = rec.SuggestedValue; return true;
             case "FyFrontGain": FyFrontGain = rec.SuggestedValue; return true;
             case "CenterBlendDegrees": CenterBlendDegrees = rec.SuggestedValue; return true;
+            case "SuspensionRoadGain": SuspensionRoadGain = rec.SuggestedValue; return true;
             default: return false;
         }
     }
@@ -1144,6 +1148,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnRoadGainChanged(float value) => _pipeline.VibrationMixer.RoadGain = value;
     partial void OnAbsGainChanged(float value) => _pipeline.VibrationMixer.AbsGain = value;
     partial void OnVibrationMasterGainChanged(float value) => _pipeline.VibrationMixer.MasterGain = value;
+    partial void OnSuspensionRoadGainChanged(float value) => _pipeline.VibrationMixer.SuspensionRoadGain = value;
     partial void OnSteeringLockDegreesChanged(int value) { }
     partial void OnCompressionPowerChanged(float value) => _pipeline.CompressionPower = value;
     partial void OnSignCorrectionEnabledChanged(bool value) => _pipeline.SignCorrectionEnabled = value;
@@ -1480,6 +1485,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         RoadGain = profile.Vibrations.RoadGain;
         AbsGain = profile.Vibrations.AbsGain;
         VibrationMasterGain = profile.Vibrations.MasterGain;
+        SuspensionRoadGain = profile.Vibrations.SuspensionRoadGain;
         CompressionPower = profile.CompressionPower;
         SteeringLockDegrees = profile.SteeringLockDegrees;
         ForceScale = profile.ForceScale;
@@ -1541,6 +1547,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.VibrationMixer.RoadGain = RoadGain;
         _pipeline.VibrationMixer.AbsGain = AbsGain;
         _pipeline.VibrationMixer.MasterGain = VibrationMasterGain;
+        _pipeline.VibrationMixer.SuspensionRoadGain = SuspensionRoadGain;
         _pipeline.CompressionPower = CompressionPower;
         _pipeline.ForceScale = ForceScale;
         _pipeline.SignCorrectionEnabled = SignCorrectionEnabled;

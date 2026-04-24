@@ -11,8 +11,8 @@ public sealed class TrackDiagnosticHeatmap
     private int _lapExpected, _lapSuspicious;
     private int _lapSuspiciousSnapsStraight, _lapSuspiciousOscStraight, _lapSuspiciousForceAnomaly;
     private int _lapClipCorner, _lapClipStraight;
-    private int _lapCauseMz, _lapCauseFx, _lapCauseFy, _lapCauseSlew;
-    private int _lapSuspCauseMz, _lapSuspCauseFx, _lapSuspCauseFy, _lapSuspCauseSlew;
+    private int _lapCauseMz, _lapCauseFx, _lapCauseFy, _lapCauseSlew, _lapCauseRoadVib;
+    private int _lapSuspCauseMz, _lapSuspCauseFx, _lapSuspCauseFy, _lapSuspCauseSlew, _lapSuspCauseRoadVib;
     private int _lapExpectedSnaps;
     private float _lapSuspSpeedSum;
     private int _lapSuspSpeedCount;
@@ -60,10 +60,12 @@ public sealed class TrackDiagnosticHeatmap
             SnapCauseFx = _lapCauseFx,
             SnapCauseFy = _lapCauseFy,
             SnapCauseSlew = _lapCauseSlew,
+            SnapCauseRoadVibration = _lapCauseRoadVib,
             SuspiciousSnapCauseMz = _lapSuspCauseMz,
             SuspiciousSnapCauseFx = _lapSuspCauseFx,
             SuspiciousSnapCauseFy = _lapSuspCauseFy,
             SuspiciousSnapCauseSlew = _lapSuspCauseSlew,
+            SuspiciousSnapCauseRoadVibration = _lapSuspCauseRoadVib,
             ExpectedSnapCount = _lapExpectedSnaps,
             AvgSuspiciousSpeed = _lapSuspSpeedCount > 0 ? _lapSuspSpeedSum / _lapSuspSpeedCount : 0f
         };
@@ -137,6 +139,7 @@ public sealed class TrackDiagnosticHeatmap
                     case "mz_channel": _lapCauseMz++; break;
                     case "fx_channel": _lapCauseFx++; break;
                     case "fy_channel": _lapCauseFy++; break;
+                    case "road_vibration": _lapCauseRoadVib++; break;
                     default: _lapCauseSlew++; break;
                 }
 
@@ -147,6 +150,7 @@ public sealed class TrackDiagnosticHeatmap
                         case "mz_channel": _lapSuspCauseMz++; break;
                         case "fx_channel": _lapSuspCauseFx++; break;
                         case "fy_channel": _lapSuspCauseFy++; break;
+                        case "road_vibration": _lapSuspCauseRoadVib++; break;
                         default: _lapSuspCauseSlew++; break;
                     }
                 }
@@ -222,10 +226,12 @@ public sealed class TrackDiagnosticHeatmap
                     SnapCauseFx = _lapCauseFx,
                     SnapCauseFy = _lapCauseFy,
                     SnapCauseSlew = _lapCauseSlew,
+                    SnapCauseRoadVibration = _lapCauseRoadVib,
                     SuspiciousSnapCauseMz = _lapSuspCauseMz,
                     SuspiciousSnapCauseFx = _lapSuspCauseFx,
                     SuspiciousSnapCauseFy = _lapSuspCauseFy,
                     SuspiciousSnapCauseSlew = _lapSuspCauseSlew,
+                    SuspiciousSnapCauseRoadVibration = _lapSuspCauseRoadVib,
                     ExpectedSnapCount = _lapExpectedSnaps,
                     AvgSuspiciousSpeed = _lapSuspSpeedCount > 0 ? _lapSuspSpeedSum / _lapSuspSpeedCount : 0f
                 };
@@ -250,10 +256,12 @@ public sealed class TrackDiagnosticHeatmap
             _lapCauseFx = 0;
             _lapCauseFy = 0;
             _lapCauseSlew = 0;
+            _lapCauseRoadVib = 0;
             _lapSuspCauseMz = 0;
             _lapSuspCauseFx = 0;
             _lapSuspCauseFy = 0;
             _lapSuspCauseSlew = 0;
+            _lapSuspCauseRoadVib = 0;
             _lapExpectedSnaps = 0;
             _lapSuspSpeedSum = 0;
             _lapSuspSpeedCount = 0;

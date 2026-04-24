@@ -132,6 +132,7 @@ public sealed class FfbProfile
         pipeline.VibrationMixer.RoadGain = Vibrations.RoadGain;
         pipeline.VibrationMixer.AbsGain = Vibrations.AbsGain;
         pipeline.VibrationMixer.MasterGain = Vibrations.MasterGain;
+        pipeline.VibrationMixer.SuspensionRoadGain = Vibrations.SuspensionRoadGain;
 
         pipeline.MaxSlewRate = Advanced.MaxSlewRate;
         pipeline.CenterSuppressionDegrees = Advanced.CenterSuppressionDegrees;
@@ -213,7 +214,8 @@ public sealed class FfbProfile
             SlipGain = pipeline.VibrationMixer.SlipGain,
             RoadGain = pipeline.VibrationMixer.RoadGain,
             AbsGain = pipeline.VibrationMixer.AbsGain,
-            MasterGain = pipeline.VibrationMixer.MasterGain
+            MasterGain = pipeline.VibrationMixer.MasterGain,
+            SuspensionRoadGain = pipeline.VibrationMixer.SuspensionRoadGain
         };
         Advanced = new AdvancedConfig
         {
@@ -450,6 +452,7 @@ public sealed class VibrationConfig
     public float RoadGain { get; set; } = 0.5f;
     public float AbsGain { get; set; } = 1.0f;
     public float MasterGain { get; set; } = 0.7f;
+    public float SuspensionRoadGain { get; set; } = 1.5f;
 }
 
 public sealed class AdvancedConfig

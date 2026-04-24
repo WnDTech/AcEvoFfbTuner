@@ -213,6 +213,10 @@ public sealed class FfbPipeline
             finalOutput = Math.Clamp(finalOutput + absMod * sign, -1f, 1f);
         }
 
+        float roadMod = VibrationMixer.RoadForceModulation;
+        if (Math.Abs(roadMod) > 0.001f)
+            finalOutput = Math.Clamp(finalOutput + roadMod, -1f, 1f);
+
         return new FfbProcessedData
         {
             MainForce = finalOutput,
@@ -242,6 +246,7 @@ public sealed class FfbPipeline
     {
         Damping.Reset();
         DynamicEffects.Reset();
+        VibrationMixer.Reset();
         _prevOutput = 0f;
         _prevSlewOutput = 0f;
         _lastSentOutput = 0f;

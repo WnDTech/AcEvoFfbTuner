@@ -10,11 +10,20 @@ public sealed class FfbVibrationMixer
     public float AbsGain { get; set; } = 1.0f;
     public float MasterGain { get; set; } = 0.7f;
 
+    public float SuspensionRoadGain { get; set; } = 1.5f;
+
+    public float RoadForceModulation { get; private set; }
+
     private float _absPhase;
     private const float AbsPulseHz = 15f;
     private const float TickSeconds = 1f / 333f;
+    private const float CurbDeltaThreshold = 0.002f;
 
     public float AbsForceModulation { get; private set; }
+
+    private float[] _prevSuspTravel = new float[4];
+    private float _smSuspCurb;
+    private float _smSuspRoad;
 
     public float Mix(FfbRawData raw)
     {
@@ -67,6 +76,38 @@ public sealed class FfbVibrationMixer
             ? (raw.SpeedKmh - 2.0f) / 8.0f
             : 1.0f;
 
+        float curbDelta = 0f;
+        float roadDelta = 0f;
+        for (int i = 0; i < 4; i++)
+        {
+            float delta = raw.SuspensionTravel[i] - _prevSuspTravel[i];
+            _prevSuspTravel[i] = raw.SuspensionTravel[i];
+            float weight = i < 2 ? 1.5f : 0.75f;
+            if (MathF.Abs(delta) > CurbDeltaThreshold)
+                curbDelta += delta * weight;
+            else
+                roadDelta += delta * weight;
+        }
+
+        _smSuspCurb = _smSuspCurb * 0.3f + curbDelta * 0.7f;
+        _smSuspRoad = _smSuspRoad * 0.3f + roadDelta * 0.7f;
+
+        float suspSpeedScale = Math.Clamp(raw.SpeedKmh / 100f, 0f, 2f);
+        float curbForce = _smSuspCurb * 200f * MathF.Max(KerbGain, 0.1f) * suspSpeedScale;
+        float roadForce = _smSuspRoad * 500f * MathF.Max(RoadGain, 0.1f) * suspSpeedScale;
+        float rawVib = (curbForce + roadForce) * SuspensionRoadGain;
+        RoadForceModulation = Math.Clamp(rawVib, -0.15f, 0.15f);
+
         return Math.Clamp(combined * MasterGain * speedFade, 0f, 1f);
+    }
+
+    public void Reset()
+    {
+        _absPhase = 0f;
+        AbsForceModulation = 0f;
+        RoadForceModulation = 0f;
+        _smSuspCurb = 0f;
+        _smSuspRoad = 0f;
+        Array.Clear(_prevSuspTravel);
     }
 }

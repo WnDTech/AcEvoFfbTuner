@@ -214,6 +214,34 @@ public sealed class ProfileRecommender
     {
         if (s.SuspiciousSnapsOnStraight <= 2) return;
 
+        if (s.SuspiciousSnapCauseRoadVibration > 0 && p.Vibrations.SuspensionRoadGain > 0.5f)
+        {
+            float suggestedGain = MathF.Max(0.5f, p.Vibrations.SuspensionRoadGain * 0.7f);
+            recs.Add(new FfbRecommendation
+            {
+                Type = RecommendationType.ProfileChange,
+                Parameter = "SuspensionRoadGain",
+                Description = "Reduce road vibration gain to prevent suspicious snaps on straights",
+                CurrentValue = p.Vibrations.SuspensionRoadGain,
+                SuggestedValue = suggestedGain,
+                Unit = "",
+                Reason = $"{s.SuspiciousSnapCauseRoadVibration} of {s.SuspiciousSnapsOnStraight} suspicious snaps on straights caused by road vibration. Reduce gain to smooth output.",
+                AffectedPipelineStage = "Vibration Mixer → RoadForceModulation",
+                CodeReference = "FfbVibrationMixer.cs — SuspensionRoadGain scales suspension-travel-derived force modulation",
+                DataBreakdown =
+                    $"Suspicious snaps on straights:    {s.SuspiciousSnapsOnStraight}\n" +
+                    $"Road-vibration caused:            {s.SuspiciousSnapCauseRoadVibration}\n" +
+                    $"Other causes: Mz={s.SuspiciousSnapCauseMz} Fx={s.SuspiciousSnapCauseFx} Fy={s.SuspiciousSnapCauseFy} Slew={s.SuspiciousSnapCauseSlew}\n" +
+                    $"Current SuspensionRoadGain:       {p.Vibrations.SuspensionRoadGain:F2}",
+                DevDetail =
+                    "Suspension-derived road vibration bypasses the slew rate limiter.\n" +
+                    "When the gain is too high, curb impacts and road bumps cause force deltas\n" +
+                    "that exceed the snap detection threshold on straights.\n\n" +
+                    "This is a PROFILE tuning issue — reduce the gain to balance feel vs. artifacts.",
+                Impact = $"Road vibration intensity reduced by {(1f - suggestedGain / p.Vibrations.SuspensionRoadGain) * 100f:F0}%. Less snap artifacts but reduced curb/road feel."
+            });
+        }
+
         float suggestedSlew = MathF.Max(0.02f, p.Advanced.MaxSlewRate * 0.6f);
         if (suggestedSlew >= p.Advanced.MaxSlewRate) return;
         float slewReductionPct = (p.Advanced.MaxSlewRate - suggestedSlew) / p.Advanced.MaxSlewRate * 100f;
@@ -290,17 +318,48 @@ public sealed class ProfileRecommender
     {
         if (s.SuspiciousOscillationsOnStraight <= 1) return;
 
+        if (s.SuspiciousRoadVibrationSnaps > 0 || s.TotalRoadVibrationSnaps > s.TotalOscillations * 0.3f)
+        {
+            float suggested = MathF.Max(0f, p.Vibrations.SuspensionRoadGain * 0.6f);
+            recs.Add(new FfbRecommendation
+            {
+                Type = RecommendationType.ProfileChange,
+                Parameter = "SuspensionRoadGain",
+                Description = "Reduce road vibration gain to smooth straight-line oscillations",
+                CurrentValue = p.Vibrations.SuspensionRoadGain,
+                SuggestedValue = suggested,
+                Unit = "",
+                Reason = $"{s.SuspiciousOscillationsOnStraight} oscillation clusters on straights, {s.TotalRoadVibrationSnaps} road-vibration-induced events. The suspension-derived road feel may be too aggressive.",
+                AffectedPipelineStage = "Vibration Mixer → RoadForceModulation",
+                CodeReference = "FfbVibrationMixer.cs — derives vibration from suspension travel deltas, injected into constant force after slew limiter",
+                DataBreakdown =
+                    $"Suspicious oscillations on straights: {s.SuspiciousOscillationsOnStraight}\n" +
+                    $"Road-vibration snaps:               {s.TotalRoadVibrationSnaps}\n" +
+                    $"Suspicious road-vibration snaps:    {s.SuspiciousRoadVibrationSnaps}\n" +
+                    $"Current SuspensionRoadGain:         {p.Vibrations.SuspensionRoadGain:F2}",
+                DevDetail =
+                    "Road vibration is derived from per-frame suspension travel deltas.\n" +
+                    "It bypasses the slew rate limiter and injects directly into the constant force output.\n" +
+                    "When SuspensionRoadGain is too high, even normal road surface variation causes\n" +
+                    "force oscillations that the event detector flags.\n\n" +
+                    "This is a PROFILE tuning issue, not a code bug. Reduce the gain to smooth the output.",
+                Impact = $"Road vibration intensity reduced by {(1f - suggested / Math.Max(p.Vibrations.SuspensionRoadGain, 0.01f)) * 100f:F0}%. Less vibration on smooth road, but also less curb feel."
+            });
+            return;
+        }
+
         recs.Add(new FfbRecommendation
         {
             Type = RecommendationType.CodeIssue,
             Description = "Oscillation clusters detected on straights",
-            Reason = $"{s.SuspiciousOscillationsOnStraight} oscillation clusters on straights (no steering input). This is likely a feedback loop in the pipeline — check EMA smoothing alphas, slew rate near-center logic, or hysteresis watchdog.",
+            Reason = $"{s.SuspiciousOscillationsOnStraight} oscillation clusters on straights (no steering input). Not caused by road vibration. Check EMA smoothing alphas, slew rate near-center logic, or hysteresis watchdog.",
             AffectedPipelineStage = "Channel Mixer EMA / Slew Rate / Hysteresis",
             CodeReference = "FfbChannelMixer.cs:154-156 (parallel EMAs) + FfbPipeline.cs:177-183 (near-center slew reduction)",
             DataBreakdown =
                 $"Suspicious oscillations on straights: {s.SuspiciousOscillationsOnStraight}\n" +
                 $"Total oscillation events:             {s.TotalOscillations}\n" +
                 $"Oscillation in corners:               {s.TotalOscillations - s.SuspiciousOscillationsOnStraight}\n" +
+                $"Road-vibration snaps (ruled out):     {s.TotalRoadVibrationSnaps}\n" +
                 $"EMA alphas: Mz={0.20f:F2} Fx={0.08f:F2} Fy={0.12f:F2}\n" +
                 $"Parallel slow alphas: Mz={0.05f:F2} Fy={0.04f:F2}\n" +
                 $"HighSpeedBlend start: {150f} km/h\n" +
@@ -308,21 +367,16 @@ public sealed class ProfileRecommender
                 $"CenterSuppressionDegrees: {p.Advanced.CenterSuppressionDegrees:F1}",
             DevDetail =
                 $"Oscillation detection: ≥3 sign flips in last 10 force deltas, force > 0.01 significance gate, 0.5s cooldown.\n\n" +
+                $"Road vibration was checked but NOT the cause (RoadVibrationSnaps={s.TotalRoadVibrationSnaps}).\n\n" +
                 $"Possible causes:\n" +
                 $"  1. EMA feedback loop: fast alpha (0.20) + slow alpha (0.05) blend at high speed can cause overshoot\n" +
                 $"     The parallel EMA is blended as: out = fast + (slow - fast) * highSpeedBlend\n" +
-                $"     At 250+km/h, highSpeedBlend=0.85, so output = 0.15*fast + 0.85*slow. If the slow EMA\n" +
-                $"     is lagging behind the fast EMA significantly, the blended output oscillates.\n\n" +
-                $"  2. Near-center slew reduction: at >150km/h, |steer|<0.03, slew rate is reduced by up to 60%.\n" +
-                $"     This can cause the output to lag behind the input, creating a phase shift that manifests\n" +
-                $"     as oscillation when the force direction changes.\n\n" +
-                $"  3. Hysteresis watchdog: if the watchdog releases after 5 ticks of held output, the sudden\n" +
-                $"     jump to the accumulated value can trigger a snap event, which then gets detected as\n" +
-                $"     part of an oscillation cluster.\n\n" +
-                $"CHECK: FfbEventDetector.cs — oscillation detection uses sign flips of force DELTAS in ring buffer.\n" +
-                $"  Ring buffer size = 10. Zero-filled during insignificant force periods.\n" +
-                $"  MinForceForEvents gate = 0.01. Cooldown = 0.5s between oscillation events.",
-            Impact = "Oscillations on straights indicate the wheel may vibrate or buzz at high speed with no steering input. This is a code-level issue, not a profile tuning problem."
+                $"     At 250+km/h, highSpeedBlend=0.85, so output = 0.15*fast + 0.85*slow.\n\n" +
+                $"  2. Near-center slew reduction: at >150km/h, |steer|<0.03, slew rate is reduced by up to 60%.\n\n" +
+                $"  3. Hysteresis watchdog: if the watchdog releases after 5 ticks, the sudden\n" +
+                $"     jump can trigger a snap event that becomes part of an oscillation cluster.\n\n" +
+                $"CHECK: FfbEventDetector.cs — oscillation detection uses sign flips of force DELTAS in ring buffer.",
+            Impact = "Oscillations on straights with no road vibration cause. This is a code-level issue, not a profile tuning problem."
         });
 
         if (p.Advanced.CenterSuppressionDegrees > 3f)
@@ -649,7 +703,8 @@ public sealed class ProfileRecommender
                 $"  MzFront: {p.MzFront.Gain:F2}  FyFront: {p.FyFront.Gain:F2}  FxFront: {p.FxFront.Gain:F2}\n" +
                 $"  MaxSlewRate: {p.Advanced.MaxSlewRate:F4}  Hysteresis: {p.Advanced.HysteresisThreshold:F4}\n" +
                 $"  CenterSupp: {p.Advanced.CenterSuppressionDegrees:F1}°  CenterBlend: {p.Advanced.CenterBlendDegrees:F1}°\n" +
-                $"  SoftClip: {p.SoftClipThreshold:F2}  NoiseFloor: {p.Advanced.NoiseFloor:F4}",
+                $"  SoftClip: {p.SoftClipThreshold:F2}  NoiseFloor: {p.Advanced.NoiseFloor:F4}\n" +
+                $"  SuspensionRoadGain: {p.Vibrations.SuspensionRoadGain:F2}  CurbGain: {p.Vibrations.KerbGain:F2}",
             Impact = "No changes needed. Adjust feel preferences (gain, damping, vibration levels) to taste."
         });
     }

@@ -537,7 +537,8 @@ public sealed class TelemetryLoop : IDisposable
                 processed.PostCompressionForce,
                 processed.PostSlipForce,
                 processed.PostDampingForce,
-                processed.PostDynamicForce);
+                processed.PostDynamicForce,
+                _pipeline.VibrationMixer.RoadForceModulation);
 
             foreach (var evt in events)
             {
