@@ -124,7 +124,7 @@ public sealed class FfbEventDetector
         {
             var cls = ClassifyEvent(FfbEventType.Clipping, absDelta, speedKmh,
                 absSteer, inCorner, slipAngleFront, drivingState,
-                roadForceModulation, _prevRoadMod);
+                roadForceModulation, _prevRoadMod, absForce);
             events.Add(new FfbDiagnosticEvent
             {
                 EventType = FfbEventType.Clipping,
@@ -148,7 +148,7 @@ public sealed class FfbEventDetector
         {
             var cls = ClassifyEvent(FfbEventType.Snap, absDelta, speedKmh,
                 absSteer, inCorner, slipAngleFront, drivingState,
-                roadForceModulation, _prevRoadMod);
+                roadForceModulation, _prevRoadMod, absForce);
 
             events.Add(new FfbDiagnosticEvent
             {
@@ -186,7 +186,7 @@ public sealed class FfbEventDetector
                 _lastOscillationTime = now;
                 var cls = ClassifyEvent(FfbEventType.OscillationCluster, absDelta, speedKmh,
                     absSteer, inCorner, slipAngleFront, drivingState,
-                    roadForceModulation, _prevRoadMod);
+                    roadForceModulation, _prevRoadMod, absForce);
 
                 events.Add(new FfbDiagnosticEvent
                 {
@@ -219,7 +219,7 @@ public sealed class FfbEventDetector
             {
                 var cls = ClassifyEvent(FfbEventType.ForceDirectionAnomaly, absDelta, speedKmh,
                     absSteer, inCorner, slipAngleFront, drivingState,
-                    roadForceModulation, _prevRoadMod);
+                    roadForceModulation, _prevRoadMod, absForce);
 
                 if (cls >= FfbEventClassification.Suspicious)
                 {
@@ -324,10 +324,11 @@ public sealed class FfbEventDetector
         FfbEventType eventType, float absDelta, float speedKmh,
         float absSteer, bool inCorner, float slipAngleFront,
         DrivingState drivingState,
-        float roadForceModulation = 0f, float prevRoadForceModulation = 0f)
+        float roadForceModulation = 0f, float prevRoadForceModulation = 0f,
+        float absOutputForce = 0f)
     {
-        bool isRoadVibration = MathF.Abs(roadForceModulation) > 0.02f ||
-            MathF.Abs(roadForceModulation - prevRoadForceModulation) > 0.01f;
+        bool isRoadVibration = MathF.Abs(roadForceModulation) > 0.005f ||
+            MathF.Abs(roadForceModulation - prevRoadForceModulation) > 0.003f;
 
         if (eventType == FfbEventType.ForceDirectionAnomaly)
             return FfbEventClassification.Suspicious;
@@ -337,7 +338,11 @@ public sealed class FfbEventDetector
             if (isRoadVibration)
                 return FfbEventClassification.ExpectedDynamics;
             if (!inCorner && absSteer < SteerActiveThreshold && speedKmh > 60f)
+            {
+                if (absOutputForce < 0.08f)
+                    return FfbEventClassification.Normal;
                 return FfbEventClassification.Suspicious;
+            }
             if (inCorner && (drivingState == DrivingState.CornerApex || drivingState == DrivingState.CornerEntry))
                 return FfbEventClassification.ExpectedDynamics;
             return FfbEventClassification.Suspicious;

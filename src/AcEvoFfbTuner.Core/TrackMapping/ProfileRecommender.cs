@@ -318,7 +318,7 @@ public sealed class ProfileRecommender
     {
         if (s.SuspiciousOscillationsOnStraight <= 1) return;
 
-        if (s.SuspiciousRoadVibrationSnaps > 0 || s.TotalRoadVibrationSnaps > s.TotalOscillations * 0.3f)
+        if (s.SuspiciousRoadVibrationSnaps > 0 && p.Vibrations.SuspensionRoadGain > 0.5f)
         {
             float suggested = MathF.Max(0f, p.Vibrations.SuspensionRoadGain * 0.6f);
             recs.Add(new FfbRecommendation

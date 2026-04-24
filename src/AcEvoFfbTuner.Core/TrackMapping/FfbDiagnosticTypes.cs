@@ -58,8 +58,8 @@ public sealed class FfbDiagnosticEvent
     public float RoadForceModulation { get; set; }
     public float PrevRoadForceModulation { get; set; }
 
-    public bool IsRoadVibrationInduced => MathF.Abs(RoadForceModulation) > 0.02f ||
-        MathF.Abs(RoadForceModulation - PrevRoadForceModulation) > 0.01f;
+    public bool IsRoadVibrationInduced => MathF.Abs(RoadForceModulation) > 0.005f ||
+        MathF.Abs(RoadForceModulation - PrevRoadForceModulation) > 0.003f;
 
     public string LikelyCause
     {
