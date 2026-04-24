@@ -103,8 +103,8 @@
                                                 <CheckBox IsChecked="{Binding MzFrontEnabled}" Margin="0,0,12,0" />
                                                 <TextBlock Text="Mz (Self-Align)" FontSize="13" />
                                             </StackPanel>
-                                            <TextBlock Text="{Binding MzFrontGain, StringFormat='{}{0:F1}'}" Width="50" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                            <Slider Value="{Binding MzFrontGain}" Minimum="-10" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                                            <TextBlock Text="{Binding MzFrontGain, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding MzFrontGain}" Minimum="-10" Maximum="10" TickFrequency="0.01" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                         <TextBlock Text="Core steering feel from front tires" Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                     </StackPanel>
@@ -114,8 +114,8 @@
                                                 <CheckBox IsChecked="{Binding FxFrontEnabled}" Margin="0,0,12,0" />
                                                 <TextBlock Text="Fx (Longitudinal)" FontSize="13" />
                                             </StackPanel>
-                                            <TextBlock Text="{Binding FxFrontGain, StringFormat='{}{0:F1}'}" Width="50" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                            <Slider Value="{Binding FxFrontGain}" Minimum="-10" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                                            <TextBlock Text="{Binding FxFrontGain, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding FxFrontGain}" Minimum="-10" Maximum="10" TickFrequency="0.01" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                         <TextBlock Text="Braking and acceleration forces" Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                     </StackPanel>
@@ -125,8 +125,8 @@
                                                 <CheckBox IsChecked="{Binding FyFrontEnabled}" Margin="0,0,12,0" />
                                                 <TextBlock Text="Fy (Lateral)" FontSize="13" />
                                             </StackPanel>
-                                            <TextBlock Text="{Binding FyFrontGain, StringFormat='{}{0:F1}'}" Width="50" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                            <Slider Value="{Binding FyFrontGain}" Minimum="-10" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                                            <TextBlock Text="{Binding FyFrontGain, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding FyFrontGain}" Minimum="-10" Maximum="10" TickFrequency="0.01" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                         <TextBlock Text="Cornering loads from front tires" Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                     </StackPanel>
@@ -138,8 +138,8 @@
                                                 <CheckBox IsChecked="{Binding MzRearEnabled}" Margin="0,0,12,0" />
                                                 <TextBlock Text="Mz Rear" FontSize="13" />
                                             </StackPanel>
-                                            <TextBlock Text="{Binding MzRearGain, StringFormat='{}{0:F1}'}" Width="50" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                            <Slider Value="{Binding MzRearGain}" Minimum="-10" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                                            <TextBlock Text="{Binding MzRearGain, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding MzRearGain}" Minimum="-10" Maximum="10" TickFrequency="0.01" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
                                     <StackPanel Margin="0,6">
@@ -148,8 +148,8 @@
                                                 <CheckBox IsChecked="{Binding FxRearEnabled}" Margin="0,0,12,0" />
                                                 <TextBlock Text="Fx Rear" FontSize="13" />
                                             </StackPanel>
-                                            <TextBlock Text="{Binding FxRearGain, StringFormat='{}{0:F1}'}" Width="50" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                            <Slider Value="{Binding FxRearGain}" Minimum="-10" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                                            <TextBlock Text="{Binding FxRearGain, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding FxRearGain}" Minimum="-10" Maximum="10" TickFrequency="0.01" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
                                     <StackPanel Margin="0,6">
@@ -158,8 +158,8 @@
                                                 <CheckBox IsChecked="{Binding FyRearEnabled}" Margin="0,0,12,0" />
                                                 <TextBlock Text="Fy Rear" FontSize="13" />
                                             </StackPanel>
-                                            <TextBlock Text="{Binding FyRearGain, StringFormat='{}{0:F1}'}" Width="50" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                            <Slider Value="{Binding FyRearGain}" Minimum="-10" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                                            <TextBlock Text="{Binding FyRearGain, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding FyRearGain}" Minimum="-10" Maximum="10" TickFrequency="0.01" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
 
@@ -369,7 +369,7 @@
                                         <DockPanel>
                                             <TextBlock Text="Output Gain" Width="140" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding OutputGainNmText}" Width="120" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Right" Margin="8,0,0,0" TextAlignment="Right" />
-                                            <Slider Value="{Binding OutputGain}" Minimum="0" Maximum="20" TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                                            <Slider Value="{Binding OutputGain}" Minimum="0" Maximum="20" TickFrequency="0.01" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                         <TextBlock Text="Master FFB volume" Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                     </StackPanel>
@@ -988,7 +988,6 @@
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <Border Grid.Row="0" Background="#FF22223A" CornerRadius="6" Padding="10,6" Margin="0,0,0,6">
@@ -1149,56 +1148,78 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Row="2" Background="#FF151525" CornerRadius="6">
-                        <Canvas x:Name="TrackMapCanvas" ClipToBounds="True" />
-                    </Border>
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="260" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
 
-                    <Border Grid.Row="3" Background="#FF1A1A2E" CornerRadius="4" Padding="8,4" Margin="0,4,0,0"
-                            Visibility="{Binding ShowDiagnostics, Converter={StaticResource BoolToVis}}">
-                        <StackPanel>
-                            <TextBlock Text="FFB DIAGNOSTIC LEGEND" FontSize="10" Foreground="#FF888888" FontWeight="Bold" Margin="0,0,0,4" />
-                            <UniformGrid Columns="3">
-                                <StackPanel Orientation="Horizontal" Margin="0,0,8,2">
+                        <Border Grid.Column="0" Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,4,0">
+                            <StackPanel>
+                                <TextBlock Text="FFB DIAGNOSTICS" FontSize="11" Foreground="#FF00E676" FontWeight="Bold" Margin="0,0,0,8" />
+
+                                <TextBlock Text="LEGEND" FontSize="9" Foreground="#FF888888" FontWeight="Bold" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                     <Ellipse Width="10" Height="10" Fill="#FF00E676" Margin="0,0,6,0" VerticalAlignment="Center" />
                                     <TextBlock FontSize="10" Foreground="#FFE0E0E0" VerticalAlignment="Center">
-                                        <Run Text="Expected" FontWeight="Bold" Foreground="#FF00E676" /><Run Text=" - Normal corner forces" />
+                                        <Run Text="Expected" FontWeight="Bold" Foreground="#FF00E676" /><Run Text=" - Normal forces" />
                                     </TextBlock>
                                 </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,8,2">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                     <Ellipse Width="10" Height="10" Fill="#FFFFD600" Margin="0,0,6,0" VerticalAlignment="Center" />
                                     <TextBlock FontSize="10" Foreground="#FFE0E0E0" VerticalAlignment="Center">
-                                        <Run Text="Notable" FontWeight="Bold" Foreground="#FFFFD600" /><Run Text=" - Event, not suspicious" />
+                                        <Run Text="Notable" FontWeight="Bold" Foreground="#FFFFD600" /><Run Text=" - Event, not susp." />
                                     </TextBlock>
                                 </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,8,2">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                                     <Ellipse Width="10" Height="10" Fill="#FFFF0000" Margin="0,0,6,0" VerticalAlignment="Center" />
                                     <TextBlock FontSize="10" Foreground="#FFE0E0E0" VerticalAlignment="Center">
-                                        <Run Text="Suspicious" FontWeight="Bold" Foreground="#FFFF0000" /><Run Text=" - Possible code issue" />
+                                        <Run Text="Suspicious" FontWeight="Bold" Foreground="#FFFF0000" /><Run Text=" - Code issue?" />
                                     </TextBlock>
                                 </StackPanel>
-                            </UniformGrid>
-                            <TextBlock FontSize="9" Foreground="#FF777777" Margin="0,3,0,0" TextWrapping="Wrap">
-                                <Run Text="Expected:" FontWeight="Bold" /> Snap at corner entry/exit, understeer/oversteer forces, braking weight transfer.
-                                <LineBreak />
-                                <Run Text="Suspicious:" FontWeight="Bold" /> Snap on a straight, oscillation with no steering input, force pushing same direction as wheel.
-                                <LineBreak />
-                                <Run Text="Verdict:" FontWeight="Bold" /> If most dots are green and cluster at corners, it's your driving. If red dots appear on straights, check FFB code.
-                            </TextBlock>
-                        </StackPanel>
-                    </Border>
 
-                    <Border Grid.Row="4" Background="#FF1A1A2E" CornerRadius="4" Padding="8,4" Margin="0,4,0,0"
+                                <Border Background="#FF333355" Height="1" Margin="0,4,0,8" />
+
+                                <TextBlock Text="INTERPRETATION" FontSize="9" Foreground="#FF888888" FontWeight="Bold" Margin="0,0,0,4" />
+                                <TextBlock FontSize="9" Foreground="#FF999999" TextWrapping="Wrap" LineHeight="14">
+                                    <Run Text="Expected:" FontWeight="Bold" Foreground="#FF00E676" />
+                                    <Run Text=" Snap at corner entry/exit, understeer/oversteer, braking weight transfer." />
+                                </TextBlock>
+                                <TextBlock FontSize="9" Foreground="#FF999999" TextWrapping="Wrap" LineHeight="14" Margin="0,3,0,0">
+                                    <Run Text="Suspicious:" FontWeight="Bold" Foreground="#FFFF0000" />
+                                    <Run Text=" Snap on a straight, oscillation with no steering, force pushing same direction as wheel." />
+                                </TextBlock>
+                                <TextBlock FontSize="9" Foreground="#FF999999" TextWrapping="Wrap" LineHeight="14" Margin="0,3,0,0">
+                                    <Run Text="Verdict:" FontWeight="Bold" Foreground="#FF00BCD4" />
+                                    <Run Text=" Most dots green and at corners = normal driving. Red on straights = check FFB code." />
+                                </TextBlock>
+
+                                <Border Background="#FF333355" Height="1" Margin="0,8,0,8"
+                                        Visibility="{Binding ShowDiagnostics, Converter={StaticResource BoolToVis}}" />
+
+                                <StackPanel Visibility="{Binding ShowDiagnostics, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="{Binding DiagnosticCoverage, FallbackValue='Coverage: 0%'}" FontSize="10" Foreground="#FF00BCD4" FontWeight="Bold" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding DiagnosticSummary, FallbackValue=''}" FontSize="9" Foreground="#FFAAAAAA" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding DiagnosticVerdict, FallbackValue=''}" FontSize="11" Foreground="#FFFF4500" FontWeight="Bold" Margin="0,0,0,6" />
+                                    <TextBlock Text="Last Event:" FontSize="9" Foreground="#FF888888" Margin="0,0,0,2" />
+                                    <TextBlock Text="{Binding LastEventInfo, FallbackValue=''}" FontSize="9" Foreground="#FFFF8A65" FontFamily="Consolas" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Background="#FF151525" CornerRadius="6">
+                            <Canvas x:Name="TrackMapCanvas" ClipToBounds="True" />
+                        </Border>
+                    </Grid>
+
+                    <Border Grid.Row="3" Background="#FF1A1A2E" CornerRadius="4" Padding="8,4" Margin="0,4,0,0"
                             Visibility="{Binding ShowDiagnostics, Converter={StaticResource BoolToVis}}">
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="Apply Profile Changes" Command="{Binding ApplyRecommendationsCommand}"
                                     Padding="10,4" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Top"
                                     Background="#FF2E7D32" Foreground="#FFE0E0E0" BorderThickness="0" />
                             <StackPanel>
-                                <DockPanel Margin="0,0,0,4">
-                                    <TextBlock DockPanel.Dock="Left" Text="{Binding DiagnosticCoverage, FallbackValue='Coverage: 0%'}" FontSize="10" Foreground="#FF00BCD4" FontWeight="Bold" VerticalAlignment="Center" />
-                                    <TextBlock DockPanel.Dock="Right" Text="{Binding DiagnosticSummary, FallbackValue=''}" FontSize="9" Foreground="#FFAAAAAA" FontFamily="Consolas" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                </DockPanel>
-                                <TextBlock Text="RECOMMENDATIONS" FontSize="10" Foreground="#FF00E676" FontWeight="Bold" Margin="0,0,0,2" Visibility="{Binding ShowDiagnostics, Converter={StaticResource BoolToVis}}" />
+                                <TextBlock Text="RECOMMENDATIONS" FontSize="10" Foreground="#FF00E676" FontWeight="Bold" Margin="0,0,0,2" />
                                 <TextBox IsReadOnly="True" BorderThickness="0" Background="Transparent"
                                          Foreground="#FFE0E0E0" FontFamily="Consolas" FontSize="11"
                                          Text="{Binding RecommendationsText, Mode=OneWay}"
@@ -1208,7 +1229,7 @@
                         </DockPanel>
                     </Border>
 
-                    <Border Grid.Row="5" Background="#FF22223A" CornerRadius="6" Padding="8,4" Margin="0,4,0,0">
+                    <Border Grid.Row="4" Background="#FF22223A" CornerRadius="6" Padding="8,4" Margin="0,4,0,0">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -1227,12 +1248,7 @@
                                     <TextBlock Text="Sector Stats:" FontSize="11" Foreground="#FF888888" Margin="0,0,4,0" />
                                     <TextBlock x:Name="TrackMapSectorStats" Text="--" FontSize="12" Foreground="#FFE0E0E0" FontFamily="Consolas" />
                                 </StackPanel>
-                                <TextBlock Grid.Column="1" Text="{Binding DiagnosticVerdict, FallbackValue=''}" FontSize="11" Foreground="#FFFF4500" FontWeight="Bold" VerticalAlignment="Center" />
                             </Grid>
-                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,2,0,0" Visibility="{Binding ShowDiagnostics, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="Last Event:" FontSize="10" Foreground="#FF888888" Margin="0,0,4,0" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding LastEventInfo, FallbackValue=''}" FontSize="10" Foreground="#FFFF8A65" FontFamily="Consolas" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="600" />
-                            </StackPanel>
                         </Grid>
                     </Border>
                 </Grid>

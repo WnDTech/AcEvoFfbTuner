@@ -28,6 +28,8 @@ public sealed class FfbDeviceManager : IDisposable
     private int _maxForceMagnitude = 10000;
     private bool _disposed;
     private int _lastCfMagnitude = int.MinValue;
+    private int _lastPeriodicMagnitude = int.MinValue;
+    private bool _periodicEffectPlaying;
     private IntPtr _windowHandle;
     private int[]? _ffAxes;
     private bool _invertForce = true; // Most DD wheels (Moza, Fanatec) need device-level inversion
@@ -59,6 +61,7 @@ public sealed class FfbDeviceManager : IDisposable
 
     public FfbDeviceInfo? ConnectedDevice { get; private set; }
     public bool IsDeviceAcquired => _isAcquired && _device != null;
+    public bool SupportsPeriodicEffects { get; private set; }
     public string? LastError { get; private set; }
 
     private readonly WheelLedController _ledController = new();
@@ -170,6 +173,7 @@ public sealed class FfbDeviceManager : IDisposable
     private void DiscoverFfAxes()
     {
         _ffAxes = new int[] { 0 };
+        SupportsPeriodicEffects = false;
 
         if (_device == null) return;
 
@@ -177,6 +181,19 @@ public sealed class FfbDeviceManager : IDisposable
         {
             var effects = _device.GetEffects();
             if (effects.Count == 0) return;
+
+            foreach (var ei in effects)
+            {
+                if (ei.Guid == DI.EffectGuid.Sine ||
+                    ei.Guid == DI.EffectGuid.Square ||
+                    ei.Guid == DI.EffectGuid.Triangle ||
+                    ei.Guid == DI.EffectGuid.SawtoothUp ||
+                    ei.Guid == DI.EffectGuid.SawtoothDown)
+                {
+                    SupportsPeriodicEffects = true;
+                    break;
+                }
+            }
 
             foreach (var obj in _device.GetObjects())
             {
@@ -330,25 +347,56 @@ public sealed class FfbDeviceManager : IDisposable
 
     public void SendPeriodicVibration(float intensity, int frequency = 80)
     {
-        if (_device == null || !_isAcquired || intensity < 0.001f) return;
+        if (_device == null || !_isAcquired || intensity < 0.001f)
+        {
+            StopVibration();
+            return;
+        }
 
         try
         {
-            DestroyPeriodicEffect();
-
             int magnitude = (int)(Math.Clamp(intensity, 0f, 1f) * _maxForceMagnitude);
+
+            if (_periodicEffect != null && _periodicEffectPlaying)
+            {
+                if (magnitude == _lastPeriodicMagnitude)
+                    return;
+
+                _lastPeriodicMagnitude = magnitude;
+
+                try
+                {
+                    var periodic = new DI.PeriodicForce
+                    {
+                        Magnitude = magnitude,
+                        Phase = 0,
+                        Period = 1000 / Math.Max(frequency, 1)
+                    };
+                    var parameters = new DI.EffectParameters();
+                    parameters.Parameters = periodic;
+
+                    _periodicEffect.SetParameters(parameters,
+                        DI.EffectParameterFlags.TypeSpecificParameters |
+                        DI.EffectParameterFlags.Start);
+                    return;
+                }
+                catch
+                {
+                    DestroyPeriodicEffect();
+                }
+            }
 
             var axes = _ffAxes ?? new int[] { 0 };
             var directions = new int[axes.Length];
 
-            var periodic = new DI.PeriodicForce
+            var newPeriodic = new DI.PeriodicForce
             {
                 Magnitude = magnitude,
                 Phase = 0,
                 Period = 1000 / Math.Max(frequency, 1)
             };
 
-            var parameters = new DI.EffectParameters
+            var newParams = new DI.EffectParameters
             {
                 Duration = -1,
                 Gain = 10000,
@@ -358,11 +406,13 @@ public sealed class FfbDeviceManager : IDisposable
                 TriggerRepeatInterval = 0,
                 Flags = DI.EffectFlags.Cartesian | DI.EffectFlags.ObjectIds,
             };
-            parameters.SetAxes(axes, directions);
-            parameters.Parameters = periodic;
+            newParams.SetAxes(axes, directions);
+            newParams.Parameters = newPeriodic;
 
-            _periodicEffect = new DI.Effect(_device, DI.EffectGuid.Sine, parameters);
+            _periodicEffect = new DI.Effect(_device, DI.EffectGuid.Sine, newParams);
             _periodicEffect.Start(1, 0);
+            _periodicEffectPlaying = true;
+            _lastPeriodicMagnitude = magnitude;
         }
         catch
         {
@@ -376,6 +426,8 @@ public sealed class FfbDeviceManager : IDisposable
         _currentForce = 0f;
         _targetVibration = 0f;
         _currentVibration = 0f;
+        _periodicEffectPlaying = false;
+        _lastPeriodicMagnitude = int.MinValue;
         SendConstantForceDirect(0f);
         StopVibration();
         ClearWheelLeds();
@@ -502,6 +554,11 @@ public sealed class FfbDeviceManager : IDisposable
                     interpVib = targetVib;
                 _currentVibration = interpVib;
 
+                if (interpVib > 0.001f)
+                    SendPeriodicVibration(interpVib);
+                else
+                    StopVibration();
+
                 lastLoopTick = nowTicks;
                 Thread.Sleep(1);
             }
@@ -515,6 +572,8 @@ public sealed class FfbDeviceManager : IDisposable
     public void StopVibration()
     {
         DestroyPeriodicEffect();
+        _periodicEffectPlaying = false;
+        _lastPeriodicMagnitude = int.MinValue;
     }
 
     private void DestroyConstantForceEffect()

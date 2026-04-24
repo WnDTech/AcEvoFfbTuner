@@ -16,6 +16,8 @@ public sealed class FfbEventDetector
     private readonly Stopwatch _sw = Stopwatch.StartNew();
 
     private float _prevMzFront, _prevFxFront, _prevFyFront;
+    private int _steerSignStableTicks;
+    private const int SteerStableRequired = 10;
 
     private const float SnapDeltaThreshold = 0.08f;
     private const float HighSpeedSnapThreshold = 0.12f;
@@ -82,6 +84,16 @@ public sealed class FfbEventDetector
             steerAngle, _prevSteerAngle, speedKmh, _prevSpeed,
             brakeInput, _prevBrake, gasInput, _prevGas,
             slipAngleFront, lateralG, inCorner);
+
+        if (_prevWaypointIdx >= 0)
+        {
+            bool prevSign = _prevSteerAngle >= 0f;
+            bool curSign = steerAngle >= 0f;
+            if (prevSign == curSign && absSteer > SteerActiveThreshold)
+                _steerSignStableTicks++;
+            else
+                _steerSignStableTicks = 0;
+        }
 
         if (!forceSignificant)
         {
@@ -188,7 +200,8 @@ public sealed class FfbEventDetector
             }
         }
 
-        if (speedKmh > 30f && absSteer > SteerActiveThreshold && absDelta > 0.03f)
+        if (speedKmh > 30f && absSteer > SteerActiveThreshold && absDelta > 0.03f
+            && _steerSignStableTicks >= SteerStableRequired)
         {
             bool forceOpposesSteer = (outputForce > 0f && steerAngle < 0f) ||
                                       (outputForce < 0f && steerAngle > 0f);
@@ -364,6 +377,7 @@ public sealed class FfbEventDetector
         _prevGas = 0f;
         _deltaIdx = 0;
         _lastOscillationTime = 0;
+        _steerSignStableTicks = 0;
         Array.Clear(_recentDeltas);
         LastEvent = null;
         _sw.Restart();

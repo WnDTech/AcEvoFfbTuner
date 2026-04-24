@@ -563,7 +563,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             string ledStatus = _deviceManager.IsLedControllerConnected
                 ? $" | LEDs: {_deviceManager.LedControllerVendor}"
                 : $" | LEDs: {_deviceManager.LedDiagnosticInfo.Split('\n').LastOrDefault() ?? "not found"}";
-            StatusText = (_deviceManager.LastError ?? $"Connected to {SelectedDevice.ProductName}") + ledStatus;
+            string vibStatus = _deviceManager.SupportsPeriodicEffects
+                ? ""
+                : " | WARNING: wheel does not report periodic effect support — kerb/slip vibration may not work";
+            StatusText = (_deviceManager.LastError ?? $"Connected to {SelectedDevice.ProductName}") + ledStatus + vibStatus;
             PushLedConfig();
         }
         else
@@ -1056,8 +1059,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (recs.Count > 0)
         {
             var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"═══ DIAGNOSTIC RECOMMENDATIONS (DEV MODE) ═══");
+            sb.AppendLine($"Events: {summary.TotalEvents} | Corner: {summary.CornerEventPct:F0}% | Suspicious: {summary.SuspiciousPct:F0}% | Verdict: {summary.Verdict}");
+            sb.AppendLine($"Snap causes (ALL): Mz={summary.SnapCauseMz} Fx={summary.SnapCauseFx} Fy={summary.SnapCauseFy} Slew={summary.SnapCauseSlew} | Expected: {summary.ExpectedSnapCount}");
+            sb.AppendLine($"Snap causes (SUSPICIOUS only): Mz={summary.SuspiciousSnapCauseMz} Fx={summary.SuspiciousSnapCauseFx} Fy={summary.SuspiciousSnapCauseFy} Slew={summary.SuspiciousSnapCauseSlew}");
+            sb.AppendLine();
             foreach (var r in recs)
-                sb.AppendLine(r.DisplayText);
+                sb.AppendLine(r.DevModeText);
             RecommendationsText = sb.ToString();
         }
     }
@@ -1168,7 +1176,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     public string MaxForceLimitNmText => $"{MaxForceLimit:F2} ({MaxForceLimit * WheelMaxTorqueNm:F1} Nm)";
-    public string OutputGainNmText => $"{OutputGain:F1} (peak {MaxForceLimit * WheelMaxTorqueNm:F1} Nm)";
+    public string OutputGainNmText => $"{OutputGain:F2} (peak {MaxForceLimit * WheelMaxTorqueNm:F1} Nm)";
 
     partial void OnLedBrightnessChanged(int value) => PushLedConfig();
     partial void OnLedFlashRateChanged(int value) => PushLedConfig();
@@ -1267,6 +1275,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 $"FxScale:        {_pipeline.ChannelMixer.FxScale:F0}\n" +
                 $"FyScale:        {_pipeline.ChannelMixer.FyScale:F0}\n" +
                 $"LastError:      {_deviceManager.LastError ?? "none"}\n" +
+                $"PeriodicFX:     {_deviceManager.SupportsPeriodicEffects}\n" +
                 $"PacketId:       {raw.PacketId}  PPS: {_telemetryLoop.PacketsPerSecond}\n" +
                 $"Latency:        {_telemetryLoop.LastLatencyMs:F2}ms (avg: {_telemetryLoop.AvgLatencyMs:F2}ms)\n" +
                 $"\n=== LED CONTROLLER ===\n" +

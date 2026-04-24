@@ -281,15 +281,12 @@ public sealed class TelemetryLoop : IDisposable
                         if (raw.SpeedKmh < 2.0f)
                         {
                             _deviceManager.SendConstantForce(0f);
-                            _deviceManager.StopVibration();
+                            _deviceManager.SetTargetVibration(0f);
                         }
                         else
                         {
                             _deviceManager.SendConstantForce(processed.MainForce);
-                            if (processed.VibrationForce > 0.01f)
-                                _deviceManager.SendPeriodicVibration(processed.VibrationForce);
-                            else
-                                _deviceManager.StopVibration();
+                            _deviceManager.SetTargetVibration(processed.VibrationForce);
                         }
 
                         _deviceManager.UpdateWheelLeds(raw.RpmPercent, raw.IsChangeUpRpm, raw.IsRpmLimiterOn, raw.Flag, raw.AbsVibrations > 0.001f);

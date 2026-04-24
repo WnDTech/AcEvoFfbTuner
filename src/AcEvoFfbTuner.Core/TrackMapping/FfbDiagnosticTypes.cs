@@ -126,6 +126,11 @@ public sealed class DiagnosticLapSummary
     public int SnapCauseFx { get; set; }
     public int SnapCauseFy { get; set; }
     public int SnapCauseSlew { get; set; }
+    public int SuspiciousSnapCauseMz { get; set; }
+    public int SuspiciousSnapCauseFx { get; set; }
+    public int SuspiciousSnapCauseFy { get; set; }
+    public int SuspiciousSnapCauseSlew { get; set; }
+    public int ExpectedSnapCount { get; set; }
     public float AvgSuspiciousSpeed { get; set; }
     public float CornerEventPct => TotalEvents > 0 ? (float)EventsInCorners / TotalEvents * 100f : 0f;
     public float SuspiciousPct => TotalEvents > 0 ? (float)EventsSuspicious / TotalEvents * 100f : 0f;
