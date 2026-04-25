@@ -1,8 +1,20 @@
 # AC Evo FFB Tuner
 
+[![CI Build](https://github.com/WnDTech/AcEvoFfbTuner/actions/workflows/ci.yml/badge.svg)](https://github.com/WnDTech/AcEvoFfbTuner/actions/workflows/ci.yml)
+[![Release](https://github.com/WnDTech/AcEvoFfbTuner/actions/workflows/release.yml/badge.svg)](https://github.com/WnDTech/AcEvoFfbTuner/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/WnDTech/AcEvoFfbTuner?label=latest)](https://github.com/WnDTech/AcEvoFfbTuner/releases/latest)
+
 A Windows desktop application that intercepts, processes, and enhances Force Feedback signals from **Assetto Corsa EVO** before sending them to your DirectInput-compatible steering wheel.
 
 Instead of relying on the game's native FFB output, this tool reads raw physics telemetry from AC EVO's shared memory — tire forces, slip data, suspension travel, G-forces, vibrations — runs it through a fully configurable multi-stage DSP pipeline, and sends the processed result directly to the wheel.
+
+## Download & Install
+
+Download the latest installer from [GitHub Releases](https://github.com/WnDTech/AcEvoFfbTuner/releases/latest).
+
+The app checks for updates automatically on startup and will notify you when a new version is available.
+
+**Requirements:** Windows 10+, .NET 8.0 runtime (bundled in the self-contained installer), a DirectInput-compatible FFB wheel.
 
 ## Features
 
@@ -44,6 +56,21 @@ Instead of relying on the game's native FFB output, this tool reads raw physics 
 - Auto-detects wheelbase torque from device name (Moza R5/R9/R12/R16/R21, Fanatec CSL DD/DD1/DD2, Simagic Alpha, and more)
 - Auto-detects FFB strength and steering lock from AC EVO shared memory
 
+### Testing Guide
+- Built-in step-by-step testing walkthrough for FFB evaluation
+- Pop-out overlay window for single-screen users
+- Structured feedback dialog for capturing tester notes
+
+### Diagnostics
+- One-click diagnostic pack submission (profile, snapshot, and telemetry data)
+- In-app email integration for sending data to the developer
+
+### Additional Features
+- **Auto-Update Checker** — Checks GitHub for new releases on startup
+- **Splash Screen** — Animated rotating wheel with engine startup sound
+- **Settings Tab** — Panic device support, startup sound configuration
+- **Panic Stop** — Immediately zeroes all FFB output and disconnects from the device
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -52,9 +79,12 @@ Instead of relying on the game's native FFB output, this tool reads raw physics 
 | UI | WPF + Material Design Themes |
 | Plotting | ScottPlot.WPF 5.0 |
 | MVVM | CommunityToolkit.Mvvm |
+| Audio | NAudio |
 | FFB Device | SharpDX.DirectInput |
 | Telemetry | Windows Memory-Mapped Files |
 | Moza SDK | Native DLL interop |
+| Installer | Inno Setup |
+| CI/CD | GitHub Actions |
 | Testing | xUnit |
 
 ## Project Structure
@@ -67,8 +97,12 @@ src/AcEvoFfbTuner.Core/          Core library (no UI dependencies)
   SharedMemory/                   AC EVO telemetry reader & struct definitions
   TrackMapping/                   Track map, heatmap, diagnostics, recommendations
 src/AcEvoFfbTuner/                WPF application (UI layer)
+  Services/                       GitHub update service, diagnostics
+  ViewModels/                     MVVM view models
+  Views/                          Windows, tabs, overlay
 src/AcEvoFfbTuner.Tests/          Unit tests
 tools/                            Utility projects (MmfChecker, MozaLedTest)
+installer/                        Inno Setup installer script
 lib/moza/                         Native Moza SDK DLLs
 ```
 
