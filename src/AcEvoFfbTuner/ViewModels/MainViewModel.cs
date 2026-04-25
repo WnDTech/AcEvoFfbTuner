@@ -567,13 +567,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void RefreshDevices()
     {
+        var allDevices = _deviceManager.EnumerateFfbDevices();
+
         AvailableDevices.Clear();
-        foreach (var device in _deviceManager.EnumerateFfbDevices())
+        foreach (var device in allDevices)
             AvailableDevices.Add(device);
 
         PanicDevices.Clear();
         PanicDevices.Add(new FfbDeviceInfo { ProductName = "None", IsFfbCapable = false });
-        foreach (var device in _deviceManager.EnumerateFfbDevices())
+        foreach (var device in allDevices)
             PanicDevices.Add(device);
     }
 
@@ -1291,9 +1293,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
             if (IsRunning && IsDeviceConnected)
             {
-                var err = _deviceManager.LastError;
-                if (!string.IsNullOrEmpty(err))
-                    StatusText = err;
+                if (_deviceManager.HasLostDeviceAccess)
+                {
+                    IsDeviceConnected = false;
+                    DeviceName = "Lost exclusive access";
+                    StatusText = "FFB device lost exclusive access — disconnect and reconnect the wheel.";
+                }
+                else
+                {
+                    var err = _deviceManager.LastError;
+                    if (!string.IsNullOrEmpty(err))
+                        StatusText = err;
+                }
             }
 
             if (Application.Current?.MainWindow is MainWindow mw)

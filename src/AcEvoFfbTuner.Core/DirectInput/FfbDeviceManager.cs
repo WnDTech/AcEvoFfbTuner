@@ -34,7 +34,9 @@ public sealed class FfbDeviceManager : IDisposable
     private bool _periodicEffectPlaying;
     private IntPtr _windowHandle;
     private int[]? _ffAxes;
-    private bool _invertForce = true; // Most DD wheels (Moza, Fanatec) need device-level inversion
+    private bool _invertForce = true;
+    private int _consecutiveForceErrors;
+    private const int MaxConsecutiveErrors = 10;
 
     /// <summary>
     /// When true, the force output to the device is inverted (multiplied by -1).
@@ -61,8 +63,23 @@ public sealed class FfbDeviceManager : IDisposable
     private long _lastTargetUpdateTicks;
     private const float PhysicsTickMs = 3.0f; // expected interval between physics packets (~333Hz)
 
+    private static readonly string ConnLogPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "AcEvoFfbTuner", "connection_debug.log");
+
+    private static void ConnLog(string msg)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(ConnLogPath)!);
+            File.AppendAllText(ConnLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n");
+        }
+        catch { }
+    }
+
     public FfbDeviceInfo? ConnectedDevice { get; private set; }
     public bool IsDeviceAcquired => _isAcquired && _device != null;
+    public bool HasLostDeviceAccess => _consecutiveForceErrors >= MaxConsecutiveErrors;
     public bool SupportsPeriodicEffects { get; private set; }
     public string? LastError { get; private set; }
 
@@ -80,25 +97,21 @@ public sealed class FfbDeviceManager : IDisposable
     {
         _directInput ??= new DI.DirectInput();
 
+        var allInstances = _directInput.GetDevices(DI.DeviceClass.GameControl, DI.DeviceEnumerationFlags.AllDevices);
+        var ffbGuids = new HashSet<Guid>(
+            _directInput.GetDevices(DI.DeviceClass.GameControl, DI.DeviceEnumerationFlags.ForceFeedback)
+                .Select(d => d.InstanceGuid));
+
         var devices = new List<FfbDeviceInfo>();
 
-        foreach (var instance in _directInput.GetDevices(DI.DeviceClass.GameControl, DI.DeviceEnumerationFlags.AllDevices))
+        foreach (var instance in allInstances)
         {
-            bool isFfb = false;
-            try
-            {
-                using var tempDev = new DI.Joystick(_directInput, instance.InstanceGuid);
-                isFfb = tempDev.GetEffects().Count > 0;
-            }
-            catch { }
-
-            var info = new FfbDeviceInfo
+            devices.Add(new FfbDeviceInfo
             {
                 ProductName = instance.ProductName,
-                IsFfbCapable = isFfb,
+                IsFfbCapable = ffbGuids.Contains(instance.InstanceGuid),
                 DeviceInstance = instance
-            };
-            devices.Add(info);
+            });
         }
 
         return devices;
@@ -106,49 +119,63 @@ public sealed class FfbDeviceManager : IDisposable
 
     public bool TryConnectDevice(FfbDeviceInfo deviceInfo)
     {
+        ConnLog("=== TryConnectDevice START ===");
+        ConnLog($"Device: {deviceInfo.ProductName} GUID={deviceInfo.DeviceInstance.InstanceGuid}");
+        ConnLog($"WindowHandle: 0x{_windowHandle.ToInt64():X8} IsZero={_windowHandle == IntPtr.Zero}");
+        ConnLog($"Primary acquired: {_isAcquired}, Secondary acquired: {_secondaryAcquired}");
+        ConnLog($"DirectInput instance: {_directInput != null}, Device: {_device != null}");
+
         DisconnectDevice();
+        DisconnectSecondaryDevice();
+
+        ConnLog("After disconnect — calling GC cleanup");
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        Thread.Sleep(100);
+
         LastError = null;
 
-        try
+        var handle = _windowHandle != IntPtr.Zero ? _windowHandle : GetDesktopWindow();
+        ConnLog($"Using handle: 0x{handle.ToInt64():X8} IsDesktop={handle == GetDesktopWindow()}");
+
+        if (handle == GetDesktopWindow())
         {
-            _device = new DI.Joystick(_directInput!, deviceInfo.DeviceInstance.InstanceGuid);
-
-            _device.SetCooperativeLevel(
-                _windowHandle != IntPtr.Zero ? _windowHandle : GetDesktopWindow(),
-                DI.CooperativeLevel.Exclusive | DI.CooperativeLevel.Background);
-            _device.Acquire();
-            _isAcquired = true;
-
-            DiscoverFfAxes();
-            ConnectedDevice = deviceInfo;
-            StartInterpolationThread();
-
-            if (!_ledController.TryConnect(deviceInfo.ProductName))
-            {
-                LastError = string.IsNullOrEmpty(LastError)
-                    ? _ledController.LastError
-                    : $"{LastError} | {_ledController.LastError}";
-            }
-
-            DeviceConnected?.Invoke(deviceInfo.ProductName);
-            return true;
+            LastError = "No valid window handle — cannot acquire exclusive device access.";
+            ConnLog("FAILED: No valid window handle");
+            return false;
         }
 
-        catch (Exception ex)
+        Exception? exclusiveEx = null;
+
+        for (int attempt = 0; attempt < 3; attempt++)
         {
-            LastError = $"Exclusive failed: {ex.Message}. Trying non-exclusive...";
+            ConnLog($"--- Attempt {attempt + 1}/3 ---");
+
+            if (attempt > 0)
+            {
+                _device?.Dispose();
+                _device = null;
+                ConnLog("Disposing old DirectInput instance and creating fresh one");
+                _directInput?.Dispose();
+                _directInput = new DI.DirectInput();
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                Thread.Sleep(200 * attempt);
+            }
 
             try
             {
-                _device?.Dispose();
+                ConnLog("Creating Joystick...");
                 _device = new DI.Joystick(_directInput!, deviceInfo.DeviceInstance.InstanceGuid);
-                _device.SetCooperativeLevel(
-                    _windowHandle != IntPtr.Zero ? _windowHandle : GetDesktopWindow(),
-                    DI.CooperativeLevel.NonExclusive | DI.CooperativeLevel.Background);
+                ConnLog("Joystick created OK. Setting cooperative level Exclusive|Background...");
+                _device.SetCooperativeLevel(handle, DI.CooperativeLevel.Exclusive | DI.CooperativeLevel.Background);
+                ConnLog("Cooperative level set. Acquiring...");
                 _device.Acquire();
                 _isAcquired = true;
+                ConnLog("EXCLUSIVE ACQUIRED SUCCESSFULLY");
 
                 DiscoverFfAxes();
+                ConnLog($"FFB axes: {string.Join(",", _ffAxes ?? Array.Empty<int>())}, Periodic: {SupportsPeriodicEffects}");
                 ConnectedDevice = deviceInfo;
                 StartInterpolationThread();
 
@@ -157,19 +184,77 @@ public sealed class FfbDeviceManager : IDisposable
                     LastError = string.IsNullOrEmpty(LastError)
                         ? _ledController.LastError
                         : $"{LastError} | {_ledController.LastError}";
+                    ConnLog($"LED controller: {_ledController.LastError}");
+                }
+                else
+                {
+                    ConnLog("LED controller connected");
                 }
 
                 DeviceConnected?.Invoke(deviceInfo.ProductName);
-                LastError = "Connected non-exclusive — FFB may not work. Disable in-game FFB for best results.";
                 return true;
             }
-            catch (Exception ex2)
+            catch (Exception ex)
             {
-                LastError = $"Failed to connect: {ex2.Message}";
-                DisconnectDevice();
-                return false;
+                ConnLog($"ATTEMPT {attempt + 1} FAILED: {ex.GetType().Name}: {ex.Message}");
+                if (ex.InnerException != null)
+                    ConnLog($"  Inner: {ex.InnerException.Message}");
+                _device?.Dispose();
+                _device = null;
+                exclusiveEx = ex;
             }
         }
+
+        var conflicts = DetectConflictingProcesses();
+        ConnLog($"ALL 3 ATTEMPTS FAILED. Conflicts: {(conflicts.Count > 0 ? string.Join(", ", conflicts) : "none detected")}");
+
+        LastError = $"Cannot acquire exclusive FFB access after 3 attempts.\n" +
+                    $"Error: {exclusiveEx?.Message}\n" +
+                    $"Window handle: 0x{handle.ToInt64():X8}\n" +
+                    (conflicts.Count > 0
+                        ? $"Conflicting processes detected: {string.Join(", ", conflicts)}\n"
+                        : "No known conflicting processes detected.\n") +
+                    $"Solutions:\n" +
+                    $"- Close wheel driver software (Moza Pit House, Fanatec, Logitech G HUB)\n" +
+                    $"- Close any other app using the wheel (simulators, button boxes)\n" +
+                    $"- Reconnect the wheel USB cable and retry";
+        DisconnectDevice();
+        return false;
+    }
+
+    private static List<string> DetectConflictingProcesses()
+    {
+        var conflicts = new List<string>();
+        string[] known = new[]
+        {
+            "MozaPitHouse", "PitHouse", "mozapit",
+            "LGS", "LogitechG", "LogiJoy",
+            "Fanatec", "FanatecDriver",
+            "SimHub", "simhub",
+            "vJoy",
+        };
+
+        try
+        {
+            foreach (var proc in System.Diagnostics.Process.GetProcesses())
+            {
+                try
+                {
+                    foreach (var k in known)
+                    {
+                        if (proc.ProcessName.Contains(k, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (!conflicts.Contains(proc.ProcessName))
+                                conflicts.Add(proc.ProcessName);
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
+        catch { }
+
+        return conflicts;
     }
 
     private void DiscoverFfAxes()
@@ -268,6 +353,9 @@ public sealed class FfbDeviceManager : IDisposable
     {
         if (_device == null || !_isAcquired) return;
 
+        if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+            return;
+
         try
         {
             int magnitude = (int)(Math.Clamp(_invertForce ? -normalizedForce : normalizedForce, -1f, 1f) * _maxForceMagnitude);
@@ -288,10 +376,12 @@ public sealed class FfbDeviceManager : IDisposable
                     _constantForceEffect.SetParameters(parameters,
                         DI.EffectParameterFlags.TypeSpecificParameters |
                         DI.EffectParameterFlags.Start);
+                    _consecutiveForceErrors = 0;
                     return;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    ConnLog($"SetParameters FAIL: {ex.InnerException?.Message ?? ex.Message}");
                     DestroyConstantForceEffect();
                 }
             }
@@ -299,7 +389,7 @@ public sealed class FfbDeviceManager : IDisposable
             var allEffects = _device.GetEffects();
             if (allEffects.Count == 0)
             {
-                LastError = $"No FFB effects";
+                LastError = "No FFB effects supported by device";
                 return;
             }
 
@@ -325,25 +415,47 @@ public sealed class FfbDeviceManager : IDisposable
             }
             catch (Exception ex)
             {
-                LastError = $"Create failed: {ex.InnerException?.Message ?? ex.Message}";
+                _consecutiveForceErrors++;
+                LastError = $"Create failed ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
+                ConnLog($"EFFECT CREATE FAIL ({_consecutiveForceErrors}): {ex.InnerException?.Message ?? ex.Message}");
+                if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+                {
+                    LastError = "Device lost exclusive FFB access. Disconnect and reconnect the device.";
+                    ConnLog("DEVICE LOST — max consecutive errors reached");
+                }
                 return;
             }
 
             try
             {
                 _constantForceEffect.Start(-1, DI.EffectPlayFlags.NoDownload);
+                _consecutiveForceErrors = 0;
                 LastError = null;
             }
             catch (Exception ex)
             {
-                LastError = $"Start failed: {ex.InnerException?.Message ?? ex.Message}";
+                _consecutiveForceErrors++;
+                LastError = $"Start failed ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
+                ConnLog($"EFFECT START FAIL ({_consecutiveForceErrors}): {ex.InnerException?.Message ?? ex.Message}");
                 DestroyConstantForceEffect();
+                if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+                {
+                    LastError = "Device lost exclusive FFB access. Disconnect and reconnect the device.";
+                    ConnLog("DEVICE LOST — max consecutive errors reached");
+                }
             }
         }
         catch (Exception ex)
         {
-            LastError = $"FFB: {ex.InnerException?.Message ?? ex.Message}";
+            _consecutiveForceErrors++;
+            LastError = $"FFB error ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
+            ConnLog($"FFB OUTER ERROR ({_consecutiveForceErrors}): {ex.InnerException?.Message ?? ex.Message}");
             DestroyConstantForceEffect();
+            if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+            {
+                LastError = "Device lost exclusive FFB access. Disconnect and reconnect the device.";
+                ConnLog("DEVICE LOST — max consecutive errors reached");
+            }
         }
     }
 
@@ -430,6 +542,7 @@ public sealed class FfbDeviceManager : IDisposable
         _currentVibration = 0f;
         _periodicEffectPlaying = false;
         _lastPeriodicMagnitude = int.MinValue;
+        _consecutiveForceErrors = 0;
         SendConstantForceDirect(0f);
         StopVibration();
         ClearWheelLeds();

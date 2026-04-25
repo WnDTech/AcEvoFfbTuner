@@ -27,6 +27,7 @@ public partial class App : Application
                 ViewModel.LoadAppSettings();
 
                 var mainWindow = new MainWindow();
+                MainWindow = mainWindow;
                 mainWindow.Show();
                 splash.Close();
             };
@@ -39,6 +40,7 @@ public partial class App : Application
             ViewModel.LoadAppSettings();
 
             var mainWindow = new MainWindow();
+            MainWindow = mainWindow;
             mainWindow.Show();
         }
     }
