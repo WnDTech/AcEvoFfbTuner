@@ -22,17 +22,38 @@
             </Style>
 
             <Style TargetType="TabControl">
-                <Setter Property="Background" Value="{StaticResource BgPanel}" />
+                <Setter Property="Background" Value="#FF0D0D0D" />
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="BorderThickness" Value="0" />
             </Style>
 
             <Style TargetType="TabItem">
                 <Setter Property="Background" Value="{StaticResource BgPanel}" />
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                <Setter Property="Foreground" Value="#FF888888" />
                 <Setter Property="FontSize" Value="13" />
                 <Setter Property="Padding" Value="16,8" />
                 <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TabItem">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="4,4,0,0" Margin="0,0,2,0" Cursor="Hand">
+                                <ContentPresenter x:Name="Content" ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#FF252545" />
+                                    <Setter Property="Foreground" Value="#FFCCCCCC" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#FF0D0D0D" />
+                                    <Setter Property="Foreground" Value="#FFE67E22" />
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#FFE67E22" />
+                                    <Setter TargetName="Bd" Property="BorderThickness" Value="0,2,0,0" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
             <Style TargetType="TextBlock">
@@ -61,10 +82,10 @@
             </Style>
 
             <Style x:Key="SubSectionHeader" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="12" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Foreground" Value="#FFAAAAAA" />
-                <Setter Property="Margin" Value="0,6,0,2" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="Margin" Value="0,10,0,4" />
             </Style>
 
             <Style TargetType="Button">

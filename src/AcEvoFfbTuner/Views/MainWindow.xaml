@@ -21,6 +21,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -45,8 +46,28 @@
                               DisplayMemberPath="ProductName" Width="220" Margin="8,0" />
                     <Button Content="Connect" Command="{Binding ConnectDeviceCommand}" Margin="4,0" />
                     <Button Content="Refresh" Command="{Binding RefreshDevicesCommand}" Margin="4,0" Style="{StaticResource OutlinedButton}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Profile:" FontSize="12" Foreground="#FF888888" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
+                              DisplayMemberPath="Name" Width="320" Margin="4,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Action Bar -->
+        <Border Grid.Row="1" Background="#FF14142A" Padding="16,4">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <ToggleButton IsChecked="{Binding IsRunning}" Command="{Binding ToggleTelemetryCommand}"
-                                  Margin="12,0,4,0" x:Name="StartStopToggle">
+                                  Margin="0,0,4,0" x:Name="StartStopToggle">
                         <ToggleButton.Style>
                             <Style TargetType="ToggleButton">
                                 <Setter Property="Content" Value="START" />
@@ -71,42 +92,49 @@
                     <Button Content="PANIC" Command="{Binding PanicStopCommand}" Margin="4,0" Style="{StaticResource PanicButton}" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Profile:" FontSize="12" Foreground="#FF888888" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
-                              DisplayMemberPath="Name" Width="200" Margin="4,0" />
-                    <Grid Margin="12,0,0,0">
-                        <Button Content="Send Data" Command="{Binding SendDiagnosticPackCommand}"
-                                Padding="14,4" FontSize="11" FontWeight="Bold">
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsSendingDiagnosticPack}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                        <TextBlock Text="Sending..." FontSize="11" Foreground="#FFE67E22" VerticalAlignment="Center">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsSendingDiagnosticPack}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </Grid>
-                </StackPanel>
+                <Grid Grid.Column="2">
+                    <Button Content="Send Diagnostics to Dev" Command="{Binding SendDiagnosticPackCommand}"
+                            Padding="14,4" FontSize="11" FontWeight="Bold">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSendingDiagnosticPack}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <TextBlock Text="Sending..." FontSize="11" Foreground="#FFE67E22" VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSendingDiagnosticPack}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
             </Grid>
         </Border>
 
-        <TabControl Grid.Row="1">
+        <TabControl Grid.Row="2">
+            <TabControl.Template>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" IsItemsHost="True" LastChildFill="False" />
+                        <ContentPresenter Grid.Row="1" ContentSource="SelectedContent" />
+                    </Grid>
+                </ControlTemplate>
+            </TabControl.Template>
             <TabItem Header="FFB Settings">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                     <Grid>
@@ -1316,7 +1344,7 @@
                     </Border>
                 </Grid>
             </TabItem>
-            <TabItem Header="Debug">
+            <TabItem Header="Debug" DockPanel.Dock="Right">
                 <DockPanel Background="#FF151525">
                     <Button DockPanel.Dock="Top" Content="Copy All to Clipboard" Margin="16,12,16,8"
                             Padding="12,6" FontSize="12" HorizontalAlignment="Left"
@@ -1331,68 +1359,11 @@
                     </ScrollViewer>
                 </DockPanel>
             </TabItem>
-            <TabItem Header="Calibration">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
-                    <StackPanel>
-                        <TextBlock Text="WHEEL CALIBRATION" FontSize="22" FontWeight="Black" Foreground="#FFE67E22" Margin="0,0,0,4" />
-                        <TextBlock Text="Find your wheel's force baseline before tuning FFB" FontSize="13" Foreground="#FF888888" Margin="0,0,0,16" />
-                        <Border Background="#FF333355" Height="1" Margin="0,0,0,16" />
 
-                        <TextBlock Text="Step 1: Find your minimum perceptible force" FontSize="16" FontWeight="Bold" Foreground="#FFE67E22" Margin="0,0,0,8" />
-                        <Border Background="#FF22223A" CornerRadius="6" Padding="16" Margin="0,0,0,16">
-                            <StackPanel>
-                                <TextBlock TextWrapping="Wrap" Foreground="#FFCCCCCC" Margin="0,0,0,12" LineHeight="20">
-                                    Slowly drag the slider right until you FIRST feel the wheel resist. Note that value.
-                                </TextBlock>
-                                <DockPanel Margin="0,6">
-                                    <TextBlock Text="Test Force" Width="100" VerticalAlignment="Center" FontSize="13" DockPanel.Dock="Left" />
-                                    <TextBlock Text="{Binding TestForceLevel, StringFormat='{}{0:F2}'}" Width="60" VerticalAlignment="Center" FontSize="16" FontWeight="Bold" Foreground="#FFE67E22" DockPanel.Dock="Right" />
-                                    <Slider Value="{Binding TestForceLevel}" Minimum="-1.0" Maximum="1.0" TickFrequency="0.01" IsSnapToTickEnabled="True" />
-                                </DockPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <Button Content="Send Force" Command="{Binding SendTestForceCommand}" Padding="16,6" Margin="0,0,8,0" />
-                                    <Button Content="Stop" Command="{Binding StopTestForceCommand}" Padding="16,6" Margin="0,0,8,0" Style="{StaticResource OutlinedButton}" />
-                                    <Button Content="PANIC" Command="{Binding PanicStopCommand}" Padding="16,6" Style="{StaticResource PanicButton}" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-
-                        <TextBlock Text="Step 2: Structured test plan" FontSize="16" FontWeight="Bold" Foreground="#FFE67E22" Margin="0,0,0,8" />
-                        <Border Background="#FF22223A" CornerRadius="6" Padding="16" Margin="0,0,0,16">
-                            <StackPanel>
-                                <TextBlock TextWrapping="Wrap" Foreground="#FFCCCCCC" LineHeight="22" Margin="0,0,0,0">
-                                    With the telemetry STARTED and game running, do these specific tests and report what you feel:<LineBreak/><LineBreak/>
-                                    <Run FontWeight="Bold" Foreground="#FF00E676">A. Static in garage:</Run> Does the wheel feel completely still? (should be zero)<LineBreak/>
-                                    <Run FontWeight="Bold" Foreground="#FF00E676">B. Drive straight at 50 km/h:</Run> Does the wheel self-center gently? How strong 1-10?<LineBreak/>
-                                    <Run FontWeight="Bold" Foreground="#FF00E676">C. Drive straight at 150 km/h:</Run> Same - how strong? Does it feel different from 50?<LineBreak/>
-                                    <Run FontWeight="Bold" Foreground="#FF00E676">D. Gentle curve at 80 km/h:</Run> Can you feel the force build as you turn? 1-10?<LineBreak/>
-                                    <Run FontWeight="Bold" Foreground="#FF00E676">E. Hard cornering:</Run> Does it clip/notch or stay smooth? Does the wheel go notchy?<LineBreak/>
-                                    <Run FontWeight="Bold" Foreground="#FF00E676">F. Slalom/quick left-right:</Run> Does the wheel feel laggy, oscillate, or track naturally?<LineBreak/><LineBreak/>
-                                    For each test, note the Force Output, Speed, and Clipping values shown in the Visualization tab.
-                                </TextBlock>
-                            </StackPanel>
-                        </Border>
-
-                        <TextBlock Text="Step 3: What the values mean" FontSize="16" FontWeight="Bold" Foreground="#FFE67E22" Margin="0,0,0,8" />
-                        <Border Background="#FF22223A" CornerRadius="6" Padding="16" Margin="0,0,0,16">
-                            <StackPanel>
-                                <TextBlock TextWrapping="Wrap" Foreground="#FFCCCCCC" LineHeight="22">
-                                    <Run Foreground="#FFE67E22" FontWeight="Bold">Force Output 0.0-0.3</Run> = Too weak, increase OutputGain or decrease MzScale<LineBreak/>
-                                    <Run Foreground="#FFE67E22" FontWeight="Bold">Force Output 0.3-0.7</Run> = Good range for most driving<LineBreak/>
-                                    <Run Foreground="#FFE67E22" FontWeight="Bold">Force Output 0.7-1.0</Run> = Strong, only under hard cornering<LineBreak/>
-                                    <Run Foreground="#FFE67E22" FontWeight="Bold">CLIPPING = True</Run> = Wheel can't produce more force, reduce gains<LineBreak/><LineBreak/>
-                                    <Run Foreground="#FF00E676" FontWeight="Bold">Test Force slider:</Run> 0.10 = barely perceptible, 0.50 = moderate, 1.00 = max your wheel can do.
-                                    If 1.00 doesn't feel very strong, your wheel may need higher OutputGain.
-                                </TextBlock>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
         </TabControl>
 
         <!-- Status Bar -->
-        <Border Grid.Row="2" Background="#FF1A1A2E" Padding="12,6">
+        <Border Grid.Row="3" Background="#FF1A1A2E" Padding="12,6">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />

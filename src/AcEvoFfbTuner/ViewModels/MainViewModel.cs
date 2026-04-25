@@ -251,12 +251,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private int _steeringLockDegrees = 900;
 
     [ObservableProperty]
-    private float _testForceLevel;
-
-    [ObservableProperty]
-    private bool _isTestForceActive;
-
-    [ObservableProperty]
     private FfbProfile? _selectedProfile;
 
     [ObservableProperty]
@@ -789,7 +783,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void PanicStop()
     {
         _deviceManager.ZeroForce();
-        IsTestForceActive = false;
         StatusText = "PANIC STOP - FFB zeroed";
     }
 
@@ -1083,31 +1076,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         _telemetryLoop.ResetSteeringCenter();
         StatusText = "Steering center reset";
-    }
-
-    [RelayCommand]
-    private void SendTestForce()
-    {
-        if (!IsDeviceConnected) return;
-        _telemetryLoop.SuppressOutput = true;
-        _deviceManager.SendConstantForce(TestForceLevel);
-        IsTestForceActive = true;
-        StatusText = $"Test force: {TestForceLevel:F2}";
-    }
-
-    [RelayCommand]
-    private void StopTestForce()
-    {
-        _deviceManager.ZeroForce();
-        _telemetryLoop.SuppressOutput = false;
-        IsTestForceActive = false;
-        StatusText = "Test force stopped";
-    }
-
-    partial void OnTestForceLevelChanged(float value)
-    {
-        if (IsTestForceActive && IsDeviceConnected)
-            _deviceManager.SendConstantForce(value);
     }
 
     partial void OnSelectedMixModeChanged(FfbMixMode value) => _pipeline.ChannelMixer.MixMode = value;
