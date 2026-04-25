@@ -28,7 +28,7 @@ public sealed class DiagnosticPackService
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "AcEvoFfbTuner");
 
-    public static async Task<(bool Success, string Message)> SendAsync(IProgress<string>? progress = null)
+    public static async Task<(bool Success, string Message)> SendAsync(string feedback, IProgress<string>? progress = null)
     {
         try
         {
@@ -62,7 +62,8 @@ public sealed class DiagnosticPackService
             mail.Body = $"AC EVO FFB Tuner Diagnostic Pack\n" +
                          $"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
                          $"Package size: {zipSizeMb:F1} MB\n\n" +
-                         $"Contains: Profiles, Track Maps, Snapshots, and Log files.";
+                         $"Contains: Profiles, Track Maps, Snapshots, and Log files.\n\n" +
+                         $"--- USER FEEDBACK ---\n{feedback}";
 
             var attachment = new Attachment(zipPath, new ContentType("application/zip"));
             attachment.ContentDisposition!.FileName = $"AcEvoFfbTuner_DiagPack_{DateTime.Now:yyyyMMdd_HHmmss}.zip";

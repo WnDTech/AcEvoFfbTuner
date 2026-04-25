@@ -143,6 +143,7 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
+        _guideOverlay?.Close();
         Application.Current.Shutdown();
     }
 
@@ -153,6 +154,21 @@ public partial class MainWindow : Window
             Clipboard.SetText(vm.DebugSnapshot);
             vm.StatusText = "Debug info copied to clipboard";
         }
+    }
+
+    private TestingGuideOverlay? _guideOverlay;
+
+    private void OpenGuideOverlay(object sender, RoutedEventArgs e)
+    {
+        if (_guideOverlay != null)
+        {
+            _guideOverlay.Activate();
+            return;
+        }
+
+        _guideOverlay = new TestingGuideOverlay();
+        _guideOverlay.Closed += (_, _) => _guideOverlay = null;
+        _guideOverlay.Show();
     }
 
     // === PROFILER METHODS ===

@@ -443,7 +443,7 @@ public sealed class ProfileRecommender
                 $"     If output is near zero (transitioning through center), vibration defaults to +1 sign.\n\n" +
                 $"Detection gate: requires steering sign stable for ≥10 ticks to filter transition false positives.\n" +
                 $"If anomalies still appear with stable steering, the sign correction itself may be wrong.\n" +
-                $"CHECK: Is raw.SteerAngle correctly mapped? Is _steeringCenterOffset being applied?",
+                $"CHECK: Is raw.SteerAngle correctly mapped? Check wheel driver software center calibration.",
             Impact = "If genuine, the wheel fights the driver by pushing in the steering direction instead of providing self-aligning torque. Check ffb_debug.log for sign of output vs steer at anomaly timestamps."
         });
     }

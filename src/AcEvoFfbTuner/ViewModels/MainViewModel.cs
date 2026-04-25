@@ -684,6 +684,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _profileManager.SetActiveProfile(SelectedProfile);
     }
 
+    private void AutoSaveDiagnosticProfile()
+    {
+        PushValuesToPipeline();
+
+        string baseName = SelectedProfile?.Name ?? "unsaved";
+        string diagName = $"{baseName}_diag_{DateTime.Now:yyyyMMdd_HHmmss}";
+        var profile = _profileManager.SaveProfileFromPipeline(_pipeline, diagName);
+        profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
+        profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
+        _profileManager.SaveProfile(profile);
+    }
+
     [RelayCommand]
     private void SaveAsNewProfile()
     {
@@ -813,13 +825,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                           $"  -> Gain={settings.RecommendedOutputGain:F2}  Norm={settings.RecommendedNormalizationScale:F0}  Lock={settings.RecommendedSteeringLock}°";
 
         StatusText = $"Auto-detected from EVO: OutputGain={settings.RecommendedOutputGain:F2}, Sensitivity={settings.RecommendedNormalizationScale:F0}, Lock={settings.RecommendedSteeringLock}°";
-    }
-
-    [RelayCommand]
-    private void CenterSteering()
-    {
-        _telemetryLoop.CenterSteering();
-        StatusText = $"Steering centered (offset: {_telemetryLoop.SteeringCenterOffset:F4})";
     }
 
     [RelayCommand]
@@ -1071,13 +1076,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    [RelayCommand]
-    private void ResetSteeringCenter()
-    {
-        _telemetryLoop.ResetSteeringCenter();
-        StatusText = "Steering center reset";
-    }
-
     partial void OnSelectedMixModeChanged(FfbMixMode value) => _pipeline.ChannelMixer.MixMode = value;
     partial void OnForceSensitivityChanged(float value) => _pipeline.MasterGain = 1000f / Math.Max(value, 1f);
     partial void OnForceScaleChanged(float value) => _pipeline.ForceScale = value;
@@ -1213,8 +1211,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             int lockDeg = (rawDeg > 90 && rawDeg <= 1440) ? rawDeg : SteeringLockDegrees;
             if (lockDeg <= 0) lockDeg = 900;
             float steerFloat = (float)raw.SteerAngle;
-            float centeredSteer = steerFloat - _telemetryLoop.SteeringCenterOffset;
-            SteerAngle = centeredSteer * (lockDeg / 2f);
+            SteerAngle = steerFloat * (lockDeg / 2f);
 
             DebugSnapshot =
                 $"=== RAW SHARED MEMORY ===\n" +
@@ -1223,7 +1220,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 $"Fy:  FL={raw.Fy[0]:F4}  FR={raw.Fy[1]:F4}  RL={raw.Fy[2]:F4}  RR={raw.Fy[3]:F4}\n" +
                 $"FinalFf:       {raw.FinalFf:F6}\n" +
                 $"WheelLoad: FL={raw.WheelLoad[0]:F1}  FR={raw.WheelLoad[1]:F1}  RL={raw.WheelLoad[2]:F1}  RR={raw.WheelLoad[3]:F1}\n" +
-                $"SteerAngle:    {raw.SteerAngle:F4}  Centered={centeredSteer:F4}  Offset={_telemetryLoop.SteeringCenterOffset:F4}  SteerDeg={raw.SteerDegrees}  Lock={SteeringLockDegrees}°\n" +
+                $"SteerAngle:    {raw.SteerAngle:F4}  SteerDeg={raw.SteerDegrees}  Lock={SteeringLockDegrees}°\n" +
                 $"Speed:         {raw.SpeedKmh:F1} km/h\n" +
                 $"AccG:          X={raw.AccG[0]:F3}  Y={raw.AccG[1]:F3}  Z={raw.AccG[2]:F3}\n" +
                 $"SlipRatio:     FL={raw.SlipRatio[0]:F4}  FR={raw.SlipRatio[1]:F4}  RL={raw.SlipRatio[2]:F4}  RR={raw.SlipRatio[3]:F4}\n" +
@@ -1613,13 +1610,23 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task SendDiagnosticPack()
     {
+        var mainWin = Application.Current?.MainWindow;
+        if (mainWin == null) return;
+
+        var dialog = new Views.FeedbackDialog { Owner = mainWin };
+        if (dialog.ShowDialog() != true) return;
+
         IsSendingDiagnosticPack = true;
-        StatusText = "Sending diagnostic pack...";
+        StatusText = "Auto-saving profile and snapshot...";
 
         try
         {
+            AutoSaveDiagnosticProfile();
+            (mainWin as Views.MainWindow)?.AutoSaveSnapshot();
+
+            StatusText = "Sending diagnostic pack...";
             var progress = new Progress<string>(msg => StatusText = msg);
-            var (success, message) = await DiagnosticPackService.SendAsync(progress);
+            var (success, message) = await DiagnosticPackService.SendAsync(dialog.Feedback, progress);
             StatusText = message;
         }
         finally

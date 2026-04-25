@@ -42,9 +42,6 @@ public sealed class TelemetryLoop : IDisposable
     private volatile bool _suppressOutput;
     private bool _timerResolutionSet;
 
-    private volatile float _steeringCenterOffset;
-    private volatile bool _steeringCentered;
-
     private FfbRawData? _latestRaw;
     private FfbProcessedData? _latestProcessed;
     private SPageFilePhysicsEvo _latestPhysicsRaw;
@@ -102,25 +99,6 @@ public sealed class TelemetryLoop : IDisposable
         int len = nullIdx >= 0 ? nullIdx : data.Length;
         return System.Text.Encoding.ASCII.GetString(data, 0, len).Trim();
     }
-
-    public void CenterSteering()
-    {
-        var raw = LatestRaw;
-        if (raw != null)
-        {
-            _steeringCenterOffset = raw.SteerAngle;
-            _steeringCentered = true;
-        }
-    }
-
-    public void ResetSteeringCenter()
-    {
-        _steeringCenterOffset = 0f;
-        _steeringCentered = false;
-    }
-
-    public float SteeringCenterOffset => _steeringCenterOffset;
-    public bool IsSteeringCentered => _steeringCentered;
 
     public FfbRawData? LatestRaw
     {
