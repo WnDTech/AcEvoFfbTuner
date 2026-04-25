@@ -70,12 +70,13 @@ jobs:
       - name: Build Inno Setup installer
         shell: pwsh
         run: |
-          $issPath = "C:\Users\runneradmin\Documents\Inno Setup Examples\setup.iss"
+          $ver = "${{ steps.version.outputs.version }}"
           $iss = Get-Content "installer\setup.iss" -Raw
-          $iss = $iss -replace '\.\.\\publish-test', '.\publish'
-          $iss = $iss -replace '\.\.\\src', '.\src'
-          $iss = $iss -replace '\.\.\\README', '.\README'
-          $iss = $iss -replace '\.\.\\installer-output', '.\installer-output'
+          $iss = $iss -replace '#define AppVersion GetVersionNumbersString\("..\.\.\\publish-test\\AcEvoFfbTuner\.exe"\)', "#define AppVersion ""$ver"""
+          $iss = $iss -replace '\.\.\\publish-test', '.\.\publish'
+          $iss = $iss -replace '\.\.\\src', '.\.\src'
+          $iss = $iss -replace '\.\.\\README', '.\.\README'
+          $iss = $iss -replace '\.\.\\installer-output', '.\.\installer-output'
           Set-Content -Path "installer\setup-ci.iss" -Value $iss
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\setup-ci.iss"
 
