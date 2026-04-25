@@ -1735,6 +1735,8 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <Ellipse Grid.Column="0" Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
@@ -1774,7 +1776,51 @@
 
                 <Border Grid.Column="5" Width="1" Background="#FF444466" Margin="12,2" />
 
-                <Button Grid.Column="6" Content="&#x2764; Donate" Click="OnDonateClick" Cursor="Hand" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" Padding="12,4">
+                <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding CheckForUpdatesCommand}" Cursor="Hand" VerticalAlignment="Center" FontSize="11" Padding="8,4" Margin="0,0,4,0">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                                    <TextBlock Text="&#x1F504;" FontSize="{TemplateBinding FontSize}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <TextBlock VerticalAlignment="Center" FontSize="11" Margin="0,0,8,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#FF888888" />
+                                <Setter Property="Text" Value="{Binding UpdateStatusText}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsUpdateAvailable}" Value="True">
+                                        <Setter Property="Foreground" Value="#FFFFD600" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <Button Command="{Binding OpenUpdatePageCommand}" Cursor="Hand" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" Padding="10,4" Margin="0,0,8,0"
+                            Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BoolToVis}}">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="UpdateBtnBorder" Background="#33FFD600" CornerRadius="4" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                                    <TextBlock Text="{Binding LatestVersionText, StringFormat='Download {0}'}" FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}" Foreground="#FFFFD600" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="UpdateBtnBorder" Property="Background" Value="#55FFD600" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
+
+                <Border Grid.Column="7" Width="1" Background="#FF444466" Margin="4,2" />
+
+                <Button Grid.Column="8" Content="&#x2764; Donate" Click="OnDonateClick" Cursor="Hand" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" Padding="12,4">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">

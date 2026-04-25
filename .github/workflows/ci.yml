@@ -1,0 +1,32 @@
+name: CI Build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore AcEvoFfbTuner.slnx
+
+      - name: Build
+        run: dotnet build AcEvoFfbTuner.slnx -c Release --no-restore
+
+      - name: Run tests
+        run: dotnet test src/AcEvoFfbTuner.Tests -c Release --no-build

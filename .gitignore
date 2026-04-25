@@ -30,3 +30,7 @@ Desktop.ini
 
 ## Misc
 *.log
+
+## Publish & installer output
+publish-test/
+installer-output/

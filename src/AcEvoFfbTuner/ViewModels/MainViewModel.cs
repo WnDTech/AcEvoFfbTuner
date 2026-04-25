@@ -58,6 +58,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _isClipping;
 
     [ObservableProperty]
+    private string _updateStatusText = "";
+
+    [ObservableProperty]
+    private bool _isUpdateAvailable;
+
+    [ObservableProperty]
+    private string _latestVersionText = "";
+
+    private UpdateInfo? _pendingUpdate;
+
+    [ObservableProperty]
     private float _speedKmh;
 
     [ObservableProperty]
@@ -562,6 +573,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             LoadProfileValues(_profileManager.ActiveProfile);
             SelectedProfile = Profiles.FirstOrDefault(p => p.Name == _profileManager.ActiveProfile.Name);
         }
+
+        _ = CheckForUpdatesAsync();
     }
 
     [RelayCommand]
@@ -1969,6 +1982,43 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             IsSendingDiagnosticPack = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task CheckForUpdatesAsync()
+    {
+        UpdateStatusText = "Checking for updates...";
+        IsUpdateAvailable = false;
+
+        try
+        {
+            var service = new GitHubUpdateService();
+            var update = await service.CheckForUpdateAsync();
+
+            if (update != null)
+            {
+                _pendingUpdate = update;
+                LatestVersionText = $"v{update.Version}";
+                IsUpdateAvailable = true;
+                UpdateStatusText = $"Update available: v{update.Version}";
+            }
+            else
+            {
+                UpdateStatusText = $"You're up to date (v{service.CurrentVersion.ToString(3)})";
+                _pendingUpdate = null;
+            }
+        }
+        catch
+        {
+            UpdateStatusText = "Update check failed";
+        }
+    }
+
+    [RelayCommand]
+    private void OpenUpdatePage()
+    {
+        if (_pendingUpdate != null)
+            GitHubUpdateService.OpenReleasePage(_pendingUpdate.ReleaseUrl);
     }
 
     public void Dispose()
