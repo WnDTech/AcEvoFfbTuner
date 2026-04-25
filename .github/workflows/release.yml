@@ -83,12 +83,6 @@ jobs:
           Set-Content -Path "installer\setup-ci.iss" -Value $iss
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\setup-ci.iss"
 
-      - name: Create portable ZIP archive
-        shell: pwsh
-        run: |
-          $zipName = "AcEvoFfbTuner-${{ steps.version.outputs.tag }}-portable-win-x64.zip"
-          Compress-Archive -Path ./publish/* -DestinationPath $zipName
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -98,6 +92,5 @@ jobs:
           generate_release_notes: true
           files: |
             ./installer-output/AcEvoFfbTuner-Setup-*.exe
-            ./AcEvoFfbTuner-${{ steps.version.outputs.tag }}-portable-win-x64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
