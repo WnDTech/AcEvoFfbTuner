@@ -22,9 +22,11 @@ public sealed class FfbDeviceManager : IDisposable
 
     private DI.DirectInput? _directInput;
     private DI.Joystick? _device;
+    private DI.Joystick? _secondaryDevice;
     private DI.Effect? _constantForceEffect;
     private DI.Effect? _periodicEffect;
     private bool _isAcquired;
+    private bool _secondaryAcquired;
     private int _maxForceMagnitude = 10000;
     private bool _disposed;
     private int _lastCfMagnitude = int.MinValue;
@@ -614,12 +616,68 @@ public sealed class FfbDeviceManager : IDisposable
     [DllImport("user32.dll")]
     private static extern IntPtr GetDesktopWindow();
 
+    public bool TryConnectSecondaryDevice(FfbDeviceInfo deviceInfo)
+    {
+        DisconnectSecondaryDevice();
+        try
+        {
+            _directInput ??= new DI.DirectInput();
+            _secondaryDevice = new DI.Joystick(_directInput, deviceInfo.DeviceInstance.InstanceGuid);
+            _secondaryDevice.SetCooperativeLevel(
+                _windowHandle != IntPtr.Zero ? _windowHandle : GetDesktopWindow(),
+                DI.CooperativeLevel.NonExclusive | DI.CooperativeLevel.Background);
+            _secondaryDevice.Acquire();
+            _secondaryAcquired = true;
+            return true;
+        }
+        catch
+        {
+            _secondaryDevice?.Dispose();
+            _secondaryDevice = null;
+            _secondaryAcquired = false;
+            return false;
+        }
+    }
+
+    public void DisconnectSecondaryDevice()
+    {
+        if (_secondaryDevice != null)
+        {
+            try { _secondaryDevice.Unacquire(); } catch { }
+            try { _secondaryDevice.Dispose(); } catch { }
+        }
+        _secondaryDevice = null;
+        _secondaryAcquired = false;
+    }
+
+    public int SecondaryButtonCount
+    {
+        get
+        {
+            if (_secondaryDevice == null) return 0;
+            try { return _secondaryDevice.Capabilities.ButtonCount; }
+            catch { return 0; }
+        }
+    }
+
+    public bool[]? PollSecondaryButtons()
+    {
+        if (_secondaryDevice == null || !_secondaryAcquired) return null;
+        try
+        {
+            _secondaryDevice.Poll();
+            return _secondaryDevice.GetCurrentState().Buttons;
+        }
+        catch { return null; }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
 
         StopInterpolationThread();
+        DisconnectSecondaryDevice();
         DisconnectDevice();
         _ledController.Dispose();
         _directInput?.Dispose();

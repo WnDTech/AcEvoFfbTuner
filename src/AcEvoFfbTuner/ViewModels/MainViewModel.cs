@@ -179,9 +179,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _autoGainScale = 1.0f;
 
     [ObservableProperty]
-    private string _evoDetectedInfo = "";
-
-    [ObservableProperty]
     private float _curbGain = 1.0f;
 
     [ObservableProperty]
@@ -403,6 +400,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     private bool[]? _prevSnapshotButtons;
+    private bool[]? _prevPanicButtons;
 
     private void PollSnapshotButton()
     {
@@ -413,44 +411,74 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             if (Application.Current?.MainWindow is MainWindow mw)
                 mw.ProfButtonsDetected.Text = "";
-            return;
         }
-
-        var pressed = new System.Text.StringBuilder();
-        for (int i = 0; i < buttons.Length; i++)
+        else
         {
-            if (buttons[i])
+            var pressed = new System.Text.StringBuilder();
+            for (int i = 0; i < buttons.Length; i++)
             {
-                if (pressed.Length > 0) pressed.Append(", ");
-                pressed.Append($"Btn{i + 1}");
+                if (buttons[i])
+                {
+                    if (pressed.Length > 0) pressed.Append(", ");
+                    pressed.Append($"Btn{i + 1}");
+                }
+            }
+
+            if (Application.Current?.MainWindow is MainWindow mw2)
+                mw2.ProfButtonsDetected.Text = pressed.Length > 0 ? $"Pressed: {pressed}" : "";
+
+            if (SnapshotButtonIndex >= 0 && SnapshotButtonIndex < buttons.Length)
+            {
+                bool pressed2 = buttons[SnapshotButtonIndex];
+                bool wasPressed = _prevSnapshotButtons != null && SnapshotButtonIndex < _prevSnapshotButtons.Length && _prevSnapshotButtons[SnapshotButtonIndex];
+                _prevSnapshotButtons = (bool[])buttons.Clone();
+
+                if (pressed2 && !wasPressed)
+                {
+                    if (Application.Current?.MainWindow is MainWindow mw3)
+                    {
+                        string path = mw3.AutoSaveSnapshot();
+                        StatusText = $"Wheel snapshot saved: {Path.GetFileName(path)}";
+                    }
+                }
             }
         }
 
-        if (Application.Current?.MainWindow is MainWindow mw2)
-            mw2.ProfButtonsDetected.Text = pressed.Length > 0 ? $"Pressed: {pressed}" : "";
+        PollPanicButton();
+    }
 
-        if (SnapshotButtonIndex < 0 || SnapshotButtonIndex >= buttons.Length) return;
+    private void PollPanicButton()
+    {
+        if (PanicButtonIndex < 0) return;
 
-        bool pressed2 = buttons[SnapshotButtonIndex];
-        bool wasPressed = _prevSnapshotButtons != null && SnapshotButtonIndex < _prevSnapshotButtons.Length && _prevSnapshotButtons[SnapshotButtonIndex];
+        var buttons = _deviceManager.PollSecondaryButtons();
+        if (buttons == null) return;
 
-        _prevSnapshotButtons = (bool[])buttons.Clone();
+        if (PanicButtonIndex >= buttons.Length) return;
 
-        if (pressed2 && !wasPressed)
-        {
-            if (Application.Current?.MainWindow is MainWindow mw3)
-            {
-                string path = mw3.AutoSaveSnapshot();
-                StatusText = $"Wheel snapshot saved: {Path.GetFileName(path)}";
-            }
-        }
+        bool pressed = buttons[PanicButtonIndex];
+        bool wasPressed = _prevPanicButtons != null && PanicButtonIndex < _prevPanicButtons.Length && _prevPanicButtons[PanicButtonIndex];
+        _prevPanicButtons = (bool[])buttons.Clone();
+
+        if (pressed && !wasPressed)
+            PanicStop();
     }
 
     public ObservableCollection<FfbDeviceInfo> AvailableDevices { get; } = new();
+    public ObservableCollection<FfbDeviceInfo> PanicDevices { get; } = new();
     public ObservableCollection<FfbProfile> Profiles { get; } = new();
 
     [ObservableProperty]
     private FfbDeviceInfo? _selectedDevice;
+
+    [ObservableProperty]
+    private FfbDeviceInfo? _selectedPanicDevice;
+
+    [ObservableProperty]
+    private int _panicButtonComboIndex;
+
+    public int PanicButtonIndex => PanicButtonComboIndex <= 0 ? -1 : PanicButtonComboIndex - 1;
+    public int PanicDeviceButtonCount => _deviceManager.SecondaryButtonCount;
 
     public FfbPipeline Pipeline => _pipeline;
     public int DeviceButtonCount => _deviceManager.ButtonCount;
@@ -542,6 +570,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         AvailableDevices.Clear();
         foreach (var device in _deviceManager.EnumerateFfbDevices())
             AvailableDevices.Add(device);
+
+        PanicDevices.Clear();
+        PanicDevices.Add(new FfbDeviceInfo { ProductName = "None", IsFfbCapable = false });
+        foreach (var device in _deviceManager.EnumerateFfbDevices())
+            PanicDevices.Add(device);
     }
 
     [RelayCommand]
@@ -582,6 +615,31 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _deviceManager.DisconnectDevice();
         IsDeviceConnected = false;
         DeviceName = "No device";
+    }
+
+    partial void OnSelectedPanicDeviceChanged(FfbDeviceInfo? value)
+    {
+        _deviceManager.DisconnectSecondaryDevice();
+
+        if (value == null || value.ProductName == "None")
+        {
+            OnPropertyChanged(nameof(PanicDeviceButtonCount));
+            return;
+        }
+
+        var window = Application.Current?.MainWindow;
+        if (window != null)
+        {
+            var helper = new System.Windows.Interop.WindowInteropHelper(window);
+            _deviceManager.SetWindowHandle(helper.Handle);
+        }
+
+        if (_deviceManager.TryConnectSecondaryDevice(value))
+            StatusText = $"Panic button device: {value.ProductName} ({_deviceManager.SecondaryButtonCount} buttons)";
+        else
+            StatusText = "Failed to connect panic button device";
+
+        OnPropertyChanged(nameof(PanicDeviceButtonCount));
     }
 
     private void AutoDetectWheelTorque(string productName)
@@ -796,35 +854,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         _deviceManager.ZeroForce();
         StatusText = "PANIC STOP - FFB zeroed";
-    }
-
-    [RelayCommand]
-    private void DetectFromEvo()
-    {
-        var raw = _telemetryLoop.LatestRaw;
-        if (raw == null)
-        {
-            StatusText = "No telemetry data - start the loop and connect to EVO first";
-            return;
-        }
-
-        var settings = EvoSettingsDetector.DetectFromRaw(raw);
-        if (settings == null || !settings.IsValid)
-        {
-            StatusText = "Could not detect EVO settings - ensure EVO is running and sending data";
-            return;
-        }
-
-        OutputGain = settings.RecommendedOutputGain;
-        ForceSensitivity = settings.RecommendedNormalizationScale;
-        SteeringLockDegrees = settings.RecommendedSteeringLock;
-
-        PushValuesToPipeline();
-
-        EvoDetectedInfo = $"Strength={settings.FfbStrength:F3}  CarMult={settings.CarFfbMultiplier:F3}  SteerDeg={settings.SteerDegrees}" +
-                          $"  -> Gain={settings.RecommendedOutputGain:F2}  Norm={settings.RecommendedNormalizationScale:F0}  Lock={settings.RecommendedSteeringLock}°";
-
-        StatusText = $"Auto-detected from EVO: OutputGain={settings.RecommendedOutputGain:F2}, Sensitivity={settings.RecommendedNormalizationScale:F0}, Lock={settings.RecommendedSteeringLock}°";
     }
 
     [RelayCommand]
