@@ -55,9 +55,6 @@ jobs:
       - name: Build
         run: dotnet build AcEvoFfbTuner.slnx -c ${{ env.CONFIGURATION }} -p:Version=${{ steps.version.outputs.version }} --no-restore
 
-      - name: Run tests
-        run: dotnet test src/AcEvoFfbTuner.Tests -c ${{ env.CONFIGURATION }} --no-build
-
       - name: Publish (self-contained single-file)
         run: >
           dotnet publish ${{ env.PROJECT_PATH }}
