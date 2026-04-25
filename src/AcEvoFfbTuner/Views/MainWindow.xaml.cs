@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -1027,5 +1028,10 @@ public partial class MainWindow : Window
         return new Point(
             (worldX - _mapMinX) * _mapScale + _mapOffsetX,
             (worldZ - _mapMinZ) * _mapScale + _mapOffsetY);
+    }
+
+    private void OnDonateClick(object sender, RoutedEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo("https://paypal.me/willndad") { UseShellExecute = true });
     }
 }

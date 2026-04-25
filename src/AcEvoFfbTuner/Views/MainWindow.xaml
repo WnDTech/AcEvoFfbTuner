@@ -1733,6 +1733,8 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <Ellipse Grid.Column="0" Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
@@ -1769,6 +1771,23 @@
                 </TextBlock>
 
                 <TextBlock Grid.Column="4" Text="{Binding PacketsPerSecond, StringFormat='{}{0} pkt/s'}" VerticalAlignment="Center" FontSize="12" Margin="8,0" Foreground="#FFAAAAAA" />
+
+                <Border Grid.Column="5" Width="1" Background="#FF444466" Margin="12,2" />
+
+                <Button Grid.Column="6" Content="&#x2764; Donate" Click="OnDonateClick" Cursor="Hand" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" Padding="12,4">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                                <TextBlock Text="{TemplateBinding Button.Content}" FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}" Foreground="#FFFFD600" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Foreground" Value="#FFE67E22" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
             </Grid>
         </Border>
     </Grid>
