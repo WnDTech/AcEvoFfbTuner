@@ -23,7 +23,7 @@
 
   <ItemGroup>
     <Resource Include="Resources\wheel_nobg.png" />
-    <Resource Include="Resources\engine_start.mp3" />
+    <Resource Include="Resources\engine_start_default.wav" />
   </ItemGroup>
 
 </Project>

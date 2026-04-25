@@ -115,11 +115,11 @@ public partial class SplashScreen : Window
             }
             else
             {
-                var uri = new Uri("pack://application:,,,/Resources/engine_start.mp3");
+                var uri = new Uri("pack://application:,,,/Resources/engine_start_default.wav");
                 var sri = Application.GetResourceStream(uri);
                 if (sri == null) return;
 
-                var tempFile = Path.Combine(Path.GetTempPath(), "acevo_startup.mp3");
+                var tempFile = Path.Combine(Path.GetTempPath(), "acevo_startup.wav");
                 _tempAudioFile = tempFile;
                 using (var fs = new FileStream(tempFile, FileMode.Create, FileAccess.Write))
                 {
