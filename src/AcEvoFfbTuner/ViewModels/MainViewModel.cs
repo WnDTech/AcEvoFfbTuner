@@ -12,6 +12,7 @@ using AcEvoFfbTuner.Core.FfbProcessing.Models;
 using AcEvoFfbTuner.Core.Profiles;
 using AcEvoFfbTuner.Core.SharedMemory;
 using AcEvoFfbTuner.Core.TrackMapping;
+using AcEvoFfbTuner.Services;
 using AcEvoFfbTuner.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -1636,6 +1637,27 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Profiles.Clear();
         foreach (var p in _profileManager.Profiles)
             Profiles.Add(p);
+    }
+
+    [ObservableProperty]
+    private bool _isSendingDiagnosticPack;
+
+    [RelayCommand]
+    private async Task SendDiagnosticPack()
+    {
+        IsSendingDiagnosticPack = true;
+        StatusText = "Sending diagnostic pack...";
+
+        try
+        {
+            var progress = new Progress<string>(msg => StatusText = msg);
+            var (success, message) = await DiagnosticPackService.SendAsync(progress);
+            StatusText = message;
+        }
+        finally
+        {
+            IsSendingDiagnosticPack = false;
+        }
     }
 
     public void Dispose()
