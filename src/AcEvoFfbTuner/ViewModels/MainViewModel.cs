@@ -1636,6 +1636,302 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isSendingDiagnosticPack;
 
+    private readonly Services.AppSettings _appSettings = Services.AppSettings.Load();
+
+    [ObservableProperty]
+    private bool _splashScreenEnabled = true;
+
+    [ObservableProperty]
+    private string? _customStartupSoundPath;
+
+    [ObservableProperty]
+    private string? _selectedRecordingDeviceId;
+
+    [ObservableProperty]
+    private ObservableCollection<string> _audioOutputDevices = new();
+
+    [ObservableProperty]
+    private string _selectedAudioOutputDevice = "";
+
+    [ObservableProperty]
+    private bool _isRecording;
+
+    [ObservableProperty]
+    private string _recordingStatus = "";
+
+    private NAudio.Wave.WasapiLoopbackCapture? _loopbackCapture;
+    private NAudio.Wave.WaveFileWriter? _waveWriter;
+    private string? _recordingTempPath;
+    private string? _selectedOutputDeviceId;
+    private readonly Dictionary<string, string> _deviceNameToId = new();
+
+    partial void OnSplashScreenEnabledChanged(bool value)
+    {
+        _appSettings.SplashScreenEnabled = value;
+        _appSettings.Save();
+    }
+
+    partial void OnCustomStartupSoundPathChanged(string? value)
+    {
+        _appSettings.CustomStartupSoundPath = value;
+        _appSettings.Save();
+    }
+
+    partial void OnSelectedRecordingDeviceIdChanged(string? value)
+    {
+        _appSettings.LastRecordingDeviceId = value;
+        _appSettings.Save();
+    }
+
+    public void LoadAppSettings()
+    {
+        SplashScreenEnabled = _appSettings.SplashScreenEnabled;
+        CustomStartupSoundPath = _appSettings.CustomStartupSoundPath;
+        RefreshRecordingDevices();
+    }
+
+    [RelayCommand]
+    private void RefreshRecordingDevices()
+    {
+        AudioOutputDevices.Clear();
+        _deviceNameToId.Clear();
+        var enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
+        var devices = enumerator.EnumerateAudioEndPoints(
+            NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.DeviceState.Active);
+
+        var savedId = _appSettings.LastRecordingDeviceId;
+
+        foreach (var device in devices)
+        {
+            var name = device.FriendlyName;
+            AudioOutputDevices.Add(name);
+            _deviceNameToId[name] = device.ID;
+            if (device.ID == savedId)
+                SelectedAudioOutputDevice = name;
+        }
+
+        if (string.IsNullOrEmpty(SelectedAudioOutputDevice) && AudioOutputDevices.Count > 0)
+            SelectedAudioOutputDevice = AudioOutputDevices[0];
+    }
+
+    private string? GetSelectedOutputDeviceId()
+    {
+        if (string.IsNullOrEmpty(SelectedAudioOutputDevice)) return null;
+        return _deviceNameToId.TryGetValue(SelectedAudioOutputDevice, out var id) ? id : null;
+    }
+
+    [RelayCommand]
+#pragma warning disable CS1998
+    private async Task StartRecording()
+#pragma warning restore CS1998
+    {
+        var deviceId = GetSelectedOutputDeviceId();
+        if (deviceId == null)
+        {
+            RecordingStatus = "No output device selected.";
+            return;
+        }
+
+        NAudio.CoreAudioApi.MMDevice? device = null;
+        try
+        {
+            var enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
+            device = enumerator.GetDevice(deviceId);
+        }
+        catch (Exception ex)
+        {
+            RecordingStatus = $"Could not open device: {ex.Message}";
+            return;
+        }
+
+        if (device == null)
+        {
+            RecordingStatus = "Device not found.";
+            return;
+        }
+
+        try
+        {
+            var soundsDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "AcEvoFfbTuner", "Sounds");
+            Directory.CreateDirectory(soundsDir);
+            _recordingTempPath = Path.Combine(soundsDir, $"recording_{DateTime.Now:yyyyMMdd_HHmmss}.wav");
+
+            _selectedOutputDeviceId = deviceId;
+            _loopbackCapture = new NAudio.Wave.WasapiLoopbackCapture(device);
+
+            RecordingStatus = $"Capturing from: {device.FriendlyName} ({_loopbackCapture.WaveFormat})";
+
+            _waveWriter = new NAudio.Wave.WaveFileWriter(
+                _recordingTempPath, _loopbackCapture.WaveFormat);
+
+            _loopbackCapture.DataAvailable += (s, e) =>
+            {
+                if (_waveWriter == null) return;
+                _waveWriter.Write(e.Buffer, 0, e.BytesRecorded);
+                var duration = (double)_waveWriter.Position / _waveWriter.WaveFormat.AverageBytesPerSecond;
+                Application.Current?.Dispatcher.BeginInvoke(() =>
+                    RecordingStatus = $"Recording... {duration:F1}s");
+            };
+
+            _loopbackCapture.RecordingStopped += (s, e) =>
+            {
+                _waveWriter?.Flush();
+                _waveWriter?.Dispose();
+                _waveWriter = null;
+
+                _loopbackCapture?.Dispose();
+                _loopbackCapture = null;
+
+                if (_recordingTempPath != null && File.Exists(_recordingTempPath))
+                {
+                    var rawPath = _recordingTempPath;
+                    _recordingTempPath = null;
+                    var finalPath = rawPath.Replace(".wav", "_final.wav");
+
+                    try
+                    {
+                        ConvertToHighQualityWav(rawPath, finalPath);
+                        File.Delete(rawPath);
+                        rawPath = finalPath;
+                    }
+                    catch
+                    {
+                        try { File.Delete(finalPath); } catch { }
+                    }
+
+                    var savedPath = rawPath;
+                    Application.Current?.Dispatcher.BeginInvoke(() =>
+                    {
+                        CustomStartupSoundPath = savedPath;
+                        RecordingStatus = $"Saved: {Path.GetFileName(savedPath)}";
+                        IsRecording = false;
+                    });
+                }
+                else
+                {
+                    _recordingTempPath = null;
+                    Application.Current?.Dispatcher.BeginInvoke(() =>
+                    {
+                        RecordingStatus = "Recording saved.";
+                        IsRecording = false;
+                    });
+                }
+            };
+
+            _loopbackCapture.StartRecording();
+            IsRecording = true;
+            RecordingStatus = $"Recording from: {device.FriendlyName} — play audio now!";
+        }
+        catch (Exception ex)
+        {
+            RecordingStatus = $"Error: {ex.Message}";
+            CleanupRecording();
+        }
+    }
+
+    [RelayCommand]
+#pragma warning disable CS1998
+    private async Task StopRecording()
+#pragma warning restore CS1998
+    {
+        try
+        {
+            _loopbackCapture?.StopRecording();
+        }
+        catch (Exception ex)
+        {
+            RecordingStatus = $"Error stopping: {ex.Message}";
+            IsRecording = false;
+        }
+    }
+
+    [RelayCommand]
+    private void PreviewStartupSound()
+    {
+        if (string.IsNullOrEmpty(CustomStartupSoundPath) || !File.Exists(CustomStartupSoundPath))
+        {
+            RecordingStatus = "No sound file to preview.";
+            return;
+        }
+
+        try
+        {
+            var player = new System.Windows.Media.MediaPlayer();
+            player.Open(new Uri(CustomStartupSoundPath));
+            player.MediaOpened += (s, e) => player.Play();
+            player.MediaFailed += (s, e) => RecordingStatus = "Failed to play sound.";
+            RecordingStatus = "Playing preview...";
+        }
+        catch (Exception ex)
+        {
+            RecordingStatus = $"Preview error: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void ClearStartupSound()
+    {
+        CustomStartupSoundPath = null;
+        RecordingStatus = "Custom sound cleared. Using default.";
+    }
+
+    [RelayCommand]
+    private void BrowseStartupSound()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "Audio Files|*.mp3;*.wav;*.wma;*.ogg|All Files|*.*",
+            Title = "Select Startup Sound"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            var soundsDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "AcEvoFfbTuner", "Sounds");
+            Directory.CreateDirectory(soundsDir);
+            var destPath = Path.Combine(soundsDir, Path.GetFileName(dialog.FileName));
+            File.Copy(dialog.FileName, destPath, true);
+            CustomStartupSoundPath = destPath;
+            RecordingStatus = $"Sound set: {Path.GetFileName(destPath)}";
+        }
+    }
+
+    private static void ConvertToHighQualityWav(string sourcePath, string destPath)
+    {
+        using var reader = new NAudio.Wave.WaveFileReader(sourcePath);
+        var targetFormat = new NAudio.Wave.WaveFormat(48000, 24, reader.WaveFormat.Channels);
+
+        using var writer = new NAudio.Wave.WaveFileWriter(destPath, targetFormat);
+        using var resampler = new NAudio.Wave.MediaFoundationResampler(reader, targetFormat);
+        resampler.ResamplerQuality = 60;
+
+        var buffer = new byte[resampler.WaveFormat.AverageBytesPerSecond];
+        int bytesRead;
+        while ((bytesRead = resampler.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            writer.Write(buffer, 0, bytesRead);
+        }
+        writer.Flush();
+    }
+
+    private void CleanupRecording()
+    {
+        _loopbackCapture?.Dispose();
+        _loopbackCapture = null;
+        _waveWriter?.Dispose();
+        _waveWriter = null;
+        IsRecording = false;
+        _selectedOutputDeviceId = null;
+        if (_recordingTempPath != null)
+        {
+            try { if (File.Exists(_recordingTempPath)) File.Delete(_recordingTempPath); } catch { }
+            _recordingTempPath = null;
+        }
+    }
+
     [RelayCommand]
     private async Task SendDiagnosticPack()
     {
