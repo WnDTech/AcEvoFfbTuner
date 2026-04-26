@@ -13,7 +13,7 @@ public sealed class FfbDamping
     /// Prevents residual damping from EMA tail when the wheel is stationary,
     /// which causes the "bounce back" / notchy feel at center.
     /// </summary>
-    public float VelocityDeadzone { get; set; } = 0.05f;
+    public float VelocityDeadzone { get; set; } = 0.02f;
 
     /// <summary>
     /// Low-speed damping multiplier. At 0 km/h, damping is this many times stronger
@@ -73,8 +73,8 @@ public sealed class FfbDamping
         float inertiaForce = -InertiaWeight * normalizedSteerVel * speedFactor * forceRatio * dampingMultiplier;
 
         float targetDamping = dampingForce + frictionForce + inertiaForce;
-        float maxDamp = absForce * 0.3f;
-        _prevDampingForce = _prevDampingForce + (targetDamping - _prevDampingForce) * 0.3f;
+        float maxDamp = absForce * 0.4f;
+        _prevDampingForce = _prevDampingForce + (targetDamping - _prevDampingForce) * 0.4f;
         _prevDampingForce = Math.Clamp(_prevDampingForce, -maxDamp, maxDamp);
 
         return force + _prevDampingForce;

@@ -205,7 +205,7 @@ public sealed class FfbChannelMixer
             _ => raw.FinalFf
         };
 
-        float maxMixedDelta = raw.SpeedKmh > 150f ? 0.04f : 0.10f;
+        float maxMixedDelta = raw.SpeedKmh > 150f ? 0.04f : 0.06f;
         float mixedDelta = mixed - _prevMixedOutput;
         if (Math.Abs(mixedDelta) > maxMixedDelta)
             mixed = _prevMixedOutput + Math.Sign(mixedDelta) * maxMixedDelta;

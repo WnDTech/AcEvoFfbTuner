@@ -50,6 +50,10 @@ public sealed class FfbPipeline
     private int _prevGear = -1;
     private int _gearShiftCounter;
 
+    private int _oscillationCounter;
+    private float _prevOutputSign;
+    private float _lastPreOscOutput;
+
     public FfbProcessedData Process(FfbRawData raw)
     {
         float autoGain = 1.0f;
@@ -172,7 +176,11 @@ public sealed class FfbPipeline
             : 1.0f;
         float speedSlewScale = lowSpeedSlewScale * highSpeedSlewScale;
         float baseSlewRate = _gearShiftCounter > 0 ? GearShiftSlewRate : MaxSlewRate;
-        float effectiveSlewRate = baseSlewRate * speedSlewScale;
+
+        float oscSlewReduction = _oscillationCounter > 2
+            ? Math.Max(1.0f - (_oscillationCounter - 2) * 0.08f, 0.25f)
+            : 1.0f;
+        float effectiveSlewRate = baseSlewRate * speedSlewScale * oscSlewReduction;
 
         float absSteerForSlew = Math.Abs(raw.SteerAngle);
         if (raw.SpeedKmh > 150.0f && absSteerForSlew < 0.03f)
@@ -190,8 +198,7 @@ public sealed class FfbPipeline
         if (Math.Abs(slewDelta) > effectiveSlewRate)
         {
             bool isSignFlip = finalOutput * _prevSlewOutput < -0.001f;
-            bool nearCenter = Math.Abs(raw.SteerAngle) < 0.08f;
-            float dirChangeScale = (isSignFlip && raw.SpeedKmh > 40f && nearCenter) ? 0.25f : 1.0f;
+            float dirChangeScale = (isSignFlip && raw.SpeedKmh > 30f) ? 0.20f : 1.0f;
             finalOutput = _prevSlewOutput + Math.Sign(slewDelta) * effectiveSlewRate * dirChangeScale;
         }
         _prevSlewOutput = raw.SpeedKmh < 2.0f ? 0f : finalOutput;
@@ -202,6 +209,32 @@ public sealed class FfbPipeline
         _lastSentOutput = raw.SpeedKmh < 2.0f ? 0f : finalOutput;
 
         _prevOutput = finalOutput;
+
+        // ── Oscillation detection and adaptive suppression ──
+        // Tracks consecutive output direction reversals. When the output
+        // sign flips back and forth rapidly (oscillation), progressively
+        // smooths the output toward the previous value to break the loop.
+        if (raw.SpeedKmh > 15f)
+        {
+            float currentSign = Math.Sign(finalOutput);
+            if (currentSign != 0f && _prevOutputSign != 0f && currentSign != _prevOutputSign)
+                _oscillationCounter = Math.Min(_oscillationCounter + 3, 15);
+            else
+                _oscillationCounter = Math.Max(_oscillationCounter - 1, 0);
+            _prevOutputSign = currentSign;
+
+            if (_oscillationCounter > 3)
+            {
+                float suppressionStrength = Math.Min((_oscillationCounter - 3) * 0.12f, 0.75f);
+                finalOutput = _lastPreOscOutput + (finalOutput - _lastPreOscOutput) * (1f - suppressionStrength);
+            }
+        }
+        else
+        {
+            _oscillationCounter = 0;
+            _prevOutputSign = 0f;
+        }
+        _lastPreOscOutput = raw.SpeedKmh < 2.0f ? 0f : finalOutput;
 
         float vibration = VibrationMixer.Mix(raw);
 
@@ -262,5 +295,8 @@ public sealed class FfbPipeline
         _smoothSteerAngle = 0f;
         _prevGear = -1;
         _gearShiftCounter = 0;
+        _oscillationCounter = 0;
+        _prevOutputSign = 0f;
+        _lastPreOscOutput = 0f;
     }
 }
