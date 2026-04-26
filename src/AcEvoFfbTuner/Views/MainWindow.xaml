@@ -56,7 +56,9 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="Profile:" FontSize="14" Foreground="#FF888888" VerticalAlignment="Center" Margin="0,0,6,0" />
                     <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
-                              DisplayMemberPath="Name" Width="320" Margin="4,0" />
+                              DisplayMemberPath="Name" Width="260" Margin="4,0" />
+                    <Button Content="Save" Command="{Binding SaveCurrentProfileCommand}" Margin="4,0" Padding="12,4" FontSize="12" ToolTip="Save current profile" />
+                    <Button Content="Save As..." Command="{Binding SaveAsNewProfileCommand}" Margin="4,0" Padding="12,4" FontSize="12" Style="{StaticResource OutlinedButton}" ToolTip="Save as a new profile" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -891,7 +893,53 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- SIGNAL PROCESSING -->
+                            <!-- LFE LOW-FREQUENCY EFFECTS -->
+                            <TextBlock Text="LFE — LOW-FREQUENCY EFFECTS" Style="{StaticResource GroupHeader}" />
+                            <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
+                                <StackPanel>
+                                    <TextBlock Text="iRacing-style low-frequency rumble. Generates deep oscillations from suspension travel and speed, felt as chassis road texture on strong wheel bases (Moza R9+)." FontSize="13" Foreground="#FF888888" Margin="0,0,0,8" TextWrapping="Wrap" />
+                                    <DockPanel Margin="0,6">
+                                        <TextBlock Text="Enable LFE" Width="160" VerticalAlignment="Center" FontWeight="Bold" FontSize="15" DockPanel.Dock="Left" />
+                                        <CheckBox IsChecked="{Binding LfeEnabled}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                                    </DockPanel>
+                                    <StackPanel Margin="0,6">
+                                        <DockPanel>
+                                            <TextBlock Text="LFE Gain" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
+                                            <TextBlock Text="{Binding LfeGain, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding LfeGain}" Minimum="0" Maximum="1" TickFrequency="0.01" IsSnapToTickEnabled="True" />
+                                        </DockPanel>
+                                        <TextBlock Text="Overall intensity of the low-frequency effect mixed into the main force." Style="{StaticResource SliderDescription}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,6">
+                                        <DockPanel>
+                                            <TextBlock Text="Frequency" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
+                                            <TextBlock Text="{Binding LfeFrequency, StringFormat='{}{0:F1} Hz'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding LfeFrequency}" Minimum="3" Maximum="30" TickFrequency="0.5" IsSnapToTickEnabled="True" />
+                                        </DockPanel>
+                                        <TextBlock Text="Base rumble frequency in Hz. Lower = deeper thump, higher = faster buzz." Style="{StaticResource SliderDescription}" />
+                                    </StackPanel>
+                                    <Expander Style="{StaticResource SectionExpander}" Header="Detailed LFE Settings">
+                                        <StackPanel>
+                                            <StackPanel Margin="0,6">
+                                                <DockPanel>
+                                                    <TextBlock Text="Suspension Drive" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
+                                                    <TextBlock Text="{Binding LfeSuspensionDrive, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                                    <Slider Value="{Binding LfeSuspensionDrive}" Minimum="0" Maximum="1" TickFrequency="0.01" IsSnapToTickEnabled="True" />
+                                                </DockPanel>
+                                                <TextBlock Text="How much suspension travel drives the LFE envelope. Higher = more reactive to bumps." Style="{StaticResource SliderDescription}" />
+                                            </StackPanel>
+                                            <StackPanel Margin="0,6">
+                                                <DockPanel>
+                                                    <TextBlock Text="Speed Scaling" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
+                                                    <TextBlock Text="{Binding LfeSpeedScaling, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                                    <Slider Value="{Binding LfeSpeedScaling}" Minimum="0" Maximum="1" TickFrequency="0.01" IsSnapToTickEnabled="True" />
+                                                </DockPanel>
+                                                <TextBlock Text="How much vehicle speed modulates LFE frequency. Higher = faster rumble at speed." Style="{StaticResource SliderDescription}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </Border>
                             <TextBlock Text="SIGNAL PROCESSING" Style="{StaticResource GroupHeader}" />
                             <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
                                 <StackPanel>

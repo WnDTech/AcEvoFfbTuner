@@ -211,6 +211,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _suspensionRoadGain = 1.5f;
 
     [ObservableProperty]
+    private bool _lfeEnabled;
+
+    [ObservableProperty]
+    private float _lfeGain = 0.5f;
+
+    [ObservableProperty]
+    private float _lfeFrequency = 10.0f;
+
+    [ObservableProperty]
+    private float _lfeSuspensionDrive = 0.6f;
+
+    [ObservableProperty]
+    private float _lfeSpeedScaling = 0.5f;
+
+    [ObservableProperty]
     private float _maxForceLimit = 0.8f;
 
     [ObservableProperty]
@@ -1303,6 +1318,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnAbsGainChanged(float value) => _pipeline.VibrationMixer.AbsGain = value;
     partial void OnVibrationMasterGainChanged(float value) => _pipeline.VibrationMixer.MasterGain = value;
     partial void OnSuspensionRoadGainChanged(float value) => _pipeline.VibrationMixer.SuspensionRoadGain = value;
+    partial void OnLfeEnabledChanged(bool value) => _pipeline.LfeGenerator.Enabled = value;
+    partial void OnLfeGainChanged(float value) => _pipeline.LfeGenerator.Gain = value;
+    partial void OnLfeFrequencyChanged(float value) => _pipeline.LfeGenerator.Frequency = value;
+    partial void OnLfeSuspensionDriveChanged(float value) => _pipeline.LfeGenerator.SuspensionDrive = value;
+    partial void OnLfeSpeedScalingChanged(float value) => _pipeline.LfeGenerator.SpeedScaling = value;
     partial void OnSteeringLockDegreesChanged(int value) { }
     partial void OnCompressionPowerChanged(float value) => _pipeline.CompressionPower = value;
     partial void OnSignCorrectionEnabledChanged(bool value) => _pipeline.SignCorrectionEnabled = value;
@@ -1649,6 +1669,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         AbsGain = profile.Vibrations.AbsGain;
         VibrationMasterGain = profile.Vibrations.MasterGain;
         SuspensionRoadGain = profile.Vibrations.SuspensionRoadGain;
+        LfeEnabled = profile.Lfe.Enabled;
+        LfeGain = profile.Lfe.Gain;
+        LfeFrequency = profile.Lfe.Frequency;
+        LfeSuspensionDrive = profile.Lfe.SuspensionDrive;
+        LfeSpeedScaling = profile.Lfe.SpeedScaling;
         CompressionPower = profile.CompressionPower;
         SteeringLockDegrees = profile.SteeringLockDegrees;
         ForceScale = profile.ForceScale;
@@ -1711,6 +1736,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.VibrationMixer.AbsGain = AbsGain;
         _pipeline.VibrationMixer.MasterGain = VibrationMasterGain;
         _pipeline.VibrationMixer.SuspensionRoadGain = SuspensionRoadGain;
+        _pipeline.LfeGenerator.Enabled = LfeEnabled;
+        _pipeline.LfeGenerator.Gain = LfeGain;
+        _pipeline.LfeGenerator.Frequency = LfeFrequency;
+        _pipeline.LfeGenerator.SuspensionDrive = LfeSuspensionDrive;
+        _pipeline.LfeGenerator.SpeedScaling = LfeSpeedScaling;
         _pipeline.CompressionPower = CompressionPower;
         _pipeline.ForceScale = ForceScale;
         _pipeline.SignCorrectionEnabled = SignCorrectionEnabled;

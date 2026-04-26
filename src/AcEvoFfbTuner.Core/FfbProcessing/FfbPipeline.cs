@@ -10,6 +10,7 @@ public sealed class FfbPipeline
     public FfbSlipEnhancer SlipEnhancer { get; } = new();
     public FfbDynamicEffects DynamicEffects { get; } = new();
     public FfbVibrationMixer VibrationMixer { get; } = new();
+    public FfbLfeGenerator LfeGenerator { get; } = new();
     public FfbOutputClipper OutputClipper { get; } = new();
 
     public float ForceScale { get; set; } = 1.0f;
@@ -217,6 +218,10 @@ public sealed class FfbPipeline
         if (Math.Abs(roadMod) > 0.001f)
             finalOutput = Math.Clamp(finalOutput + roadMod, -1f, 1f);
 
+        float lfe = LfeGenerator.Generate(raw);
+        if (Math.Abs(lfe) > 0.001f)
+            finalOutput = Math.Clamp(finalOutput + lfe, -1f, 1f);
+
         return new FfbProcessedData
         {
             MainForce = finalOutput,
@@ -247,6 +252,7 @@ public sealed class FfbPipeline
         Damping.Reset();
         DynamicEffects.Reset();
         VibrationMixer.Reset();
+        LfeGenerator.Reset();
         _prevOutput = 0f;
         _prevSlewOutput = 0f;
         _lastSentOutput = 0f;

@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 5;
+    public const int CurrentVersion = 6;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -60,6 +60,7 @@ public sealed class FfbProfile
     public AutoGainConfig AutoGain { get; set; } = new();
     public VibrationConfig Vibrations { get; set; } = new();
     public AdvancedConfig Advanced { get; set; } = new();
+    public LfeConfig Lfe { get; set; } = new();
     public LedEffectConfigDto LedEffects { get; set; } = new();
     public TelemetrySnapshotDto? LastTelemetrySnapshot { get; set; }
 
@@ -144,6 +145,12 @@ public sealed class FfbProfile
         pipeline.Damping.SteerVelocityReference = Advanced.SteerVelocityReference;
         pipeline.Damping.VelocityDeadzone = Advanced.VelocityDeadzone;
         pipeline.ChannelMixer.LowSpeedSmoothKmh = Advanced.LowSpeedSmoothKmh;
+
+        pipeline.LfeGenerator.Enabled = Lfe.Enabled;
+        pipeline.LfeGenerator.Gain = Lfe.Gain;
+        pipeline.LfeGenerator.Frequency = Lfe.Frequency;
+        pipeline.LfeGenerator.SuspensionDrive = Lfe.SuspensionDrive;
+        pipeline.LfeGenerator.SpeedScaling = Lfe.SpeedScaling;
     }
 
     public static FfbProfile CreateFromPipeline(FfbPipeline pipeline, string name)
@@ -229,6 +236,14 @@ public sealed class FfbProfile
             SteerVelocityReference = pipeline.Damping.SteerVelocityReference,
             VelocityDeadzone = pipeline.Damping.VelocityDeadzone,
             LowSpeedSmoothKmh = pipeline.ChannelMixer.LowSpeedSmoothKmh
+        };
+        Lfe = new LfeConfig
+        {
+            Enabled = pipeline.LfeGenerator.Enabled,
+            Gain = pipeline.LfeGenerator.Gain,
+            Frequency = pipeline.LfeGenerator.Frequency,
+            SuspensionDrive = pipeline.LfeGenerator.SuspensionDrive,
+            SpeedScaling = pipeline.LfeGenerator.SpeedScaling
         };
     }
 
@@ -459,6 +474,11 @@ public sealed class FfbProfile
             LastTelemetrySnapshot = null;
         }
 
+        if (Version < 6)
+        {
+            Lfe = new LfeConfig();
+        }
+
         Version = CurrentVersion;
     }
 }
@@ -582,6 +602,15 @@ public sealed class AdvancedConfig
     public float SteerVelocityReference { get; set; } = 10.0f;
     public float VelocityDeadzone { get; set; } = 0.05f;
     public float LowSpeedSmoothKmh { get; set; } = 25.0f;
+}
+
+public sealed class LfeConfig
+{
+    public bool Enabled { get; set; } = false;
+    public float Gain { get; set; } = 0.5f;
+    public float Frequency { get; set; } = 10.0f;
+    public float SuspensionDrive { get; set; } = 0.6f;
+    public float SpeedScaling { get; set; } = 0.5f;
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
