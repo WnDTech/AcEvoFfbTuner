@@ -475,8 +475,10 @@ public sealed class SharedMemoryReader : IDisposable
             }
 
             staticData.TrackLengthM = StaticFieldReader.GetTrackLengthM(buffer);
-            if (staticData.TrackLengthM == 0f)
-                staticData.TrackLengthM = BitConverter.ToSingle(buffer, 195);
+            staticData.MaxRpm = StaticFieldReader.GetMaxRpm(buffer);
+            staticData.MaxFuel = StaticFieldReader.GetMaxFuel(buffer);
+            staticData.SteerRatio = StaticFieldReader.GetSteerRatio(buffer);
+            staticData.NumCars = StaticFieldReader.GetNumCars(buffer);
 
             DumpStaticBuffer(buffer, Marshal.SizeOf<SPageFileStaticEvo>());
 

@@ -78,8 +78,12 @@ public sealed class DiagnosticPackService
         }
         catch (Exception ex)
         {
-            progress?.Report($"Failed: {ex.Message}");
-            return (false, $"Send failed: {ex.Message}");
+            var detail = ex.InnerException != null
+                ? $"{ex.Message}\nInner: {ex.InnerException.Message}"
+                : ex.Message;
+            LogError(ex);
+            progress?.Report($"Failed: {detail}");
+            return (false, $"Send failed: {detail}");
         }
     }
 
@@ -137,5 +141,22 @@ public sealed class DiagnosticPackService
             }
             catch { }
         }
+    }
+
+    private static void LogError(Exception ex)
+    {
+        try
+        {
+            Directory.CreateDirectory(BaseDir);
+            File.AppendAllText(Path.Combine(BaseDir, "diag_send.log"),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] ERROR:\n" +
+                $"{ex.GetType().FullName}: {ex.Message}\n" +
+                $"{ex.StackTrace}\n" +
+                (ex.InnerException != null
+                    ? $"--- Inner ---\n{ex.InnerException.GetType().FullName}: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}\n"
+                    : "") +
+                "\n");
+        }
+        catch { }
     }
 }

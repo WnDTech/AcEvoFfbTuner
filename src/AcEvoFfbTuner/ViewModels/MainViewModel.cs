@@ -2119,28 +2119,71 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private async Task SendDiagnosticPack()
     {
         var mainWin = Application.Current?.MainWindow;
+        WriteDiagLog("START", $"MainWindow={mainWin?.GetType().Name ?? "null"}");
         if (mainWin == null) return;
 
         var dialog = new Views.FeedbackDialog { Owner = mainWin };
-        if (dialog.ShowDialog() != true) return;
+        if (dialog.ShowDialog() != true)
+        {
+            WriteDiagLog("CANCELLED", "User cancelled feedback dialog");
+            return;
+        }
 
         IsSendingDiagnosticPack = true;
         StatusText = "Auto-saving profile and snapshot...";
 
         try
         {
+            WriteDiagLog("STEP", "Auto-saving profile...");
             AutoSaveDiagnosticProfile();
+            WriteDiagLog("STEP", "Auto-saving snapshot...");
             (mainWin as Views.MainWindow)?.AutoSaveSnapshot();
 
             StatusText = "Sending diagnostic pack...";
-            var progress = new Progress<string>(msg => StatusText = msg);
+            var progress = new Progress<string>(msg =>
+            {
+                StatusText = msg;
+                WriteDiagLog("PROGRESS", msg);
+            });
+            WriteDiagLog("STEP", "Calling DiagnosticPackService.SendAsync...");
             var (success, message) = await DiagnosticPackService.SendAsync(dialog.Feedback, progress);
             StatusText = message;
+            WriteDiagLog("RESULT", $"Success={success}, Message={message}");
+
+            if (!success)
+            {
+                MessageBox.Show(mainWin, $"{message}\n\nLog: {DiagLogDir()}", "Send Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Error: {ex.Message}";
+            WriteDiagLog("ERROR", $"{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
+            MessageBox.Show(mainWin, $"Failed to send diagnostics:\n\n{ex.Message}\n\nLog: {DiagLogDir()}", "Send Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
             IsSendingDiagnosticPack = false;
         }
+    }
+
+    private static string DiagLogDir()
+    {
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "AcEvoFfbTuner", "diag_send.log");
+    }
+
+    private static void WriteDiagLog(string category, string detail)
+    {
+        try
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "AcEvoFfbTuner");
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(Path.Combine(dir, "diag_send.log"),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{category}] {detail}\n");
+        }
+        catch { }
     }
 
     [RelayCommand]

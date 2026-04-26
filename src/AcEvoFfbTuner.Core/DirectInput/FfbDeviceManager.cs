@@ -291,19 +291,48 @@ public sealed class FfbDeviceManager : IDisposable
                 }
             }
 
-            foreach (var obj in _device.GetObjects())
+            int? primaryAxis = null;
+            int? fallbackAxis = null;
+
+            foreach (DI.DeviceObjectInstance obj in _device.GetObjects())
             {
                 try
                 {
                     if (obj.ObjectType == SharpDX.DirectInput.ObjectGuid.XAxis ||
                         obj.ObjectType == SharpDX.DirectInput.ObjectGuid.RxAxis)
                     {
-                        _ffAxes = new int[] { (int)obj.ObjectId };
+                        primaryAxis = (int)obj.ObjectId;
                         break;
+                    }
+
+                    if (fallbackAxis == null &&
+                        (obj.ObjectType == SharpDX.DirectInput.ObjectGuid.YAxis ||
+                         obj.ObjectType == SharpDX.DirectInput.ObjectGuid.RyAxis ||
+                         obj.ObjectType == SharpDX.DirectInput.ObjectGuid.ZAxis ||
+                         obj.ObjectType == SharpDX.DirectInput.ObjectGuid.RzAxis))
+                    {
+                        fallbackAxis = (int)obj.ObjectId;
                     }
                 }
                 catch { }
             }
+
+            if (primaryAxis != null)
+            {
+                _ffAxes = new int[] { primaryAxis.Value };
+            }
+            else if (fallbackAxis != null)
+            {
+                _ffAxes = new int[] { fallbackAxis.Value };
+                ConnLog($"FFB: Using fallback axis {fallbackAxis.Value} (no XAxis/RxAxis found)");
+            }
+            else
+            {
+                _ffAxes = new int[] { 0 };
+                ConnLog("FFB: No suitable axis found, using default axis 0");
+            }
+
+            ConnLog($"FFB axes resolved: [{string.Join(", ", _ffAxes)}]");
         }
         catch { }
     }
@@ -418,39 +447,36 @@ public sealed class FfbDeviceManager : IDisposable
             newParams.SetAxes(newAxes, newDirs);
             newParams.Parameters = cf2;
 
-            try
+            const int maxCreateAttempts = 3;
+            for (int attempt = 1; attempt <= maxCreateAttempts; attempt++)
             {
-                _constantForceEffect = new DI.Effect(_device, DI.EffectGuid.ConstantForce, newParams);
-            }
-            catch (Exception ex)
-            {
-                _consecutiveForceErrors++;
-                LastError = $"Create failed ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
-                ConnLog($"EFFECT CREATE FAIL ({_consecutiveForceErrors}): {ex.InnerException?.Message ?? ex.Message}");
-                if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+                try
                 {
-                    LastError = "Device lost exclusive FFB access. Disconnect and reconnect the device.";
-                    ConnLog("DEVICE LOST — max consecutive errors reached");
-                }
-                return;
-            }
+                    _constantForceEffect = new DI.Effect(_device, DI.EffectGuid.ConstantForce, newParams);
 
-            try
-            {
-                _constantForceEffect.Start(-1, DI.EffectPlayFlags.NoDownload);
-                _consecutiveForceErrors = 0;
-                LastError = null;
-            }
-            catch (Exception ex)
-            {
-                _consecutiveForceErrors++;
-                LastError = $"Start failed ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
-                ConnLog($"EFFECT START FAIL ({_consecutiveForceErrors}): {ex.InnerException?.Message ?? ex.Message}");
-                DestroyConstantForceEffect();
-                if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+                    _constantForceEffect.Start(-1, DI.EffectPlayFlags.NoDownload);
+                    _consecutiveForceErrors = 0;
+                    LastError = null;
+                    if (attempt > 1)
+                        ConnLog($"Effect create succeeded on attempt {attempt}");
+                    return;
+                }
+                catch (Exception ex) when (attempt < maxCreateAttempts)
                 {
-                    LastError = "Device lost exclusive FFB access. Disconnect and reconnect the device.";
-                    ConnLog("DEVICE LOST — max consecutive errors reached");
+                    ConnLog($"EFFECT CREATE attempt {attempt}/{maxCreateAttempts} failed: {ex.InnerException?.Message ?? ex.Message}");
+                    DestroyConstantForceEffect();
+                    Thread.Sleep(50);
+                }
+                catch (Exception ex)
+                {
+                    _consecutiveForceErrors++;
+                    LastError = $"Create failed ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
+                    ConnLog($"EFFECT CREATE FAIL ({_consecutiveForceErrors}) after {maxCreateAttempts} attempts: {ex.InnerException?.Message ?? ex.Message}");
+                    if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+                    {
+                        LastError = "Device lost exclusive FFB access. Disconnect and reconnect the device.";
+                        ConnLog("DEVICE LOST — max consecutive errors reached");
+                    }
                 }
             }
         }
