@@ -151,6 +151,7 @@ public sealed class FfbProfile
         pipeline.LfeGenerator.Frequency = Lfe.Frequency;
         pipeline.LfeGenerator.SuspensionDrive = Lfe.SuspensionDrive;
         pipeline.LfeGenerator.SpeedScaling = Lfe.SpeedScaling;
+        pipeline.LfeGenerator.RpmDrive = Lfe.RpmDrive;
     }
 
     public static FfbProfile CreateFromPipeline(FfbPipeline pipeline, string name)
@@ -243,7 +244,8 @@ public sealed class FfbProfile
             Gain = pipeline.LfeGenerator.Gain,
             Frequency = pipeline.LfeGenerator.Frequency,
             SuspensionDrive = pipeline.LfeGenerator.SuspensionDrive,
-            SpeedScaling = pipeline.LfeGenerator.SpeedScaling
+            SpeedScaling = pipeline.LfeGenerator.SpeedScaling,
+            RpmDrive = pipeline.LfeGenerator.RpmDrive
         };
     }
 
@@ -611,6 +613,7 @@ public sealed class LfeConfig
     public float Frequency { get; set; } = 10.0f;
     public float SuspensionDrive { get; set; } = 0.6f;
     public float SpeedScaling { get; set; } = 0.5f;
+    public float RpmDrive { get; set; } = 0.3f;
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]

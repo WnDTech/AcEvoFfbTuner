@@ -226,6 +226,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _lfeSpeedScaling = 0.5f;
 
     [ObservableProperty]
+    private float _lfeRpmDrive = 0.3f;
+
+    [ObservableProperty]
     private float _maxForceLimit = 0.8f;
 
     [ObservableProperty]
@@ -1326,6 +1329,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnLfeFrequencyChanged(float value) => _pipeline.LfeGenerator.Frequency = value;
     partial void OnLfeSuspensionDriveChanged(float value) => _pipeline.LfeGenerator.SuspensionDrive = value;
     partial void OnLfeSpeedScalingChanged(float value) => _pipeline.LfeGenerator.SpeedScaling = value;
+    partial void OnLfeRpmDriveChanged(float value) => _pipeline.LfeGenerator.RpmDrive = value;
     partial void OnSteeringLockDegreesChanged(int value) { }
     partial void OnCompressionPowerChanged(float value) => _pipeline.CompressionPower = value;
     partial void OnSignCorrectionEnabledChanged(bool value) => _pipeline.SignCorrectionEnabled = value;
@@ -1677,6 +1681,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         LfeFrequency = profile.Lfe.Frequency;
         LfeSuspensionDrive = profile.Lfe.SuspensionDrive;
         LfeSpeedScaling = profile.Lfe.SpeedScaling;
+        LfeRpmDrive = profile.Lfe.RpmDrive;
         CompressionPower = profile.CompressionPower;
         SteeringLockDegrees = profile.SteeringLockDegrees;
         ForceScale = profile.ForceScale;
@@ -1744,6 +1749,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.LfeGenerator.Frequency = LfeFrequency;
         _pipeline.LfeGenerator.SuspensionDrive = LfeSuspensionDrive;
         _pipeline.LfeGenerator.SpeedScaling = LfeSpeedScaling;
+        _pipeline.LfeGenerator.RpmDrive = LfeRpmDrive;
         _pipeline.CompressionPower = CompressionPower;
         _pipeline.ForceScale = ForceScale;
         _pipeline.SignCorrectionEnabled = SignCorrectionEnabled;

@@ -949,8 +949,16 @@
                                                     <TextBlock Text="{Binding LfeSpeedScaling, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
                                                     <Slider Value="{Binding LfeSpeedScaling}" Minimum="0" Maximum="1" TickFrequency="0.01" IsSnapToTickEnabled="True" />
                                                 </DockPanel>
-                                                <TextBlock Text="How much vehicle speed modulates LFE frequency. Higher = faster rumble at speed." Style="{StaticResource SliderDescription}" />
-                                            </StackPanel>
+                                                    <TextBlock Text="How much vehicle speed modulates LFE frequency. Higher = faster rumble at speed." Style="{StaticResource SliderDescription}" />
+                                                </StackPanel>
+                                                <StackPanel Margin="0,6">
+                                                    <DockPanel>
+                                                        <TextBlock Text="RPM Drive" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
+                                                        <TextBlock Text="{Binding LfeRpmDrive, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                                        <Slider Value="{Binding LfeRpmDrive}" Minimum="0" Maximum="1" TickFrequency="0.01" IsSnapToTickEnabled="True" />
+                                                    </DockPanel>
+                                                    <TextBlock Text="How much engine RPM drives the LFE intensity and frequency. Higher = more engine vibration rumble at high RPM." Style="{StaticResource SliderDescription}" />
+                                                </StackPanel>
                                         </StackPanel>
                                     </Expander>
                                 </StackPanel>

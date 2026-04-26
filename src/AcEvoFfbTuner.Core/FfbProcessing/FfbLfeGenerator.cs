@@ -9,6 +9,7 @@ public sealed class FfbLfeGenerator
     public float Frequency { get; set; } = 10.0f;
     public float SuspensionDrive { get; set; } = 0.6f;
     public float SpeedScaling { get; set; } = 0.5f;
+    public float RpmDrive { get; set; } = 0.3f;
 
     private float _phase;
     private float[] _prevSuspTravel = new float[4];
@@ -47,9 +48,14 @@ public sealed class FfbLfeGenerator
         float attackSpeed = suspEnvelopeTarget > _suspEnvelope ? 0.6f : 0.15f;
         _suspEnvelope = _suspEnvelope * (1f - attackSpeed) + suspEnvelopeTarget * attackSpeed;
 
-        float baseEnvelope = 0.15f + 0.85f * _suspEnvelope;
+        float rpmNorm = Math.Clamp(raw.RpmPercent / 100f, 0f, 1f);
+        float rpmEnvelope = rpmNorm * RpmDrive;
 
-        float effectiveFreq = Frequency * speedScale;
+        float baseEnvelope = 0.15f + 0.85f * _suspEnvelope + rpmEnvelope;
+        baseEnvelope = Math.Clamp(baseEnvelope, 0f, 1.5f);
+
+        float rpmFreqBoost = 1f + rpmNorm * RpmDrive * 0.8f;
+        float effectiveFreq = Frequency * speedScale * rpmFreqBoost;
         _phase += effectiveFreq * TickSeconds;
         if (_phase > 1f) _phase -= 1f;
 
