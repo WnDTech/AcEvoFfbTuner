@@ -5,6 +5,7 @@
         xmlns:converters="clr-namespace:AcEvoFfbTuner.Converters"
         Title="AC Evo FFB Tuner" Height="900" Width="1280"
         WindowStartupLocation="CenterScreen"
+        Icon="pack://application:,,,/Resources/wheel.ico"
         Background="#FF0D0D0D"
         Foreground="#FFE0E0E0"
         FontFamily="Segoe UI">
