@@ -66,6 +66,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _latestVersionText = "";
 
+    [ObservableProperty]
+    private bool _isDownloadingUpdate;
+
     private UpdateInfo? _pendingUpdate;
 
     [ObservableProperty]
@@ -2217,10 +2220,36 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void OpenUpdatePage()
+    private async Task DownloadAndInstallUpdateAsync()
     {
-        if (_pendingUpdate != null)
-            GitHubUpdateService.OpenReleasePage(_pendingUpdate.ReleaseUrl);
+        if (_pendingUpdate == null) return;
+
+        IsDownloadingUpdate = true;
+        IsUpdateAvailable = false;
+        UpdateStatusText = "Downloading update...";
+
+        try
+        {
+            var progress = new Progress<DownloadProgress>(p =>
+            {
+                if (p.State == DownloadState.Downloading)
+                    UpdateStatusText = $"Downloading update... {p.Percent}%";
+                else
+                    UpdateStatusText = "Launching installer...";
+            });
+
+            await GitHubUpdateService.DownloadAndInstallAsync(_pendingUpdate, progress);
+            UpdateStatusText = "Installer launched — you can close this app.";
+        }
+        catch (Exception ex)
+        {
+            UpdateStatusText = $"Download failed: {ex.Message}";
+            IsUpdateAvailable = true;
+        }
+        finally
+        {
+            IsDownloadingUpdate = false;
+        }
     }
 
     public void Dispose()

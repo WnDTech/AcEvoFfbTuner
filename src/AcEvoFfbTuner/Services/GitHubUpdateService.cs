@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
@@ -17,9 +18,15 @@ public sealed class GitHubUpdateService
         Timeout = TimeSpan.FromSeconds(10)
     };
 
+    private static readonly HttpClient _downloadHttp = new()
+    {
+        Timeout = TimeSpan.FromMinutes(10)
+    };
+
     static GitHubUpdateService()
     {
         _http.DefaultRequestHeaders.Add("User-Agent", "AcEvoFfbTuner-UpdateCheck");
+        _downloadHttp.DefaultRequestHeaders.Add("User-Agent", "AcEvoFfbTuner-UpdateCheck");
     }
 
     public Version CurrentVersion { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0);
@@ -53,6 +60,8 @@ public sealed class GitHubUpdateService
                 Version = latestVersion,
                 ReleaseUrl = release.HtmlUrl ?? $"https://github.com/{Owner}/{Repo}/releases/latest",
                 DownloadUrl = asset?.BrowserDownloadUrl,
+                FileName = asset?.Name,
+                FileSize = asset?.Size ?? 0,
                 ReleaseNotes = release.Body ?? "",
                 PublishedAt = release.PublishedAt
             };
@@ -61,6 +70,52 @@ public sealed class GitHubUpdateService
         {
             return null;
         }
+    }
+
+    public static async Task DownloadAndInstallAsync(UpdateInfo update, IProgress<DownloadProgress>? progress = null)
+    {
+        if (string.IsNullOrEmpty(update.DownloadUrl))
+            throw new InvalidOperationException("No download URL available for this update.");
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "AcEvoFfbTuner_Update");
+        Directory.CreateDirectory(tempDir);
+
+        var fileName = !string.IsNullOrEmpty(update.FileName) ? update.FileName : "AcEvoFfbTuner_Update.exe";
+        var filePath = Path.Combine(tempDir, fileName);
+
+        progress?.Report(new DownloadProgress { State = DownloadState.Downloading, Percent = 0 });
+
+        using var response = await _downloadHttp.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+
+        var totalBytes = response.Content.Headers.ContentLength ?? update.FileSize;
+        var downloadedBytes = 0L;
+
+        using var contentStream = await response.Content.ReadAsStreamAsync();
+        using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+
+        var buffer = new byte[81920];
+        int bytesRead;
+
+        while ((bytesRead = await contentStream.ReadAsync(buffer)) > 0)
+        {
+            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
+            downloadedBytes += bytesRead;
+
+            if (totalBytes > 0)
+            {
+                var percent = (int)((double)downloadedBytes / totalBytes * 100);
+                progress?.Report(new DownloadProgress { State = DownloadState.Downloading, Percent = percent });
+            }
+        }
+
+        progress?.Report(new DownloadProgress { State = DownloadState.Installing, Percent = 100 });
+
+        Process.Start(new ProcessStartInfo(filePath)
+        {
+            UseShellExecute = true,
+            Verb = "runas"
+        });
     }
 
     public static void OpenReleasePage(string url)
@@ -74,8 +129,18 @@ public sealed class UpdateInfo
     public Version Version { get; init; } = new(0, 0, 0);
     public string ReleaseUrl { get; init; } = "";
     public string? DownloadUrl { get; init; }
+    public string? FileName { get; init; }
+    public long FileSize { get; init; }
     public string ReleaseNotes { get; init; } = "";
     public DateTime? PublishedAt { get; init; }
+}
+
+public enum DownloadState { Downloading, Installing }
+
+public sealed class DownloadProgress
+{
+    public DownloadState State { get; init; }
+    public int Percent { get; init; }
 }
 
 internal sealed class GitHubRelease
