@@ -2268,8 +2268,22 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     UpdateStatusText = "Launching installer...";
             });
 
-            await GitHubUpdateService.DownloadAndInstallAsync(_pendingUpdate, progress);
-            UpdateStatusText = "Installer launched — you can close this app.";
+            var installerProcess = await GitHubUpdateService.DownloadAndInstallAsync(_pendingUpdate, progress);
+
+            if (installerProcess != null)
+            {
+                UpdateStatusText = "Installer launched — shutting down...";
+                _ = Application.Current.Dispatcher.BeginInvoke(() =>
+                {
+                    Dispose();
+                    Application.Current.Shutdown();
+                });
+            }
+            else
+            {
+                UpdateStatusText = "Installer launch failed — please run it manually.";
+                IsUpdateAvailable = true;
+            }
         }
         catch (Exception ex)
         {

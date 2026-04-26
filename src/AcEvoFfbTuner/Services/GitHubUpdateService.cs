@@ -72,7 +72,7 @@ public sealed class GitHubUpdateService
         }
     }
 
-    public static async Task DownloadAndInstallAsync(UpdateInfo update, IProgress<DownloadProgress>? progress = null)
+    public static async Task<Process?> DownloadAndInstallAsync(UpdateInfo update, IProgress<DownloadProgress>? progress = null)
     {
         if (string.IsNullOrEmpty(update.DownloadUrl))
             throw new InvalidOperationException("No download URL available for this update.");
@@ -111,11 +111,13 @@ public sealed class GitHubUpdateService
 
         progress?.Report(new DownloadProgress { State = DownloadState.Installing, Percent = 100 });
 
-        Process.Start(new ProcessStartInfo(filePath)
+        var installerProcess = Process.Start(new ProcessStartInfo(filePath)
         {
             UseShellExecute = true,
             Verb = "runas"
         });
+
+        return installerProcess;
     }
 
     public static void OpenReleasePage(string url)
