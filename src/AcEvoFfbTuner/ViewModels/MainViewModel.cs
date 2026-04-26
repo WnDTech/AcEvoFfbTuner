@@ -1022,8 +1022,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void PanicStop()
     {
+        IsRunning = false;
+        _telemetryLoop.Stop();
+        _uiUpdateTimer.Stop();
         _deviceManager.ZeroForce();
-        StatusText = "PANIC STOP - FFB zeroed";
+        StatusText = "PANIC STOP - Telemetry stopped, FFB zeroed";
     }
 
     [RelayCommand]

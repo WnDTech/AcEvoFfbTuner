@@ -74,29 +74,44 @@
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <ToggleButton IsChecked="{Binding IsRunning}" Command="{Binding ToggleTelemetryCommand}"
-                                  Margin="0,0,4,0" x:Name="StartStopToggle">
+                                  Margin="0,0,8,0" x:Name="StartStopToggle" MinHeight="40">
                         <ToggleButton.Style>
                             <Style TargetType="ToggleButton">
                                 <Setter Property="Content" Value="START" />
-                                <Setter Property="Background" Value="#FF2A2A45" />
-                                <Setter Property="Foreground" Value="#FFE0E0E0" />
-                                <Setter Property="BorderThickness" Value="1" />
-                                <Setter Property="BorderBrush" Value="#FF555555" />
-                                <Setter Property="Padding" Value="20,6" />
-                                <Setter Property="FontSize" Value="12" />
+                                <Setter Property="Background" Value="#FF2E7D32" />
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="BorderThickness" Value="2" />
+                                <Setter Property="BorderBrush" Value="#FF4CAF50" />
+                                <Setter Property="Padding" Value="28,10" />
+                                <Setter Property="FontSize" Value="16" />
                                 <Setter Property="FontWeight" Value="Bold" />
                                 <Setter Property="Cursor" Value="Hand" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                <TextBlock x:Name="BtnText" Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#33FFFFFF" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsRunning}" Value="True">
                                         <Setter Property="Content" Value="STOP" />
                                         <Setter Property="Background" Value="#FFE67E22" />
                                         <Setter Property="Foreground" Value="White" />
+                                        <Setter Property="BorderBrush" Value="#FFFF9800" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </ToggleButton.Style>
                     </ToggleButton>
-                    <Button Content="PANIC" Command="{Binding PanicStopCommand}" Margin="4,0" Style="{StaticResource PanicButton}" />
+                    <Button Content="PANIC" Command="{Binding PanicStopCommand}" Margin="0,0,4,0" Style="{StaticResource PanicButton}" MinHeight="40" />
                 </StackPanel>
 
                 <Grid Grid.Column="2">
