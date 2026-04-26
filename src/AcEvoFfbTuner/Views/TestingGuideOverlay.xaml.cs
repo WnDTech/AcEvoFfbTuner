@@ -58,8 +58,8 @@ public partial class TestingGuideOverlay : Window
         double newW = Width + delta;
         double newH = Height + delta;
 
-        if (newW < 280 || newH < 350) return;
-        if (newW > 600 || newH > 900) return;
+        if (newW < 340 || newH < 420) return;
+        if (newW > 700 || newH > 1000) return;
 
         Left += delta / 2;
         Top += delta / 2;
