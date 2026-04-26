@@ -17,13 +17,13 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Describe any issues or feedback before sending:" FontSize="14" FontWeight="Bold" Margin="0,0,0,6" />
+        <TextBlock Grid.Row="0" Text="Describe any issues or feedback before sending:" FontSize="16" FontWeight="Bold" Margin="0,0,0,6" />
 
-        <TextBlock Grid.Row="1" FontSize="12" Foreground="#FF888888" Margin="0,0,0,10" TextWrapping="Wrap">
+        <TextBlock Grid.Row="1" FontSize="14" Foreground="#FF888888" Margin="0,0,0,10" TextWrapping="Wrap">
             <Run Text="What felt wrong? Where on track? What wheel base? This gets sent with your diagnostic data." />
         </TextBlock>
 
-        <TextBox Grid.Row="2" x:Name="FeedbackBox" FontSize="13" AcceptsReturn="True" TextWrapping="Wrap"
+        <TextBox Grid.Row="2" x:Name="FeedbackBox" FontSize="15" AcceptsReturn="True" TextWrapping="Wrap"
                  VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" Padding="8,6" />
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">

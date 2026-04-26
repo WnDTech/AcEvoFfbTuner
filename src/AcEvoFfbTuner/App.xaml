@@ -30,8 +30,8 @@
             <Style TargetType="TabItem">
                 <Setter Property="Background" Value="{StaticResource BgPanel}" />
                 <Setter Property="Foreground" Value="#FF888888" />
-                <Setter Property="FontSize" Value="13" />
-                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="Padding" Value="18,10" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -61,28 +61,28 @@
             </Style>
 
             <Style x:Key="SliderDescription" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontSize" Value="13" />
                 <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
-                <Setter Property="Margin" Value="180,0,72,0" />
+                <Setter Property="Margin" Value="200,0,72,0" />
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
 
             <Style x:Key="SectionHeader" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontSize" Value="16" />
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
                 <Setter Property="Margin" Value="0,10,0,4" />
             </Style>
 
             <Style x:Key="GroupHeader" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontSize" Value="17" />
                 <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
                 <Setter Property="Margin" Value="0,10,0,4" />
             </Style>
 
             <Style x:Key="SubSectionHeader" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="13" />
+                <Setter Property="FontSize" Value="15" />
                 <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="Foreground" Value="White" />
                 <Setter Property="Margin" Value="0,10,0,4" />
@@ -92,8 +92,8 @@
                 <Setter Property="Background" Value="{StaticResource AccentBrush}" />
                 <Setter Property="Foreground" Value="White" />
                 <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="Padding" Value="16,6" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="FontSize" Value="14" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -116,8 +116,8 @@
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="BorderBrush" Value="#FF555555" />
-                <Setter Property="Padding" Value="16,6" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="FontSize" Value="14" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -140,8 +140,8 @@
                 <Setter Property="Foreground" Value="White" />
                 <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="Padding" Value="16,6" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="FontSize" Value="14" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -164,8 +164,8 @@
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="BorderBrush" Value="#FF555555" />
-                <Setter Property="Padding" Value="20,6" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="20,8" />
+                <Setter Property="FontSize" Value="14" />
                 <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Template">
@@ -193,8 +193,8 @@
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="BorderBrush" Value="#FF555555" />
-                <Setter Property="Padding" Value="8,4" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="8,6" />
+                <Setter Property="FontSize" Value="14" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -241,8 +241,8 @@
             <Style TargetType="ComboBoxItem">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="Foreground" Value="#FFE0E0E0" />
-                <Setter Property="Padding" Value="10,8" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="10,10" />
+                <Setter Property="FontSize" Value="14" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -327,14 +327,14 @@
             <Style TargetType="CheckBox">
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="FontSize" Value="13" />
+                <Setter Property="FontSize" Value="15" />
             </Style>
 
             <Style x:Key="SectionExpander" TargetType="Expander">
                 <Setter Property="Background" Value="#1AE67E22" />
                 <Setter Property="Foreground" Value="#FFAAAAAA" />
                 <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontSize" Value="14" />
                 <Setter Property="Margin" Value="0,8,0,0" />
                 <Setter Property="IsExpanded" Value="False" />
                 <Setter Property="Template">
@@ -346,7 +346,7 @@
                                         <ControlTemplate TargetType="ToggleButton">
                                             <Border x:Name="ToggleBd" Background="Transparent" Padding="4,4" CornerRadius="3">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock x:Name="Arrow" Text="&#x25B6;" FontSize="10" Foreground="#FFAAAAAA" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                    <TextBlock x:Name="Arrow" Text="&#x25B6;" FontSize="12" Foreground="#FFAAAAAA" VerticalAlignment="Center" Margin="0,0,6,0" />
                                                     <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Border>
@@ -377,7 +377,7 @@
             <Style TargetType="RadioButton">
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="FontSize" Value="13" />
+                <Setter Property="FontSize" Value="15" />
             </Style>
 
             <Style TargetType="TextBox">
@@ -385,8 +385,8 @@
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="BorderBrush" Value="#FF555555" />
-                <Setter Property="Padding" Value="8,4" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="8,6" />
+                <Setter Property="FontSize" Value="14" />
                 <Style.Triggers>
                     <Trigger Property="IsFocused" Value="True">
                         <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />

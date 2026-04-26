@@ -10,10 +10,10 @@
         Foreground="{StaticResource TextBrush}">
     
     <StackPanel Margin="24">
-        <TextBlock Text="Enter profile name:" FontSize="14" Margin="0,0,0,12" />
+        <TextBlock Text="Enter profile name:" FontSize="16" Margin="0,0,0,12" />
         
         <TextBox x:Name="InputTextBox" 
-                 FontSize="14" 
+                 FontSize="16" 
                  Padding="8,6" 
                  Margin="0,0,0,20"
                  KeyDown="OnKeyDown" />

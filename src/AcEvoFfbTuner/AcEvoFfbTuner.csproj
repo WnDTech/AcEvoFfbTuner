@@ -7,6 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Resources\wheel.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <StartupObject>AcEvoFfbTuner.App</StartupObject>
     <Version>1.1.1</Version>
     <AssemblyVersion>1.1.1.0</AssemblyVersion>

@@ -63,16 +63,16 @@
                 <Border Grid.Row="0" Background="#FF1A1A2E" CornerRadius="7,7,0,0" Padding="12,8"
                         MouseLeftButtonDown="OnDragMove">
                     <Grid>
-                        <TextBlock Text="FFB TUNER — QUICK GUIDE" FontSize="15" FontWeight="Black"
+                        <TextBlock Text="FFB TUNER — QUICK GUIDE" FontSize="17" FontWeight="Black"
                                    Foreground="#FFE67E22" VerticalAlignment="Center" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button x:Name="BtnTransparency" ToolTip="Toggle transparency"
-                                    Width="28" Height="28" FontSize="14" Padding="0" Margin="0,0,4,0"
+                                    Width="28" Height="28" FontSize="16" Padding="0" Margin="0,0,4,0"
                                     Click="ToggleTransparency">
-                                <TextBlock x:Name="TransparencyIcon" Text="OPQ" FontSize="9" FontWeight="Bold" Foreground="#FFE0E0E0" />
+                                <TextBlock x:Name="TransparencyIcon" Text="OPQ" FontSize="12" FontWeight="Bold" Foreground="#FFE0E0E0" />
                             </Button>
                             <Button x:Name="BtnClose" ToolTip="Close"
-                                    Width="28" Height="28" FontSize="14" Padding="0"
+                                    Width="28" Height="28" FontSize="16" Padding="0"
                                     Background="#FF552222" Click="CloseOverlay">
                                 <TextBlock Text="X" FontWeight="Bold" Foreground="#FFE0E0E0" />
                             </Button>
@@ -86,19 +86,19 @@
                         <!-- Step 1: Close Other Apps -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <Border Background="#FFE67E22" CornerRadius="10" Width="24" Height="24" Margin="0,0,6,0">
-                                <TextBlock Text="1" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Text="1" FontSize="15" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <TextBlock Text="CLOSE OTHER APPS" FontSize="14" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
+                            <TextBlock Text="CLOSE OTHER APPS" FontSize="16" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
                         </StackPanel>
                         <Border Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
                             <StackPanel>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
                                     <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" Close Moza Pit House, Logitech G HUB, Fanatec driver, SimHub, etc." />
                                 </TextBlock>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
                                     <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" This app needs exclusive FFB access to your wheel" />
                                 </TextBlock>
-                                <TextBlock FontSize="11" Foreground="#FF66BB6A" Margin="0,4,0,0" TextWrapping="Wrap">
+                                <TextBlock FontSize="14" Foreground="#FF66BB6A" Margin="0,4,0,0" TextWrapping="Wrap">
                                     <Run FontStyle="Italic" Text="Your pedals still work fine — they use standard Windows drivers, not the wheel base software." />
                                 </TextBlock>
                             </StackPanel>
@@ -107,19 +107,19 @@
                         <!-- Step 2: Set Up AC Evo -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <Border Background="#FFE67E22" CornerRadius="10" Width="24" Height="24" Margin="0,0,6,0">
-                                <TextBlock Text="2" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Text="2" FontSize="15" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <TextBlock Text="SET UP AC EVO" FontSize="14" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
+                            <TextBlock Text="SET UP AC EVO" FontSize="16" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
                         </StackPanel>
                         <Border Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
                             <StackPanel>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1">
                                     <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" Car: BMW M4 GT3" />
                                 </TextBlock>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1">
                                     <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" Track: ANY track you know well" />
                                 </TextBlock>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1">
                                     <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" Mode: Practice | Clear weather | Optimal grip" />
                                 </TextBlock>
                             </StackPanel>
@@ -128,22 +128,22 @@
                         <!-- Step 3: Set Up FFB Tuner -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <Border Background="#FFE67E22" CornerRadius="10" Width="24" Height="24" Margin="0,0,6,0">
-                                <TextBlock Text="3" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Text="3" FontSize="15" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <TextBlock Text="SET UP FFB TUNER" FontSize="14" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
+                            <TextBlock Text="SET UP FFB TUNER" FontSize="16" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
                         </StackPanel>
                         <Border Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
                             <StackPanel>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
                                     <Run Foreground="#FFFFD600" FontWeight="Bold" Text="a." /><Run Text=" Select your wheel from the drop-down, then click " /><Run FontWeight="Bold" Text="Connect" />
                                 </TextBlock>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
                                     <Run Foreground="#FFFFD600" FontWeight="Bold" Text="b." /><Run Text=" Click " /><Run FontWeight="Bold" Text="Load Profile" /><Run Text=" and select the test profile provided" />
                                 </TextBlock>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
                                     <Run Foreground="#FFFFD600" FontWeight="Bold" Text="c." /><Run Text=" Click the " /><Run FontWeight="Bold" Text="START" /><Run Text=" button" />
                                 </TextBlock>
-                                <TextBlock FontSize="11" Foreground="#FFFF8A65" Margin="0,4,0,0" TextWrapping="Wrap">
+                                <TextBlock FontSize="14" Foreground="#FFFF8A65" Margin="0,4,0,0" TextWrapping="Wrap">
                                     <Run FontStyle="Italic" Text="If Connect fails, make sure wheel base software is fully closed (Step 1)." />
                                 </TextBlock>
                             </StackPanel>
@@ -152,19 +152,19 @@
                         <!-- Step 4: Record Track Map -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <Border Background="#FFE67E22" CornerRadius="10" Width="24" Height="24" Margin="0,0,6,0">
-                                <TextBlock Text="4" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Text="4" FontSize="15" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <TextBlock Text="RECORD TRACK MAP" FontSize="14" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
+                            <TextBlock Text="RECORD TRACK MAP" FontSize="16" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
                         </StackPanel>
                         <Border Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
                             <StackPanel>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
                                     <Run Foreground="#FFFFD600" FontWeight="Bold" Text="a." /><Run Text=" Go to the " /><Run FontWeight="Bold" Text="Track Map" /><Run Text=" tab and click " /><Run FontWeight="Bold" Text="Record Lap" />
                                 </TextBlock>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
                                     <Run Foreground="#FFFFD600" FontWeight="Bold" Text="b." /><Run Text=" Drive 1 clean lap — no cuts, no spins, no off-track" />
                                 </TextBlock>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
                                     <Run Foreground="#FFFFD600" FontWeight="Bold" Text="c." /><Run Text=" Click " /><Run FontWeight="Bold" Text="Complete" /><Run Text=" then " /><Run FontWeight="Bold" Text="Save" />
                                 </TextBlock>
                             </StackPanel>
@@ -173,46 +173,46 @@
                         <!-- Step 5: Drive Test Laps -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <Border Background="#FFE67E22" CornerRadius="10" Width="24" Height="24" Margin="0,0,6,0">
-                                <TextBlock Text="5" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Text="5" FontSize="15" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <TextBlock Text="DRIVE 3–5 LAPS" FontSize="14" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
+                            <TextBlock Text="DRIVE 3–5 LAPS" FontSize="16" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
                         </StackPanel>
                         <Border Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,6">
                             <StackPanel>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" TextWrapping="Wrap"
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" TextWrapping="Wrap"
                                            Text="Push hard. Make sure you cover: heavy braking zones, fast corners, tight hairpins, and kerbs." />
-                                <TextBlock FontSize="13" Foreground="#FFFF8A65" FontWeight="Bold" Margin="0,6,0,0" TextWrapping="Wrap"
+                                <TextBlock FontSize="15" Foreground="#FFFF8A65" FontWeight="Bold" Margin="0,6,0,0" TextWrapping="Wrap"
                                            Text="Watch for: steering snap, oscillation, bounce, dead zones, or reversed forces." />
                             </StackPanel>
                         </Border>
 
                         <Border Background="#1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
-                            <TextBlock FontSize="12" Foreground="#FFFFD600" TextWrapping="Wrap"
+                            <TextBlock FontSize="14" Foreground="#FFFFD600" TextWrapping="Wrap"
                                        Text="Tip: Set up a wheel button as a snapshot trigger (Telemetry Profiler tab) so you can capture data the exact moment something feels wrong." />
                         </Border>
 
                         <!-- Step 6: Send Diagnostics -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <Border Background="#FFE67E22" CornerRadius="10" Width="24" Height="24" Margin="0,0,6,0">
-                                <TextBlock Text="6" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Text="6" FontSize="15" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <TextBlock Text="SEND DIAGNOSTICS" FontSize="14" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
+                            <TextBlock Text="SEND DIAGNOSTICS" FontSize="16" FontWeight="Bold" Foreground="#FFE67E22" VerticalAlignment="Center" />
                         </StackPanel>
                         <Border Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
                             <StackPanel>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
                                     <Run Foreground="#FFFFD600" FontWeight="Bold" Text="a." /><Run Text=" Click " /><Run FontWeight="Bold" Text="Send Diagnostics to Dev" />
                                 </TextBlock>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
                                     <Run Foreground="#FFFFD600" FontWeight="Bold" Text="b." /><Run Text=" Describe what you felt in the feedback box (e.g. &quot;wheel snaps right on turn-in at high speed&quot;)" />
                                 </TextBlock>
-                                <TextBlock FontSize="13" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1" TextWrapping="Wrap">
                                     <Run Foreground="#FFFFD600" FontWeight="Bold" Text="c." /><Run Text=" Wait until you see " /><Run FontWeight="Bold" Foreground="#FF00E676" Text="Diagnostic pack sent" />
                                 </TextBlock>
                             </StackPanel>
                         </Border>
                         <Border Background="#1B3A1B" CornerRadius="4" Padding="10,8">
-                            <TextBlock FontSize="12" Foreground="#FF66BB6A" TextWrapping="Wrap"
+                            <TextBlock FontSize="14" Foreground="#FF66BB6A" TextWrapping="Wrap"
                                        Text="This auto-saves your profile, track map, and telemetry snapshots — no manual steps needed." />
                         </Border>
 
@@ -221,7 +221,7 @@
 
                 <!-- Footer -->
                 <Border Grid.Row="2" Background="#FF1A1A2E" CornerRadius="0,0,7,7" Padding="10,6">
-                    <TextBlock FontSize="11" Foreground="#FF666666" VerticalAlignment="Center">
+                    <TextBlock FontSize="14" Foreground="#FF666666" VerticalAlignment="Center">
                         <Run Text="Drag to move  |  Scroll to resize  |  OPQ = toggle transparency" />
                     </TextBlock>
                 </Border>
