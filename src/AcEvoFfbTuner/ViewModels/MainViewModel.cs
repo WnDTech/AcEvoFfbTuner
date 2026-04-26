@@ -408,6 +408,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnSnapshotButtonComboIndexChanged(int value)
     {
         SnapshotButtonIndex = value <= 0 ? -1 : value - 1;
+        _appSettings.SnapshotButtonComboIndex = value;
+        _appSettings.Save();
+    }
+
+    partial void OnPanicButtonComboIndexChanged(int value)
+    {
+        _appSettings.PanicButtonComboIndex = value;
+        _appSettings.Save();
     }
 
     private bool[]? _prevSnapshotButtons;
@@ -415,7 +423,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private void PollSnapshotButton()
     {
-        if (!IsDeviceConnected) return;
+        if (!IsDeviceConnected && !IsAssigningSnapshotButton) return;
 
         var buttons = _deviceManager.PollButtons();
         if (buttons == null)
@@ -431,14 +439,33 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 if (buttons[i])
                 {
                     if (pressed.Length > 0) pressed.Append(", ");
-                    pressed.Append($"Btn{i + 1}");
+                    string btnName = i < SnapshotButtonNames.Count - 1
+                        ? SnapshotButtonNames[i + 1]
+                        : $"Btn{i + 1}";
+                    pressed.Append(btnName);
                 }
             }
 
             if (Application.Current?.MainWindow is MainWindow mw2)
                 mw2.ProfButtonsDetected.Text = pressed.Length > 0 ? $"Pressed: {pressed}" : "";
 
-            if (SnapshotButtonIndex >= 0 && SnapshotButtonIndex < buttons.Length)
+            if (IsAssigningSnapshotButton)
+            {
+                for (int i = 0; i < buttons.Length; i++)
+                {
+                    bool prev = _prevSnapshotButtons != null && i < _prevSnapshotButtons.Length && _prevSnapshotButtons[i];
+                    if (buttons[i] && !prev)
+                    {
+                        SnapshotButtonComboIndex = i + 1;
+                        IsAssigningSnapshotButton = false;
+                        string name = i < SnapshotButtonNames.Count - 1 ? SnapshotButtonNames[i + 1] : $"Button {i + 1}";
+                        SnapshotAssignStatus = $"Assigned: {name}";
+                        break;
+                    }
+                }
+                _prevSnapshotButtons = (bool[])buttons.Clone();
+            }
+            else if (SnapshotButtonIndex >= 0 && SnapshotButtonIndex < buttons.Length)
             {
                 bool pressed2 = buttons[SnapshotButtonIndex];
                 bool wasPressed = _prevSnapshotButtons != null && SnapshotButtonIndex < _prevSnapshotButtons.Length && _prevSnapshotButtons[SnapshotButtonIndex];
@@ -460,12 +487,30 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private void PollPanicButton()
     {
-        if (PanicButtonIndex < 0) return;
+        if (PanicButtonIndex < 0 && !IsAssigningPanicButton) return;
 
         var buttons = _deviceManager.PollSecondaryButtons();
         if (buttons == null) return;
 
-        if (PanicButtonIndex >= buttons.Length) return;
+        if (IsAssigningPanicButton)
+        {
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                bool prev = _prevPanicButtons != null && i < _prevPanicButtons.Length && _prevPanicButtons[i];
+                if (buttons[i] && !prev)
+                {
+                    PanicButtonComboIndex = i + 1;
+                    IsAssigningPanicButton = false;
+                    string name = i < PanicButtonNames.Count - 1 ? PanicButtonNames[i + 1] : $"Button {i + 1}";
+                    PanicAssignStatus = $"Assigned: {name}";
+                    break;
+                }
+            }
+            _prevPanicButtons = (bool[])buttons.Clone();
+            return;
+        }
+
+        if (PanicButtonIndex < 0 || PanicButtonIndex >= buttons.Length) return;
 
         bool pressed = buttons[PanicButtonIndex];
         bool wasPressed = _prevPanicButtons != null && PanicButtonIndex < _prevPanicButtons.Length && _prevPanicButtons[PanicButtonIndex];
@@ -478,6 +523,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<FfbDeviceInfo> AvailableDevices { get; } = new();
     public ObservableCollection<FfbDeviceInfo> PanicDevices { get; } = new();
     public ObservableCollection<FfbProfile> Profiles { get; } = new();
+    public ObservableCollection<string> SnapshotButtonNames { get; } = new();
+    public ObservableCollection<string> PanicButtonNames { get; } = new();
 
     [ObservableProperty]
     private FfbDeviceInfo? _selectedDevice;
@@ -487,6 +534,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private int _panicButtonComboIndex;
+
+    [ObservableProperty]
+    private bool _isAssigningSnapshotButton;
+
+    [ObservableProperty]
+    private bool _isAssigningPanicButton;
+
+    [ObservableProperty]
+    private string _snapshotAssignStatus = "";
+
+    [ObservableProperty]
+    private string _panicAssignStatus = "";
 
     public int PanicButtonIndex => PanicButtonComboIndex <= 0 ? -1 : PanicButtonComboIndex - 1;
     public int PanicDeviceButtonCount => _deviceManager.SecondaryButtonCount;
@@ -503,6 +562,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _deviceManager = new FfbDeviceManager();
         _telemetryLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
         _profileManager = new ProfileManager();
+
+        PopulateFallbackButtonNames(SnapshotButtonNames, 32);
+        PopulateFallbackButtonNames(PanicButtonNames, 16);
 
         _telemetryLoop.StatusChanged += status => Application.Current?.Dispatcher.Invoke(() => StatusText = status);
         _telemetryLoop.GameConnectionChanged += () => Application.Current?.Dispatcher.Invoke(() =>
@@ -566,6 +628,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _profileManager.Initialize();
         RefreshProfiles();
         RefreshDevices();
+        RestoreButtonSettings();
 
         if (_profileManager.ActiveProfile != null)
         {
@@ -616,6 +679,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             IsDeviceConnected = true;
             DeviceName = SelectedDevice.ProductName;
             AutoDetectWheelTorque(SelectedDevice.ProductName);
+            RefreshSnapshotButtonNames();
+            if (!_uiUpdateTimer.IsEnabled)
+                _uiUpdateTimer.Start();
             string ledStatus = _deviceManager.IsLedControllerConnected
                 ? $" | LEDs: {_deviceManager.LedControllerVendor}"
                 : $" | LEDs: {_deviceManager.LedDiagnosticInfo.Split('\n').LastOrDefault() ?? "not found"}";
@@ -646,6 +712,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (value == null || value.ProductName == "None")
         {
             OnPropertyChanged(nameof(PanicDeviceButtonCount));
+            _appSettings.PanicDeviceInstanceId = null;
+            _appSettings.Save();
+            RefreshPanicButtonNames();
             return;
         }
 
@@ -657,11 +726,72 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         if (_deviceManager.TryConnectSecondaryDevice(value))
+        {
             StatusText = $"Panic button device: {value.ProductName} ({_deviceManager.SecondaryButtonCount} buttons)";
+            _appSettings.PanicDeviceInstanceId = value.DeviceInstance.InstanceGuid.ToString();
+            _appSettings.Save();
+            if (!_uiUpdateTimer.IsEnabled)
+                _uiUpdateTimer.Start();
+        }
         else
+        {
             StatusText = "Failed to connect panic button device";
+            _appSettings.PanicDeviceInstanceId = null;
+            _appSettings.Save();
+        }
 
         OnPropertyChanged(nameof(PanicDeviceButtonCount));
+        RefreshPanicButtonNames();
+    }
+
+    private void RefreshSnapshotButtonNames()
+    {
+        var names = _deviceManager.GetButtonNames();
+        SnapshotButtonNames.Clear();
+        SnapshotButtonNames.Add("Disabled");
+        foreach (var name in names)
+            SnapshotButtonNames.Add(name);
+    }
+
+    private void RefreshPanicButtonNames()
+    {
+        var names = _deviceManager.GetSecondaryButtonNames();
+        PanicButtonNames.Clear();
+        PanicButtonNames.Add("Disabled");
+        foreach (var name in names)
+            PanicButtonNames.Add(name);
+    }
+
+    private static void PopulateFallbackButtonNames(ObservableCollection<string> collection, int count)
+    {
+        collection.Clear();
+        collection.Add("Disabled");
+        for (int i = 1; i <= count; i++)
+            collection.Add($"Button {i}");
+    }
+
+    [RelayCommand]
+    private void AssignSnapshotButton()
+    {
+        if (!IsDeviceConnected)
+        {
+            StatusText = "Connect a wheel device first";
+            return;
+        }
+        IsAssigningSnapshotButton = true;
+        SnapshotAssignStatus = "Listening... press a button on your wheel";
+    }
+
+    [RelayCommand]
+    private void AssignPanicButton()
+    {
+        if (SelectedPanicDevice == null || SelectedPanicDevice.ProductName == "None")
+        {
+            StatusText = "Select a panic device first";
+            return;
+        }
+        IsAssigningPanicButton = true;
+        PanicAssignStatus = "Listening... press a button on the panic device";
     }
 
     private void AutoDetectWheelTorque(string productName)
@@ -1339,8 +1469,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     raw.GasInput, raw.BrakeInput);
             }
 
-            PollSnapshotButton();
-
             CarPosX = raw.CarX;
             CarPosZ = raw.CarZ;
             CarHeading = raw.Heading;
@@ -1458,6 +1586,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     ShowDiagnostics);
             }
         }
+
+        if (IsDeviceConnected || IsAssigningSnapshotButton || IsAssigningPanicButton)
+            PollSnapshotButton();
 
         PacketsPerSecond = _telemetryLoop.PacketsPerSecond;
         IsGameConnected = _telemetryLoop.IsGameConnected;
@@ -1719,6 +1850,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         SplashScreenEnabled = _appSettings.SplashScreenEnabled;
         CustomStartupSoundPath = _appSettings.CustomStartupSoundPath;
         RefreshRecordingDevices();
+    }
+
+    public void RestoreButtonSettings()
+    {
+        SnapshotButtonComboIndex = _appSettings.SnapshotButtonComboIndex;
+        PanicButtonComboIndex = _appSettings.PanicButtonComboIndex;
+
+        if (!string.IsNullOrEmpty(_appSettings.PanicDeviceInstanceId) && Guid.TryParse(_appSettings.PanicDeviceInstanceId, out var guid))
+        {
+            var match = PanicDevices.FirstOrDefault(d =>
+                d.DeviceInstance != null && d.DeviceInstance.InstanceGuid == guid);
+            if (match != null)
+                SelectedPanicDevice = match;
+        }
     }
 
     [RelayCommand]

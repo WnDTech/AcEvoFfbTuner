@@ -581,6 +581,56 @@ public sealed class FfbDeviceManager : IDisposable
         }
     }
 
+    public List<string> GetButtonNames()
+    {
+        return GetButtonNamesForDevice(_device);
+    }
+
+    public List<string> GetSecondaryButtonNames()
+    {
+        return GetButtonNamesForDevice(_secondaryDevice);
+    }
+
+    private static List<string> GetButtonNamesForDevice(DI.Joystick? device)
+    {
+        if (device == null) return new List<string>();
+
+        try
+        {
+            var buttonObjects = device.GetObjects()
+                .Where(o => o.ObjectType == DI.ObjectGuid.Button)
+                .OrderBy(o => o.ObjectId.InstanceNumber)
+                .ToList();
+
+            if (buttonObjects.Count == 0)
+            {
+                int count = device.Capabilities.ButtonCount;
+                var fallback = new List<string>();
+                for (int i = 0; i < count; i++)
+                    fallback.Add($"Button {i + 1}");
+                return fallback;
+            }
+
+            int maxIdx = buttonObjects.Max(o => o.ObjectId.InstanceNumber);
+            var names = new string[maxIdx + 1];
+            for (int i = 0; i <= maxIdx; i++)
+                names[i] = $"Button {i + 1}";
+
+            foreach (var obj in buttonObjects)
+            {
+                int idx = obj.ObjectId.InstanceNumber;
+                if (!string.IsNullOrWhiteSpace(obj.Name))
+                    names[idx] = obj.Name;
+            }
+
+            return names.ToList();
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
+
     public bool[]? PollButtons()
     {
         if (_device == null || !_isAcquired) return null;

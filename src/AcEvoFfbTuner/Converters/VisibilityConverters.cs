@@ -29,3 +29,16 @@ public sealed class NullToVisibilityConverter : IValueConverter
         return Binding.DoNothing;
     }
 }
+
+public sealed class NotEmptyToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return value is string s && s.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return Binding.DoNothing;
+    }
+}

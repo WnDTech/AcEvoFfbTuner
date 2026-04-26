@@ -8,6 +8,9 @@ public sealed class AppSettings
     public bool SplashScreenEnabled { get; set; } = true;
     public string? CustomStartupSoundPath { get; set; }
     public string? LastRecordingDeviceId { get; set; }
+    public int SnapshotButtonComboIndex { get; set; }
+    public int PanicButtonComboIndex { get; set; }
+    public string? PanicDeviceInstanceId { get; set; }
 
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
