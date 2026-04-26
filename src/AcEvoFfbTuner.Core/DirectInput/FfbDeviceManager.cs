@@ -421,6 +421,12 @@ public sealed class FfbDeviceManager : IDisposable
                 {
                     ConnLog($"SetParameters FAIL: {ex.InnerException?.Message ?? ex.Message}");
                     DestroyConstantForceEffect();
+
+                    if (IsNotExclusiveError(ex))
+                    {
+                        TryReacquireDevice();
+                        return;
+                    }
                 }
             }
 
@@ -581,6 +587,49 @@ public sealed class FfbDeviceManager : IDisposable
         SendConstantForceDirect(0f);
         StopVibration();
         ClearWheelLeds();
+    }
+
+    private static bool IsNotExclusiveError(Exception ex)
+    {
+        var msg = ex.InnerException?.Message ?? ex.Message;
+        return msg.Contains("NotExclusiveAcquired", StringComparison.OrdinalIgnoreCase) ||
+               msg.Contains("DIERR_NOTEXCLUSIVEACQUIRED", StringComparison.OrdinalIgnoreCase) ||
+               (ex.InnerException != null && ex.InnerException.HResult == unchecked((int)0x80040205));
+    }
+
+    private void TryReacquireDevice()
+    {
+        if (_device == null) return;
+
+        var savedDeviceInfo = ConnectedDevice;
+        ConnLog("Attempting re-acquire after NOTEXCLUSIVEACQUIRED...");
+
+        try
+        {
+            DestroyConstantForceEffect();
+            DestroyPeriodicEffect();
+
+            try { _device.Unacquire(); } catch { }
+            _isAcquired = false;
+
+            Thread.Sleep(100);
+
+            _device.Acquire();
+            _isAcquired = true;
+            _consecutiveForceErrors = 0;
+            LastError = null;
+            ConnLog("Re-acquire SUCCESS — device recovered");
+        }
+        catch (Exception ex)
+        {
+            ConnLog($"Re-acquire FAILED: {ex.InnerException?.Message ?? ex.Message}");
+            _consecutiveForceErrors++;
+            if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+            {
+                LastError = "Device lost exclusive FFB access. Disconnect and reconnect the device.";
+                ConnLog("DEVICE LOST — re-acquire failed, max consecutive errors reached");
+            }
+        }
     }
 
     public void UpdateWheelLeds(float rpmPercent, bool shiftUp, bool limiter, int flag, bool absActive = false)

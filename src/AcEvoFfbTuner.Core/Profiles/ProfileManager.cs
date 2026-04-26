@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AcEvoFfbTuner.Core.FfbProcessing;
 
 namespace AcEvoFfbTuner.Core.Profiles;
@@ -20,7 +21,8 @@ public sealed class ProfileManager
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals
     };
 
     private readonly List<FfbProfile> _profiles = new();
