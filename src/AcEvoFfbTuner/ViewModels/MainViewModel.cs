@@ -580,16 +580,23 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void RefreshDevices()
     {
-        var allDevices = _deviceManager.EnumerateFfbDevices();
+        try
+        {
+            var allDevices = _deviceManager.EnumerateFfbDevices();
 
-        AvailableDevices.Clear();
-        foreach (var device in allDevices)
-            AvailableDevices.Add(device);
+            AvailableDevices.Clear();
+            foreach (var device in allDevices)
+                AvailableDevices.Add(device);
 
-        PanicDevices.Clear();
-        PanicDevices.Add(new FfbDeviceInfo { ProductName = "None", IsFfbCapable = false });
-        foreach (var device in allDevices)
-            PanicDevices.Add(device);
+            PanicDevices.Clear();
+            PanicDevices.Add(new FfbDeviceInfo { ProductName = "None", IsFfbCapable = false });
+            foreach (var device in allDevices)
+                PanicDevices.Add(device);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Device enumeration failed: {ex.Message}";
+        }
     }
 
     [RelayCommand]
@@ -1717,25 +1724,32 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void RefreshRecordingDevices()
     {
-        AudioOutputDevices.Clear();
-        _deviceNameToId.Clear();
-        var enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
-        var devices = enumerator.EnumerateAudioEndPoints(
-            NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.DeviceState.Active);
-
-        var savedId = _appSettings.LastRecordingDeviceId;
-
-        foreach (var device in devices)
+        try
         {
-            var name = device.FriendlyName;
-            AudioOutputDevices.Add(name);
-            _deviceNameToId[name] = device.ID;
-            if (device.ID == savedId)
-                SelectedAudioOutputDevice = name;
-        }
+            AudioOutputDevices.Clear();
+            _deviceNameToId.Clear();
+            var enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
+            var devices = enumerator.EnumerateAudioEndPoints(
+                NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.DeviceState.Active);
 
-        if (string.IsNullOrEmpty(SelectedAudioOutputDevice) && AudioOutputDevices.Count > 0)
-            SelectedAudioOutputDevice = AudioOutputDevices[0];
+            var savedId = _appSettings.LastRecordingDeviceId;
+
+            foreach (var device in devices)
+            {
+                var name = device.FriendlyName;
+                AudioOutputDevices.Add(name);
+                _deviceNameToId[name] = device.ID;
+                if (device.ID == savedId)
+                    SelectedAudioOutputDevice = name;
+            }
+
+            if (string.IsNullOrEmpty(SelectedAudioOutputDevice) && AudioOutputDevices.Count > 0)
+                SelectedAudioOutputDevice = AudioOutputDevices[0];
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Audio device enumeration failed: {ex.Message}";
+        }
     }
 
     private string? GetSelectedOutputDeviceId()

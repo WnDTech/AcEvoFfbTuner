@@ -95,26 +95,35 @@ public sealed class FfbDeviceManager : IDisposable
 
     public List<FfbDeviceInfo> EnumerateFfbDevices()
     {
-        _directInput ??= new DI.DirectInput();
-
-        var allInstances = _directInput.GetDevices(DI.DeviceClass.GameControl, DI.DeviceEnumerationFlags.AllDevices);
-        var ffbGuids = new HashSet<Guid>(
-            _directInput.GetDevices(DI.DeviceClass.GameControl, DI.DeviceEnumerationFlags.ForceFeedback)
-                .Select(d => d.InstanceGuid));
-
-        var devices = new List<FfbDeviceInfo>();
-
-        foreach (var instance in allInstances)
+        try
         {
-            devices.Add(new FfbDeviceInfo
-            {
-                ProductName = instance.ProductName,
-                IsFfbCapable = ffbGuids.Contains(instance.InstanceGuid),
-                DeviceInstance = instance
-            });
-        }
+            _directInput ??= new DI.DirectInput();
 
-        return devices;
+            var allInstances = _directInput.GetDevices(DI.DeviceClass.GameControl, DI.DeviceEnumerationFlags.AllDevices);
+            var ffbGuids = new HashSet<Guid>(
+                _directInput.GetDevices(DI.DeviceClass.GameControl, DI.DeviceEnumerationFlags.ForceFeedback)
+                    .Select(d => d.InstanceGuid));
+
+            var devices = new List<FfbDeviceInfo>();
+
+            foreach (var instance in allInstances)
+            {
+                devices.Add(new FfbDeviceInfo
+                {
+                    ProductName = instance.ProductName,
+                    IsFfbCapable = ffbGuids.Contains(instance.InstanceGuid),
+                    DeviceInstance = instance
+                });
+            }
+
+            return devices;
+        }
+        catch (Exception ex)
+        {
+            ConnLog($"EnumerateFfbDevices failed: {ex.GetType().Name}: {ex.Message}");
+            LastError = $"DirectInput enumeration failed: {ex.Message}";
+            return new List<FfbDeviceInfo>();
+        }
     }
 
     public bool TryConnectDevice(FfbDeviceInfo deviceInfo)
