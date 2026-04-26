@@ -330,6 +330,50 @@
                 <Setter Property="FontSize" Value="13" />
             </Style>
 
+            <Style x:Key="SectionExpander" TargetType="Expander">
+                <Setter Property="Background" Value="#1AE67E22" />
+                <Setter Property="Foreground" Value="#FFAAAAAA" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Margin" Value="0,8,0,0" />
+                <Setter Property="IsExpanded" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Expander">
+                            <StackPanel>
+                                <ToggleButton x:Name="ExpanderToggle" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" Cursor="Hand">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="ToggleBd" Background="Transparent" Padding="4,4" CornerRadius="3">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock x:Name="Arrow" Text="&#x25B6;" FontSize="10" Foreground="#FFAAAAAA" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                    <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="ToggleBd" Property="Background" Value="#1AFFFFFF" />
+                                                </Trigger>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="Arrow" Property="Text" Value="&#x25BC;" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                    <TextBlock Text="{TemplateBinding Header}" />
+                                </ToggleButton>
+                                <ContentPresenter x:Name="ExpanderContent" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsExpanded" Value="False">
+                                    <Setter TargetName="ExpanderContent" Property="Visibility" Value="Collapsed" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <Style TargetType="RadioButton">
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="VerticalAlignment" Value="Center" />
