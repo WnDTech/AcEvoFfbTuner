@@ -12,8 +12,10 @@ namespace AcEvoFfbTuner.Views;
 public partial class MainWindow : Window
 {
     // === PROFILER ===
-    private const int PMax = 500;
+    private const int PMax = 900;
     private const int PStatN = 300;
+    private const float ProfWindowSeconds = 30f;
+    private const float ProfSampleRateHz = 30f;
 
     private readonly float[] _pOut = new float[PMax];
     private readonly float[] _pRaw = new float[PMax];
@@ -55,18 +57,8 @@ public partial class MainWindow : Window
     private readonly Polyline _plBrk = new() { StrokeThickness = 1 };
     private readonly Polyline _plPZero = new() { Stroke = new SolidColorBrush(Color.FromArgb(0x25, 0xFF, 0xFF, 0xFF)), StrokeThickness = 1 };
 
-    private const int BarN = 9;
-    private static readonly string[] BarLabels = { "MzFront", "FxFront", "FyFront", "Compress", "LUT", "Slip", "Damping", "Dynamic", "Output" };
-    private static readonly Color[] BarColors =
-    {
-        Color.FromRgb(0x4C, 0xAF, 0x50), Color.FromRgb(0x8B, 0xC3, 0x4A), Color.FromRgb(0xCD, 0xDC, 0x39),
-        Color.FromRgb(0x00, 0xBC, 0xD4), Color.FromRgb(0x00, 0x96, 0x88), Color.FromRgb(0xFF, 0x57, 0x22),
-        Color.FromRgb(0x9C, 0x27, 0xB0), Color.FromRgb(0x79, 0x55, 0x48), Color.FromRgb(0xFF, 0x45, 0x00)
-    };
-    private readonly Rectangle[] _bars = new Rectangle[BarN];
-    private readonly TextBlock[] _barLabels = new TextBlock[BarN];
-    private readonly TextBlock[] _barVals = new TextBlock[BarN];
     private readonly SolidColorBrush _profGridBrush = new(Color.FromArgb(0x10, 0xFF, 0xFF, 0xFF));
+    private readonly List<TextBlock> _timeLabels = new();
 
     private readonly SolidColorBrush _trackLineBrush = new(Color.FromRgb(0x00, 0xBC, 0xD4));
     private readonly SolidColorBrush _trackFillBrush = new(Color.FromArgb(0x18, 0x00, 0xBC, 0xD4));
@@ -116,14 +108,11 @@ public partial class MainWindow : Window
         ProfilerCanvas.Children.Add(_plRaw);
         ProfilerCanvas.Children.Add(_plOut);
 
-        for (int i = 0; i < BarN; i++)
+        for (int i = 0; i <= 6; i++)
         {
-            _barLabels[i] = new TextBlock { Foreground = new SolidColorBrush(BarColors[i]), FontSize = 11, FontFamily = new FontFamily("Consolas") };
-            _bars[i] = new Rectangle { Fill = new SolidColorBrush(Color.FromArgb(0x80, BarColors[i].R, BarColors[i].G, BarColors[i].B)), Height = 14, RadiusX = 2, RadiusY = 2 };
-            _barVals[i] = new TextBlock { Foreground = new SolidColorBrush(BarColors[i]), FontSize = 11, FontFamily = new FontFamily("Consolas") };
-            ProfilerBarCanvas.Children.Add(_barLabels[i]);
-            ProfilerBarCanvas.Children.Add(_bars[i]);
-            ProfilerBarCanvas.Children.Add(_barVals[i]);
+            var tb = new TextBlock { Foreground = new SolidColorBrush(Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF)), FontSize = 9, FontFamily = new FontFamily("Consolas") };
+            _timeLabels.Add(tb);
+            ProfilerOverlayCanvas.Children.Add(tb);
         }
 
         _trackPolyline.Stroke = _trackLineBrush;
@@ -145,6 +134,7 @@ public partial class MainWindow : Window
     {
         base.OnClosed(e);
         _guideOverlay?.Close();
+        _profilerOverlay?.Close();
         Application.Current.Shutdown();
     }
 
@@ -158,6 +148,7 @@ public partial class MainWindow : Window
     }
 
     private TestingGuideOverlay? _guideOverlay;
+    private ProfilerOverlay? _profilerOverlay;
 
     private void OpenGuideOverlay(object sender, RoutedEventArgs e)
     {
@@ -170,6 +161,19 @@ public partial class MainWindow : Window
         _guideOverlay = new TestingGuideOverlay();
         _guideOverlay.Closed += (_, _) => _guideOverlay = null;
         _guideOverlay.Show();
+    }
+
+    private void OpenProfilerOverlay(object sender, RoutedEventArgs e)
+    {
+        if (_profilerOverlay != null)
+        {
+            _profilerOverlay.Activate();
+            return;
+        }
+
+        _profilerOverlay = new ProfilerOverlay();
+        _profilerOverlay.Closed += (_, _) => _profilerOverlay = null;
+        _profilerOverlay.Show();
     }
 
     // === PROFILER METHODS ===
@@ -205,6 +209,20 @@ public partial class MainWindow : Window
 
         float[] barVals = { mzFront, fxFront, fyFront, compress, lut, slip, damping, dynEff, forceOut };
         RedrawProfilerBars(barVals);
+
+        if (_profilerOverlay != null)
+        {
+            int sc = Math.Min(_pStatIdx, PStatN);
+            float sMin = float.MaxValue, sMax = float.MinValue;
+            for (int si = 0; si < sc; si++)
+            {
+                float sv = _pStatBuf[si];
+                if (sv < sMin) sMin = sv;
+                if (sv > sMax) sMax = sv;
+            }
+            float sClip = _pStatFrames > 0 ? (float)_pStatClips / _pStatFrames * 100f : 0f;
+            _profilerOverlay.UpdateData(speed, forceOut, rawFF, steerAngle, gasInput, brakeInput, sClip, sc > 0 ? sMin : 0, sc > 0 ? sMax : 0);
+        }
 
         _pCsv.Add($"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{slip:F6},{damping:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3}");
     }
@@ -250,8 +268,11 @@ public partial class MainWindow : Window
         ProfClipPct.Text = $"{clipPct:F1}%";
         ProfClipPct.Foreground = clipPct > 5f ? Brushes.Red : clipPct > 0f ? Brushes.Yellow : new SolidColorBrush(Color.FromRgb(0x00, 0xE6, 0x76));
         ProfPeakChannels.Text = $"{_pPkMz:F3} / {_pPkFx:F3} / {_pPkFy:F3}";
-        ProfGas.Text = $"{gas:F0}%";
-        ProfBrake.Text = $"{brake:F0}%";
+        ProfGas.Text = $"{gas * 100f:F0}%";
+        ProfBrake.Text = $"{brake * 100f:F0}%";
+
+        float elapsedSec = _pN / ProfSampleRateHz;
+        ProfTimeWindow.Text = $"{elapsedSec:F1}s / {ProfWindowSeconds:F0}s";
     }
 
     private void RedrawProfilerTS()
@@ -286,47 +307,55 @@ public partial class MainWindow : Window
         _plSpd.Points = ShowSpeed.IsChecked == true ? BuildPts(_pSpd, _pN, w, yc, ys) : new PointCollection();
         _plGas.Points = ShowGas.IsChecked == true ? BuildPts(_pGas, _pN, w, yc, ys) : new PointCollection();
         _plBrk.Points = ShowBrake.IsChecked == true ? BuildPts(_pBrk, _pN, w, yc, ys) : new PointCollection();
+
+        DrawTimeAxis(w, h);
+    }
+
+    private void DrawTimeAxis(double w, double h)
+    {
+        if (_pN < 2) return;
+
+        float totalSec = _pN / ProfSampleRateHz;
+        float windowSec = Math.Min(totalSec, ProfWindowSeconds);
+        float startSec = totalSec - windowSec;
+        int labelCount = _timeLabels.Count;
+
+        double stepSec = windowSec / (labelCount - 1);
+        for (int i = 0; i < labelCount; i++)
+        {
+            double x = i * w / (labelCount - 1);
+            float t = startSec + (float)(i * stepSec);
+            _timeLabels[i].Text = $"-{ProfWindowSeconds - t:F0}s";
+            Canvas.SetLeft(_timeLabels[i], x - 12);
+            Canvas.SetTop(_timeLabels[i], h - 14);
+        }
     }
 
     private PointCollection BuildPts(float[] data, int count, double w, double yc, double ys)
     {
         int n = Math.Min(count, PMax);
-        var pts = new PointCollection(n);
-        double xStep = n > 1 ? w / (n - 1) : 0;
-        for (int i = 0; i < n; i++)
-            pts.Add(new Point(i * xStep, yc - data[i] * ys));
+        int windowSamples = (int)(ProfWindowSeconds * ProfSampleRateHz);
+        int displayN = Math.Min(n, windowSamples);
+        int startIdx = n - displayN;
+        var pts = new PointCollection(displayN);
+        double xStep = displayN > 1 ? w / (displayN - 1) : 0;
+        for (int i = 0; i < displayN; i++)
+            pts.Add(new Point(i * xStep, yc - data[startIdx + i] * ys));
         return pts;
     }
 
     private void RedrawProfilerBars(float[] values)
     {
-        double w = ProfilerBarCanvas.ActualWidth;
-        double h = ProfilerBarCanvas.ActualHeight;
-        if (w <= 0 || h <= 0) return;
+        float mz = Math.Abs(values[0]), fx = Math.Abs(values[1]), fy = Math.Abs(values[2]);
 
-        double rowH = h / BarN;
-        double labelW = 70;
-        double valW = 60;
-        double barMaxW = w - labelW - valW - 10;
+        double barMaxW = 80;
 
-        for (int i = 0; i < BarN; i++)
-        {
-            double y = i * rowH + (rowH - 14) / 2;
-            Canvas.SetLeft(_barLabels[i], 4);
-            Canvas.SetTop(_barLabels[i], y);
-            _barLabels[i].Text = BarLabels[i];
-
-            float absV = Math.Abs(values[i]);
-            double barW = Math.Min(absV / 1.0, 1.0) * barMaxW;
-
-            Canvas.SetLeft(_bars[i], labelW);
-            Canvas.SetTop(_bars[i], y);
-            _bars[i].Width = Math.Max(barW, 1);
-
-            Canvas.SetLeft(_barVals[i], labelW + barMaxW + 4);
-            Canvas.SetTop(_barVals[i], y);
-            _barVals[i].Text = values[i].ToString("F4");
-        }
+        BarMz.Width = Math.Max(Math.Min(mz / 1.0, 1.0) * barMaxW, 1);
+        BarMzVal.Text = values[0].ToString("F3");
+        BarFx.Width = Math.Max(Math.Min(fx / 1.0, 1.0) * barMaxW, 1);
+        BarFxVal.Text = values[1].ToString("F3");
+        BarFy.Width = Math.Max(Math.Min(fy / 1.0, 1.0) * barMaxW, 1);
+        BarFyVal.Text = values[2].ToString("F3");
     }
 
     private void ProfilerSnapshot(object sender, RoutedEventArgs e)
@@ -511,6 +540,7 @@ public partial class MainWindow : Window
         _pStatIdx = 0; _pStatFrames = 0; _pStatClips = 0;
         _pPkMz = 0; _pPkFx = 0; _pPkFy = 0;
         _pCsv.Clear();
+        _profilerOverlay?.Clear();
 
         if (DataContext is ViewModels.MainViewModel vm)
             vm.StatusText = "Profiler data cleared";
