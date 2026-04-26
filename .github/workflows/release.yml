@@ -85,17 +85,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          $ErrorActionPreference = 'Continue'
           $tag = "${{ steps.version.outputs.tag }}"
-          try {
-            $existing = gh release view "$tag" --json assets --jq ".assets[].name" 2>$null
-            if ($LASTEXITCODE -eq 0) {
-              foreach ($asset in $existing) {
-                Write-Host "Removing old asset: $asset"
-                gh release delete-asset "$tag" "$asset" --yes
-              }
+          $existing = gh release view "$tag" --json assets --jq ".assets[].name" 2>$null
+          if ($LASTEXITCODE -eq 0 -and $existing) {
+            foreach ($asset in $existing) {
+              Write-Host "Removing old asset: $asset"
+              gh release delete-asset "$tag" "$asset" --yes
             }
-          } catch {
-            Write-Host "No existing release to clean"
+          } else {
+            Write-Host "No existing release to clean for $tag"
           }
 
       - name: Create GitHub Release
