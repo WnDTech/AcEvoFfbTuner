@@ -140,7 +140,7 @@
             </TabControl.Template>
             <TabItem Header="Testing Guide">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
-                    <StackPanel MaxWidth="800" HorizontalAlignment="Left">
+                    <StackPanel MaxWidth="800" HorizontalAlignment="Center">
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                             <TextBlock Text="TESTER SETUP GUIDE" FontSize="22" FontWeight="Black" Foreground="#FFE67E22" VerticalAlignment="Center" Margin="0,0,16,0" />
@@ -1525,7 +1525,7 @@
             </TabItem>
             <TabItem Header="Settings" DockPanel.Dock="Right">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
-                    <StackPanel MaxWidth="600" HorizontalAlignment="Left">
+                    <StackPanel MaxWidth="600" HorizontalAlignment="Center">
 
                         <TextBlock Text="SETTINGS" FontSize="22" FontWeight="Black" Foreground="#FFE67E22" Margin="0,0,0,4" />
                         <TextBlock Text="Configure devices and button assignments." FontSize="13" Foreground="#FF888888" Margin="0,0,0,16" TextWrapping="Wrap" />
@@ -1707,7 +1707,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            <TabItem Header="Debug" DockPanel.Dock="Right">
+            <TabItem Header="Debug">
                 <DockPanel Background="#FF151525">
                     <Button DockPanel.Dock="Top" Content="Copy All to Clipboard" Margin="16,12,16,8"
                             Padding="12,6" FontSize="12" HorizontalAlignment="Left"
