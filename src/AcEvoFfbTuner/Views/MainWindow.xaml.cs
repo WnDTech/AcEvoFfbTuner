@@ -135,6 +135,7 @@ public partial class MainWindow : Window
         base.OnClosed(e);
         _guideOverlay?.Close();
         _profilerOverlay?.Close();
+        _trackMapPopout?.Close();
         Application.Current.Shutdown();
     }
 
@@ -149,6 +150,7 @@ public partial class MainWindow : Window
 
     private TestingGuideOverlay? _guideOverlay;
     private ProfilerOverlay? _profilerOverlay;
+    private TrackMapPopout? _trackMapPopout;
 
     private void OpenGuideOverlay(object sender, RoutedEventArgs e)
     {
@@ -174,6 +176,19 @@ public partial class MainWindow : Window
         _profilerOverlay = new ProfilerOverlay();
         _profilerOverlay.Closed += (_, _) => _profilerOverlay = null;
         _profilerOverlay.Show();
+    }
+
+    private void OpenTrackMapPopout(object sender, RoutedEventArgs e)
+    {
+        if (_trackMapPopout != null)
+        {
+            _trackMapPopout.Activate();
+            return;
+        }
+
+        _trackMapPopout = new TrackMapPopout();
+        _trackMapPopout.Closed += (_, _) => _trackMapPopout = null;
+        _trackMapPopout.Show();
     }
 
     // === PROFILER METHODS ===
@@ -666,6 +681,16 @@ public partial class MainWindow : Window
             _headingLine.Visibility = Visibility.Collapsed;
             _recordingTrail.Points = new PointCollection();
             _recordingWorldPts.Clear();
+        }
+
+        if (_trackMapPopout != null)
+        {
+            _trackMapPopout.UpdateFromMainWindow(
+                carX, carZ, heading, speedKmh,
+                isOnTrack, trackProgress, distanceFromCenter,
+                trackLengthM, waypointCount, isRecording, hasMap,
+                currentMap, forceHeatmap, showHeatmap,
+                showTrackEdges, diagnosticHeatmap, showDiagnostics);
         }
     }
 

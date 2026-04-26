@@ -1,0 +1,161 @@
+{
+  "version": 5,
+  "name": "Safe - Simagic Alpha",
+  "carMatch": "",
+  "mixMode": "Replace",
+  "outputGain": 0.4,
+  "forceSensitivity": 700,
+  "forceScale": 1,
+  "softClipThreshold": 0.75,
+  "compressionPower": 1.5,
+  "signCorrectionEnabled": true,
+  "wheelMaxTorqueNm": 15,
+  "mzFront": {
+    "gain": 1,
+    "enabled": true
+  },
+  "fxFront": {
+    "gain": 0.12,
+    "enabled": true
+  },
+  "fyFront": {
+    "gain": 0.15,
+    "enabled": true
+  },
+  "mzRear": {
+    "gain": 0,
+    "enabled": false
+  },
+  "fxRear": {
+    "gain": 0,
+    "enabled": false
+  },
+  "fyRear": {
+    "gain": 0,
+    "enabled": false
+  },
+  "finalFf": {
+    "gain": 0,
+    "enabled": false
+  },
+  "wheelLoadWeighting": 0,
+  "mzScale": 150,
+  "fxScale": 4000,
+  "fyScale": 4000,
+  "lutCurve": {
+    "outputValues": [
+      0,
+      0.03125,
+      0.0625,
+      0.09375,
+      0.125,
+      0.15625,
+      0.1875,
+      0.21875,
+      0.25,
+      0.28125,
+      0.3125,
+      0.34375,
+      0.375,
+      0.40625,
+      0.4375,
+      0.46875,
+      0.5,
+      0.53125,
+      0.5625,
+      0.59375,
+      0.625,
+      0.65625,
+      0.6875,
+      0.71875,
+      0.75,
+      0.78125,
+      0.8125,
+      0.84375,
+      0.875,
+      0.90625,
+      0.9375,
+      0.96875,
+      1
+    ]
+  },
+  "steeringLockDegrees": 900,
+  "damping": {
+    "speedDamping": 1,
+    "friction": 0.5,
+    "inertia": 0.25,
+    "dampingSpeedReference": 200,
+    "lowSpeedDampingBoost": 3,
+    "lowSpeedThreshold": 20
+  },
+  "slip": {
+    "slipRatioGain": 0.08,
+    "slipAngleGain": 0.15,
+    "slipThreshold": 0.05,
+    "useFrontOnly": true
+  },
+  "dynamic": {
+    "corneringForce": 0,
+    "accelerationBrakingForce": 0,
+    "roadFeel": 0.3,
+    "carRotationForce": 0
+  },
+  "autoGain": {
+    "enabled": false,
+    "scale": 1
+  },
+  "vibrations": {
+    "curbGain": 0.8,
+    "slipGain": 0.6,
+    "roadGain": 0.4,
+    "absGain": 0.8,
+    "masterGain": 0.25,
+    "suspensionRoadGain": 1.5
+  },
+  "advanced": {
+    "maxSlewRate": 0.2,
+    "centerSuppressionDegrees": 6,
+    "centerKneePower": 1,
+    "hysteresisThreshold": 0.015,
+    "noiseFloor": 0.005,
+    "hysteresisWatchdogFrames": 5,
+    "centerBlendDegrees": 1,
+    "steerVelocityReference": 10,
+    "velocityDeadzone": 0.05,
+    "lowSpeedSmoothKmh": 25
+  },
+  "ledEffects": {
+    "brightness": 100,
+    "flashRateTicks": 16,
+    "absFlashEnabled": true,
+    "flagIndicatorsEnabled": true,
+    "shiftLimiterFlashEnabled": true,
+    "colorScheme": "TrafficLight",
+    "rpmPreset": "Default",
+    "rpmThresholds": [
+      50,
+      60,
+      70,
+      80,
+      85,
+      90,
+      93,
+      96,
+      98,
+      100
+    ],
+    "customColors": [
+      "#FF00CE00",
+      "#FF00CE00",
+      "#FF00CE00",
+      "#FFFFCC00",
+      "#FFFFCC00",
+      "#FFFFCC00",
+      "#FFFF6600",
+      "#FFFF6600",
+      "#FFFF0606",
+      "#FFFF0606"
+    ]
+  },
+  "lastTelemetrySnapshot": null
+}

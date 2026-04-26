@@ -1,0 +1,772 @@
+{
+  "version": 5,
+  "name": "Safe - Simagic Alpha_diag_20260426_101331",
+  "carMatch": "",
+  "mixMode": "Replace",
+  "outputGain": 0.4,
+  "forceSensitivity": 700,
+  "forceScale": 1,
+  "softClipThreshold": 0.75,
+  "compressionPower": 1.5,
+  "signCorrectionEnabled": true,
+  "wheelMaxTorqueNm": 15,
+  "mzFront": {
+    "gain": 1,
+    "enabled": true
+  },
+  "fxFront": {
+    "gain": 0.12,
+    "enabled": true
+  },
+  "fyFront": {
+    "gain": 0.15,
+    "enabled": true
+  },
+  "mzRear": {
+    "gain": 0,
+    "enabled": false
+  },
+  "fxRear": {
+    "gain": 0,
+    "enabled": false
+  },
+  "fyRear": {
+    "gain": 0,
+    "enabled": false
+  },
+  "finalFf": {
+    "gain": 0,
+    "enabled": false
+  },
+  "wheelLoadWeighting": 0,
+  "mzScale": 150,
+  "fxScale": 4000,
+  "fyScale": 4000,
+  "lutCurve": {
+    "outputValues": [
+      0,
+      0.03125,
+      0.0625,
+      0.09375,
+      0.125,
+      0.15625,
+      0.1875,
+      0.21875,
+      0.25,
+      0.28125,
+      0.3125,
+      0.34375,
+      0.375,
+      0.40625,
+      0.4375,
+      0.46875,
+      0.5,
+      0.53125,
+      0.5625,
+      0.59375,
+      0.625,
+      0.65625,
+      0.6875,
+      0.71875,
+      0.75,
+      0.78125,
+      0.8125,
+      0.84375,
+      0.875,
+      0.90625,
+      0.9375,
+      0.96875,
+      1
+    ]
+  },
+  "steeringLockDegrees": 900,
+  "damping": {
+    "speedDamping": 1,
+    "friction": 0.5,
+    "inertia": 0.25,
+    "dampingSpeedReference": 200,
+    "lowSpeedDampingBoost": 3,
+    "lowSpeedThreshold": 20
+  },
+  "slip": {
+    "slipRatioGain": 0.08,
+    "slipAngleGain": 0.15,
+    "slipThreshold": 0.05,
+    "useFrontOnly": true
+  },
+  "dynamic": {
+    "corneringForce": 0,
+    "accelerationBrakingForce": 0,
+    "roadFeel": 0.3,
+    "carRotationForce": 0
+  },
+  "autoGain": {
+    "enabled": false,
+    "scale": 1
+  },
+  "vibrations": {
+    "curbGain": 0.8,
+    "slipGain": 0.6,
+    "roadGain": 0.4,
+    "absGain": 0.8,
+    "masterGain": 0.25,
+    "suspensionRoadGain": 1.5
+  },
+  "advanced": {
+    "maxSlewRate": 0.2,
+    "centerSuppressionDegrees": 6,
+    "centerKneePower": 1,
+    "hysteresisThreshold": 0.015,
+    "noiseFloor": 0.005,
+    "hysteresisWatchdogFrames": 5,
+    "centerBlendDegrees": 1,
+    "steerVelocityReference": 10,
+    "velocityDeadzone": 0.05,
+    "lowSpeedSmoothKmh": 25
+  },
+  "ledEffects": {
+    "brightness": 100,
+    "flashRateTicks": 16,
+    "absFlashEnabled": true,
+    "flagIndicatorsEnabled": true,
+    "shiftLimiterFlashEnabled": true,
+    "colorScheme": "TrafficLight",
+    "rpmPreset": "Default",
+    "rpmThresholds": [
+      50,
+      60,
+      70,
+      80,
+      85,
+      90,
+      93,
+      96,
+      98,
+      100
+    ],
+    "customColors": [
+      "#FF00CE00",
+      "#FF00CE00",
+      "#FF00CE00",
+      "#FFFFCC00",
+      "#FFFFCC00",
+      "#FFFFCC00",
+      "#FFFF6600",
+      "#FFFF6600",
+      "#FFFF0606",
+      "#FFFF0606"
+    ]
+  },
+  "lastTelemetrySnapshot": {
+    "capturedAtUtc": "2026-04-26T14:13:31.7301223Z",
+    "physics": {
+      "packetId": 28128,
+      "gas": 0.0014500022,
+      "brake": 0,
+      "fuel": 29.964985,
+      "gear": 2,
+      "rpms": 1957,
+      "steerAngle": 0.0015697674,
+      "speedKmh": 0.0008769992,
+      "velocity": [
+        -7.696294E-07,
+        -1.0266587E-06,
+        0.00024359056
+      ],
+      "accG": [
+        0,
+        0,
+        0
+      ],
+      "wheelSlip": [
+        0.07379092,
+        0.104266465,
+        0.07580523,
+        0.116446555
+      ],
+      "wheelLoad": [
+        3301.0852,
+        3499.1252,
+        3544.2317,
+        3450.6238
+      ],
+      "wheelsPressure": [
+        25.792698,
+        25.792364,
+        25.33475,
+        25.338772
+      ],
+      "wheelAngularSpeed": [
+        -0.00072398054,
+        -0.00072453136,
+        -0.00074426795,
+        -0.00074426795
+      ],
+      "tyreWear": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "tyreDirtyLevel": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "tyreCoreTemperature": [
+        57.840538,
+        57.837067,
+        58.278576,
+        58.320484
+      ],
+      "camberRad": [
+        -0.062088277,
+        0.061664928,
+        -0.05202588,
+        0.05267211
+      ],
+      "suspensionTravel": [
+        0.036363848,
+        0.037103154,
+        0.053722125,
+        0.05329138
+      ],
+      "drs": 0,
+      "tc": 0,
+      "heading": 3.1380436,
+      "pitch": 0.013314987,
+      "roll": 0.018472478,
+      "cgHeight": 0.3726043,
+      "carDamage": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numberOfTyresOut": 0,
+      "pitLimiterOn": 0,
+      "abs": 0,
+      "kersCharge": 0,
+      "kersInput": 0,
+      "autoShifterOn": 0,
+      "rideHeight": [
+        54.480103,
+        54.480103
+      ],
+      "turboBoost": 3.2931692E-07,
+      "ballast": 0,
+      "airDensity": 1.1855999,
+      "airTemp": 26,
+      "roadTemp": 30,
+      "localAngularVel": [
+        3.1381278E-06,
+        -2.0849243E-06,
+        3.6426995E-06
+      ],
+      "finalFf": -0,
+      "performanceMeter": 0,
+      "engineBrake": 0,
+      "ersRecoveryLevel": 0,
+      "ersPowerLevel": 0,
+      "ersHeatCharging": 0,
+      "ersIsCharging": 0,
+      "kersCurrentKj": 0,
+      "drsAvailable": 0,
+      "drsEnabled": 0,
+      "brakeTemp": [
+        44.32627,
+        44.36987,
+        36.822697,
+        36.823437
+      ],
+      "clutch": 0,
+      "tyreTempI": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "tyreTempM": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "tyreTempO": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "isAiControlled": 0,
+      "tyreContactPoint": [
+        {
+          "x": -341.5192,
+          "y": 40.933895,
+          "z": 185.13115
+        },
+        {
+          "x": -339.74765,
+          "y": 40.904846,
+          "z": 185.12442
+        },
+        {
+          "x": -341.51315,
+          "y": 40.909363,
+          "z": 188.0626
+        },
+        {
+          "x": -339.73233,
+          "y": 40.87754,
+          "z": 188.05577
+        }
+      ],
+      "tyreContactNormal": [
+        {
+          "x": 0.017286642,
+          "y": 0.99982655,
+          "z": 0.006927315
+        },
+        {
+          "x": 0.018869134,
+          "y": 0.9997788,
+          "z": 0.009288157
+        },
+        {
+          "x": 0.019016648,
+          "y": 0.9997977,
+          "z": 0.006554541
+        },
+        {
+          "x": 0.019016648,
+          "y": 0.9997977,
+          "z": 0.006554541
+        }
+      ],
+      "tyreContactHeading": [
+        {
+          "x": 0.0039894274,
+          "y": -0.0069972677,
+          "z": 0.9999676
+        },
+        {
+          "x": 0.0022249785,
+          "y": -0.009331777,
+          "z": 0.999954
+        },
+        {
+          "x": 0.0019209888,
+          "y": -0.0065922514,
+          "z": 0.9999764
+        },
+        {
+          "x": 0.00541101,
+          "y": -0.006658546,
+          "z": 0.99996316
+        }
+      ],
+      "brakeBias": 0.62,
+      "localVelocity": [
+        1.6747794E-06,
+        2.1861222E-06,
+        -0.00024357837
+      ],
+      "p2pActivations": 0,
+      "p2pStatus": 0,
+      "currentMaxRpm": 7000,
+      "mz": [
+        0.0026729477,
+        -0.0039107054,
+        0.0029658263,
+        -0.005105785
+      ],
+      "fx": [
+        0.010798016,
+        0.065067396,
+        5.5670214,
+        -6.220115
+      ],
+      "fy": [
+        -274.94107,
+        396.89737,
+        -304.1286,
+        437.4035
+      ],
+      "slipRatio": [
+        4.8989715E-08,
+        -1.9044046E-08,
+        -7.058856E-05,
+        8.338077E-05
+      ],
+      "slipAngle": [
+        0.0028991536,
+        0.00034024863,
+        0.00094026263,
+        0.0031901384
+      ],
+      "tcInAction": 0,
+      "absInAction": 0,
+      "suspensionDamage": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "tyreTemp": [
+        57.840538,
+        57.837067,
+        58.278576,
+        58.320484
+      ],
+      "waterTemp": 73.68913,
+      "brakeTorque": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "frontBrakeCompound": 0,
+      "rearBrakeCompound": 0,
+      "padLife": [
+        0.028999733,
+        0.028999731,
+        0.02899984,
+        0.02899984
+      ],
+      "discLife": [
+        0.031999867,
+        0.031999867,
+        0.03199992,
+        0.03199992
+      ],
+      "ignitionOn": 1,
+      "starterEngineOn": 0,
+      "isEngineRunning": 1,
+      "kerbVibration": 0,
+      "slipVibrations": 0,
+      "roadVibrations": 0,
+      "absVibrations": 0
+    },
+    "graphics": {
+      "packetId": 6993,
+      "status": "AcLive",
+      "rpm": 1957,
+      "isRpmLimiterOn": false,
+      "isChangeUpRpm": false,
+      "isChangeDownRpm": false,
+      "tcActive": false,
+      "absActive": false,
+      "escActive": false,
+      "launchActive": false,
+      "isIgnitionOn": false,
+      "isEngineRunning": true,
+      "kersIsCharging": false,
+      "isWrongWay": false,
+      "isDrsAvailable": false,
+      "batteryIsCharging": false,
+      "displaySpeedKmh": 0,
+      "displaySpeedMph": 0,
+      "displaySpeedMs": 0,
+      "gearInt": 2,
+      "rpmPercent": 0.27969778,
+      "gasPercent": 0.0014500022,
+      "brakePercent": 0,
+      "handbrakePercent": 0,
+      "clutchPercent": 1,
+      "steeringPercent": 0.0015697674,
+      "ffbStrength": -0,
+      "carFfbMultiplier": 0.75,
+      "waterTemperaturePercent": 0.6140694,
+      "waterPressureBar": 1.15,
+      "fuelPressureBar": 2.3390934,
+      "waterTemperatureC": 73,
+      "airTemperatureC": 26,
+      "oilTemperatureC": 82.53093,
+      "oilPressureBar": 2.618791,
+      "exhaustTemperatureC": 100,
+      "gForcesX": 0,
+      "gForcesY": 0,
+      "gForcesZ": 0,
+      "turboBoost": 3.2931692E-07,
+      "turboBoostLevel": 1,
+      "turboBoostPerc": 2.0582307E-07,
+      "steerDegrees": 0,
+      "currentKm": 0.139721,
+      "totalKm": 413,
+      "totalDrivingTimeS": 0,
+      "timeOfDayHours": 19,
+      "timeOfDayMinutes": 7,
+      "timeOfDaySeconds": 52,
+      "deltaTimeMs": 0,
+      "currentLapTimeMs": 69802,
+      "predictedLapTimeMs": 0,
+      "fuelLiterCurrentQuantity": 29.964985,
+      "fuelLiterCurrentQuantityPercent": 0.2497082,
+      "fuelLiterPerKm": 0.2506073,
+      "kmPerFuelLiter": 3.9903066,
+      "currentTorque": 1.2959714E-05,
+      "currentBhp": 0,
+      "tyreLf": {
+        "slip": 0.07378995,
+        "lock": false,
+        "tyrePression": -2.5849394E-26,
+        "tyreTemperatureC": 5.9980056E+28,
+        "brakeTemperatureC": 8.349578E+11,
+        "brakePressure": 6.07883E-39,
+        "tyreTemperatureLeft": -1.8626451E-09,
+        "tyreTemperatureCenter": -0.0029642922,
+        "tyreTemperatureRight": 3182779.8,
+        "tyreCompoundFront": "-ABSlick (S)",
+        "tyreCompoundRear": "",
+        "tyreNormalizedPressure": 0,
+        "tyreNormalizedTemperatureLeft": -0,
+        "tyreNormalizedTemperatureCenter": -4.6151826E-22,
+        "tyreNormalizedTemperatureRight": -2.9064193E-26,
+        "brakeNormalizedTemperature": -8.753651E-31,
+        "tyreNormalizedTemperatureCore": 8.7E-44
+      },
+      "tyreRf": {
+        "slip": 0,
+        "lock": false,
+        "tyrePression": 0.10426523,
+        "tyreTemperatureC": 0,
+        "brakeTemperatureC": 25.792433,
+        "brakePressure": 57.837772,
+        "tyreTemperatureLeft": 44.370087,
+        "tyreTemperatureCenter": 0,
+        "tyreTemperatureRight": 48.2561,
+        "tyreCompoundFront": "\u001A?BB5zDBSlick (S)",
+        "tyreCompoundRear": "",
+        "tyreNormalizedPressure": 0,
+        "tyreNormalizedTemperatureLeft": 0,
+        "tyreNormalizedTemperatureCenter": 0,
+        "tyreNormalizedTemperatureRight": -1.1487064E+24,
+        "brakeNormalizedTemperature": -1.4880476E-33,
+        "tyreNormalizedTemperatureCore": -7.168986E-18
+      },
+      "tyreLr": {
+        "slip": 0,
+        "lock": false,
+        "tyrePression": 0,
+        "tyreTemperatureC": -1.5830492E-22,
+        "brakeTemperatureC": 8.5E-44,
+        "brakePressure": -5691264,
+        "tyreTemperatureLeft": 1.1928478E+25,
+        "tyreTemperatureCenter": 2.5568095E-27,
+        "tyreTemperatureRight": 9.2E-44,
+        "tyreCompoundFront": "",
+        "tyreCompoundRear": "",
+        "tyreNormalizedPressure": 0,
+        "tyreNormalizedTemperatureLeft": 0,
+        "tyreNormalizedTemperatureCenter": 0,
+        "tyreNormalizedTemperatureRight": 0,
+        "brakeNormalizedTemperature": 6.8034467E-13,
+        "tyreNormalizedTemperatureCore": 762.7218
+      },
+      "tyreRr": {
+        "slip": 0,
+        "lock": false,
+        "tyrePression": 0,
+        "tyreTemperatureC": 0,
+        "brakeTemperatureC": 5.6076806E+35,
+        "brakePressure": 2.2216E-41,
+        "tyreTemperatureLeft": -1.758337E-06,
+        "tyreTemperatureCenter": 406030.3,
+        "tyreTemperatureRight": 13910633,
+        "tyreCompoundFront": "\u0013B",
+        "tyreCompoundRear": "",
+        "tyreNormalizedPressure": 0,
+        "tyreNormalizedTemperatureLeft": 0,
+        "tyreNormalizedTemperatureCenter": 0,
+        "tyreNormalizedTemperatureRight": 0,
+        "brakeNormalizedTemperature": 0,
+        "tyreNormalizedTemperatureCore": 1
+      },
+      "npos": 0,
+      "kersChargePerc": 0,
+      "kersCurrentPerc": 0,
+      "controlLockTime": 0,
+      "carDamage": {
+        "damageFront": 0,
+        "damageRear": 0.06598832,
+        "damageLeft": 0,
+        "damageRight": 0,
+        "damageCenter": 0,
+        "damageSuspensionLf": 0,
+        "damageSuspensionRf": 0,
+        "damageSuspensionLr": 0,
+        "damageSuspensionRr": 0
+      },
+      "carLocation": "AcevoNone",
+      "pitInfo": {
+        "damage": 0,
+        "fuel": 0,
+        "tyresLf": 0,
+        "tyresRf": 0,
+        "tyresLr": 0,
+        "tyresRr": 0
+      },
+      "fuelLiterUsed": 0,
+      "fuelLiterPerLap": 0,
+      "lapsPossibleWithFuel": 0,
+      "batteryTemperature": 0,
+      "batteryVoltage": 0,
+      "instantaneousFuelLiterPerKm": 0.035015106,
+      "instantaneousKmPerFuelLiter": 6.3391557,
+      "gearRpmWindow": 4.726968,
+      "instrumentation": {
+        "mainLightStage": 0,
+        "specialLightStage": 0,
+        "cockpitLightStage": 0,
+        "wiperLevel": 0,
+        "rainLights": true,
+        "directionLightLeft": true,
+        "directionLightRight": true,
+        "flashingLights": true,
+        "warningLights": false,
+        "areHeadlightsVisible": false,
+        "selectedDisplayIndex": 0
+      },
+      "electronics": {
+        "tcLevel": 0,
+        "tcCutLevel": 0,
+        "absLevel": 0,
+        "escLevel": 0,
+        "ebbLevel": 0,
+        "brakeBias": 0,
+        "engineMapLevel": 0,
+        "turboLevel": 0,
+        "ersDeploymentMap": 0,
+        "ersRechargeMap": 0,
+        "isErsHeatChargingOn": false,
+        "isErsOvertakeModeOn": true,
+        "isDrsOpen": false,
+        "diffPowerLevel": 4,
+        "diffCoastLevel": 0,
+        "frontBumpDamperLevel": 0,
+        "frontReboundDamperLevel": 0,
+        "rearBumpDamperLevel": 0,
+        "rearReboundDamperLevel": 0,
+        "isIgnitionOn": true,
+        "isPitlimiterOn": true,
+        "activePerformanceMode": 30
+      },
+      "totalLapCount": 0,
+      "currentPos": 0,
+      "totalDrivers": 0,
+      "lastLaptimeMs": 0,
+      "bestLaptimeMs": 0,
+      "flag": "AcNoFlag",
+      "globalFlag": "AcNoFlag",
+      "maxGears": 0,
+      "engineType": "AcevoInternalCombustion",
+      "hasKers": false,
+      "isLastLap": false,
+      "performanceModeName": "",
+      "diffCoastRawValue": 0,
+      "diffPowerRawValue": 0,
+      "raceCutGainedTimeMs": 0,
+      "distanceToDeadline": 6,
+      "raceCutCurrentDelta": 0,
+      "sessionState": {
+        "phaseName": "",
+        "timeLeft": "",
+        "timeLeftMs": 0,
+        "waitTime": "",
+        "totalLap": 0,
+        "currentLap": 0,
+        "lightsOn": 0,
+        "lightsMode": 0,
+        "lapLengthKm": 0,
+        "endSessionFlag": 942800896,
+        "timeToNextSession": ":50",
+        "disconnectedFromServer": true,
+        "restartSeasonEnabled": false,
+        "uiEnableDrive": false,
+        "uiEnableSetup": false,
+        "isReadyToNextBlinking": false,
+        "showWaitingForPlayers": false
+      },
+      "timingState": {
+        "currentLaptime": "",
+        "deltaCurrent": "",
+        "deltaCurrentP": 0,
+        "lastLaptime": "",
+        "deltaLast": "",
+        "deltaLastP": 808988217,
+        "bestLaptime": "2",
+        "idealLaptime": "",
+        "totalTime": "",
+        "isInvalid": false
+      },
+      "playerPing": 0,
+      "playerLatency": 0,
+      "playerCpuUsage": 0,
+      "playerCpuUsageAvg": 0,
+      "playerQos": 0,
+      "playerQosAvg": 0,
+      "playerFps": 0,
+      "playerFpsAvg": 0,
+      "driverName": "",
+      "driverSurname": "",
+      "carModel": "nnor",
+      "isInPitBox": true,
+      "isInPitLane": true,
+      "isValidLap": true,
+      "gapAhead": 0,
+      "gapBehind": 0,
+      "activeCars": 0,
+      "fuelPerLap": 0,
+      "fuelEstimatedLaps": 0,
+      "assistsState": {
+        "autoGear": 0,
+        "autoBlip": 0,
+        "autoClutch": 0,
+        "autoClutchOnStart": 0,
+        "manualIgnitionEStart": 0,
+        "autoPitLimiter": 0,
+        "standingStartAssist": 0,
+        "autoSteer": 0,
+        "arcadeStabilityControl": 0
+      },
+      "maxFuel": 9.1835E-41,
+      "maxTurboBoost": 1E-45,
+      "useSingleCompound": false
+    },
+    "static": {
+      "smVersion": "1.0",
+      "acEvoVersion": "0.6.2",
+      "session": "AcPractice",
+      "sessionName": "Practice",
+      "startingGrip": "AcevoGreen",
+      "startingAmbientTemperatureC": 0,
+      "startingGroundTemperatureC": 0,
+      "isStaticWeather": false,
+      "isTimedRace": false,
+      "isOnline": false,
+      "numberOfSessions": 1,
+      "nation": "ITA",
+      "longitude": 0,
+      "latitude": 0,
+      "track": "Monza",
+      "trackConfiguration": "GP",
+      "trackLengthM": 3.85186E-34,
+      "numCars": 0,
+      "maxRpm": -1257766912,
+      "maxFuel": 9.7E-44,
+      "steerRatio": 0,
+      "suspensionMaxTravel": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "playerName": "",
+      "playerSurname": "",
+      "playerNick": "",
+      "carModel": ""
+    }
+  }
+}

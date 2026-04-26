@@ -1,0 +1,175 @@
+<Window x:Class="AcEvoFfbTuner.Views.TrackMapPopout"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FFB Tuner — Track Map"
+        Width="520"
+        Height="560"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        Loaded="OnLoaded"
+        Deactivated="OnDeactivated">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <Style TargetType="Border">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#FF333355" />
+            <Setter Property="Foreground" Value="#FFE0E0E0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.85" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FFE0E0E0" />
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder" CornerRadius="8" Padding="1"
+            Background="#88E67E22"
+            MouseLeftButtonDown="OnDragMove"
+            MouseWheel="OnMouseWheel">
+
+        <Border x:Name="ContentBorder" CornerRadius="7" Background="#8A0D0D0D">
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="#991A1A2E" CornerRadius="7,7,0,0" Padding="10,6"
+                        MouseLeftButtonDown="OnDragMove">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="TRACK MAP" FontSize="15" FontWeight="Black"
+                                       Foreground="#FFE67E22" VerticalAlignment="Center" />
+                            <TextBlock x:Name="OvTrackName" Text="" FontSize="13" Foreground="#FF00E676"
+                                       VerticalAlignment="Center" Margin="10,0,0,0" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="BtnRecord" Content="Rec" ToolTip="Record Lap"
+                                    Click="StartRecording" Margin="0,0,4,0" Padding="8,3" />
+                            <Button x:Name="BtnComplete" Content="Save" ToolTip="Complete &amp; Save"
+                                    Click="CompleteAndSave" Margin="0,0,4,0" Padding="8,3" />
+                            <Button x:Name="BtnTransparency" ToolTip="Toggle transparency"
+                                    Width="28" Height="28" FontSize="16" Padding="0" Margin="0,0,4,0"
+                                    Click="ToggleTransparency">
+                                <TextBlock x:Name="TransparencyIcon" Text="OPQ" FontSize="12" FontWeight="Bold" Foreground="#FFE0E0E0" />
+                            </Button>
+                            <Button x:Name="BtnClose" ToolTip="Close"
+                                    Width="28" Height="28" FontSize="16" Padding="0"
+                                    Background="#FF552222" Click="CloseOverlay">
+                                <TextBlock Text="X" FontWeight="Bold" Foreground="#FFE0E0E0" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="1" Background="#FF1A1A2E" Padding="8,4" Margin="0,1,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                            <TextBlock Text="Progress" FontSize="10" Foreground="#FF888888" />
+                            <TextBlock x:Name="OvProgress" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="0,0,4,0">
+                            <TextBlock Text="Corner" FontSize="10" Foreground="#FF888888" />
+                            <TextBlock x:Name="OvCorner" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Margin="0,0,4,0">
+                            <TextBlock Text="Sector" FontSize="10" Foreground="#FF888888" />
+                            <TextBlock x:Name="OvSector" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FF00BCD4" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="3" Margin="0,0,4,0">
+                            <TextBlock Text="Status" FontSize="10" Foreground="#FF888888" />
+                            <TextBlock x:Name="OvOnTrack" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FF555555" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="4" Margin="0,0,4,0">
+                            <TextBlock Text="Waypoints" FontSize="10" Foreground="#FF888888" />
+                            <TextBlock x:Name="OvWaypoints" Text="--" FontSize="14" Foreground="#FFE0E0E0" />
+                        </StackPanel>
+                        <CheckBox x:Name="OvShowHeatmap" Grid.Column="5" Content="Heat" IsChecked="True"
+                                  FontSize="12" Foreground="#FFAAAAAA" VerticalAlignment="Center" Margin="4,0" />
+                        <CheckBox x:Name="OvShowEdges" Grid.Column="6" Content="Edges" IsChecked="False"
+                                  FontSize="12" Foreground="#FFAAAAAA" VerticalAlignment="Center" Margin="4,0" />
+                        <CheckBox x:Name="OvShowDiag" Grid.Column="7" Content="Diag" IsChecked="True"
+                                  FontSize="12" Foreground="#FFFF8A65" VerticalAlignment="Center" Margin="4,0" />
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="2" Background="#FF151525" Margin="0,1,0,0">
+                    <Canvas x:Name="OvCanvas" ClipToBounds="True" />
+                </Border>
+
+                <Border Grid.Row="3" Background="#FF1A1A2E" Padding="8,4" Margin="0,1,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="8" Height="8" Margin="0,0,4,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="#FF555555" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ElementName=OvStatusDot}" Value="True">
+                                                <Setter Property="Fill" Value="#FFE67E22" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock x:Name="OvStatusDot" />
+                            <TextBlock x:Name="OvMapStatus" Text="No Map" FontSize="12" Foreground="#FF888888" VerticalAlignment="Center" />
+                            <TextBlock x:Name="OvTrackStats" Text="" FontSize="11" Foreground="#FF666666" VerticalAlignment="Center" Margin="12,0,0,0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="X:" FontSize="12" Foreground="#FF888888" Margin="0,0,3,0" />
+                            <TextBlock x:Name="OvCarX" Text="--" FontSize="12" Foreground="#FFE0E0E0" FontFamily="Consolas" Margin="0,0,10,0" />
+                            <TextBlock Text="Z:" FontSize="12" Foreground="#FF888888" Margin="0,0,3,0" />
+                            <TextBlock x:Name="OvCarZ" Text="--" FontSize="12" Foreground="#FFE0E0E0" FontFamily="Consolas" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="4" Background="#991A1A2E" CornerRadius="0,0,7,7" Padding="8,3">
+                    <TextBlock Text="Drag to move | Scroll to resize | Rec/Save to create track map"
+                               FontSize="11" Foreground="#FF666666" />
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</Window>

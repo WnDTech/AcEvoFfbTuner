@@ -1068,6 +1068,7 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                                <Button Content="Pop Out Map" Click="OpenTrackMapPopout" Padding="12,4" FontSize="14" FontWeight="Bold" Margin="0,0,6,0" />
                                 <Button Content="Record Lap" Command="{Binding StartTrackMapRecordingCommand}" Padding="12,4" FontSize="14" Margin="0,0,6,0" />
                                 <Button Content="Stop" Command="{Binding StopTrackMapRecordingCommand}" Padding="12,4" FontSize="14" Margin="0,0,6,0" Style="{StaticResource OutlinedButton}" />
                                 <Button Content="Complete &amp; Save" Command="{Binding CompleteAndSaveTrackMapCommand}" Padding="12,4" FontSize="14" Margin="0,0,6,0" Style="{StaticResource OutlinedButton}" />
