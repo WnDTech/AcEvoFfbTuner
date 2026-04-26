@@ -411,7 +411,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            <TabItem Header="FFB Settings">
+            <TabItem Header="Wheelbase FFB Settings">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -1038,6 +1038,29 @@
                                 </StackPanel>
                             </Border>
 
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Pedal FFB Settings">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="PEDAL FORCE FEEDBACK" Style="{StaticResource GroupHeader}" />
+                            <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
+                                <StackPanel>
+                                    <TextBlock Text="Placeholder — pedal-specific FFB controls will be added here." FontSize="14" Foreground="#FF999999" Margin="0,4" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>
