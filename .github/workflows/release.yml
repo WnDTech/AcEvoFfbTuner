@@ -80,6 +80,20 @@ jobs:
           Set-Content -Path "installer\setup-ci.iss" -Value $iss
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\setup-ci.iss"
 
+      - name: Clean old assets from release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ steps.version.outputs.tag }}"
+          $existing = gh release view "$tag" --json assets --jq ".assets[].name" 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            foreach ($asset in $existing) {
+              Write-Host "Removing old asset: $asset"
+              gh release delete-asset "$tag" "$asset" --yes
+            }
+          }
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
