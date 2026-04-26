@@ -96,6 +96,7 @@ jobs:
           } else {
             Write-Host "No existing release to clean for $tag"
           }
+          exit 0
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
