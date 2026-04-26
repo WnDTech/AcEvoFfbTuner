@@ -1638,186 +1638,199 @@
             </TabItem>
             <TabItem Header="Settings" DockPanel.Dock="Right">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
-                    <StackPanel MaxWidth="600" HorizontalAlignment="Center">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
 
-                        <TextBlock Text="SETTINGS" FontSize="22" FontWeight="Black" Foreground="#FFE67E22" Margin="0,0,0,4" />
-                        <TextBlock Text="Configure devices and button assignments." FontSize="13" Foreground="#FF888888" Margin="0,0,0,16" TextWrapping="Wrap" />
-                        <Border Background="#FF333355" Height="1" Margin="0,0,0,16" />
+                        <!-- LEFT COLUMN -->
+                        <StackPanel Grid.Column="0">
 
-                        <!-- SNAPSHOT BUTTON -->
-                        <TextBlock Text="Wheel Snapshot Button" Style="{StaticResource SubSectionHeader}" />
-                        <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4,0,6">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Button:" FontSize="13" Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                <ComboBox Grid.Column="1" SelectedIndex="{Binding SnapshotButtonComboIndex}" Width="140" FontSize="12" Padding="6,4" Margin="0,0,12,0">
-                                    <ComboBoxItem Content="Disabled" />
-                                    <ComboBoxItem Content="Button 1" />
-                                    <ComboBoxItem Content="Button 2" />
-                                    <ComboBoxItem Content="Button 3" />
-                                    <ComboBoxItem Content="Button 4" />
-                                    <ComboBoxItem Content="Button 5" />
-                                    <ComboBoxItem Content="Button 6" />
-                                    <ComboBoxItem Content="Button 7" />
-                                    <ComboBoxItem Content="Button 8" />
-                                    <ComboBoxItem Content="Button 9" />
-                                    <ComboBoxItem Content="Button 10" />
-                                    <ComboBoxItem Content="Button 11" />
-                                    <ComboBoxItem Content="Button 12" />
-                                    <ComboBoxItem Content="Button 13" />
-                                    <ComboBoxItem Content="Button 14" />
-                                    <ComboBoxItem Content="Button 15" />
-                                    <ComboBoxItem Content="Button 16" />
-                                    <ComboBoxItem Content="Button 17" />
-                                    <ComboBoxItem Content="Button 18" />
-                                    <ComboBoxItem Content="Button 19" />
-                                    <ComboBoxItem Content="Button 20" />
-                                    <ComboBoxItem Content="Button 21" />
-                                    <ComboBoxItem Content="Button 22" />
-                                    <ComboBoxItem Content="Button 23" />
-                                    <ComboBoxItem Content="Button 24" />
-                                    <ComboBoxItem Content="Button 25" />
-                                    <ComboBoxItem Content="Button 26" />
-                                    <ComboBoxItem Content="Button 27" />
-                                    <ComboBoxItem Content="Button 28" />
-                                    <ComboBoxItem Content="Button 29" />
-                                    <ComboBoxItem Content="Button 30" />
-                                    <ComboBoxItem Content="Button 31" />
-                                    <ComboBoxItem Content="Button 32" />
-                                </ComboBox>
-                                <TextBlock Grid.Column="2" Text="Press while driving to auto-save a telemetry snapshot" FontSize="11" Foreground="#FF666666" VerticalAlignment="Center" />
-                                <TextBlock x:Name="ProfButtonsDetected" Grid.Column="3" Text="" FontSize="11" Foreground="#FFFFD600" FontWeight="Bold" VerticalAlignment="Center" />
-                            </Grid>
-                        </Border>
-                        <TextBlock Text="Uses the same device as your FFB wheel. Select a button that's easy to reach while driving." Style="{StaticResource SliderDescription}" Margin="0,0,0,16" />
+                            <TextBlock Text="SETTINGS" FontSize="22" FontWeight="Black" Foreground="#FFE67E22" Margin="0,0,0,4" />
+                            <TextBlock Text="Configure devices and button assignments." FontSize="13" Foreground="#FF888888" Margin="0,0,0,16" TextWrapping="Wrap" />
+                            <Border Background="#FF333355" Height="1" Margin="0,0,0,16" />
 
-                        <!-- PANIC BUTTON DEVICE -->
-                        <TextBlock Text="Panic Stop Button" Style="{StaticResource SubSectionHeader}" Margin="0,8,0,2" />
-                        <TextBlock Text="Since the app takes over FFB output, you can assign a button on a SEPARATE device (e.g. a button box or second controller) as a hardware panic stop." FontSize="12" Foreground="#FF888888" Margin="0,0,0,10" TextWrapping="Wrap" />
+                            <TextBlock Text="Wheel Snapshot Button" Style="{StaticResource SubSectionHeader}" />
+                            <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4,0,6">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Button:" FontSize="13" Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <ComboBox Grid.Column="1" SelectedIndex="{Binding SnapshotButtonComboIndex}" FontSize="12" Padding="6,4">
+                                            <ComboBoxItem Content="Disabled" />
+                                            <ComboBoxItem Content="Button 1" />
+                                            <ComboBoxItem Content="Button 2" />
+                                            <ComboBoxItem Content="Button 3" />
+                                            <ComboBoxItem Content="Button 4" />
+                                            <ComboBoxItem Content="Button 5" />
+                                            <ComboBoxItem Content="Button 6" />
+                                            <ComboBoxItem Content="Button 7" />
+                                            <ComboBoxItem Content="Button 8" />
+                                            <ComboBoxItem Content="Button 9" />
+                                            <ComboBoxItem Content="Button 10" />
+                                            <ComboBoxItem Content="Button 11" />
+                                            <ComboBoxItem Content="Button 12" />
+                                            <ComboBoxItem Content="Button 13" />
+                                            <ComboBoxItem Content="Button 14" />
+                                            <ComboBoxItem Content="Button 15" />
+                                            <ComboBoxItem Content="Button 16" />
+                                            <ComboBoxItem Content="Button 17" />
+                                            <ComboBoxItem Content="Button 18" />
+                                            <ComboBoxItem Content="Button 19" />
+                                            <ComboBoxItem Content="Button 20" />
+                                            <ComboBoxItem Content="Button 21" />
+                                            <ComboBoxItem Content="Button 22" />
+                                            <ComboBoxItem Content="Button 23" />
+                                            <ComboBoxItem Content="Button 24" />
+                                            <ComboBoxItem Content="Button 25" />
+                                            <ComboBoxItem Content="Button 26" />
+                                            <ComboBoxItem Content="Button 27" />
+                                            <ComboBoxItem Content="Button 28" />
+                                            <ComboBoxItem Content="Button 29" />
+                                            <ComboBoxItem Content="Button 30" />
+                                            <ComboBoxItem Content="Button 31" />
+                                            <ComboBoxItem Content="Button 32" />
+                                        </ComboBox>
+                                    </Grid>
+                                    <TextBlock Text="Press while driving to auto-save a telemetry snapshot" FontSize="11" Foreground="#FF666666" />
+                                    <TextBlock x:Name="ProfButtonsDetected" Text="" FontSize="11" Foreground="#FFFFD600" FontWeight="Bold" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="Uses the same device as your FFB wheel. Select a button that's easy to reach while driving." Style="{StaticResource SliderDescription}" Margin="0,0,0,16" />
 
-                        <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4,0,6">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Device:" FontSize="13" Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding PanicDevices}" SelectedItem="{Binding SelectedPanicDevice}" FontSize="12" Padding="6,4" Margin="0,0,10,0">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding ProductName}" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
-                                    <Button Grid.Column="2" Content="Refresh" Command="{Binding RefreshDevicesCommand}" Padding="10,4" FontSize="11" Style="{StaticResource OutlinedButton}" />
-                                </Grid>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Button:" FontSize="13" Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding PanicButtonComboIndex}" Width="140" FontSize="12" Padding="6,4">
-                                        <ComboBoxItem Content="Disabled" />
-                                        <ComboBoxItem Content="Button 1" />
-                                        <ComboBoxItem Content="Button 2" />
-                                        <ComboBoxItem Content="Button 3" />
-                                        <ComboBoxItem Content="Button 4" />
-                                        <ComboBoxItem Content="Button 5" />
-                                        <ComboBoxItem Content="Button 6" />
-                                        <ComboBoxItem Content="Button 7" />
-                                        <ComboBoxItem Content="Button 8" />
-                                        <ComboBoxItem Content="Button 9" />
-                                        <ComboBoxItem Content="Button 10" />
-                                        <ComboBoxItem Content="Button 11" />
-                                        <ComboBoxItem Content="Button 12" />
-                                        <ComboBoxItem Content="Button 13" />
-                                        <ComboBoxItem Content="Button 14" />
-                                        <ComboBoxItem Content="Button 15" />
-                                        <ComboBoxItem Content="Button 16" />
-                                    </ComboBox>
-                                    <TextBlock Grid.Column="2" Text="When pressed, immediately zeros all FFB output" FontSize="11" Foreground="#FF666666" VerticalAlignment="Center" Margin="10,0,0,0" />
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="#443B00" CornerRadius="4" Padding="10,6" Margin="0,6,0,16">
-                            <TextBlock Text="The panic device is opened in non-exclusive mode, so it won't conflict with the game or your FFB wheel." FontSize="11" Foreground="#FFFFAB00" TextWrapping="Wrap" />
-                        </Border>
+                            <TextBlock Text="Panic Stop Button" Style="{StaticResource SubSectionHeader}" Margin="0,8,0,2" />
+                            <TextBlock Text="Assign a button on a SEPARATE device (e.g. a button box) as a hardware panic stop." FontSize="12" Foreground="#FF888888" Margin="0,0,0,10" TextWrapping="Wrap" />
 
-                        <!-- STARTUP SOUND SECTION -->
-                        <TextBlock Text="Startup Effect" Style="{StaticResource SubSectionHeader}" Margin="0,8,0,2" />
-                        <TextBlock Text="Customize the splash screen and startup sound." FontSize="12" Foreground="#FF888888" Margin="0,0,0,10" TextWrapping="Wrap" />
+                            <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4,0,6">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Device:" FontSize="13" Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <ComboBox Grid.Column="1" ItemsSource="{Binding PanicDevices}" SelectedItem="{Binding SelectedPanicDevice}" FontSize="12" Padding="6,4" Margin="0,0,10,0">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding ProductName}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        <Button Grid.Column="2" Content="Refresh" Command="{Binding RefreshDevicesCommand}" Padding="10,4" FontSize="11" Style="{StaticResource OutlinedButton}" />
+                                    </Grid>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Button:" FontSize="13" Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <ComboBox Grid.Column="1" SelectedIndex="{Binding PanicButtonComboIndex}" FontSize="12" Padding="6,4">
+                                            <ComboBoxItem Content="Disabled" />
+                                            <ComboBoxItem Content="Button 1" />
+                                            <ComboBoxItem Content="Button 2" />
+                                            <ComboBoxItem Content="Button 3" />
+                                            <ComboBoxItem Content="Button 4" />
+                                            <ComboBoxItem Content="Button 5" />
+                                            <ComboBoxItem Content="Button 6" />
+                                            <ComboBoxItem Content="Button 7" />
+                                            <ComboBoxItem Content="Button 8" />
+                                            <ComboBoxItem Content="Button 9" />
+                                            <ComboBoxItem Content="Button 10" />
+                                            <ComboBoxItem Content="Button 11" />
+                                            <ComboBoxItem Content="Button 12" />
+                                            <ComboBoxItem Content="Button 13" />
+                                            <ComboBoxItem Content="Button 14" />
+                                            <ComboBoxItem Content="Button 15" />
+                                            <ComboBoxItem Content="Button 16" />
+                                        </ComboBox>
+                                    </Grid>
+                                    <TextBlock Text="When pressed, immediately zeros all FFB output" FontSize="11" Foreground="#FF666666" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <Border Background="#443B00" CornerRadius="4" Padding="10,6" Margin="0,6,0,16">
+                                <TextBlock Text="The panic device is opened in non-exclusive mode, so it won't conflict with the game or your FFB wheel." FontSize="11" Foreground="#FFFFAB00" TextWrapping="Wrap" />
+                            </Border>
 
-                        <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4,0,6">
-                            <StackPanel>
-                                <CheckBox Content="Show splash screen on startup" IsChecked="{Binding SplashScreenEnabled}"
-                                          FontSize="13" Foreground="#FFE0E0E0" Margin="0,0,0,12" />
+                        </StackPanel>
 
-                                <TextBlock Text="Audio Output Device" FontSize="12" Foreground="#FFCCCCCC" Margin="0,0,0,4" />
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0" ItemsSource="{Binding AudioOutputDevices}"
-                                              SelectedItem="{Binding SelectedAudioOutputDevice}"
-                                              FontSize="12" Padding="6,4" Margin="0,0,10,0" />
-                                    <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshRecordingDevicesCommand}"
-                                            Padding="10,4" FontSize="11" Style="{StaticResource OutlinedButton}" />
-                                </Grid>
+                        <!-- RIGHT COLUMN -->
+                        <StackPanel Grid.Column="2">
 
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Button Grid.Column="0" Content="&#xE120;" FontFamily="Segoe MDL2 Assets"
-                                            Command="{Binding StartRecordingCommand}"
-                                            Visibility="{Binding IsRecording, Converter={StaticResource InvertBoolToVis}}"
-                                            Padding="10,6" FontSize="14" Margin="0,0,6,0"
-                                            Background="#FF00C853" Foreground="White" BorderThickness="0"
-                                            ToolTip="Start Recording" />
-                                    <Button Grid.Column="1" Content="&#xE71A;" FontFamily="Segoe MDL2 Assets"
-                                            Command="{Binding StopRecordingCommand}"
-                                            Visibility="{Binding IsRecording, Converter={StaticResource BoolToVis}}"
-                                            Padding="10,6" FontSize="14" Margin="0,0,6,0"
-                                            Background="#FFFF1744" Foreground="White" BorderThickness="0"
-                                            ToolTip="Stop Recording" />
-                                    <Button Grid.Column="2" Content="Preview" Command="{Binding PreviewStartupSoundCommand}"
-                                            Padding="10,6" FontSize="11" Style="{StaticResource OutlinedButton}" Margin="0,0,6,0" />
-                                    <Button Grid.Column="3" Content="Browse" Command="{Binding BrowseStartupSoundCommand}"
-                                            Padding="10,6" FontSize="11" Style="{StaticResource OutlinedButton}" />
-                                </Grid>
+                            <TextBlock Text="STARTUP EFFECT" FontSize="22" FontWeight="Black" Foreground="#FFE67E22" Margin="0,0,0,4" />
+                            <TextBlock Text="Customize the splash screen and startup sound." FontSize="13" Foreground="#FF888888" Margin="0,0,0,16" TextWrapping="Wrap" />
+                            <Border Background="#FF333355" Height="1" Margin="0,0,0,16" />
 
-                                <TextBlock Text="{Binding RecordingStatus}" FontSize="11" Foreground="#FFAAAAAA" Margin="0,0,0,6" />
+                            <TextBlock Text="Startup Effect" Style="{StaticResource SubSectionHeader}" Margin="0,0,0,2" />
 
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{Binding CustomStartupSoundPath, TargetNullValue='Using default engine sound', FallbackValue='Using default engine sound'}"
-                                               FontSize="11" Foreground="#FF888888" TextTrimming="CharacterEllipsis"
-                                               VerticalAlignment="Center" />
-                                    <Button Grid.Column="1" Content="Clear" Command="{Binding ClearStartupSoundCommand}"
-                                            Padding="8,2" FontSize="10" Style="{StaticResource OutlinedButton}"
-                                            Visibility="{Binding CustomStartupSoundPath, Converter={StaticResource NullToVis}}" />
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-                        <TextBlock Text="Records audio from your selected output device (speakers/headphones). Start recording, then play the game engine sound you want to capture. Or use Browse to pick an existing audio file." Style="{StaticResource SliderDescription}" Margin="0,0,0,16" />
+                            <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4,0,6">
+                                <StackPanel>
+                                    <CheckBox Content="Show splash screen on startup" IsChecked="{Binding SplashScreenEnabled}"
+                                              FontSize="13" Foreground="#FFE0E0E0" Margin="0,0,0,12" />
 
-                    </StackPanel>
+                                    <TextBlock Text="Audio Output Device" FontSize="12" Foreground="#FFCCCCCC" Margin="0,0,0,4" />
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox Grid.Column="0" ItemsSource="{Binding AudioOutputDevices}"
+                                                  SelectedItem="{Binding SelectedAudioOutputDevice}"
+                                                  FontSize="12" Padding="6,4" Margin="0,0,10,0" />
+                                        <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshRecordingDevicesCommand}"
+                                                Padding="10,4" FontSize="11" Style="{StaticResource OutlinedButton}" />
+                                    </Grid>
+
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0" Content="&#xE120;" FontFamily="Segoe MDL2 Assets"
+                                                Command="{Binding StartRecordingCommand}"
+                                                Visibility="{Binding IsRecording, Converter={StaticResource InvertBoolToVis}}"
+                                                Padding="10,6" FontSize="14" Margin="0,0,6,0"
+                                                Background="#FF00C853" Foreground="White" BorderThickness="0"
+                                                ToolTip="Start Recording" />
+                                        <Button Grid.Column="1" Content="&#xE71A;" FontFamily="Segoe MDL2 Assets"
+                                                Command="{Binding StopRecordingCommand}"
+                                                Visibility="{Binding IsRecording, Converter={StaticResource BoolToVis}}"
+                                                Padding="10,6" FontSize="14" Margin="0,0,6,0"
+                                                Background="#FFFF1744" Foreground="White" BorderThickness="0"
+                                                ToolTip="Stop Recording" />
+                                        <Button Grid.Column="2" Content="Preview" Command="{Binding PreviewStartupSoundCommand}"
+                                                Padding="10,6" FontSize="11" Style="{StaticResource OutlinedButton}" Margin="0,0,6,0" />
+                                        <Button Grid.Column="3" Content="Browse" Command="{Binding BrowseStartupSoundCommand}"
+                                                Padding="10,6" FontSize="11" Style="{StaticResource OutlinedButton}" />
+                                    </Grid>
+
+                                    <TextBlock Text="{Binding RecordingStatus}" FontSize="11" Foreground="#FFAAAAAA" Margin="0,0,0,6" />
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding CustomStartupSoundPath, TargetNullValue='Using default engine sound', FallbackValue='Using default engine sound'}"
+                                                   FontSize="11" Foreground="#FF888888" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Content="Clear" Command="{Binding ClearStartupSoundCommand}"
+                                                Padding="8,2" FontSize="10" Style="{StaticResource OutlinedButton}"
+                                                Visibility="{Binding CustomStartupSoundPath, Converter={StaticResource NullToVis}}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="Records audio from your selected output device (speakers/headphones). Start recording, then play the game engine sound you want to capture. Or use Browse to pick an existing audio file." Style="{StaticResource SliderDescription}" Margin="0,0,0,16" />
+
+                        </StackPanel>
+                    </Grid>
                 </ScrollViewer>
             </TabItem>
             <TabItem Header="Debug">
