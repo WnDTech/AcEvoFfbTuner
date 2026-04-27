@@ -1773,7 +1773,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                     <StackPanel>
                         <TextBlock Text="LED EFFECTS" FontSize="24" FontWeight="Black" Foreground="#FFE67E22" Margin="0,0,0,4" />
-                        <TextBlock Text="Currently supported: Moza and Fanatec wheel bases. Other brands coming soon." FontSize="15" Foreground="#FF888888" Margin="0,0,0,4" />
+                        <TextBlock Text="{Binding LedSupportedInfo}" FontSize="15" Foreground="#FF888888" Margin="0,0,0,4" />
                         <Border Background="#FF333355" Height="1" Margin="0,0,0,16" />
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -1786,6 +1786,7 @@
                         <StackPanel Grid.Column="0">
 
                             <!-- LED BRIGHTNESS -->
+                            <StackPanel Visibility="{Binding LedBrightnessVisible, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="BRIGHTNESS" Style="{StaticResource GroupHeader}" />
                             <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
                                 <StackPanel>
@@ -1795,10 +1796,11 @@
                                             <TextBlock Text="{Binding LedBrightness, StringFormat='{}{0}%'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
                                             <Slider Value="{Binding LedBrightness}" Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
-                                        <TextBlock Text="LED brightness for SDK-controlled wheels" Style="{StaticResource SliderDescription}" />
+                                        <TextBlock Text="LED brightness (SDK-connected wheels only)" Style="{StaticResource SliderDescription}" />
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
+                            </StackPanel>
 
                             <!-- FLASH SETTINGS -->
                             <TextBlock Text="FLASH EFFECTS" Style="{StaticResource GroupHeader}" />
@@ -1820,6 +1822,7 @@
                                     </DockPanel>
                                     <TextBlock Text="Flashes the first and last LED when ABS is active" Style="{StaticResource SliderDescription}" Margin="0,0,0,6" />
 
+                                    <StackPanel Visibility="{Binding LedFlagIndicatorsVisible, Converter={StaticResource BoolToVis}}">
                                     <DockPanel Margin="0,6">
                                         <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
                                             <CheckBox IsChecked="{Binding LedFlagIndicatorsEnabled}" Margin="0,0,12,0" />
@@ -1827,6 +1830,7 @@
                                         </StackPanel>
                                     </DockPanel>
                                     <TextBlock Text="Show race flags (yellow, red, blue, etc.) on LEDs" Style="{StaticResource SliderDescription}" Margin="0,0,0,6" />
+                                    </StackPanel>
 
                                     <StackPanel Margin="0,6">
                                         <DockPanel>
@@ -1840,11 +1844,12 @@
                             </Border>
 
                             <!-- COLOR SCHEME -->
+                            <StackPanel Visibility="{Binding LedColorSchemeVisible, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="COLOR SCHEME" Style="{StaticResource GroupHeader}" />
                             <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
                                 <StackPanel>
                                     <TextBlock Text="Color Preset" Style="{StaticResource SubSectionHeader}" />
-                                    <TextBlock Text="For wheels with RGB LED support (Fanatec, Moza via SDK)" Style="{StaticResource SliderDescription}" Margin="0,0,0,8" />
+                                    <TextBlock Text="For wheels with per-LED RGB control" Style="{StaticResource SliderDescription}" Margin="0,0,0,8" />
                                     <ComboBox SelectedIndex="{Binding LedColorSchemeIndex}" Width="200" FontSize="15" Padding="6,4" HorizontalAlignment="Left">
                                         <ComboBoxItem Content="Traffic Light (Green/Yellow/Red)" />
                                         <ComboBoxItem Content="Blue Gradient" />
@@ -1852,12 +1857,9 @@
                                         <ComboBoxItem Content="Monochrome" />
                                         <ComboBoxItem Content="Custom" />
                                     </ComboBox>
-                                    <TextBlock TextWrapping="Wrap" Foreground="#FF888888" FontSize="14" Margin="0,8,0,0">
-                                        <Run Text="Note: ES wheels have static LED colors. Color settings" /><LineBreak/>
-                                        <Run Text="apply to wheels with per-LED RGB control (Fanatec, Moza SDK)." />
-                                    </TextBlock>
                                 </StackPanel>
                             </Border>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Right Column -->
@@ -1879,70 +1881,70 @@
                                     <TextBlock Text="Individual RPM Thresholds (% of redline)" Style="{StaticResource SubSectionHeader}" Margin="0,6,0,4" />
                                     <TextBlock Text="Each LED lights up when RPM reaches its threshold" Style="{StaticResource SliderDescription}" Margin="0,0,0,6" />
 
-                                    <StackPanel Margin="0,4">
+                                    <StackPanel Margin="0,4" Visibility="{Binding LedRpmThreshold1Visible, Converter={StaticResource BoolToVis}}">
                                         <DockPanel>
                                             <TextBlock Text="LED 1" Width="60" VerticalAlignment="Center" FontSize="14" Foreground="#FF00CE00" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding LedRpmThreshold1, StringFormat='{}{0}%'}" Width="52" VerticalAlignment="Center" FontSize="14" DockPanel.Dock="Right" />
                                             <Slider Value="{Binding LedRpmThreshold1}" Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
-                                    <StackPanel Margin="0,4">
+                                    <StackPanel Margin="0,4" Visibility="{Binding LedRpmThreshold2Visible, Converter={StaticResource BoolToVis}}">
                                         <DockPanel>
                                             <TextBlock Text="LED 2" Width="60" VerticalAlignment="Center" FontSize="14" Foreground="#FF00CE00" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding LedRpmThreshold2, StringFormat='{}{0}%'}" Width="52" VerticalAlignment="Center" FontSize="14" DockPanel.Dock="Right" />
                                             <Slider Value="{Binding LedRpmThreshold2}" Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
-                                    <StackPanel Margin="0,4">
+                                    <StackPanel Margin="0,4" Visibility="{Binding LedRpmThreshold3Visible, Converter={StaticResource BoolToVis}}">
                                         <DockPanel>
                                             <TextBlock Text="LED 3" Width="60" VerticalAlignment="Center" FontSize="14" Foreground="#FF00CE00" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding LedRpmThreshold3, StringFormat='{}{0}%'}" Width="52" VerticalAlignment="Center" FontSize="14" DockPanel.Dock="Right" />
                                             <Slider Value="{Binding LedRpmThreshold3}" Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
-                                    <StackPanel Margin="0,4">
+                                    <StackPanel Margin="0,4" Visibility="{Binding LedRpmThreshold4Visible, Converter={StaticResource BoolToVis}}">
                                         <DockPanel>
                                             <TextBlock Text="LED 4" Width="60" VerticalAlignment="Center" FontSize="14" Foreground="#FFFFCC00" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding LedRpmThreshold4, StringFormat='{}{0}%'}" Width="52" VerticalAlignment="Center" FontSize="14" DockPanel.Dock="Right" />
                                             <Slider Value="{Binding LedRpmThreshold4}" Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
-                                    <StackPanel Margin="0,4">
+                                    <StackPanel Margin="0,4" Visibility="{Binding LedRpmThreshold5Visible, Converter={StaticResource BoolToVis}}">
                                         <DockPanel>
                                             <TextBlock Text="LED 5" Width="60" VerticalAlignment="Center" FontSize="14" Foreground="#FFFFCC00" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding LedRpmThreshold5, StringFormat='{}{0}%'}" Width="52" VerticalAlignment="Center" FontSize="14" DockPanel.Dock="Right" />
                                             <Slider Value="{Binding LedRpmThreshold5}" Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
-                                    <StackPanel Margin="0,4">
+                                    <StackPanel Margin="0,4" Visibility="{Binding LedRpmThreshold6Visible, Converter={StaticResource BoolToVis}}">
                                         <DockPanel>
                                             <TextBlock Text="LED 6" Width="60" VerticalAlignment="Center" FontSize="14" Foreground="#FFFFCC00" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding LedRpmThreshold6, StringFormat='{}{0}%'}" Width="52" VerticalAlignment="Center" FontSize="14" DockPanel.Dock="Right" />
                                             <Slider Value="{Binding LedRpmThreshold6}" Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
-                                    <StackPanel Margin="0,4">
+                                    <StackPanel Margin="0,4" Visibility="{Binding LedRpmThreshold7Visible, Converter={StaticResource BoolToVis}}">
                                         <DockPanel>
                                             <TextBlock Text="LED 7" Width="60" VerticalAlignment="Center" FontSize="14" Foreground="#FFFF6600" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding LedRpmThreshold7, StringFormat='{}{0}%'}" Width="52" VerticalAlignment="Center" FontSize="14" DockPanel.Dock="Right" />
                                             <Slider Value="{Binding LedRpmThreshold7}" Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
-                                    <StackPanel Margin="0,4">
+                                    <StackPanel Margin="0,4" Visibility="{Binding LedRpmThreshold8Visible, Converter={StaticResource BoolToVis}}">
                                         <DockPanel>
                                             <TextBlock Text="LED 8" Width="60" VerticalAlignment="Center" FontSize="14" Foreground="#FFFF6600" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding LedRpmThreshold8, StringFormat='{}{0}%'}" Width="52" VerticalAlignment="Center" FontSize="14" DockPanel.Dock="Right" />
                                             <Slider Value="{Binding LedRpmThreshold8}" Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
-                                    <StackPanel Margin="0,4">
+                                    <StackPanel Margin="0,4" Visibility="{Binding LedRpmThreshold9Visible, Converter={StaticResource BoolToVis}}">
                                         <DockPanel>
                                             <TextBlock Text="LED 9" Width="60" VerticalAlignment="Center" FontSize="14" Foreground="#FFFF0606" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding LedRpmThreshold9, StringFormat='{}{0}%'}" Width="52" VerticalAlignment="Center" FontSize="14" DockPanel.Dock="Right" />
                                             <Slider Value="{Binding LedRpmThreshold9}" Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                     </StackPanel>
-                                    <StackPanel Margin="0,4">
+                                    <StackPanel Margin="0,4" Visibility="{Binding LedRpmThreshold10Visible, Converter={StaticResource BoolToVis}}">
                                         <DockPanel>
                                             <TextBlock Text="LED 10" Width="60" VerticalAlignment="Center" FontSize="14" Foreground="#FFFF0606" FontWeight="Bold" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding LedRpmThreshold10, StringFormat='{}{0}%'}" Width="52" VerticalAlignment="Center" FontSize="14" FontWeight="Bold" DockPanel.Dock="Right" />

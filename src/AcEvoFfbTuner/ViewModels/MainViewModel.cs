@@ -393,6 +393,48 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private int _ledRpmThreshold10 = 100;
 
     [ObservableProperty]
+    private bool _ledTabVisible;
+
+    [ObservableProperty]
+    private bool _ledBrightnessVisible;
+
+    [ObservableProperty]
+    private bool _ledColorSchemeVisible;
+
+    [ObservableProperty]
+    private bool _ledFlagIndicatorsVisible;
+
+    [ObservableProperty]
+    private int _ledVisibleCount;
+
+    [ObservableProperty]
+    private string _ledVendorName = string.Empty;
+
+    [ObservableProperty]
+    private string _ledSupportedInfo = "Connect a wheel to configure LED effects";
+
+    [ObservableProperty]
+    private bool _ledRpmThreshold1Visible;
+    [ObservableProperty]
+    private bool _ledRpmThreshold2Visible;
+    [ObservableProperty]
+    private bool _ledRpmThreshold3Visible;
+    [ObservableProperty]
+    private bool _ledRpmThreshold4Visible;
+    [ObservableProperty]
+    private bool _ledRpmThreshold5Visible;
+    [ObservableProperty]
+    private bool _ledRpmThreshold6Visible;
+    [ObservableProperty]
+    private bool _ledRpmThreshold7Visible;
+    [ObservableProperty]
+    private bool _ledRpmThreshold8Visible;
+    [ObservableProperty]
+    private bool _ledRpmThreshold9Visible;
+    [ObservableProperty]
+    private bool _ledRpmThreshold10Visible;
+
+    [ObservableProperty]
     private int _snapshotButtonIndex = -1;
 
     [ObservableProperty]
@@ -818,6 +860,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 ? ""
                 : " | WARNING: wheel does not report periodic effect support — kerb/slip vibration may not work";
             StatusText = (_deviceManager.LastError ?? $"Connected to {SelectedDevice.ProductName}") + ledStatus + vibStatus;
+            UpdateLedCapabilities();
             PushLedConfig();
         }
         else
@@ -832,6 +875,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _deviceManager.DisconnectDevice();
         IsDeviceConnected = false;
         DeviceName = "No device";
+        ResetLedCapabilities();
     }
 
     partial void OnSelectedPanicDeviceChanged(FfbDeviceInfo? value)
@@ -1956,6 +2000,65 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.Equalizer.SetBandEnabled(8, EqBand8Enabled);
         _pipeline.Equalizer.SetBandEnabled(9, EqBand9Enabled);
         PushLedConfig();
+    }
+
+    private void UpdateLedCapabilities()
+    {
+        bool connected = _deviceManager.IsLedControllerConnected;
+        LedTabVisible = connected;
+
+        if (!connected)
+        {
+            ResetLedCapabilities();
+            return;
+        }
+
+        LedVendorName = _deviceManager.LedVendorDisplayName;
+        int count = _deviceManager.LedCount;
+        LedVisibleCount = count;
+        LedBrightnessVisible = _deviceManager.LedSupportsBrightness;
+        LedColorSchemeVisible = _deviceManager.LedSupportsRgb;
+        LedFlagIndicatorsVisible = _deviceManager.LedSupportsFlags;
+
+        LedRpmThreshold1Visible = count >= 1;
+        LedRpmThreshold2Visible = count >= 2;
+        LedRpmThreshold3Visible = count >= 3;
+        LedRpmThreshold4Visible = count >= 4;
+        LedRpmThreshold5Visible = count >= 5;
+        LedRpmThreshold6Visible = count >= 6;
+        LedRpmThreshold7Visible = count >= 7;
+        LedRpmThreshold8Visible = count >= 8;
+        LedRpmThreshold9Visible = count >= 9;
+        LedRpmThreshold10Visible = count >= 10;
+
+        var supported = new List<string>();
+        if (LedBrightnessVisible) supported.Add("Brightness");
+        if (LedColorSchemeVisible) supported.Add("RGB Colors");
+        if (LedFlagIndicatorsVisible) supported.Add("Flag Indicators");
+        supported.Add($"{count} RPM LEDs");
+
+        LedSupportedInfo = $"{LedVendorName} wheel detected — {string.Join(" · ", supported)}";
+    }
+
+    private void ResetLedCapabilities()
+    {
+        LedTabVisible = false;
+        LedBrightnessVisible = false;
+        LedColorSchemeVisible = false;
+        LedFlagIndicatorsVisible = false;
+        LedVisibleCount = 0;
+        LedVendorName = string.Empty;
+        LedSupportedInfo = "Connect a wheel to configure LED effects";
+        LedRpmThreshold1Visible = false;
+        LedRpmThreshold2Visible = false;
+        LedRpmThreshold3Visible = false;
+        LedRpmThreshold4Visible = false;
+        LedRpmThreshold5Visible = false;
+        LedRpmThreshold6Visible = false;
+        LedRpmThreshold7Visible = false;
+        LedRpmThreshold8Visible = false;
+        LedRpmThreshold9Visible = false;
+        LedRpmThreshold10Visible = false;
     }
 
     private void PushLedConfig()

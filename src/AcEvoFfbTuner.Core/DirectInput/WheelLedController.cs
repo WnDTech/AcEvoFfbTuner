@@ -173,6 +173,47 @@ public sealed class WheelLedController : IDisposable
     public string? LastError { get; private set; }
     public string DiagnosticSummary => string.Join("\n", _diagnosticLog);
 
+    public int LedCount => _vendor switch
+    {
+        WheelVendor.Logitech => LogitechLedCount,
+        WheelVendor.Fanatec => FanatecLedCount,
+        WheelVendor.Moza => MozaLedCount,
+        WheelVendor.Simucube => SimucubeLedCount,
+        _ => 0
+    };
+
+    public bool SupportsRgbColors => _vendor switch
+    {
+        WheelVendor.Moza => true,
+        WheelVendor.Simucube => true,
+        _ => false
+    };
+
+    public bool SupportsBrightnessControl => _vendor switch
+    {
+        WheelVendor.Moza => true,
+        _ => false
+    };
+
+    public bool SupportsFlagIndicators => _vendor switch
+    {
+        WheelVendor.Fanatec => true,
+        WheelVendor.Moza => true,
+        WheelVendor.Simucube => true,
+        _ => false
+    };
+
+    public string VendorDisplayName => _vendor switch
+    {
+        WheelVendor.Fanatec => "Fanatec",
+        WheelVendor.Moza => "Moza",
+        WheelVendor.Thrustmaster => "Thrustmaster",
+        WheelVendor.Simagic => "Simagic",
+        WheelVendor.Logitech => "Logitech",
+        WheelVendor.Simucube => "Simucube",
+        _ => "Unknown"
+    };
+
     public LedEffectConfig Config
     {
         get => _config;
