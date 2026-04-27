@@ -963,6 +963,7 @@
                                     </Expander>
                                 </StackPanel>
                             </Border>
+
                             <TextBlock Text="SIGNAL PROCESSING" Style="{StaticResource GroupHeader}" />
                             <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
                                 <StackPanel>
@@ -1063,6 +1064,144 @@
 
                         </StackPanel>
                     </Grid>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Effect Equalizer">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel Margin="16,8">
+                        <DockPanel Margin="0,0,0,12">
+                            <TextBlock Text="FFB EFFECT EQUALIZER" Style="{StaticResource GroupHeader}" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <TextBlock Text="Enable" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <CheckBox IsChecked="{Binding EqEnabled}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DockPanel>
+                        <TextBlock Text="10-band parametric EQ for the FFB force signal. Boost or cut frequency ranges to shape how forces feel through the wheel." FontSize="13" Foreground="#FF888888" Margin="0,0,0,16" TextWrapping="Wrap" />
+
+                        <Border Background="#FF22223A" CornerRadius="8" Padding="12,16" Margin="0,0,0,12">
+                            <Grid x:Name="EqSliderGrid">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Band 0: Sub (2 Hz) -->
+                                <StackPanel Grid.Column="0" HorizontalAlignment="Center" Margin="2,0">
+                                    <TextBlock Text="SUB" FontSize="14" FontWeight="Bold" Foreground="#FF90CAF9" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="2 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Slider x:Name="EqSlider0" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand0Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
+                                    <TextBlock Text="{Binding EqBand0Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF90CAF9" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <CheckBox IsChecked="{Binding EqBand0Enabled}" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                    <TextBlock Text="Static weight,&#x0A;force drift" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Band 1: Weight (4 Hz) -->
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Center" Margin="2,0">
+                                    <TextBlock Text="WEIGHT" FontSize="14" FontWeight="Bold" Foreground="#FF4FC3F7" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="4 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Slider x:Name="EqSlider1" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand1Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
+                                    <TextBlock Text="{Binding EqBand1Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF4FC3F7" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <CheckBox IsChecked="{Binding EqBand1Enabled}" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                    <TextBlock Text="Weight transfer,&#x0A;heave, steady load" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Band 2: Align (8 Hz) -->
+                                <StackPanel Grid.Column="2" HorizontalAlignment="Center" Margin="2,0">
+                                    <TextBlock Text="ALIGN" FontSize="14" FontWeight="Bold" Foreground="#FF4DB6AC" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="8 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Slider x:Name="EqSlider2" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand2Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
+                                    <TextBlock Text="{Binding EqBand2Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF4DB6AC" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <CheckBox IsChecked="{Binding EqBand2Enabled}" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                    <TextBlock Text="Self-aligning&#x0A;torque, balance" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Band 3: Detail (12 Hz) -->
+                                <StackPanel Grid.Column="3" HorizontalAlignment="Center" Margin="2,0">
+                                    <TextBlock Text="DETAIL" FontSize="14" FontWeight="Bold" Foreground="#FF66BB6A" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="12 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Slider x:Name="EqSlider3" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand3Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
+                                    <TextBlock Text="{Binding EqBand3Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF66BB6A" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <CheckBox IsChecked="{Binding EqBand3Enabled}" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                    <TextBlock Text="Steering precision,&#x0A;small corrections" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Band 4: Response (18 Hz) -->
+                                <StackPanel Grid.Column="4" HorizontalAlignment="Center" Margin="2,0">
+                                    <TextBlock Text="RESP" FontSize="14" FontWeight="Bold" Foreground="#FF9CCC65" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="18 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Slider x:Name="EqSlider4" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand4Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
+                                    <TextBlock Text="{Binding EqBand4Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF9CCC65" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <CheckBox IsChecked="{Binding EqBand4Enabled}" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                    <TextBlock Text="Transient response,&#x0A;turn-in feel" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Band 5: Texture (25 Hz) -->
+                                <StackPanel Grid.Column="5" HorizontalAlignment="Center" Margin="2,0">
+                                    <TextBlock Text="TEXTURE" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="25 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Slider x:Name="EqSlider5" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand5Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
+                                    <TextBlock Text="{Binding EqBand5Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <CheckBox IsChecked="{Binding EqBand5Enabled}" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                    <TextBlock Text="Road surface&#x0A;texture, fine grain" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Band 6: Road (35 Hz) -->
+                                <StackPanel Grid.Column="6" HorizontalAlignment="Center" Margin="2,0">
+                                    <TextBlock Text="ROAD" FontSize="14" FontWeight="Bold" Foreground="#FFFFB74D" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="35 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Slider x:Name="EqSlider6" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand6Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
+                                    <TextBlock Text="{Binding EqBand6Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFFFB74D" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <CheckBox IsChecked="{Binding EqBand6Enabled}" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                    <TextBlock Text="Bumps, patches,&#x0A;surface irregularities" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Band 7: Impact (50 Hz) -->
+                                <StackPanel Grid.Column="7" HorizontalAlignment="Center" Margin="2,0">
+                                    <TextBlock Text="IMPACT" FontSize="14" FontWeight="Bold" Foreground="#FFFF9800" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="50 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Slider x:Name="EqSlider7" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand7Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
+                                    <TextBlock Text="{Binding EqBand7Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFFF9800" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <CheckBox IsChecked="{Binding EqBand7Enabled}" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                    <TextBlock Text="Kerb strikes,&#x0A;sharp bumps, punch" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Band 8: Chatter (70 Hz) -->
+                                <StackPanel Grid.Column="8" HorizontalAlignment="Center" Margin="2,0">
+                                    <TextBlock Text="CHAT" FontSize="14" FontWeight="Bold" Foreground="#FFEF5350" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="70 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Slider x:Name="EqSlider8" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand8Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
+                                    <TextBlock Text="{Binding EqBand8Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFEF5350" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <CheckBox IsChecked="{Binding EqBand8Enabled}" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                    <TextBlock Text="High-freq chatter,&#x0A;wheel buzz" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Band 9: Buzz (100 Hz) -->
+                                <StackPanel Grid.Column="9" HorizontalAlignment="Center" Margin="2,0">
+                                    <TextBlock Text="BUZZ" FontSize="14" FontWeight="Bold" Foreground="#FFCE93D8" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="100 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Slider x:Name="EqSlider9" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand9Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
+                                    <TextBlock Text="{Binding EqBand9Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFCE93D8" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <CheckBox IsChecked="{Binding EqBand9Enabled}" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                    <TextBlock Text="ABS pulses, slip&#x0A;vibration, finest detail" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Connecting curve overlay -->
+                                <Canvas x:Name="EqCurveCanvas" Grid.ColumnSpan="10" IsHitTestVisible="False" />
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#FF1A1A2E" CornerRadius="4" Padding="12,8" Margin="0,4,0,0">
+                            <TextBlock Text="Tip: Start flat (0 dB), then boost/cut one band at a time while driving. The EQ processes the combined force signal after all channels and effects are mixed. 10-band parametric at ~333 Hz sample rate." FontSize="12" Foreground="#FF888888" TextWrapping="Wrap" />
+                        </Border>
+                    </StackPanel>
                 </ScrollViewer>
             </TabItem>
             <TabItem Header="Pedal FFB Settings">

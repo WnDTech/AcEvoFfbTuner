@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 6;
+    public const int CurrentVersion = 8;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -61,6 +61,7 @@ public sealed class FfbProfile
     public VibrationConfig Vibrations { get; set; } = new();
     public AdvancedConfig Advanced { get; set; } = new();
     public LfeConfig Lfe { get; set; } = new();
+    public EqConfig Equalizer { get; set; } = new();
     public LedEffectConfigDto LedEffects { get; set; } = new();
     public TelemetrySnapshotDto? LastTelemetrySnapshot { get; set; }
 
@@ -152,6 +153,13 @@ public sealed class FfbProfile
         pipeline.LfeGenerator.SuspensionDrive = Lfe.SuspensionDrive;
         pipeline.LfeGenerator.SpeedScaling = Lfe.SpeedScaling;
         pipeline.LfeGenerator.RpmDrive = Lfe.RpmDrive;
+
+        pipeline.Equalizer.MasterEnabled = Equalizer.Enabled;
+        for (int i = 0; i < FfbEqualizer.BandInfo.Length; i++)
+        {
+            pipeline.Equalizer.SetBandGain(i, Equalizer.GetGain(i));
+            pipeline.Equalizer.SetBandEnabled(i, Equalizer.GetEnabled(i));
+        }
     }
 
     public static FfbProfile CreateFromPipeline(FfbPipeline pipeline, string name)
@@ -247,6 +255,15 @@ public sealed class FfbProfile
             SpeedScaling = pipeline.LfeGenerator.SpeedScaling,
             RpmDrive = pipeline.LfeGenerator.RpmDrive
         };
+        Equalizer = new EqConfig
+        {
+            Enabled = pipeline.Equalizer.MasterEnabled
+        };
+        for (int i = 0; i < FfbEqualizer.BandInfo.Length; i++)
+        {
+            Equalizer.SetGain(i, pipeline.Equalizer.GetBandGain(i));
+            Equalizer.SetEnabled(i, pipeline.Equalizer.GetBandEnabled(i));
+        }
     }
 
     public static FfbProfile GetDefaultProfile(string name)
@@ -481,6 +498,30 @@ public sealed class FfbProfile
             Lfe = new LfeConfig();
         }
 
+        if (Version < 7)
+        {
+            Equalizer = new EqConfig();
+        }
+
+        if (Version < 8)
+        {
+            var oldEq = Equalizer;
+            Equalizer = new EqConfig { Enabled = oldEq.Enabled };
+            if (oldEq.BandGains.Length >= 5)
+            {
+                Equalizer.SetGain(0, oldEq.GetGain(0));
+                Equalizer.SetGain(1, oldEq.GetGain(1));
+                Equalizer.SetGain(2, oldEq.GetGain(2));
+                Equalizer.SetGain(3, oldEq.GetGain(3));
+                Equalizer.SetGain(4, oldEq.GetGain(4));
+                Equalizer.SetEnabled(0, oldEq.GetEnabled(0));
+                Equalizer.SetEnabled(1, oldEq.GetEnabled(1));
+                Equalizer.SetEnabled(2, oldEq.GetEnabled(2));
+                Equalizer.SetEnabled(3, oldEq.GetEnabled(3));
+                Equalizer.SetEnabled(4, oldEq.GetEnabled(4));
+            }
+        }
+
         Version = CurrentVersion;
     }
 }
@@ -614,6 +655,52 @@ public sealed class LfeConfig
     public float SuspensionDrive { get; set; } = 0.6f;
     public float SpeedScaling { get; set; } = 0.5f;
     public float RpmDrive { get; set; } = 0.3f;
+}
+
+public sealed class EqConfig
+{
+    public bool Enabled { get; set; } = false;
+
+    private readonly float[] _bandGains = new float[FfbEqualizer.BandInfo.Length];
+    private readonly bool[] _bandEnabled = new bool[FfbEqualizer.BandInfo.Length];
+
+    public float[] BandGains
+    {
+        get => _bandGains;
+        set
+        {
+            for (int i = 0; i < Math.Min(value.Length, _bandGains.Length); i++)
+                _bandGains[i] = value[i];
+        }
+    }
+
+    public bool[] BandEnabled
+    {
+        get => _bandEnabled;
+        set
+        {
+            for (int i = 0; i < Math.Min(value.Length, _bandEnabled.Length); i++)
+                _bandEnabled[i] = value[i];
+        }
+    }
+
+    public float GetGain(int band) =>
+        band >= 0 && band < _bandGains.Length ? _bandGains[band] : 0f;
+
+    public void SetGain(int band, float gain)
+    {
+        if (band >= 0 && band < _bandGains.Length)
+            _bandGains[band] = gain;
+    }
+
+    public bool GetEnabled(int band) =>
+        band >= 0 && band < _bandEnabled.Length && _bandEnabled[band];
+
+    public void SetEnabled(int band, bool enabled)
+    {
+        if (band >= 0 && band < _bandEnabled.Length)
+            _bandEnabled[band] = enabled;
+    }
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]

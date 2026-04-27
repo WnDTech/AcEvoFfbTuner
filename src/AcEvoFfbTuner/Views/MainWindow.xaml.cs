@@ -83,6 +83,20 @@ public partial class MainWindow : Window
 
     private readonly List<Point> _recordingWorldPts = new();
 
+    private readonly Slider[] _eqSliders = new Slider[10];
+    private readonly System.Windows.Shapes.Path _eqCurvePath = new()
+    {
+        Stroke = new SolidColorBrush(Color.FromArgb(0xDD, 0xFF, 0xA5, 0x00)),
+        StrokeThickness = 3
+    };
+    private readonly System.Windows.Shapes.Path _eqCurveFill = new()
+    {
+        StrokeThickness = 0,
+        Fill = new SolidColorBrush(Color.FromArgb(0x20, 0xFF, 0xA5, 0x00))
+    };
+    private readonly SolidColorBrush _eqZeroBrush = new(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
+    private readonly Polyline _eqZeroLine = new() { StrokeThickness = 1 };
+
     public MainWindow()
     {
         InitializeComponent();
@@ -128,6 +142,17 @@ public partial class MainWindow : Window
         TrackMapCanvas.Children.Add(_startDot);
         TrackMapCanvas.Children.Add(_headingLine);
         TrackMapCanvas.Children.Add(_carDot);
+
+        for (int i = 0; i < 10; i++)
+            _eqSliders[i] = (Slider)FindName($"EqSlider{i}");
+
+        _eqZeroLine.Stroke = _eqZeroBrush;
+        EqCurveCanvas.Children.Add(_eqZeroLine);
+        EqCurveCanvas.Children.Add(_eqCurveFill);
+        EqCurveCanvas.Children.Add(_eqCurvePath);
+
+        EqSliderGrid.SizeChanged += (s, e) => UpdateEqCurve();
+        UpdateEqCurve();
     }
 
     protected override void OnClosed(EventArgs e)
@@ -1088,5 +1113,99 @@ public partial class MainWindow : Window
     private void OnDonateClick(object sender, RoutedEventArgs e)
     {
         Process.Start(new ProcessStartInfo("https://paypal.me/willndad") { UseShellExecute = true });
+    }
+
+    private void EqSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateEqCurve();
+    }
+
+    private void UpdateEqCurve()
+    {
+        if (_eqSliders[0] == null) return;
+
+        double canvasW = EqCurveCanvas.ActualWidth;
+        double canvasH = EqCurveCanvas.ActualHeight;
+        if (canvasW <= 0 || canvasH <= 0) return;
+
+        double sliderHeight = 160.0;
+        double topPad = 0;
+        var parentPanel = _eqSliders[0].Parent as StackPanel;
+        if (parentPanel != null)
+        {
+            foreach (var child in parentPanel.Children)
+            {
+                if (child is TextBlock)
+                    topPad += 20;
+            }
+        }
+
+        double trackTop = topPad;
+        double trackBottom = trackTop + sliderHeight;
+        double trackMid = (trackTop + trackBottom) / 2.0;
+
+        var pts = new Point[10];
+        for (int i = 0; i < 10; i++)
+        {
+            double x = ((i + 0.5) / 10.0) * canvasW;
+            double gain = _eqSliders[i]?.Value ?? 0.0;
+            double y = trackMid - (gain / 12.0) * (sliderHeight / 2.0);
+            pts[i] = new Point(x, y);
+        }
+
+        var lineGeo = BuildCatmullRomSpline(pts, 8);
+        _eqCurvePath.Data = lineGeo;
+
+        var fillGeo = new StreamGeometry();
+        using (var fCtx = fillGeo.Open())
+        {
+            fCtx.BeginFigure(new Point(pts[0].X, trackMid), true, true);
+            AddCatmullRomPoints(fCtx, pts, 8);
+            fCtx.LineTo(new Point(pts[9].X, trackMid), true, false);
+        }
+        _eqCurveFill.Data = fillGeo;
+
+        _eqZeroLine.Points = new PointCollection(new[] { new Point(0, trackMid), new Point(canvasW, trackMid) });
+    }
+
+    private static StreamGeometry BuildCatmullRomSpline(Point[] pts, int subdivisions)
+    {
+        var geo = new StreamGeometry();
+        using (var ctx = geo.Open())
+        {
+            ctx.BeginFigure(pts[0], false, false);
+            AddCatmullRomPoints(ctx, pts, subdivisions);
+        }
+        return geo;
+    }
+
+    private static void AddCatmullRomPoints(StreamGeometryContext ctx, Point[] pts, int subdivisions)
+    {
+        int n = pts.Length;
+        for (int i = 0; i < n - 1; i++)
+        {
+            Point p0 = i > 0 ? pts[i - 1] : pts[i];
+            Point p1 = pts[i];
+            Point p2 = pts[i + 1];
+            Point p3 = i + 2 < n ? pts[i + 2] : pts[i + 1];
+
+            for (int s = 1; s <= subdivisions; s++)
+            {
+                double t = (double)s / subdivisions;
+                double t2 = t * t;
+                double t3 = t2 * t;
+
+                double x = 0.5 * ((2 * p1.X) +
+                    (-p0.X + p2.X) * t +
+                    (2 * p0.X - 5 * p1.X + 4 * p2.X - p3.X) * t2 +
+                    (-p0.X + 3 * p1.X - 3 * p2.X + p3.X) * t3);
+                double y = 0.5 * ((2 * p1.Y) +
+                    (-p0.Y + p2.Y) * t +
+                    (2 * p0.Y - 5 * p1.Y + 4 * p2.Y - p3.Y) * t2 +
+                    (-p0.Y + 3 * p1.Y - 3 * p2.Y + p3.Y) * t3);
+
+                ctx.LineTo(new Point(x, y), true, false);
+            }
+        }
     }
 }

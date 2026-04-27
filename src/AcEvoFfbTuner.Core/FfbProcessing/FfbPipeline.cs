@@ -12,6 +12,7 @@ public sealed class FfbPipeline
     public FfbVibrationMixer VibrationMixer { get; } = new();
     public FfbLfeGenerator LfeGenerator { get; } = new();
     public FfbOutputClipper OutputClipper { get; } = new();
+    public FfbEqualizer Equalizer { get; } = new();
 
     public float ForceScale { get; set; } = 1.0f;
     public float OutputGain { get; set; } = 1.0f;
@@ -81,6 +82,8 @@ public sealed class FfbPipeline
         float postDynamic = DynamicEffects.Apply(postDamping, raw);
 
         float output = OutputClipper.Process(postDynamic * OutputGain, out bool isClipping);
+
+        output = Equalizer.Process(output);
 
         if (SignCorrectionEnabled && raw.SpeedKmh > 2.0f)
         {
@@ -286,6 +289,7 @@ public sealed class FfbPipeline
         DynamicEffects.Reset();
         VibrationMixer.Reset();
         LfeGenerator.Reset();
+        Equalizer.Reset();
         _prevOutput = 0f;
         _prevSlewOutput = 0f;
         _lastSentOutput = 0f;
