@@ -38,6 +38,9 @@ public sealed class FfbDeviceManager : IDisposable
     private int _consecutiveForceErrors;
     private const int MaxConsecutiveErrors = 10;
     private volatile bool _reconnectRequested;
+    private const int MaxReconnectAttempts = 3;
+    private int _inlineReacquireCount;
+    private const int MaxInlineReacquireAttempts = 2;
 
     /// <summary>
     /// When true, the force output to the device is inverted (multiplied by -1).
@@ -83,11 +86,14 @@ public sealed class FfbDeviceManager : IDisposable
     public bool HasLostDeviceAccess => _consecutiveForceErrors >= MaxConsecutiveErrors;
     public bool SupportsPeriodicEffects { get; private set; }
     public string? LastError { get; private set; }
+    public DateTime LastReconnectAttempt { get; set; } = DateTime.MinValue;
+    public int ReconnectAttemptCount { get; set; }
 
     public void ResetLostState()
     {
         _consecutiveForceErrors = 0;
         _reconnectRequested = false;
+        _inlineReacquireCount = 0;
     }
 
     private readonly WheelLedController _ledController = new();
@@ -194,6 +200,12 @@ public sealed class FfbDeviceManager : IDisposable
                 DiscoverFfAxes();
                 ConnLog($"FFB axes: {string.Join(",", _ffAxes ?? Array.Empty<int>())}, Periodic: {SupportsPeriodicEffects}");
                 ConnectedDevice = deviceInfo;
+
+                ResetLostState();
+                _inlineReacquireCount = 0;
+                ReconnectAttemptCount = 0;
+                ConnLog("Lost state and reconnect counters reset after successful connect");
+
                 StartInterpolationThread();
 
                 if (!_ledController.TryConnect(deviceInfo.ProductName))
@@ -613,8 +625,23 @@ public sealed class FfbDeviceManager : IDisposable
     {
         if (_device == null) return;
 
+        _inlineReacquireCount++;
+        if (_inlineReacquireCount > MaxInlineReacquireAttempts)
+        {
+            ConnLog($"Inline re-acquire skipped (attempt {_inlineReacquireCount}, max {MaxInlineReacquireAttempts}) — escalating to full reconnect");
+            _consecutiveForceErrors = MaxConsecutiveErrors;
+            if (!_reconnectRequested)
+            {
+                _reconnectRequested = true;
+                LastError = "Device lost exclusive FFB access. Attempting full reconnect...";
+                ConnLog("DEVICE LOST — requesting full reconnect from ViewModel");
+                DeviceRequiresReconnect?.Invoke();
+            }
+            return;
+        }
+
         var savedDeviceInfo = ConnectedDevice;
-        ConnLog("Attempting re-acquire after NOTEXCLUSIVEACQUIRED...");
+        ConnLog($"Attempting re-acquire after NOTEXCLUSIVEACQUIRED (inline attempt {_inlineReacquireCount}/{MaxInlineReacquireAttempts})...");
 
         try
         {
@@ -629,6 +656,7 @@ public sealed class FfbDeviceManager : IDisposable
             _device.Acquire();
             _isAcquired = true;
             _consecutiveForceErrors = 0;
+            _inlineReacquireCount = 0;
             LastError = null;
             ConnLog("Re-acquire SUCCESS — device recovered");
         }

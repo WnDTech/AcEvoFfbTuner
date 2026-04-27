@@ -650,7 +650,26 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _deviceManager.DeviceRequiresReconnect += () => Application.Current?.Dispatcher.BeginInvoke(() =>
         {
             if (SelectedDevice == null) return;
-            StatusText = "FFB device lost — attempting auto-reconnect...";
+
+            var timeSinceLastReconnect = DateTime.Now - _deviceManager.LastReconnectAttempt;
+            if (timeSinceLastReconnect < TimeSpan.FromSeconds(5))
+            {
+                System.Diagnostics.Debug.WriteLine($"Reconnect throttled — last attempt was {timeSinceLastReconnect.TotalSeconds:F1}s ago (cooldown: 5s)");
+                return;
+            }
+
+            _deviceManager.LastReconnectAttempt = DateTime.Now;
+            _deviceManager.ReconnectAttemptCount++;
+
+            if (_deviceManager.ReconnectAttemptCount > 3)
+            {
+                IsDeviceConnected = false;
+                DeviceName = "Reconnect limit reached";
+                StatusText = "Auto-reconnect failed 3 times. Disconnect and reconnect the wheel manually.";
+                return;
+            }
+
+            StatusText = $"FFB device lost — attempting auto-reconnect (attempt {_deviceManager.ReconnectAttemptCount}/3)...";
             _deviceManager.DisconnectDevice();
             Thread.Sleep(200);
             if (_deviceManager.TryConnectDevice(SelectedDevice))
