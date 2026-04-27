@@ -36,6 +36,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\publish-test\AcEvoFfbTuner.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\publish-test\Moza_API_C.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\publish-test\Moza_SDK.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish-test\*.pdb"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]

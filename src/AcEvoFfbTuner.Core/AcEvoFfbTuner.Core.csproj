@@ -24,11 +24,13 @@
   <ItemGroup>
     <Content Include="..\..\lib\moza\Moza_API_C.dll" Link="Moza_API_C.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <PublishFolder>true</PublishFolder>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
     <Content Include="..\..\lib\moza\Moza_SDK.dll" Link="Moza_SDK.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <PublishFolder>true</PublishFolder>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
   </ItemGroup>
 
