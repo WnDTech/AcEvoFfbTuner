@@ -9,7 +9,9 @@ public enum WheelVendor
     Fanatec,
     Moza,
     Thrustmaster,
-    Simagic
+    Simagic,
+    Logitech,
+    Simucube
 }
 
 public sealed class WheelLedController : IDisposable
@@ -766,6 +768,12 @@ public sealed class WheelLedController : IDisposable
                 case WheelVendor.Moza:
                     WriteMoza(rpm, shiftUp, limiter, flag, absActive);
                     break;
+                case WheelVendor.Logitech:
+                    WriteLogitech(rpm, shiftUp, limiter, flag, absActive);
+                    break;
+                case WheelVendor.Simucube:
+                    WriteSimucube(rpm, shiftUp, limiter, flag, absActive);
+                    break;
             }
         }
         catch (Exception ex)
@@ -860,6 +868,157 @@ public sealed class WheelLedController : IDisposable
         8 => 0x01,
         9 => 0x02,
         _ => 0x00
+    };
+
+    #endregion
+
+    #region Logitech
+
+    private const int LogitechLedCount = 5;
+    private const byte LogitechLedReportId = 0x03;
+
+    private void WriteLogitech(float rpm, bool shift, bool limiter, int flag, bool absActive)
+    {
+        Array.Clear(_reportBuf!);
+        _reportBuf![0] = LogitechLedReportId;
+
+        ushort bits;
+        bool flash = (shift || limiter) && _config.ShiftLimiterFlashEnabled;
+
+        if (absActive && _config.AbsFlashEnabled)
+        {
+            if (++_absFlashTick >= Math.Max(_config.FlashRateTicks / 2, 2))
+            {
+                _absFlashTick = 0;
+                _absFlashAlternate = !_absFlashAlternate;
+            }
+
+            bits = _absFlashAlternate
+                ? (ushort)0x3
+                : (ushort)(3 << (LogitechLedCount - 2));
+        }
+        else if (flash)
+        {
+            _absFlashTick = 0;
+            _absFlashAlternate = false;
+            if (++_flashTick >= _config.FlashRateTicks) { _flashTick = 0; _flashOn = !_flashOn; }
+            bits = _flashOn ? (ushort)((1 << LogitechLedCount) - 1) : (ushort)0;
+        }
+        else
+        {
+            _absFlashTick = 0;
+            _absFlashAlternate = false;
+            _flashTick = 0;
+            _flashOn = false;
+
+            int n = CountLedsForRpm(rpm, LogitechLedCount);
+            bits = (ushort)((1 << n) - 1);
+        }
+
+        _reportBuf[1] = (byte)(bits & 0xFF);
+        SendReport();
+    }
+
+    #endregion
+
+    #region Simucube
+
+    private const int SimucubeLedCount = 10;
+
+    private void WriteSimucube(float rpm, bool shift, bool limiter, int flag, bool absActive)
+    {
+        Array.Clear(_reportBuf!);
+
+        int ledCount = SimucubeLedCount;
+        bool flash = (shift || limiter) && _config.ShiftLimiterFlashEnabled;
+
+        uint[] colorData;
+
+        if (absActive && _config.AbsFlashEnabled)
+        {
+            if (++_absFlashTick >= Math.Max(_config.FlashRateTicks / 2, 2))
+            {
+                _absFlashTick = 0;
+                _absFlashAlternate = !_absFlashAlternate;
+            }
+
+            colorData = new uint[ledCount];
+            for (int i = 0; i < ledCount; i++)
+            {
+                bool isAbsLed = _absFlashAlternate ? i < 2 : i >= ledCount - 2;
+                colorData[i] = isAbsLed ? 0xFFFFAA00u : 0x00000000u;
+            }
+        }
+        else if (flash)
+        {
+            _absFlashTick = 0;
+            _absFlashAlternate = false;
+            if (++_flashTick >= _config.FlashRateTicks) { _flashTick = 0; _flashOn = !_flashOn; }
+
+            uint allColor = _flashOn ? 0xFFFF0606u : 0x00000000u;
+            colorData = Enumerable.Repeat(allColor, ledCount).ToArray();
+        }
+        else
+        {
+            _absFlashTick = 0;
+            _absFlashAlternate = false;
+            _flashTick = 0;
+            _flashOn = false;
+
+            int n = CountLedsForRpm(rpm, ledCount);
+            var effectiveColors = _config.GetEffectiveColors();
+
+            colorData = new uint[ledCount];
+            for (int i = 0; i < ledCount; i++)
+            {
+                if (i < n)
+                {
+                    if (flag > 0 && _config.FlagIndicatorsEnabled)
+                        colorData[i] = FlagToUIntColor(flag);
+                    else
+                        colorData[i] = i < effectiveColors.Length ? ArgbToUInt(effectiveColors[i]) : 0xFF00CE00u;
+                }
+                else
+                {
+                    colorData[i] = 0x00000000u;
+                }
+            }
+        }
+
+        _reportBuf[0] = 0x00;
+        for (int i = 0; i < ledCount && (1 + i * 4 + 3) < _reportBuf.Length; i++)
+        {
+            int offset = 1 + i * 4;
+            _reportBuf[offset] = (byte)(colorData[i] & 0xFF);
+            _reportBuf[offset + 1] = (byte)((colorData[i] >> 8) & 0xFF);
+            _reportBuf[offset + 2] = (byte)((colorData[i] >> 16) & 0xFF);
+            _reportBuf[offset + 3] = (byte)((colorData[i] >> 24) & 0xFF);
+        }
+
+        SendReport();
+    }
+
+    private static uint ArgbToUInt(string argb)
+    {
+        if (argb.StartsWith("#") && argb.Length == 9)
+        {
+            byte a = Convert.ToByte(argb.Substring(1, 2), 16);
+            byte r = Convert.ToByte(argb.Substring(3, 2), 16);
+            byte g = Convert.ToByte(argb.Substring(5, 2), 16);
+            byte b = Convert.ToByte(argb.Substring(7, 2), 16);
+            return ((uint)a << 24) | ((uint)r << 16) | ((uint)g << 8) | b;
+        }
+        return 0xFF00CE00u;
+    }
+
+    private static uint FlagToUIntColor(int flag) => flag switch
+    {
+        2 => 0xFF00FF00u,
+        5 => 0xFFFFFF00u,
+        3 => 0xFFFF0000u,
+        4 => 0xFF0000FFu,
+        1 => 0xFFFFFFFFu,
+        _ => 0x00000000u
     };
 
     #endregion
@@ -1158,6 +1317,8 @@ public sealed class WheelLedController : IDisposable
             WheelVendor.Moza => p.Contains("moza"),
             WheelVendor.Thrustmaster => p.Contains("thrustmaster"),
             WheelVendor.Simagic => p.Contains("simagic"),
+            WheelVendor.Logitech => p.Contains("logitech") || p.Contains("g29") || p.Contains("g923"),
+            WheelVendor.Simucube => p.Contains("simucube"),
             _ => false
         };
     }
@@ -1180,6 +1341,8 @@ public sealed class WheelLedController : IDisposable
         WheelVendor.Moza => vid == 0x3468 || vid == 0x346E || vid == 0x34DE,
         WheelVendor.Thrustmaster => vid == 0x044F,
         WheelVendor.Simagic => vid == 0x0483 || vid == 0x3335,
+        WheelVendor.Logitech => vid == 0x046D,
+        WheelVendor.Simucube => vid == 0x16C0,
         _ => false
     };
 
@@ -1194,6 +1357,10 @@ public sealed class WheelLedController : IDisposable
             return WheelVendor.Thrustmaster;
         if (s.Contains("simagic"))
             return WheelVendor.Simagic;
+        if (s.Contains("logitech") || s.Contains("g29") || s.Contains("g923"))
+            return WheelVendor.Logitech;
+        if (s.Contains("simucube"))
+            return WheelVendor.Simucube;
         return WheelVendor.Unknown;
     }
 
