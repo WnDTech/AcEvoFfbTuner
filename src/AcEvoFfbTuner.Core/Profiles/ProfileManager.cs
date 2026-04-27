@@ -126,13 +126,22 @@ public sealed class ProfileManager
 
     public void SaveProfile(FfbProfile profile)
     {
-        var filePath = GetProfileFilePath(profile.Name);
-        var json = JsonSerializer.Serialize(profile, JsonOptions);
-        File.WriteAllText(filePath, json);
+        try
+        {
+            profile.SanitizeFloats();
+            var filePath = GetProfileFilePath(profile.Name);
+            var json = JsonSerializer.Serialize(profile, JsonOptions);
+            File.WriteAllText(filePath, json);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"SaveProfile failed: {ex.Message}");
+        }
     }
 
     public void ExportProfile(FfbProfile profile, string filePath)
     {
+        profile.SanitizeFloats();
         var json = JsonSerializer.Serialize(profile, JsonOptions);
         File.WriteAllText(filePath, json);
     }

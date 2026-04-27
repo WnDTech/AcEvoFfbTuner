@@ -445,6 +445,47 @@ public sealed class FfbProfile
         "Safe - Simucube 2 Pro"
     };
 
+    public void SanitizeFloats()
+    {
+        OutputGain = Sanitize(OutputGain);
+        NormalizationScale = Sanitize(NormalizationScale);
+        ForceScale = Sanitize(ForceScale);
+        SoftClipThreshold = Sanitize(SoftClipThreshold);
+        CompressionPower = Sanitize(CompressionPower);
+        WheelMaxTorqueNm = Sanitize(WheelMaxTorqueNm);
+        WheelLoadWeighting = Sanitize(WheelLoadWeighting);
+        MzScale = Sanitize(MzScale);
+        FxScale = Sanitize(FxScale);
+        FyScale = Sanitize(FyScale);
+
+        MzFront.Gain = Sanitize(MzFront.Gain);
+        FxFront.Gain = Sanitize(FxFront.Gain);
+        FyFront.Gain = Sanitize(FyFront.Gain);
+        MzRear.Gain = Sanitize(MzRear.Gain);
+        FxRear.Gain = Sanitize(FxRear.Gain);
+        FyRear.Gain = Sanitize(FyRear.Gain);
+        FinalFf.Gain = Sanitize(FinalFf.Gain);
+
+        SanitizeArray(LutCurve.OutputValues);
+        Damping.SanitizeFloats();
+        Slip.SanitizeFloats();
+        Dynamic.SanitizeFloats();
+        AutoGain.SanitizeFloats();
+        Vibrations.SanitizeFloats();
+        Advanced.SanitizeFloats();
+        Lfe.SanitizeFloats();
+        Equalizer.SanitizeFloats();
+    }
+
+    private static float Sanitize(float v) =>
+        float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+
+    private static void SanitizeArray(float[] arr)
+    {
+        for (int i = 0; i < arr.Length; i++)
+            arr[i] = Sanitize(arr[i]);
+    }
+
     internal void Migrate()
     {
         if (Version >= CurrentVersion) return;
@@ -530,6 +571,9 @@ public sealed class ChannelConfig
 {
     public float Gain { get; set; } = 1.0f;
     public bool Enabled { get; set; } = true;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() => Gain = S(Gain);
 }
 
 public sealed class LutCurveDto
@@ -591,6 +635,9 @@ public sealed class DampingConfig
     /// Speed (km/h) below which the low-speed damping boost fades in.
     /// </summary>
     public float LowSpeedThreshold { get; set; } = 20f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { SpeedDamping = S(SpeedDamping); Friction = S(Friction); Inertia = S(Inertia); MaxSpeedReference = S(MaxSpeedReference); LowSpeedDampingBoost = S(LowSpeedDampingBoost); LowSpeedThreshold = S(LowSpeedThreshold); }
 }
 
 public sealed class SlipConfig
@@ -599,6 +646,9 @@ public sealed class SlipConfig
     public float SlipAngleGain { get; set; } = 0.0f;
     public float SlipThreshold { get; set; } = 0.05f;
     public bool UseFrontOnly { get; set; } = true;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipThreshold = S(SlipThreshold); }
 }
 
 public sealed class DynamicConfig
@@ -614,12 +664,18 @@ public sealed class DynamicConfig
 
     [JsonPropertyName("carRotationForce")]
     public float YawRateGain { get; set; } = 0.0f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { LateralGGain = S(LateralGGain); LongitudinalGGain = S(LongitudinalGGain); SuspensionGain = S(SuspensionGain); YawRateGain = S(YawRateGain); }
 }
 
 public sealed class AutoGainConfig
 {
     public bool Enabled { get; set; } = false;
     public float Scale { get; set; } = 1.0f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() => Scale = S(Scale);
 }
 
 public sealed class VibrationConfig
@@ -631,6 +687,9 @@ public sealed class VibrationConfig
     public float AbsGain { get; set; } = 1.0f;
     public float MasterGain { get; set; } = 0.7f;
     public float SuspensionRoadGain { get; set; } = 1.5f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { KerbGain = S(KerbGain); SlipGain = S(SlipGain); RoadGain = S(RoadGain); AbsGain = S(AbsGain); MasterGain = S(MasterGain); SuspensionRoadGain = S(SuspensionRoadGain); }
 }
 
 public sealed class AdvancedConfig
@@ -645,6 +704,9 @@ public sealed class AdvancedConfig
     public float SteerVelocityReference { get; set; } = 10.0f;
     public float VelocityDeadzone { get; set; } = 0.05f;
     public float LowSpeedSmoothKmh { get; set; } = 25.0f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { MaxSlewRate = S(MaxSlewRate); CenterSuppressionDegrees = S(CenterSuppressionDegrees); CenterKneePower = S(CenterKneePower); HysteresisThreshold = S(HysteresisThreshold); NoiseFloor = S(NoiseFloor); CenterBlendDegrees = S(CenterBlendDegrees); SteerVelocityReference = S(SteerVelocityReference); VelocityDeadzone = S(VelocityDeadzone); LowSpeedSmoothKmh = S(LowSpeedSmoothKmh); }
 }
 
 public sealed class LfeConfig
@@ -655,6 +717,9 @@ public sealed class LfeConfig
     public float SuspensionDrive { get; set; } = 0.6f;
     public float SpeedScaling { get; set; } = 0.5f;
     public float RpmDrive { get; set; } = 0.3f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { Gain = S(Gain); Frequency = S(Frequency); SuspensionDrive = S(SuspensionDrive); SpeedScaling = S(SpeedScaling); RpmDrive = S(RpmDrive); }
 }
 
 public sealed class EqConfig
@@ -700,6 +765,14 @@ public sealed class EqConfig
     {
         if (band >= 0 && band < _bandEnabled.Length)
             _bandEnabled[band] = enabled;
+    }
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+
+    public void SanitizeFloats()
+    {
+        for (int i = 0; i < _bandGains.Length; i++)
+            _bandGains[i] = S(_bandGains[i]);
     }
 }
 

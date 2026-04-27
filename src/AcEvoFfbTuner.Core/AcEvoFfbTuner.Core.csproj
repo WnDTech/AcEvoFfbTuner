@@ -22,12 +22,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\lib\moza\Moza_API_C.dll" Link="Moza_API_C.dll">
+    <Content Include="..\..\lib\moza\Moza_API_C.dll" Link="Moza_API_C.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\..\lib\moza\Moza_SDK.dll" Link="Moza_SDK.dll">
+      <PublishFolder>true</PublishFolder>
+    </Content>
+    <Content Include="..\..\lib\moza\Moza_SDK.dll" Link="Moza_SDK.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+      <PublishFolder>true</PublishFolder>
+    </Content>
   </ItemGroup>
 
 </Project>

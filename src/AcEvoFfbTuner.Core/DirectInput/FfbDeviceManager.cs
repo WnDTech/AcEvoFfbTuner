@@ -37,6 +37,7 @@ public sealed class FfbDeviceManager : IDisposable
     private bool _invertForce = true;
     private int _consecutiveForceErrors;
     private const int MaxConsecutiveErrors = 10;
+    private volatile bool _reconnectRequested;
 
     /// <summary>
     /// When true, the force output to the device is inverted (multiplied by -1).
@@ -83,10 +84,17 @@ public sealed class FfbDeviceManager : IDisposable
     public bool SupportsPeriodicEffects { get; private set; }
     public string? LastError { get; private set; }
 
+    public void ResetLostState()
+    {
+        _consecutiveForceErrors = 0;
+        _reconnectRequested = false;
+    }
+
     private readonly WheelLedController _ledController = new();
 
     public event Action<string>? DeviceConnected;
     public event Action? DeviceDisconnected;
+    public event Action? DeviceRequiresReconnect;
 
     public void SetWindowHandle(IntPtr handle)
     {
@@ -478,10 +486,12 @@ public sealed class FfbDeviceManager : IDisposable
                     _consecutiveForceErrors++;
                     LastError = $"Create failed ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
                     ConnLog($"EFFECT CREATE FAIL ({_consecutiveForceErrors}) after {maxCreateAttempts} attempts: {ex.InnerException?.Message ?? ex.Message}");
-                    if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+                    if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested)
                     {
-                        LastError = "Device lost exclusive FFB access. Disconnect and reconnect the device.";
-                        ConnLog("DEVICE LOST — max consecutive errors reached");
+                        _reconnectRequested = true;
+                        LastError = "Device lost exclusive FFB access. Attempting full reconnect...";
+                        ConnLog("DEVICE LOST — requesting full reconnect from ViewModel");
+                        DeviceRequiresReconnect?.Invoke();
                     }
                 }
             }
@@ -492,10 +502,12 @@ public sealed class FfbDeviceManager : IDisposable
             LastError = $"FFB error ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
             ConnLog($"FFB OUTER ERROR ({_consecutiveForceErrors}): {ex.InnerException?.Message ?? ex.Message}");
             DestroyConstantForceEffect();
-            if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+            if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested)
             {
-                LastError = "Device lost exclusive FFB access. Disconnect and reconnect the device.";
-                ConnLog("DEVICE LOST — max consecutive errors reached");
+                _reconnectRequested = true;
+                LastError = "Device lost exclusive FFB access. Attempting full reconnect...";
+                ConnLog("DEVICE LOST — requesting full reconnect from ViewModel");
+                DeviceRequiresReconnect?.Invoke();
             }
         }
     }
@@ -624,10 +636,12 @@ public sealed class FfbDeviceManager : IDisposable
         {
             ConnLog($"Re-acquire FAILED: {ex.InnerException?.Message ?? ex.Message}");
             _consecutiveForceErrors++;
-            if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+            if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested)
             {
-                LastError = "Device lost exclusive FFB access. Disconnect and reconnect the device.";
-                ConnLog("DEVICE LOST — re-acquire failed, max consecutive errors reached");
+                _reconnectRequested = true;
+                LastError = "Device lost exclusive FFB access. Attempting full reconnect...";
+                ConnLog("DEVICE LOST — requesting full reconnect from ViewModel");
+                DeviceRequiresReconnect?.Invoke();
             }
         }
     }

@@ -647,6 +647,27 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _telemetryLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
         _profileManager = new ProfileManager();
 
+        _deviceManager.DeviceRequiresReconnect += () => Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            if (SelectedDevice == null) return;
+            StatusText = "FFB device lost — attempting auto-reconnect...";
+            _deviceManager.DisconnectDevice();
+            Thread.Sleep(200);
+            if (_deviceManager.TryConnectDevice(SelectedDevice))
+            {
+                IsDeviceConnected = true;
+                DeviceName = SelectedDevice.ProductName;
+                StatusText = $"Reconnected to {SelectedDevice.ProductName}";
+                PushLedConfig();
+            }
+            else
+            {
+                IsDeviceConnected = false;
+                DeviceName = "Reconnect failed";
+                StatusText = "Auto-reconnect failed. Disconnect and reconnect the wheel manually.";
+            }
+        });
+
         PopulateFallbackButtonNames(SnapshotButtonNames, 32);
         PopulateFallbackButtonNames(PanicButtonNames, 16);
 
@@ -954,40 +975,51 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         if (SelectedProfile == null) return;
 
-        PushValuesToPipeline();
-        SelectedProfile.LedEffects = LedEffectConfigDto.FromConfig(new LedEffectConfig
+        try
         {
-            Brightness = LedBrightness,
-            FlashRateTicks = LedFlashRate,
-            AbsFlashEnabled = LedAbsFlashEnabled,
-            FlagIndicatorsEnabled = LedFlagIndicatorsEnabled,
-            ShiftLimiterFlashEnabled = LedShiftLimiterFlashEnabled,
-            ColorScheme = LedColorSchemeIndex >= 0 && LedColorSchemeIndex <= 4
-                ? (LedColorScheme)LedColorSchemeIndex
-                : LedColorScheme.TrafficLight,
-            RpmPreset = LedRpmPresetIndex >= 0 && LedRpmPresetIndex <= 4
-                ? (LedRpmPreset)LedRpmPresetIndex
-                : LedRpmPreset.Default,
-            RpmThresholds = GetCurrentRpmThresholds(),
-            CustomColors = LedEffectConfig.BuildTrafficLightColors()
-        });
-        _profileManager.SaveProfileFromPipeline(_pipeline, SelectedProfile.Name);
-        SelectedProfile.WheelMaxTorqueNm = WheelMaxTorqueNm;
-        SelectedProfile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
-        _profileManager.SaveProfile(SelectedProfile);
-        _profileManager.SetActiveProfile(SelectedProfile);
+            PushValuesToPipeline();
+            SelectedProfile.LedEffects = LedEffectConfigDto.FromConfig(new LedEffectConfig
+            {
+                Brightness = LedBrightness,
+                FlashRateTicks = LedFlashRate,
+                AbsFlashEnabled = LedAbsFlashEnabled,
+                FlagIndicatorsEnabled = LedFlagIndicatorsEnabled,
+                ShiftLimiterFlashEnabled = LedShiftLimiterFlashEnabled,
+                ColorScheme = LedColorSchemeIndex >= 0 && LedColorSchemeIndex <= 4
+                    ? (LedColorScheme)LedColorSchemeIndex
+                    : LedColorScheme.TrafficLight,
+                RpmPreset = LedRpmPresetIndex >= 0 && LedRpmPresetIndex <= 4
+                    ? (LedRpmPreset)LedRpmPresetIndex
+                    : LedRpmPreset.Default,
+                RpmThresholds = GetCurrentRpmThresholds(),
+                CustomColors = LedEffectConfig.BuildTrafficLightColors()
+            });
+            _profileManager.SaveProfileFromPipeline(_pipeline, SelectedProfile.Name);
+            SelectedProfile.WheelMaxTorqueNm = WheelMaxTorqueNm;
+            SelectedProfile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
+            _profileManager.SaveProfile(SelectedProfile);
+            _profileManager.SetActiveProfile(SelectedProfile);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Profile save failed: {ex.Message}";
+        }
     }
 
     private void AutoSaveDiagnosticProfile()
     {
-        PushValuesToPipeline();
+        try
+        {
+            PushValuesToPipeline();
 
-        string baseName = SelectedProfile?.Name ?? "unsaved";
-        string diagName = $"{baseName}_diag_{DateTime.Now:yyyyMMdd_HHmmss}";
-        var profile = _profileManager.SaveProfileFromPipeline(_pipeline, diagName);
-        profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
-        profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
-        _profileManager.SaveProfile(profile);
+            string baseName = SelectedProfile?.Name ?? "unsaved";
+            string diagName = $"{baseName}_diag_{DateTime.Now:yyyyMMdd_HHmmss}";
+            var profile = _profileManager.SaveProfileFromPipeline(_pipeline, diagName);
+            profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
+            profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
+            _profileManager.SaveProfile(profile);
+        }
+        catch { }
     }
 
     [RelayCommand]
@@ -1561,7 +1593,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 {
                     IsDeviceConnected = false;
                     DeviceName = "Lost exclusive access";
-                    StatusText = "FFB device lost exclusive access — disconnect and reconnect the wheel.";
+                    StatusText = "FFB device lost exclusive access — auto-reconnect in progress...";
                 }
                 else
                 {
