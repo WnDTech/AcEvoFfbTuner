@@ -240,6 +240,21 @@
                                         </TextBlock>
                                     </StackPanel>
                                 </Border>
+
+                                <TextBlock Text="FFB Settings:" FontSize="16" FontWeight="Bold" Foreground="#FFE0E0E0" Margin="0,10,0,4" />
+                                <Border Background="#FF3B1B1B" CornerRadius="4" Padding="12,8">
+                                    <StackPanel>
+                                        <TextBlock FontSize="16" Foreground="#FFE0E0E0" Margin="0,2" TextWrapping="Wrap">
+                                            <Run Foreground="#FFFF1744" FontWeight="Bold" Text="&#x26A0;" /><Run Text=" Open the game's " /><Run FontWeight="Bold" Text="Settings &#x2192; Controls &#x2192; Force Feedback" /><Run Text=" and set " /><Run FontWeight="Bold" Foreground="#FFFFD600" Text="FFB Gain to 0" />
+                                        </TextBlock>
+                                        <TextBlock FontSize="16" Foreground="#FFFF1744" Margin="0,4,0,0" TextWrapping="Wrap" FontWeight="Bold">
+                                            <Run Text="&#x26A0; You must restart AC EVO for the FFB change to take effect." />
+                                        </TextBlock>
+                                        <TextBlock FontSize="15" Foreground="#FFFF8A65" Margin="0,4,0,0" TextWrapping="Wrap">
+                                            <Run FontStyle="Italic" Text="This app replaces the game's FFB completely. If both are active, they will fight for control of your wheel, causing connection failures or erratic forces." />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -2111,6 +2126,25 @@
             </TabItem>
 
         </TabControl>
+
+        <!-- Game FFB Active Warning Banner -->
+        <Border Grid.Row="2" VerticalAlignment="Top" HorizontalAlignment="Center"
+                Background="#CC552200" BorderBrush="#FFE67E22" BorderThickness="1"
+                CornerRadius="6" Padding="20,12" Margin="0,12,0,0"
+                Visibility="{Binding ShowGameFfbWarning, Converter={StaticResource BoolToVis}}"
+                Panel.ZIndex="100">
+            <StackPanel>
+                <TextBlock Text="IN-GAME FFB IS STILL ACTIVE" FontSize="18" FontWeight="Black" Foreground="#FFE67E22" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                <TextBlock TextWrapping="Wrap" FontSize="14" Foreground="#FFE0E0E0" MaxWidth="700" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,8">
+                    <Run Text="AC EVO's Force Feedback is still enabled. Open the game's FFB settings and set the " /><Run FontWeight="Bold" Text="FFB Gain slider to 0" /><Run Text=", then " /><Run FontWeight="Bold" Foreground="#FFFF1744" Text="restart the game" /><Run Text=" for it to take effect. This app replaces the game's FFB entirely — if both are active they will fight for exclusive control of your wheel." />
+                </TextBlock>
+                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FFFFAB00" MaxWidth="700" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,10">
+                    <Run FontStyle="Italic" Text="Changes to FFB settings in AC EVO require a game restart to apply. If you've already set FFB to 0 and restarted, you can safely dismiss this." />
+                </TextBlock>
+                <Button Content="DISMISS" Command="{Binding DismissGameFfbWarningCommand}"
+                        HorizontalAlignment="Center" Padding="24,6" FontSize="14" FontWeight="Bold" />
+            </StackPanel>
+        </Border>
 
         <!-- Status Bar -->
         <Border Grid.Row="3" Background="#FF1A1A2E" Padding="12,6">

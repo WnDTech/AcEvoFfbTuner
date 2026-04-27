@@ -64,12 +64,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _isUpdateAvailable;
 
     [ObservableProperty]
+    private bool _showGameFfbWarning;
+
+    [ObservableProperty]
     private string _latestVersionText = "";
 
     [ObservableProperty]
     private bool _isDownloadingUpdate;
 
     private UpdateInfo? _pendingUpdate;
+
+    private bool? _ffbWarningDismissed;
 
     [ObservableProperty]
     private float _speedKmh;
@@ -1137,6 +1142,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private void DismissGameFfbWarning()
+    {
+        ShowGameFfbWarning = false;
+        _ffbWarningDismissed = true;
+    }
+
+    [RelayCommand]
     private void PanicStop()
     {
         IsRunning = false;
@@ -1553,6 +1565,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CurrentRawForce = processed.RawFinalFf;
             IsClipping = processed.IsClipping;
             SpeedKmh = processed.SpeedKmh;
+
+            if (IsGameConnected && raw.FfbStrength > 0.01f && !ShowGameFfbWarning && _ffbWarningDismissed != true)
+                ShowGameFfbWarning = true;
             int rawDeg = raw.SteerDegrees;
             int lockDeg = (rawDeg > 90 && rawDeg <= 1440) ? rawDeg : SteeringLockDegrees;
             if (lockDeg <= 0) lockDeg = 900;

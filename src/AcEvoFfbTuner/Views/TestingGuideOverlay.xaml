@@ -122,6 +122,15 @@
                                 <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,1">
                                     <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" Mode: Practice | Clear weather | Optimal grip" />
                                 </TextBlock>
+                                <TextBlock FontSize="15" Foreground="#FFE0E0E0" Margin="0,4" TextWrapping="Wrap">
+                                    <Run Foreground="#FFFF1744" FontWeight="Bold" Text="&#x26A0;" /><Run Text=" Set " /><Run FontWeight="Bold" Foreground="#FFFFD600" Text="FFB Gain to 0" /><Run Text=" in game settings" />
+                                </TextBlock>
+                                <TextBlock FontSize="14" Foreground="#FFFF1744" Margin="0,2,0,0" TextWrapping="Wrap" FontWeight="Bold">
+                                    <Run Text="&#x26A0; Restart AC EVO after changing FFB settings!" />
+                                </TextBlock>
+                                <TextBlock FontSize="13" Foreground="#FFFF8A65" Margin="0,2,0,0" TextWrapping="Wrap">
+                                    <Run FontStyle="Italic" Text="This app replaces the game's FFB. If both are active they fight for wheel control. FFB changes require a game restart." />
+                                </TextBlock>
                             </StackPanel>
                         </Border>
 
