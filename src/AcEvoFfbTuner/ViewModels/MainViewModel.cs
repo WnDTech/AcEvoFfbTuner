@@ -27,6 +27,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly TelemetryLoop _telemetryLoop;
     private readonly ProfileManager _profileManager;
     private readonly Services.GameRecordingService _gameRecordingService = new();
+    private readonly LiveAutoTuner _liveAutoTuner = new();
 
     public string AppVersion { get; } =
         System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
@@ -278,6 +279,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private float _wheelMaxTorqueNm = 5.5f;
+
+    [ObservableProperty]
+    private bool _isAutoSetupAvailable;
+
+    [ObservableProperty]
+    private bool _isLiveAutoTuneEnabled;
+
+    [ObservableProperty]
+    private string _autoSetupStatus = "";
+
+    [ObservableProperty]
+    private int _liveCorrectionsCount;
+
+    [ObservableProperty]
+    private string _lastCorrectionText = "";
 
     [ObservableProperty]
     private float _compressionPower = 1.0f;
@@ -671,6 +687,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _telemetryLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
         _profileManager = new ProfileManager();
 
+        _liveAutoTuner.CorrectionApplied += (parameter, newValue) =>
+        {
+            switch (parameter)
+            {
+                case "OutputGain": OutputGain = newValue; break;
+                case "SpeedDamping": SpeedDamping = newValue; break;
+                case "Friction": FrictionLevel = newValue; break;
+                case "CompressionPower": CompressionPower = newValue; break;
+                case "HysteresisThreshold": HysteresisThreshold = newValue; break;
+                case "CenterSuppressionDegrees": CenterSuppressionDegrees = newValue; break;
+                case "NoiseFloor": NoiseFloor = newValue; break;
+                case "SuspensionRoadGain": SuspensionRoadGain = newValue; break;
+            }
+        };
+
         _deviceManager.DeviceRequiresReconnect += () => Application.Current?.Dispatcher.BeginInvoke(() =>
         {
             if (SelectedDevice == null) return;
@@ -839,6 +870,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             IsDeviceConnected = true;
             DeviceName = SelectedDevice.ProductName;
             AutoDetectWheelTorque(SelectedDevice.ProductName);
+            IsAutoSetupAvailable = WheelMaxTorqueNm > 0;
             RefreshSnapshotButtonNames();
             if (!_uiUpdateTimer.IsEnabled)
                 _uiUpdateTimer.Start();
@@ -863,6 +895,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         _deviceManager.DisconnectDevice();
         IsDeviceConnected = false;
+        IsAutoSetupAvailable = false;
         DeviceName = "No device";
         ResetLedCapabilities();
     }
@@ -1009,6 +1042,81 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             _telemetryLoop.Stop();
             _uiUpdateTimer.Stop();
             StatusText = "Stopped";
+        }
+    }
+
+    [RelayCommand]
+    private void AutoSetup()
+    {
+        if (!IsAutoSetupAvailable || !IsDeviceConnected) return;
+
+        string deviceName = DeviceName;
+        float torque = WheelMaxTorqueNm;
+        if (torque <= 0) return;
+
+        EvoDetectedSettings? evoSettings = null;
+        var raw = _telemetryLoop.LatestRaw;
+        if (raw != null)
+        {
+            evoSettings = EvoSettingsDetector.DetectFromRaw(raw);
+            if (evoSettings != null)
+                evoSettings = new EvoDetectedSettings
+                {
+                    FfbStrength = evoSettings.FfbStrength,
+                    CarFfbMultiplier = evoSettings.CarFfbMultiplier,
+                    SteerDegrees = evoSettings.SteerDegrees,
+                    RecommendedOutputGain = evoSettings.RecommendedOutputGain,
+                    RecommendedNormalizationScale = evoSettings.RecommendedNormalizationScale,
+                    RecommendedSteeringLock = evoSettings.RecommendedSteeringLock,
+                    IsValid = false
+                };
+        }
+
+        var profile = WheelbaseAutoConfigurator.GenerateProfile(torque, deviceName, null);
+        if (evoSettings != null)
+        {
+            profile.SteeringLockDegrees = evoSettings.RecommendedSteeringLock;
+        }
+        profile.Name = $"Auto - {deviceName} ({torque:F1}Nm)";
+
+        var existing = Profiles.FirstOrDefault(p => p.Name == profile.Name);
+        if (existing != null)
+        {
+            _profileManager.DeleteProfile(existing);
+        }
+
+        _profileManager.SaveProfile(profile);
+        RefreshProfiles();
+
+        SelectedProfile = profile;
+        profile.ApplyToPipeline(_pipeline);
+        LoadProfileValues(profile);
+        _profileManager.SetActiveProfile(profile);
+
+        _liveAutoTuner.Configure(_pipeline, torque);
+        _liveAutoTuner.Reset();
+        LiveCorrectionsCount = 0;
+        LastCorrectionText = "";
+
+        var wheelType = WheelbaseAutoConfigurator.DetectWheelType(deviceName);
+        AutoSetupStatus = $"Auto-configured for {deviceName} — {torque:F1}Nm, {wheelType}";
+        StatusText = AutoSetupStatus;
+    }
+
+    [RelayCommand]
+    private void ToggleLiveAutoTune()
+    {
+        if (IsLiveAutoTuneEnabled)
+        {
+            _liveAutoTuner.Enabled = true;
+            _liveAutoTuner.Configure(_pipeline, WheelMaxTorqueNm);
+            AutoSetupStatus = string.IsNullOrEmpty(AutoSetupStatus) ? "Live tune active" : AutoSetupStatus + " | LIVE";
+            StatusText = "Live auto-tune enabled — corrections will appear below";
+        }
+        else
+        {
+            _liveAutoTuner.Enabled = false;
+            StatusText = "Live auto-tune disabled";
         }
     }
 
@@ -1533,8 +1641,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(OutputGainNmText));
     }
 
-    public string MaxForceLimitNmText => $"{MaxForceLimit:F2} ({MaxForceLimit * WheelMaxTorqueNm:F1} Nm)";
-    public string OutputGainNmText => $"{OutputGain:F2} (peak {MaxForceLimit * WheelMaxTorqueNm:F1} Nm)";
+    public string MaxForceLimitNmText => $"{MaxForceLimit:F3} ({MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
+    public string OutputGainNmText => $"{OutputGain:F3} (peak {MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
 
     partial void OnLedBrightnessChanged(int value) => PushLedConfig();
     partial void OnLedFlashRateChanged(int value) => PushLedConfig();
@@ -1590,6 +1698,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CurrentRawForce = processed.RawFinalFf;
             IsClipping = processed.IsClipping;
             SpeedKmh = processed.SpeedKmh;
+
+            if (IsLiveAutoTuneEnabled && IsRunning && IsDeviceConnected)
+            {
+                int prevCorrections = _liveAutoTuner.CorrectionsApplied;
+                _liveAutoTuner.OnTick(processed.MainForce, processed.IsClipping, processed.SpeedKmh, raw.SteerAngle);
+                if (_liveAutoTuner.CorrectionsApplied > prevCorrections)
+                {
+                    LiveCorrectionsCount = _liveAutoTuner.CorrectionsApplied;
+                    LastCorrectionText = _liveAutoTuner.LastCorrection;
+                }
+            }
+
             _gameRecordingService.OnTelemetryTick(processed.SpeedKmh);
             IsScreenRecording = _gameRecordingService.IsRecording;
 
@@ -1765,6 +1885,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 if (completedSummary != null && completedSummary.TotalEvents > 0)
                 {
                     UpdateRecommendations(completedSummary);
+                    if (IsLiveAutoTuneEnabled)
+                    {
+                        _liveAutoTuner.OnLapSummary(completedSummary);
+                        LiveCorrectionsCount = _liveAutoTuner.CorrectionsApplied;
+                        LastCorrectionText = _liveAutoTuner.LastCorrection;
+                    }
                 }
                 else if (runningSummary != null && runningSummary.TotalEvents > 0)
                 {

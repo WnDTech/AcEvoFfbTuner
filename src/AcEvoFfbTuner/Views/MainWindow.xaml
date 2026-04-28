@@ -111,7 +111,96 @@
                             </Style>
                         </ToggleButton.Style>
                     </ToggleButton>
+                    <Button Content="AUTO SETUP"
+                            Command="{Binding AutoSetupCommand}"
+                            IsEnabled="{Binding IsAutoSetupAvailable}"
+                            Margin="4,0" MinHeight="40" Padding="16,8"
+                            FontSize="13" FontWeight="Bold" Cursor="Hand"
+                            ToolTip="Auto-configure all FFB settings for your connected wheelbase">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="#FF1565C0" />
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="BorderBrush" Value="#FF42A5F5" />
+                                <Setter Property="BorderThickness" Value="1" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#FF1976D2" />
+                                                </Trigger>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#FF333333" />
+                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#FF555555" />
+                                                    <Setter Property="Foreground" Value="#FF888888" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <ToggleButton IsChecked="{Binding IsLiveAutoTuneEnabled}"
+                                  Command="{Binding ToggleLiveAutoTuneCommand}"
+                                  Margin="0,0,8,0" MinHeight="40" Padding="16,8"
+                                  FontSize="13" FontWeight="Bold" Cursor="Hand"
+                                  ToolTip="Enable live auto-tuning to prevent oscillation while driving">
+                        <ToggleButton.Style>
+                            <Style TargetType="ToggleButton">
+                                <Setter Property="Content" Value="LIVE TUNE" />
+                                <Setter Property="Background" Value="#FF1A237E" />
+                                <Setter Property="Foreground" Value="#FF90CAF9" />
+                                <Setter Property="BorderBrush" Value="#FF5C6BC0" />
+                                <Setter Property="BorderThickness" Value="1" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                <TextBlock x:Name="BtnText" Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#FF283593" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLiveAutoTuneEnabled}" Value="True">
+                                        <Setter Property="Background" Value="#FF4FC3F7" />
+                                        <Setter Property="Foreground" Value="#FF0D0D0D" />
+                                        <Setter Property="BorderBrush" Value="#FF81D4FA" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ToggleButton.Style>
+                    </ToggleButton>
                     <Button Content="PANIC" Command="{Binding PanicStopCommand}" Margin="0,0,4,0" Style="{StaticResource PanicButton}" MinHeight="40" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding AutoSetupStatus}" FontSize="12" Foreground="#FF4FC3F7" VerticalAlignment="Center" Margin="8,0" />
+                    <StackPanel Orientation="Horizontal" Margin="8,0" VerticalAlignment="Center">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLiveAutoTuneEnabled}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock Text="LIVE" Foreground="#FF4FC3F7" FontWeight="Bold" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding LiveCorrectionsCount, StringFormat='{}{0} corrections'}" FontSize="11" Foreground="#FF888888" Margin="6,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding LastCorrectionText}" FontSize="11" Foreground="#FFAAAAAA" Margin="8,0,0,0" VerticalAlignment="Center" MaxWidth="350" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
@@ -643,16 +732,16 @@
                                     <StackPanel Margin="0,6">
                                         <DockPanel>
                                             <TextBlock Text="Speed Damping" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                            <TextBlock Text="{Binding SpeedDamping, StringFormat='{}{0:F1}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                            <Slider Value="{Binding SpeedDamping}" Minimum="0" Maximum="25" TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                                            <TextBlock Text="{Binding SpeedDamping, StringFormat='{}{0:F3}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding SpeedDamping}" Minimum="0" Maximum="25" TickFrequency="0.001" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                         <TextBlock Text="Viscous damping — adds resistance that increases with car speed. Higher = heavier steering at speed. Scaled by Damping Speed Ref." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                     </StackPanel>
                                     <StackPanel Margin="0,6">
                                         <DockPanel>
                                             <TextBlock Text="Friction" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                            <TextBlock Text="{Binding FrictionLevel, StringFormat='{}{0:F1}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                            <Slider Value="{Binding FrictionLevel}" Minimum="0" Maximum="20" TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                                            <TextBlock Text="{Binding FrictionLevel, StringFormat='{}{0:F3}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding FrictionLevel}" Minimum="0" Maximum="20" TickFrequency="0.001" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                         <TextBlock Text="Constant friction resistance when turning the wheel. Higher = heavier, more resistant feel. Boosted at low speed (see Low Speed Damp Boost)." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                     </StackPanel>
@@ -767,7 +856,7 @@
                                         <DockPanel>
                                             <TextBlock Text="Output Gain" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
                                             <TextBlock Text="{Binding OutputGainNmText}" Width="120" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" TextAlignment="Right" />
-                                            <Slider Value="{Binding OutputGain}" Minimum="0" Maximum="20" TickFrequency="0.01" IsSnapToTickEnabled="True" />
+                                            <Slider Value="{Binding OutputGain}" Minimum="0" Maximum="20" TickFrequency="0.001" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                         <TextBlock Text="Master output strength — the final multiplier before the force limiter. Together with Max Force Limit and Wheel Max Torque, sets your peak Nm." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                     </StackPanel>
@@ -818,7 +907,7 @@
                                                 <DockPanel>
                                                     <TextBlock Text="Compression Power" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
                                                     <TextBlock Text="{Binding CompressionPower, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                                    <Slider Value="{Binding CompressionPower}" Minimum="0.1" Maximum="5.0" TickFrequency="0.01" IsSnapToTickEnabled="True" />
+                                                    <Slider Value="{Binding CompressionPower}" Minimum="0.1" Maximum="5.0" TickFrequency="0.005" IsSnapToTickEnabled="True" />
                                                 </DockPanel>
                                                 <TextBlock Text="Compression curve shape. 1.0 = mild, 3.0+ = aggressive. Higher values boost light forces but cap peaks. Reduces the need for a low Max Force Limit." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                             </StackPanel>
@@ -926,8 +1015,8 @@
                                             <StackPanel Margin="0,6">
                                                 <DockPanel>
                                                     <TextBlock Text="Suspension Road" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                                    <TextBlock Text="{Binding SuspensionRoadGain, StringFormat='{}{0:F1}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                                    <Slider Value="{Binding SuspensionRoadGain}" Minimum="0" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                                                    <TextBlock Text="{Binding SuspensionRoadGain, StringFormat='{}{0:F3}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                                    <Slider Value="{Binding SuspensionRoadGain}" Minimum="0" Maximum="10" TickFrequency="0.01" IsSnapToTickEnabled="True" />
                                                 </DockPanel>
                                                 <TextBlock Text="Suspension-derived road texture gain for the main force channel. Works with Road and Curb vibration gains." Style="{StaticResource SliderDescription}" />
                                             </StackPanel>
@@ -999,8 +1088,8 @@
                                     <StackPanel Margin="0,6">
                                         <DockPanel>
                                             <TextBlock Text="Max Slew Rate" Width="185" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                            <TextBlock Text="{Binding MaxSlewRate, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                            <Slider Value="{Binding MaxSlewRate}" Minimum="0.01" Maximum="1.0" TickFrequency="0.01" IsSnapToTickEnabled="True" />
+                                            <TextBlock Text="{Binding MaxSlewRate, StringFormat='{}{0:F4}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding MaxSlewRate}" Minimum="0.03" Maximum="0.50" TickFrequency="0.001" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                         <TextBlock Text="Maximum force change per frame. Lower = smoother/slower transitions, higher = snappier response. Also auto-scales down at low and very high speed." Style="{StaticResource SliderDescription}" />
                                     </StackPanel>
@@ -1009,8 +1098,8 @@
                                     <StackPanel Margin="0,6">
                                         <DockPanel>
                                             <TextBlock Text="Center Suppress (deg)" Width="185" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                            <TextBlock Text="{Binding CenterSuppressionDegrees, StringFormat='{}{0:F1}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                            <Slider Value="{Binding CenterSuppressionDegrees}" Minimum="0" Maximum="30" TickFrequency="0.5" IsSnapToTickEnabled="True" />
+                                            <TextBlock Text="{Binding CenterSuppressionDegrees, StringFormat='{}{0:F2}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding CenterSuppressionDegrees}" Minimum="0" Maximum="30" TickFrequency="0.1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
                                         <TextBlock Text="Steering angle zone near center where forces are faded to zero. Wider = larger dead-feel zone. Only active when Sign Correction is enabled. Grows wider at high speed." Style="{StaticResource SliderDescription}" />
                                     </StackPanel>
@@ -1020,16 +1109,16 @@
                                             <StackPanel Margin="0,6">
                                                 <DockPanel>
                                                     <TextBlock Text="Noise Floor" Width="185" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                                    <TextBlock Text="{Binding NoiseFloor, StringFormat='{}{0:F3}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                                    <Slider Value="{Binding NoiseFloor}" Minimum="0" Maximum="0.05" TickFrequency="0.001" IsSnapToTickEnabled="True" />
+                                                    <TextBlock Text="{Binding NoiseFloor, StringFormat='{}{0:F4}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                                    <Slider Value="{Binding NoiseFloor}" Minimum="0" Maximum="0.05" TickFrequency="0.0005" IsSnapToTickEnabled="True" />
                                                 </DockPanel>
                                                 <TextBlock Text="Forces below this are silenced. Eliminates tiny vibrations when the wheel should be still. Higher = quieter center but may lose fine detail. Also affects Hysteresis triggering." Style="{StaticResource SliderDescription}" />
                                             </StackPanel>
                                             <StackPanel Margin="0,6">
                                                 <DockPanel>
                                                     <TextBlock Text="Hysteresis Threshold" Width="185" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                                    <TextBlock Text="{Binding HysteresisThreshold, StringFormat='{}{0:F3}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                                    <Slider Value="{Binding HysteresisThreshold}" Minimum="0" Maximum="0.1" TickFrequency="0.001" IsSnapToTickEnabled="True" />
+                                                    <TextBlock Text="{Binding HysteresisThreshold, StringFormat='{}{0:F4}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                                    <Slider Value="{Binding HysteresisThreshold}" Minimum="0" Maximum="0.1" TickFrequency="0.0005" IsSnapToTickEnabled="True" />
                                                 </DockPanel>
                                                 <TextBlock Text="Minimum force change to move the output. Prevents micro-jitter from reaching the wheel. Higher = smoother but can feel sticky. Works with Hysteresis Watchdog and Noise Floor." Style="{StaticResource SliderDescription}" />
                                             </StackPanel>
