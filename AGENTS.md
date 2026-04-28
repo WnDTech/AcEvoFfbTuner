@@ -21,11 +21,17 @@ Our goal is to **fix the code** so we can establish a reliable baseline profile 
 - `src/AcEvoFfbTuner.Core/FfbProcessing/FfbDamping.cs` — Damping forces
 - `src/AcEvoFfbTuner/ViewModels/MainViewModel.cs` — Profile save/load, telemetry update loop
 - `src/AcEvoFfbTuner/Views/MainWindow.xaml` + `.cs` — Telemetry Profiler UI
+- `src/AcEvoFfbTuner/Services/ReplayVisualizerService.cs` — HTML replay visualizer generator
+- `src/AcEvoFfbTuner/Services/GameRecordingService.cs` — Screen recording (Windows Graphics Capture)
+- `src/AcEvoFfbTuner/Services/DiagnosticPackService.cs` — Diagnostic ZIP pack and email sender
 
 ### Snapshot Analysis
 - Snapshot dir: `C:\Users\paul_\AppData\Roaming\AcEvoFfbTuner\snapshots`
 - CSV columns: `Time,SpeedKmh,SteerAngle,ForceOut,RawFF,Compress,LUT,Slip,Damping,Dynamic,MzFront,FxFront,FyFront,Clipping,Gas,Brake`
 - Profile dir: `C:\Users\paul_\AppData\Roaming\AcEvoFfbTuner\Profiles`
+- Recording dir: `C:\Users\paul_\AppData\Roaming\AcEvoFfbTuner\recordings`
+- Snapshots now generate both `.txt` (analysis) and `.html` (animated replay visualizer) files
+- Diagnostic packs include: Profiles, Track Maps, Snapshots (incl. HTML replays), Recording Manifest, and Logs
 
 ### Iterative FFB Tuning Process
 1. User drives and takes a snapshot (presses wheel button)

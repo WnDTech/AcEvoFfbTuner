@@ -26,6 +26,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly FfbDeviceManager _deviceManager;
     private readonly TelemetryLoop _telemetryLoop;
     private readonly ProfileManager _profileManager;
+    private readonly Services.GameRecordingService _gameRecordingService = new();
 
     public string AppVersion { get; } =
         System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
@@ -56,6 +57,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isClipping;
+
+    [ObservableProperty]
+    private bool _isScreenRecording;
+
+    [ObservableProperty]
+    private string _screenRecordingPath = "";
 
     [ObservableProperty]
     private string _updateStatusText = "";
@@ -741,6 +748,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _telemetryLoop.GameConnectionChanged += () => Application.Current?.Dispatcher.Invoke(() =>
         {
             IsGameConnected = _telemetryLoop.IsGameConnected;
+            if (!IsGameConnected)
+            {
+                _gameRecordingService.StopRecording();
+                IsScreenRecording = false;
+            }
+        });
+        _gameRecordingService.RecordingStateChanged += (msg, isRec) => Application.Current?.Dispatcher.Invoke(() =>
+        {
+            WriteDiagLog("RECORDING", msg);
+            IsScreenRecording = _gameRecordingService.IsRecording;
+            if (!isRec && msg.Contains("saved:"))
+                ScreenRecordingPath = msg;
         });
         _telemetryLoop.TrackMapCompleted += map => Application.Current?.Dispatcher.Invoke(() =>
         {
@@ -1210,7 +1229,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _telemetryLoop.MapBuilder.StartRecording();
         IsTrackMapRecording = true;
         IsTrackMapAvailable = false;
-        StatusText = "Track map recording started - drive a full lap";
+        StatusText = IsScreenRecording
+            ? "Track map recording started — video capture is also active"
+            : "Track map recording started - drive a full lap";
     }
 
     [RelayCommand]
@@ -1609,6 +1630,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CurrentRawForce = processed.RawFinalFf;
             IsClipping = processed.IsClipping;
             SpeedKmh = processed.SpeedKmh;
+            _gameRecordingService.OnTelemetryTick(processed.SpeedKmh);
+            IsScreenRecording = _gameRecordingService.IsRecording;
 
             if (IsGameConnected && raw.FfbStrength > 0.01f && !ShowGameFfbWarning && _ffbWarningDismissed != true)
                 ShowGameFfbWarning = true;
@@ -2595,6 +2618,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _uiUpdateTimer.Stop();
+        _gameRecordingService.Dispose();
         _telemetryLoop.Dispose();
         _deviceManager.Dispose();
         _reader.Dispose();

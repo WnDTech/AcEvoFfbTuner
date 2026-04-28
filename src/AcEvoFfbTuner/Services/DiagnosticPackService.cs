@@ -42,7 +42,23 @@ public sealed class DiagnosticPackService
                 AddDirectoryToZip(zip, Path.Combine(BaseDir, "Profiles"), "Profiles", progress);
                 AddDirectoryToZip(zip, Path.Combine(BaseDir, "TrackMaps"), "TrackMaps", progress);
                 AddDirectoryToZip(zip, Path.Combine(BaseDir, "snapshots"), "snapshots", progress);
+                AddRecordingManifestToZip(zip, progress);
                 AddLogFilesToZip(zip, progress);
+            }
+
+            string? videoLink = null;
+            var manifest = GameRecordingService.BuildManifest();
+            var latestRecording = manifest?.Recordings.FirstOrDefault();
+            if (latestRecording != null && File.Exists(latestRecording.FilePath))
+            {
+                try
+                {
+                    videoLink = await GameRecordingService.UploadRecordingAsync(latestRecording.FilePath, progress);
+                }
+                catch (Exception ex)
+                {
+                    progress?.Report($"Video upload failed: {ex.Message}");
+                }
             }
 
             progress?.Report("Sending email...");
@@ -59,11 +75,17 @@ public sealed class DiagnosticPackService
             mail.From = new MailAddress(FromAddress);
             mail.To.Add(ToAddress);
             mail.Subject = $"AC EVO FFB Tuner - Diagnostic Pack ({DateTime.Now:yyyy-MM-dd HH:mm})";
+
+            string videoSection = videoLink != null
+                ? $"\n\n--- SESSION VIDEO ---\n{videoLink}\n(Download to view the recorded driving session)"
+                : "\n\n--- SESSION VIDEO ---\nNo video uploaded (no recording found or upload failed)";
+
             mail.Body = $"AC EVO FFB Tuner Diagnostic Pack\n" +
                          $"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
                          $"Package size: {zipSizeMb:F1} MB\n\n" +
-                         $"Contains: Profiles, Track Maps, Snapshots, and Log files.\n\n" +
-                         $"--- USER FEEDBACK ---\n{feedback}";
+                         $"Contains: Profiles, Track Maps, Snapshots, Recording Manifest, and Log files." +
+                         videoSection +
+                         $"\n\n--- USER FEEDBACK ---\n{feedback}";
 
             var attachment = new Attachment(zipPath, new ContentType("application/zip"));
             attachment.ContentDisposition!.FileName = $"AcEvoFfbTuner_DiagPack_{DateTime.Now:yyyyMMdd_HHmmss}.zip";
@@ -141,6 +163,39 @@ public sealed class DiagnosticPackService
             }
             catch { }
         }
+    }
+
+    private static void AddRecordingManifestToZip(ZipArchive zip, IProgress<string>? progress)
+    {
+        var manifest = GameRecordingService.BuildManifest();
+        if (manifest == null) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"=== RECORDING MANIFEST (generated {manifest.GeneratedAt:yyyy-MM-dd HH:mm:ss}) ===");
+        sb.AppendLine($"Note: Video files are stored locally on the user's machine at:");
+        sb.AppendLine($"  {GameRecordingService.RecordingsDirectory}");
+        sb.AppendLine($"Ask the user to share specific recordings if needed.");
+        sb.AppendLine();
+
+        foreach (var rec in manifest.Recordings)
+        {
+            sb.AppendLine($"File: {rec.FileName}");
+            sb.AppendLine($"  Size: {rec.FileSizeDisplay}");
+            sb.AppendLine($"  Created: {rec.CreatedUtc:yyyy-MM-dd HH:mm:ss} UTC");
+            sb.AppendLine($"  Path: {rec.FilePath}");
+            sb.AppendLine();
+        }
+
+        try
+        {
+            var entry = zip.CreateEntry("recordings/manifest.txt", CompressionLevel.Optimal);
+            using var dest = entry.Open();
+            using var writer = new StreamWriter(dest);
+            writer.Write(sb.ToString());
+        }
+        catch { }
+
+        progress?.Report("Added: recordings/manifest.txt");
     }
 
     private static void LogError(Exception ex)

@@ -410,10 +410,53 @@ public partial class MainWindow : Window
     {
         string dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner", "snapshots");
         Directory.CreateDirectory(dir);
-        string path = System.IO.Path.Combine(dir, $"snapshot_{DateTime.Now:yyyyMMdd_HHmmss_fff}.txt");
-        File.WriteAllText(path, BuildAnalysisText());
+        string ts = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+        string path = System.IO.Path.Combine(dir, $"snapshot_{ts}.txt");
+        string analysis = BuildAnalysisText();
+        File.WriteAllText(path, analysis);
+        try { GenerateReplayHtml(dir, ts, analysis); } catch { }
         System.Media.SystemSounds.Asterisk.Play();
         return path;
+    }
+
+    private void GenerateReplayHtml(string dir, string ts, string analysis)
+    {
+        var vm = DataContext as ViewModels.MainViewModel;
+        string profileName = vm?.SelectedProfile?.Name ?? "Unknown";
+        float torqueNm = vm?.WheelMaxTorqueNm ?? 5.5f;
+
+        string csvSection = "";
+        int csvStart = analysis.IndexOf("=== TIME SERIES DATA");
+        if (csvStart >= 0)
+        {
+            int headerEnd = analysis.IndexOf('\n', csvStart);
+            if (headerEnd >= 0)
+            {
+                int dataStart = analysis.IndexOf("Time,", headerEnd);
+                if (dataStart >= 0)
+                {
+                    string header = "Time,SpeedKmh,SteerAngle,ForceOut,RawFF,Compress,LUT,Slip,Damping,Dynamic,MzFront,FxFront,FyFront,Clipping,Gas,Brake\n";
+                    csvSection = header + analysis.Substring(dataStart);
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(csvSection)) return;
+
+        string statsSection = "";
+        int statsStart = analysis.IndexOf("=== PROFILER STATISTICS");
+        if (statsStart >= 0)
+        {
+            int statsEnd = analysis.IndexOf("=== PROFILE RECOMMENDATIONS");
+            if (statsEnd < 0) statsEnd = analysis.IndexOf("=== CURRENT PROFILE SETTINGS");
+            if (statsEnd < 0) statsEnd = analysis.IndexOf("=== TIME SERIES DATA");
+            if (statsEnd > statsStart)
+                statsSection = analysis.Substring(statsStart, statsEnd - statsStart).Trim();
+        }
+
+        string html = Services.ReplayVisualizerService.GenerateHtml(csvSection, profileName, torqueNm, statsSection);
+        string htmlPath = System.IO.Path.Combine(dir, $"replay_{ts}.html");
+        File.WriteAllText(htmlPath, html);
     }
 
     private string BuildAnalysisText()

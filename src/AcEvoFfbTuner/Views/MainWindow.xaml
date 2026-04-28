@@ -2198,6 +2198,38 @@
 
                 <TextBlock Grid.Column="4" Text="{Binding PacketsPerSecond, StringFormat='{}{0} pkt/s'}" VerticalAlignment="Center" FontSize="14" Margin="8,0" Foreground="#FFAAAAAA" />
 
+                <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                    <Ellipse Width="10" Height="10" Margin="0,0,4,0" VerticalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="Transparent" />
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsScreenRecording}" Value="True">
+                                        <Setter Property="Fill" Value="#FFE53935" />
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock VerticalAlignment="Center" FontSize="14">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="Transparent" />
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsScreenRecording}" Value="True">
+                                        <Setter Property="Foreground" Value="#FFE53935" />
+                                        <Setter Property="Text" Value="REC" />
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
                 <Border Grid.Column="5" Width="1" Background="#FF444466" Margin="12,2" />
 
                 <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
