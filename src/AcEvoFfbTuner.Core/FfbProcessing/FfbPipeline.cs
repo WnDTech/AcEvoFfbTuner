@@ -83,8 +83,6 @@ public sealed class FfbPipeline
 
         float output = OutputClipper.Process(postDynamic * OutputGain, out bool isClipping);
 
-        output = Equalizer.Process(output);
-
         if (SignCorrectionEnabled && raw.SpeedKmh > 2.0f)
         {
             float absOutput = Math.Abs(output);
@@ -238,6 +236,8 @@ public sealed class FfbPipeline
             _prevOutputSign = 0f;
         }
         _lastPreOscOutput = raw.SpeedKmh < 2.0f ? 0f : finalOutput;
+
+        finalOutput = Equalizer.Process(finalOutput);
 
         float vibration = VibrationMixer.Mix(raw);
 

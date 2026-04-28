@@ -158,7 +158,6 @@ public sealed class FfbProfile
         for (int i = 0; i < FfbEqualizer.BandInfo.Length; i++)
         {
             pipeline.Equalizer.SetBandGain(i, Equalizer.GetGain(i));
-            pipeline.Equalizer.SetBandEnabled(i, Equalizer.GetEnabled(i));
         }
     }
 
@@ -262,7 +261,6 @@ public sealed class FfbProfile
         for (int i = 0; i < FfbEqualizer.BandInfo.Length; i++)
         {
             Equalizer.SetGain(i, pipeline.Equalizer.GetBandGain(i));
-            Equalizer.SetEnabled(i, pipeline.Equalizer.GetBandEnabled(i));
         }
     }
 
@@ -588,11 +586,6 @@ public sealed class FfbProfile
                 Equalizer.SetGain(2, oldEq.GetGain(2));
                 Equalizer.SetGain(3, oldEq.GetGain(3));
                 Equalizer.SetGain(4, oldEq.GetGain(4));
-                Equalizer.SetEnabled(0, oldEq.GetEnabled(0));
-                Equalizer.SetEnabled(1, oldEq.GetEnabled(1));
-                Equalizer.SetEnabled(2, oldEq.GetEnabled(2));
-                Equalizer.SetEnabled(3, oldEq.GetEnabled(3));
-                Equalizer.SetEnabled(4, oldEq.GetEnabled(4));
             }
         }
 
@@ -760,7 +753,6 @@ public sealed class EqConfig
     public bool Enabled { get; set; } = false;
 
     private readonly float[] _bandGains = new float[FfbEqualizer.BandInfo.Length];
-    private readonly bool[] _bandEnabled = new bool[FfbEqualizer.BandInfo.Length];
 
     public float[] BandGains
     {
@@ -772,16 +764,6 @@ public sealed class EqConfig
         }
     }
 
-    public bool[] BandEnabled
-    {
-        get => _bandEnabled;
-        set
-        {
-            for (int i = 0; i < Math.Min(value.Length, _bandEnabled.Length); i++)
-                _bandEnabled[i] = value[i];
-        }
-    }
-
     public float GetGain(int band) =>
         band >= 0 && band < _bandGains.Length ? _bandGains[band] : 0f;
 
@@ -789,15 +771,6 @@ public sealed class EqConfig
     {
         if (band >= 0 && band < _bandGains.Length)
             _bandGains[band] = gain;
-    }
-
-    public bool GetEnabled(int band) =>
-        band >= 0 && band < _bandEnabled.Length && _bandEnabled[band];
-
-    public void SetEnabled(int band, bool enabled)
-    {
-        if (band >= 0 && band < _bandEnabled.Length)
-            _bandEnabled[band] = enabled;
     }
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;

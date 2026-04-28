@@ -259,21 +259,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _eqBand4Gain;
 
     [ObservableProperty]
-    private bool _eqBand0Enabled = true;
-
-    [ObservableProperty]
-    private bool _eqBand1Enabled = true;
-
-    [ObservableProperty]
-    private bool _eqBand2Enabled = true;
-
-    [ObservableProperty]
-    private bool _eqBand3Enabled = true;
-
-    [ObservableProperty]
-    private bool _eqBand4Enabled = true;
-
-    [ObservableProperty]
     private float _eqBand5Gain;
 
     [ObservableProperty]
@@ -287,21 +272,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private float _eqBand9Gain;
-
-    [ObservableProperty]
-    private bool _eqBand5Enabled = true;
-
-    [ObservableProperty]
-    private bool _eqBand6Enabled = true;
-
-    [ObservableProperty]
-    private bool _eqBand7Enabled = true;
-
-    [ObservableProperty]
-    private bool _eqBand8Enabled = true;
-
-    [ObservableProperty]
-    private bool _eqBand9Enabled = true;
 
     [ObservableProperty]
     private float _maxForceLimit = 0.8f;
@@ -1527,21 +1497,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnEqBand2GainChanged(float value) => _pipeline.Equalizer.SetBandGain(2, value);
     partial void OnEqBand3GainChanged(float value) => _pipeline.Equalizer.SetBandGain(3, value);
     partial void OnEqBand4GainChanged(float value) => _pipeline.Equalizer.SetBandGain(4, value);
-    partial void OnEqBand0EnabledChanged(bool value) => _pipeline.Equalizer.SetBandEnabled(0, value);
-    partial void OnEqBand1EnabledChanged(bool value) => _pipeline.Equalizer.SetBandEnabled(1, value);
-    partial void OnEqBand2EnabledChanged(bool value) => _pipeline.Equalizer.SetBandEnabled(2, value);
-    partial void OnEqBand3EnabledChanged(bool value) => _pipeline.Equalizer.SetBandEnabled(3, value);
-    partial void OnEqBand4EnabledChanged(bool value) => _pipeline.Equalizer.SetBandEnabled(4, value);
     partial void OnEqBand5GainChanged(float value) => _pipeline.Equalizer.SetBandGain(5, value);
     partial void OnEqBand6GainChanged(float value) => _pipeline.Equalizer.SetBandGain(6, value);
     partial void OnEqBand7GainChanged(float value) => _pipeline.Equalizer.SetBandGain(7, value);
     partial void OnEqBand8GainChanged(float value) => _pipeline.Equalizer.SetBandGain(8, value);
     partial void OnEqBand9GainChanged(float value) => _pipeline.Equalizer.SetBandGain(9, value);
-    partial void OnEqBand5EnabledChanged(bool value) => _pipeline.Equalizer.SetBandEnabled(5, value);
-    partial void OnEqBand6EnabledChanged(bool value) => _pipeline.Equalizer.SetBandEnabled(6, value);
-    partial void OnEqBand7EnabledChanged(bool value) => _pipeline.Equalizer.SetBandEnabled(7, value);
-    partial void OnEqBand8EnabledChanged(bool value) => _pipeline.Equalizer.SetBandEnabled(8, value);
-    partial void OnEqBand9EnabledChanged(bool value) => _pipeline.Equalizer.SetBandEnabled(9, value);
     partial void OnSteeringLockDegreesChanged(int value) { }
     partial void OnCompressionPowerChanged(float value) => _pipeline.CompressionPower = value;
     partial void OnSignCorrectionEnabledChanged(bool value) => _pipeline.SignCorrectionEnabled = value;
@@ -1919,21 +1879,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         EqBand2Gain = profile.Equalizer.GetGain(2);
         EqBand3Gain = profile.Equalizer.GetGain(3);
         EqBand4Gain = profile.Equalizer.GetGain(4);
-        EqBand0Enabled = profile.Equalizer.GetEnabled(0);
-        EqBand1Enabled = profile.Equalizer.GetEnabled(1);
-        EqBand2Enabled = profile.Equalizer.GetEnabled(2);
-        EqBand3Enabled = profile.Equalizer.GetEnabled(3);
-        EqBand4Enabled = profile.Equalizer.GetEnabled(4);
         EqBand5Gain = profile.Equalizer.GetGain(5);
         EqBand6Gain = profile.Equalizer.GetGain(6);
         EqBand7Gain = profile.Equalizer.GetGain(7);
         EqBand8Gain = profile.Equalizer.GetGain(8);
         EqBand9Gain = profile.Equalizer.GetGain(9);
-        EqBand5Enabled = profile.Equalizer.GetEnabled(5);
-        EqBand6Enabled = profile.Equalizer.GetEnabled(6);
-        EqBand7Enabled = profile.Equalizer.GetEnabled(7);
-        EqBand8Enabled = profile.Equalizer.GetEnabled(8);
-        EqBand9Enabled = profile.Equalizer.GetEnabled(9);
         LoadLedValues(profile.LedEffects);
     }
 
@@ -2007,21 +1957,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.Equalizer.SetBandGain(2, EqBand2Gain);
         _pipeline.Equalizer.SetBandGain(3, EqBand3Gain);
         _pipeline.Equalizer.SetBandGain(4, EqBand4Gain);
-        _pipeline.Equalizer.SetBandEnabled(0, EqBand0Enabled);
-        _pipeline.Equalizer.SetBandEnabled(1, EqBand1Enabled);
-        _pipeline.Equalizer.SetBandEnabled(2, EqBand2Enabled);
-        _pipeline.Equalizer.SetBandEnabled(3, EqBand3Enabled);
-        _pipeline.Equalizer.SetBandEnabled(4, EqBand4Enabled);
         _pipeline.Equalizer.SetBandGain(5, EqBand5Gain);
         _pipeline.Equalizer.SetBandGain(6, EqBand6Gain);
         _pipeline.Equalizer.SetBandGain(7, EqBand7Gain);
         _pipeline.Equalizer.SetBandGain(8, EqBand8Gain);
         _pipeline.Equalizer.SetBandGain(9, EqBand9Gain);
-        _pipeline.Equalizer.SetBandEnabled(5, EqBand5Enabled);
-        _pipeline.Equalizer.SetBandEnabled(6, EqBand6Enabled);
-        _pipeline.Equalizer.SetBandEnabled(7, EqBand7Enabled);
-        _pipeline.Equalizer.SetBandEnabled(8, EqBand8Enabled);
-        _pipeline.Equalizer.SetBandEnabled(9, EqBand9Enabled);
         PushLedConfig();
     }
 
@@ -2157,6 +2097,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isSendingDiagnosticPack;
+
+    [ObservableProperty]
+    private string _diagnosticPackStatus = string.Empty;
 
     private readonly Services.AppSettings _appSettings = Services.AppSettings.Load();
 
@@ -2490,6 +2433,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         IsSendingDiagnosticPack = true;
+        DiagnosticPackStatus = "Auto-saving...";
         StatusText = "Auto-saving profile and snapshot...";
 
         try
@@ -2500,9 +2444,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             (mainWin as Views.MainWindow)?.AutoSaveSnapshot();
 
             StatusText = "Sending diagnostic pack...";
+            DiagnosticPackStatus = "Sending...";
             var progress = new Progress<string>(msg =>
             {
                 StatusText = msg;
+                DiagnosticPackStatus = msg;
                 WriteDiagLog("PROGRESS", msg);
             });
             WriteDiagLog("STEP", "Calling DiagnosticPackService.SendAsync...");
@@ -2512,12 +2458,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
             if (!success)
             {
+                DiagnosticPackStatus = "Failed";
                 MessageBox.Show(mainWin, $"{message}\n\nLog: {DiagLogDir()}", "Send Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else
+            {
+                DiagnosticPackStatus = message;
             }
         }
         catch (Exception ex)
         {
             StatusText = $"Error: {ex.Message}";
+            DiagnosticPackStatus = "Error";
             WriteDiagLog("ERROR", $"{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
             MessageBox.Show(mainWin, $"Failed to send diagnostics:\n\n{ex.Message}\n\nLog: {DiagLogDir()}", "Send Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }

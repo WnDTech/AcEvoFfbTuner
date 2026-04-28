@@ -1171,44 +1171,57 @@ public partial class MainWindow : Window
         double canvasH = EqCurveCanvas.ActualHeight;
         if (canvasW <= 0 || canvasH <= 0) return;
 
-        double sliderHeight = 160.0;
-        double topPad = 0;
-        var parentPanel = _eqSliders[0].Parent as StackPanel;
-        if (parentPanel != null)
-        {
-            foreach (var child in parentPanel.Children)
-            {
-                if (child is TextBlock)
-                    topPad += 20;
-            }
-        }
-
-        double trackTop = topPad;
-        double trackBottom = trackTop + sliderHeight;
-        double trackMid = (trackTop + trackBottom) / 2.0;
+        var canvasOrigin = EqCurveCanvas.TransformToAncestor(EqSliderGrid).Transform(new Point(0, 0));
 
         var pts = new Point[10];
         for (int i = 0; i < 10; i++)
         {
-            double x = ((i + 0.5) / 10.0) * canvasW;
-            double gain = _eqSliders[i]?.Value ?? 0.0;
-            double y = trackMid - (gain / 12.0) * (sliderHeight / 2.0);
-            pts[i] = new Point(x, y);
+            var slider = _eqSliders[i];
+            if (slider == null) continue;
+
+            var track = slider.Template.FindName("PART_Track", slider) as System.Windows.Controls.Primitives.Track;
+            double thumbY;
+            double thumbCenterX;
+
+            if (track != null && track.Thumb != null)
+            {
+                var thumbTopLeft = track.Thumb.TransformToAncestor(EqSliderGrid).Transform(new Point(0, 0));
+                double thumbHeight = track.Thumb.ActualHeight;
+                thumbY = thumbTopLeft.Y + thumbHeight / 2.0 - canvasOrigin.Y;
+                thumbCenterX = thumbTopLeft.X + track.Thumb.ActualWidth / 2.0 - canvasOrigin.X;
+            }
+            else
+            {
+                var sliderTopLeft = slider.TransformToAncestor(EqSliderGrid).Transform(new Point(0, 0));
+                double sliderHeight = slider.ActualHeight;
+                double gain = slider.Value;
+                thumbY = sliderTopLeft.Y + sliderHeight / 2.0 - (gain / 12.0) * (sliderHeight / 2.0) - canvasOrigin.Y;
+                thumbCenterX = sliderTopLeft.X + slider.ActualWidth / 2.0 - canvasOrigin.X;
+            }
+
+            pts[i] = new Point(thumbCenterX, thumbY);
         }
 
         var lineGeo = BuildCatmullRomSpline(pts, 8);
         _eqCurvePath.Data = lineGeo;
 
+        double zeroY;
+        {
+            var s0TopLeft = _eqSliders[0].TransformToAncestor(EqSliderGrid).Transform(new Point(0, 0));
+            double sliderH = _eqSliders[0].ActualHeight;
+            zeroY = s0TopLeft.Y + sliderH / 2.0 - canvasOrigin.Y;
+        }
+
         var fillGeo = new StreamGeometry();
         using (var fCtx = fillGeo.Open())
         {
-            fCtx.BeginFigure(new Point(pts[0].X, trackMid), true, true);
+            fCtx.BeginFigure(new Point(pts[0].X, zeroY), true, true);
             AddCatmullRomPoints(fCtx, pts, 8);
-            fCtx.LineTo(new Point(pts[9].X, trackMid), true, false);
+            fCtx.LineTo(new Point(pts[9].X, zeroY), true, false);
         }
         _eqCurveFill.Data = fillGeo;
 
-        _eqZeroLine.Points = new PointCollection(new[] { new Point(0, trackMid), new Point(canvasW, trackMid) });
+        _eqZeroLine.Points = new PointCollection(new[] { new Point(0, zeroY), new Point(canvasW, zeroY) });
     }
 
     private static StreamGeometry BuildCatmullRomSpline(Point[] pts, int subdivisions)

@@ -26,7 +26,6 @@ public sealed class FfbEqualizer
 
     private readonly BiquadFilter[] _filters = new BiquadFilter[BandCount];
     private readonly float[] _gains = new float[BandCount];
-    private readonly bool[] _enabled = new bool[BandCount];
     private float _sampleRate = 333f;
 
     public bool MasterEnabled { get; set; }
@@ -35,9 +34,8 @@ public sealed class FfbEqualizer
     {
         for (int i = 0; i < BandCount; i++)
         {
-            _gains[i] = 0f;
-            _enabled[i] = true;
-            _filters[i] = new BiquadFilter();
+        _gains[i] = 0f;
+        _filters[i] = new BiquadFilter();
         }
         RecalculateAll();
     }
@@ -52,34 +50,24 @@ public sealed class FfbEqualizer
         RecalculateFilter(band);
     }
 
-    public bool GetBandEnabled(int band) =>
-        band >= 0 && band < BandCount && _enabled[band];
-
-    public void SetBandEnabled(int band, bool enabled)
-    {
-        if (band < 0 || band >= BandCount) return;
-        _enabled[band] = enabled;
-        RecalculateFilter(band);
-    }
-
     public void SetSampleRate(float sampleRate)
     {
         _sampleRate = Math.Max(sampleRate, 100f);
         RecalculateAll();
     }
 
-    public float Process(float input)
-    {
-        if (!MasterEnabled) return input;
-
-        float output = input;
-        for (int i = 0; i < BandCount; i++)
+        public float Process(float input)
         {
-            if (_enabled[i] && Math.Abs(_gains[i]) > 0.01f)
-                output = _filters[i].Process(output);
+            if (!MasterEnabled) return input;
+
+            float output = input;
+            for (int i = 0; i < BandCount; i++)
+            {
+                if (Math.Abs(_gains[i]) > 0.01f)
+                    output = _filters[i].Process(output);
+            }
+            return output;
         }
-        return output;
-    }
 
     public void Reset()
     {
@@ -91,7 +79,7 @@ public sealed class FfbEqualizer
     {
         if (band < 0 || band >= BandCount) return;
 
-        float gainDb = _enabled[band] ? _gains[band] : 0f;
+        float gainDb = _gains[band];
         float centerHz = BandInfo[band].CenterHz;
         float sr = _sampleRate;
 
