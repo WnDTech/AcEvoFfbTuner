@@ -46,8 +46,8 @@ public sealed class FfbProfile
 
     public float WheelLoadWeighting { get; set; } = 0.0f;
 
-    public float MzScale { get; set; } = 25f;
-    public float FxScale { get; set; } = 5000f;
+    public float MzScale { get; set; } = 30f;
+    public float FxScale { get; set; } = 500f;
     public float FyScale { get; set; } = 5000f;
 
     public LutCurveDto LutCurve { get; set; } = LutCurveDto.Linear();
@@ -299,9 +299,9 @@ public sealed class FfbProfile
                 FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
                 FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
                 WheelLoadWeighting = 0.0f,
-                MzScale = 150f,
-                FxScale = 4000f,
-                FyScale = 4000f,
+                MzScale = 30f,
+                FxScale = 500f,
+                FyScale = 5000f,
                 LutCurve = LutCurveDto.Linear(),
                 SteeringLockDegrees = 900,
                 Damping = new DampingConfig { SpeedDamping = 1.0f, Friction = 0.5f, Inertia = 0.2f, MaxSpeedReference = 200f },
@@ -343,9 +343,9 @@ public sealed class FfbProfile
                 FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
                 FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
                 WheelLoadWeighting = 0.0f,
-                MzScale = 150f,
-                FxScale = 4000f,
-                FyScale = 4000f,
+                MzScale = 30f,
+                FxScale = 500f,
+                FyScale = 5000f,
                 LutCurve = LutCurveDto.Linear(),
                 SteeringLockDegrees = 900,
                 Damping = new DampingConfig
@@ -384,9 +384,9 @@ public sealed class FfbProfile
                 FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
                 FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
                 WheelLoadWeighting = 0.0f,
-                MzScale = 100f,
-                FxScale = 4000f,
-                FyScale = 4000f,
+                MzScale = 30f,
+                FxScale = 500f,
+                FyScale = 5000f,
                 LutCurve = LutCurveDto.Linear(),
                 SteeringLockDegrees = 900,
                 Damping = new DampingConfig
@@ -408,9 +408,9 @@ public sealed class FfbProfile
                 Name = name,
                 OutputGain = 0.8f,
                 NormalizationScale = 250f,
-                MzScale = 150f,
-                FxScale = 4000f,
-                FyScale = 4000f,
+                MzScale = 30f,
+                FxScale = 500f,
+                FyScale = 5000f,
                 CompressionPower = 1.5f,
                 Damping = new DampingConfig { SpeedDamping = 1.0f, Friction = 0.5f, Inertia = 0.2f, MaxSpeedReference = 200f },
                 FxFront = new ChannelConfig { Gain = 0.15f, Enabled = true },
@@ -442,9 +442,9 @@ public sealed class FfbProfile
             FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
             FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
             WheelLoadWeighting = 0.0f,
-            MzScale = 150f,
-            FxScale = 4000f,
-            FyScale = 4000f,
+            MzScale = 30f,
+            FxScale = 500f,
+            FyScale = 5000f,
             LutCurve = LutCurveDto.Linear(),
             SteeringLockDegrees = 900,
             Damping = new DampingConfig
@@ -535,7 +535,7 @@ public sealed class FfbProfile
             }
             else if (Name == "Moza R5 - Connected Baseline")
             {
-                MzScale = 150f;
+                MzScale = 30f;
                 Damping = new DampingConfig
                 {
                     SpeedDamping = 1.0f,
@@ -546,9 +546,9 @@ public sealed class FfbProfile
             }
             else if (Name == "Default")
             {
-                MzScale = 150f;
-                FxScale = 4000f;
-                FyScale = 4000f;
+                MzScale = 30f;
+                FxScale = 500f;
+                FyScale = 5000f;
                 FxFront = new ChannelConfig { Gain = 0.15f, Enabled = true };
                 FyFront = new ChannelConfig { Gain = 0.2f, Enabled = true };
                 Damping = new DampingConfig { SpeedDamping = 1.0f, Friction = 0.5f, Inertia = 0.2f, MaxSpeedReference = 200f };

@@ -458,52 +458,71 @@ public sealed class FfbDeviceManager : IDisposable
             }
 
             var cf2 = new DI.ConstantForce { Magnitude = magnitude };
-            var newParams = new DI.EffectParameters
+
+            var axesConfigs = new[]
             {
-                Duration = -1,
-                Gain = 10000,
-                SamplePeriod = 0,
-                StartDelay = 0,
-                TriggerButton = -1,
-                TriggerRepeatInterval = 0,
-                Flags = DI.EffectFlags.Cartesian | DI.EffectFlags.ObjectIds,
+                new { Axes = _ffAxes ?? new int[] { 0 }, Flags = DI.EffectFlags.Cartesian | DI.EffectFlags.ObjectIds },
+                new { Axes = new int[] { 0 }, Flags = DI.EffectFlags.Cartesian | DI.EffectFlags.ObjectIds },
+                new { Axes = _ffAxes ?? new int[] { 0 }, Flags = DI.EffectFlags.Polar | DI.EffectFlags.ObjectIds },
+                new { Axes = new int[] { 0 }, Flags = DI.EffectFlags.Polar },
             };
-            var newAxes = _ffAxes ?? new int[] { 0 };
-            var newDirs = new int[newAxes.Length];
-            newParams.SetAxes(newAxes, newDirs);
-            newParams.Parameters = cf2;
 
-            const int maxCreateAttempts = 3;
-            for (int attempt = 1; attempt <= maxCreateAttempts; attempt++)
+            bool effectCreated = false;
+            for (int cfgIdx = 0; cfgIdx < axesConfigs.Length && !effectCreated; cfgIdx++)
             {
-                try
+                var cfg = axesConfigs[cfgIdx];
+                var newParams = new DI.EffectParameters
                 {
-                    _constantForceEffect = new DI.Effect(_device, DI.EffectGuid.ConstantForce, newParams);
+                    Duration = -1,
+                    Gain = 10000,
+                    SamplePeriod = -1,
+                    StartDelay = 0,
+                    TriggerButton = -1,
+                    TriggerRepeatInterval = 0,
+                    Flags = cfg.Flags,
+                };
+                var newDirs = new int[cfg.Axes.Length];
+                newParams.SetAxes(cfg.Axes, newDirs);
+                newParams.Parameters = cf2;
 
-                    _constantForceEffect.Start(-1, DI.EffectPlayFlags.NoDownload);
-                    _consecutiveForceErrors = 0;
-                    LastError = null;
-                    if (attempt > 1)
-                        ConnLog($"Effect create succeeded on attempt {attempt}");
-                    return;
-                }
-                catch (Exception ex) when (attempt < maxCreateAttempts)
+                const int maxCreateAttempts = 2;
+                for (int attempt = 1; attempt <= maxCreateAttempts && !effectCreated; attempt++)
                 {
-                    ConnLog($"EFFECT CREATE attempt {attempt}/{maxCreateAttempts} failed: {ex.InnerException?.Message ?? ex.Message}");
-                    DestroyConstantForceEffect();
-                    Thread.Sleep(50);
-                }
-                catch (Exception ex)
-                {
-                    _consecutiveForceErrors++;
-                    LastError = $"Create failed ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
-                    ConnLog($"EFFECT CREATE FAIL ({_consecutiveForceErrors}) after {maxCreateAttempts} attempts: {ex.InnerException?.Message ?? ex.Message}");
-                    if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested)
+                    try
                     {
-                        _reconnectRequested = true;
-                        LastError = "Device lost exclusive FFB access. Attempting full reconnect...";
-                        ConnLog("DEVICE LOST — requesting full reconnect from ViewModel");
-                        DeviceRequiresReconnect?.Invoke();
+                        _constantForceEffect = new DI.Effect(_device, DI.EffectGuid.ConstantForce, newParams);
+
+                        _constantForceEffect.Start(-1, DI.EffectPlayFlags.NoDownload);
+                        _consecutiveForceErrors = 0;
+                        LastError = null;
+                        effectCreated = true;
+                        if (cfgIdx > 0)
+                            ConnLog($"Effect create succeeded with config #{cfgIdx} (axes=[{string.Join(",", cfg.Axes)}], flags={cfg.Flags})");
+                    }
+                    catch (Exception ex) when (attempt < maxCreateAttempts)
+                    {
+                        ConnLog($"EFFECT CREATE attempt {attempt}/{maxCreateAttempts} config #{cfgIdx} failed: {ex.InnerException?.Message ?? ex.Message}");
+                        DestroyConstantForceEffect();
+                        Thread.Sleep(30);
+                    }
+                    catch (Exception ex)
+                    {
+                        DestroyConstantForceEffect();
+                        if (cfgIdx < axesConfigs.Length - 1)
+                        {
+                            ConnLog($"EFFECT CREATE config #{cfgIdx} failed, trying next config: {ex.InnerException?.Message ?? ex.Message}");
+                            break;
+                        }
+                        _consecutiveForceErrors++;
+                        LastError = $"Create failed ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
+                        ConnLog($"EFFECT CREATE FAIL ({_consecutiveForceErrors}) all configs exhausted: {ex.InnerException?.Message ?? ex.Message}");
+                        if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested)
+                        {
+                            _reconnectRequested = true;
+                            LastError = "Device lost exclusive FFB access. Attempting full reconnect...";
+                            ConnLog("DEVICE LOST — requesting full reconnect from ViewModel");
+                            DeviceRequiresReconnect?.Invoke();
+                        }
                     }
                 }
             }
@@ -575,23 +594,43 @@ public sealed class FfbDeviceManager : IDisposable
                 Period = 1000 / Math.Max(frequency, 1)
             };
 
-            var newParams = new DI.EffectParameters
+            var periodicAxesConfigs = new[]
             {
-                Duration = -1,
-                Gain = 10000,
-                SamplePeriod = 0,
-                StartDelay = 0,
-                TriggerButton = -1,
-                TriggerRepeatInterval = 0,
-                Flags = DI.EffectFlags.Cartesian | DI.EffectFlags.ObjectIds,
+                new { Axes = _ffAxes ?? new int[] { 0 }, Flags = DI.EffectFlags.Cartesian | DI.EffectFlags.ObjectIds },
+                new { Axes = new int[] { 0 }, Flags = DI.EffectFlags.Cartesian | DI.EffectFlags.ObjectIds },
+                new { Axes = _ffAxes ?? new int[] { 0 }, Flags = DI.EffectFlags.Polar | DI.EffectFlags.ObjectIds },
+                new { Axes = new int[] { 0 }, Flags = DI.EffectFlags.Polar },
             };
-            newParams.SetAxes(axes, directions);
-            newParams.Parameters = newPeriodic;
 
-            _periodicEffect = new DI.Effect(_device, DI.EffectGuid.Sine, newParams);
-            _periodicEffect.Start(1, 0);
-            _periodicEffectPlaying = true;
-            _lastPeriodicMagnitude = magnitude;
+            foreach (var cfg in periodicAxesConfigs)
+            {
+                try
+                {
+                    var pDirs = new int[cfg.Axes.Length];
+                    var pParams = new DI.EffectParameters
+                    {
+                        Duration = -1,
+                        Gain = 10000,
+                        SamplePeriod = -1,
+                        StartDelay = 0,
+                        TriggerButton = -1,
+                        TriggerRepeatInterval = 0,
+                        Flags = cfg.Flags,
+                    };
+                    pParams.SetAxes(cfg.Axes, pDirs);
+                    pParams.Parameters = newPeriodic;
+
+                    _periodicEffect = new DI.Effect(_device, DI.EffectGuid.Sine, pParams);
+                    _periodicEffect.Start(1, 0);
+                    _periodicEffectPlaying = true;
+                    _lastPeriodicMagnitude = magnitude;
+                    return;
+                }
+                catch
+                {
+                    DestroyPeriodicEffect();
+                }
+            }
         }
         catch
         {

@@ -4,8 +4,8 @@ namespace AcEvoFfbTuner.Core.FfbProcessing;
 
 public sealed class FfbChannelMixer
 {
-    public float MzScale { get; set; } = 25f;
-    public float FxScale { get; set; } = 5000f;
+    public float MzScale { get; set; } = 30f;
+    public float FxScale { get; set; } = 500f;
     public float FyScale { get; set; } = 5000f;
     public float LoadReference { get; set; } = 5000f;
 

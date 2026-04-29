@@ -72,9 +72,9 @@ public static class WheelbaseAutoConfigurator
             FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
             FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
             WheelLoadWeighting = 0.0f,
-            MzScale = 150f,
-            FxScale = 4000f,
-            FyScale = 4000f,
+            MzScale = 30f,
+            FxScale = 500f,
+            FyScale = 5000f,
             LutCurve = LutCurveDto.Linear(),
             SteeringLockDegrees = 900,
             Damping = new DampingConfig
