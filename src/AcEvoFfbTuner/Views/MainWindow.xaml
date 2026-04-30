@@ -989,7 +989,7 @@
                                     <TextBlock Text="STEER&#x0A;WEIGHT" FontSize="13" FontWeight="Bold" Foreground="#FF90CAF9" HorizontalAlignment="Center" Margin="0,0,0,2" TextAlignment="Center" />
                                     <TextBlock Text="2 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
                                     <Slider x:Name="EqSlider0" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand0Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
-                                    <TextBlock Text="{Binding EqBand0Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF90CAF9" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <TextBlock x:Name="EqValueLabel0" Text="{Binding EqBand0Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF90CAF9" HorizontalAlignment="Center" Margin="0,2,0,4" />
                                     <TextBlock Text="Heavy resistance,&#x0A;parking effort" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                                 </StackPanel>
 
@@ -998,7 +998,7 @@
                                     <TextBlock Text="WEIGHT&#x0A;TRANSFER" FontSize="13" FontWeight="Bold" Foreground="#FF4FC3F7" HorizontalAlignment="Center" Margin="0,0,0,2" TextAlignment="Center" />
                                     <TextBlock Text="4 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
                                     <Slider x:Name="EqSlider1" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand1Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
-                                    <TextBlock Text="{Binding EqBand1Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF4FC3F7" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <TextBlock x:Name="EqValueLabel1" Text="{Binding EqBand1Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF4FC3F7" HorizontalAlignment="Center" Margin="0,2,0,4" />
                                     <TextBlock Text="Body roll, brake&#x0A;dive, accel squat" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                                 </StackPanel>
 
@@ -1007,7 +1007,7 @@
                                     <TextBlock Text="SELF&#x0A;ALIGN" FontSize="13" FontWeight="Bold" Foreground="#FF4DB6AC" HorizontalAlignment="Center" Margin="0,0,0,2" TextAlignment="Center" />
                                     <TextBlock Text="8 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
                                     <Slider x:Name="EqSlider2" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand2Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
-                                    <TextBlock Text="{Binding EqBand2Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF4DB6AC" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <TextBlock x:Name="EqValueLabel2" Text="{Binding EqBand2Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF4DB6AC" HorizontalAlignment="Center" Margin="0,2,0,4" />
                                     <TextBlock Text="Self-centering,&#x0A;grip balance feel" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                                 </StackPanel>
 
@@ -1016,7 +1016,7 @@
                                     <TextBlock Text="STEERING&#x0A;PRECISION" FontSize="13" FontWeight="Bold" Foreground="#FF66BB6A" HorizontalAlignment="Center" Margin="0,0,0,2" TextAlignment="Center" />
                                     <TextBlock Text="12 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
                                     <Slider x:Name="EqSlider3" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand3Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
-                                    <TextBlock Text="{Binding EqBand3Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF66BB6A" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <TextBlock x:Name="EqValueLabel3" Text="{Binding EqBand3Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF66BB6A" HorizontalAlignment="Center" Margin="0,2,0,4" />
                                     <TextBlock Text="Line tracking,&#x0A;small corrections" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                                 </StackPanel>
 
@@ -1025,7 +1025,7 @@
                                     <TextBlock Text="TURN-IN&#x0A;RESPONSE" FontSize="13" FontWeight="Bold" Foreground="#FF9CCC65" HorizontalAlignment="Center" Margin="0,0,0,2" TextAlignment="Center" />
                                     <TextBlock Text="18 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
                                     <Slider x:Name="EqSlider4" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand4Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
-                                    <TextBlock Text="{Binding EqBand4Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF9CCC65" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <TextBlock x:Name="EqValueLabel4" Text="{Binding EqBand4Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FF9CCC65" HorizontalAlignment="Center" Margin="0,2,0,4" />
                                     <TextBlock Text="Initial bite,&#x0A;direction change" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                                 </StackPanel>
 
@@ -1034,7 +1034,7 @@
                                     <TextBlock Text="ROAD&#x0A;TEXTURE" FontSize="13" FontWeight="Bold" Foreground="#FFFFD600" HorizontalAlignment="Center" Margin="0,0,0,2" TextAlignment="Center" />
                                     <TextBlock Text="25 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
                                     <Slider x:Name="EqSlider5" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand5Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
-                                    <TextBlock Text="{Binding EqBand5Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <TextBlock x:Name="EqValueLabel5" Text="{Binding EqBand5Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" HorizontalAlignment="Center" Margin="0,2,0,4" />
                                     <TextBlock Text="Tarmac grain,&#x0A;surface roughness" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                                 </StackPanel>
 
@@ -1043,7 +1043,7 @@
                                     <TextBlock Text="BUMP&#x0A;DETAIL" FontSize="13" FontWeight="Bold" Foreground="#FFFFB74D" HorizontalAlignment="Center" Margin="0,0,0,2" TextAlignment="Center" />
                                     <TextBlock Text="35 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
                                     <Slider x:Name="EqSlider6" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand6Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
-                                    <TextBlock Text="{Binding EqBand6Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFFFB74D" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <TextBlock x:Name="EqValueLabel6" Text="{Binding EqBand6Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFFFB74D" HorizontalAlignment="Center" Margin="0,2,0,4" />
                                     <TextBlock Text="Patches, seams,&#x0A;road features" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                                 </StackPanel>
 
@@ -1052,7 +1052,7 @@
                                     <TextBlock Text="KERB&#x0A;STRIKE" FontSize="13" FontWeight="Bold" Foreground="#FFFF9800" HorizontalAlignment="Center" Margin="0,0,0,2" TextAlignment="Center" />
                                     <TextBlock Text="50 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
                                     <Slider x:Name="EqSlider7" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand7Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
-                                    <TextBlock Text="{Binding EqBand7Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFFF9800" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <TextBlock x:Name="EqValueLabel7" Text="{Binding EqBand7Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFFF9800" HorizontalAlignment="Center" Margin="0,2,0,4" />
                                     <TextBlock Text="Kerb hits, potholes,&#x0A;sharp impacts" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                                 </StackPanel>
 
@@ -1061,7 +1061,7 @@
                                     <TextBlock Text="WHEEL&#x0A;CHATTER" FontSize="13" FontWeight="Bold" Foreground="#FFEF5350" HorizontalAlignment="Center" Margin="0,0,0,2" TextAlignment="Center" />
                                     <TextBlock Text="70 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
                                     <Slider x:Name="EqSlider8" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand8Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
-                                    <TextBlock Text="{Binding EqBand8Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFEF5350" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <TextBlock x:Name="EqValueLabel8" Text="{Binding EqBand8Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFEF5350" HorizontalAlignment="Center" Margin="0,2,0,4" />
                                     <TextBlock Text="Rapid vibration,&#x0A;wheel buzz" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                                 </StackPanel>
 
@@ -1070,7 +1070,7 @@
                                     <TextBlock Text="ABS/TC&#x0A;PULSES" FontSize="13" FontWeight="Bold" Foreground="#FFCE93D8" HorizontalAlignment="Center" Margin="0,0,0,2" TextAlignment="Center" />
                                     <TextBlock Text="100 Hz" FontSize="13" Foreground="#FF888888" HorizontalAlignment="Center" Margin="0,0,0,6" />
                                     <Slider x:Name="EqSlider9" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand9Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="160" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
-                                    <TextBlock Text="{Binding EqBand9Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFCE93D8" HorizontalAlignment="Center" Margin="0,2,0,4" />
+                                    <TextBlock x:Name="EqValueLabel9" Text="{Binding EqBand9Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="#FFCE93D8" HorizontalAlignment="Center" Margin="0,2,0,4" />
                                     <TextBlock Text="ABS/TC pulsing,&#x0A;finest vibration" FontSize="11" Foreground="#FF777777" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                                 </StackPanel>
 

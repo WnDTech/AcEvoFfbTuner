@@ -84,6 +84,10 @@ public partial class MainWindow : Window
     private readonly List<Point> _recordingWorldPts = new();
 
     private readonly Slider[] _eqSliders = new Slider[10];
+    private readonly Border?[] _eqFillBorders = new Border?[10];
+    private readonly Ellipse?[] _eqThumbEllipses = new Ellipse?[10];
+    private readonly SolidColorBrush[] _eqFillBrushes = new SolidColorBrush[10];
+    private readonly TextBlock?[] _eqValueLabels = new TextBlock?[10];
     private readonly System.Windows.Shapes.Path _eqCurvePath = new()
     {
         Stroke = new SolidColorBrush(Color.FromArgb(0xDD, 0xFF, 0xA5, 0x00)),
@@ -144,7 +148,13 @@ public partial class MainWindow : Window
         TrackMapCanvas.Children.Add(_carDot);
 
         for (int i = 0; i < 10; i++)
+        {
             _eqSliders[i] = (Slider)FindName($"EqSlider{i}");
+            _eqFillBrushes[i] = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x77));
+            _eqValueLabels[i] = FindName($"EqValueLabel{i}") as TextBlock;
+        }
+
+        Loaded += OnMainWindowLoaded;
 
         _eqZeroLine.Stroke = _eqZeroBrush;
         EqCurveCanvas.Children.Add(_eqZeroLine);
@@ -152,6 +162,36 @@ public partial class MainWindow : Window
         EqCurveCanvas.Children.Add(_eqCurvePath);
 
         EqSliderGrid.SizeChanged += (s, e) => UpdateEqCurve();
+    }
+
+    private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            _eqSliders[i]?.ApplyTemplate();
+
+            var track = _eqSliders[i]?.Template?.FindName("PART_Track", _eqSliders[i]) as System.Windows.Controls.Primitives.Track;
+            if (track?.DecreaseRepeatButton != null)
+            {
+                track.DecreaseRepeatButton.ApplyTemplate();
+                if (VisualTreeHelper.GetChildrenCount(track.DecreaseRepeatButton) > 0)
+                {
+                    _eqFillBorders[i] = VisualTreeHelper.GetChild(track.DecreaseRepeatButton, 0) as Border;
+                }
+            }
+            if (track?.Thumb != null)
+            {
+                track.Thumb.ApplyTemplate();
+                if (VisualTreeHelper.GetChildrenCount(track.Thumb) > 0)
+                {
+                    var thumbGrid = VisualTreeHelper.GetChild(track.Thumb, 0) as Grid;
+                    if (thumbGrid != null && thumbGrid.Children.Count >= 2)
+                        _eqThumbEllipses[i] = thumbGrid.Children[1] as Ellipse;
+                }
+            }
+        }
+
+        UpdateAllEqSliderColors();
         UpdateEqCurve();
     }
 
@@ -1160,6 +1200,12 @@ public partial class MainWindow : Window
 
     private void EqSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (sender is Slider s)
+        {
+            int idx = Array.IndexOf(_eqSliders, s);
+            if (idx >= 0)
+                UpdateEqSliderColor(idx);
+        }
         UpdateEqCurve();
     }
 
@@ -1263,5 +1309,77 @@ public partial class MainWindow : Window
                 ctx.LineTo(new Point(x, y), true, false);
             }
         }
+    }
+
+    private static Color GetEqColorForGain(double gain)
+    {
+        float t = (float)Math.Clamp(gain / 12.0, -1.0, 1.0);
+
+        if (t >= 0f)
+        {
+            byte r = (byte)(0x55 + (0xFF - 0x55) * t);
+            byte g = (byte)(0x55 + (0xFF - 0x55) * t * 0.85f);
+            byte b = (byte)(0x77 + (0xFF - 0x77) * t * 0.9f);
+            return Color.FromRgb(r, g, b);
+        }
+        else
+        {
+            float at = -t;
+            byte r = (byte)(0x55 + (0xEF - 0x55) * at);
+            byte g = (byte)(0x55 - 0x20 * at);
+            byte b = (byte)(0x77 - 0x47 * at);
+            return Color.FromRgb(r, g, b);
+        }
+    }
+
+    private static Color GetEqThumbColorForGain(double gain)
+    {
+        float t = (float)Math.Clamp(gain / 12.0, -1.0, 1.0);
+
+        if (t >= 0f)
+        {
+            byte r = (byte)(0xE6 + (0xFF - 0xE6) * t * 0.5f);
+            byte g = (byte)(0x7E + (0xDD - 0x7E) * t);
+            byte b = (byte)(0x22 + (0xEE - 0x22) * t);
+            return Color.FromRgb(r, g, b);
+        }
+        else
+        {
+            float at = -t;
+            byte r = (byte)(0xE6 + (0xFF - 0xE6) * at * 0.3f);
+            byte g = (byte)(0x7E - 0x50 * at);
+            byte b = (byte)(0x22 - 0x10 * at);
+            return Color.FromRgb(r, g, b);
+        }
+    }
+
+    private void UpdateAllEqSliderColors()
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            if (_eqSliders[i] != null)
+                UpdateEqSliderColor(i);
+        }
+    }
+
+    private void UpdateEqSliderColor(int index)
+    {
+        var slider = _eqSliders[index];
+        if (slider == null) return;
+
+        double gain = slider.Value;
+        var fillColor = GetEqColorForGain(gain);
+        var thumbColor = GetEqThumbColorForGain(gain);
+
+        var fillBrush = new SolidColorBrush(fillColor);
+        if (_eqFillBorders[index] is { } border)
+            border.Background = fillBrush;
+        _eqFillBrushes[index] = fillBrush;
+
+        if (_eqThumbEllipses[index] is { } thumb)
+            thumb.Fill = new SolidColorBrush(thumbColor);
+
+        if (_eqValueLabels[index] is { } label)
+            label.Foreground = new SolidColorBrush(fillColor);
     }
 }
