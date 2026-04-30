@@ -764,22 +764,7 @@
                                                 </DockPanel>
                                                 <TextBlock Text="Speed where speed-based damping reaches full strength. Lower = damping kicks in sooner. Affects Speed Damping and Inertia." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                             </StackPanel>
-                                            <StackPanel Margin="0,6">
-                                                <DockPanel>
-                                                    <TextBlock Text="Low Speed Damp Boost" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                                    <TextBlock Text="{Binding LowSpeedDampingBoost, StringFormat='{}{0:F3}'}" Width="66" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                                    <Slider Value="{Binding LowSpeedDampingBoost}" Minimum="0" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="True" />
-                                                </DockPanel>
-                                                <TextBlock Text="Multiplier for all damping forces at low speed. DISABLED in current pipeline — slider has no effect. Kept for profile compatibility." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
-                                            </StackPanel>
-                                            <StackPanel Margin="0,6">
-                                                <DockPanel>
-                                                    <TextBlock Text="Low Speed Threshold" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                                    <TextBlock Text="{Binding LowSpeedThreshold, StringFormat='{}{0:F0}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                                    <Slider Value="{Binding LowSpeedThreshold}" Minimum="0" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True" />
-                                                </DockPanel>
-                                                <TextBlock Text="Speed (km/h) below which damping boost is fully active. DISABLED in current pipeline — slider has no effect. Kept for profile compatibility." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
-                                            </StackPanel>
+
                                         </StackPanel>
                                     </Expander>
                                 </StackPanel>
@@ -903,14 +888,7 @@
                                                 </DockPanel>
                                                 <TextBlock Text="Divides the mixed channel signal to normalize it. Higher = weaker signal entering compression. Works together with Force Sensitivity." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                             </StackPanel>
-                                            <StackPanel Margin="0,6">
-                                                <DockPanel>
-                                                    <TextBlock Text="Compression Power" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                                    <TextBlock Text="{Binding CompressionPower, StringFormat='{}{0:F3}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                                    <Slider Value="{Binding CompressionPower}" Minimum="0.1" Maximum="5.0" TickFrequency="0.005" IsSnapToTickEnabled="True" />
-                                                </DockPanel>
-                                                <TextBlock Text="Compression curve shape. DISABLED in current pipeline — slider has no effect (Tanh compression removed). LUT curve handles non-linearity now. Kept for profile compatibility." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
-                                            </StackPanel>
+
                                             <StackPanel Margin="0,6">
                                                 <DockPanel>
                                                     <TextBlock Text="Steering Lock (deg)" Width="160" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
@@ -1114,22 +1092,7 @@
                                                 </DockPanel>
                                                 <TextBlock Text="Forces below this are silenced. Eliminates tiny vibrations when the wheel should be still. Higher = quieter center but may lose fine detail. Also affects Hysteresis triggering." Style="{StaticResource SliderDescription}" />
                                             </StackPanel>
-                                            <StackPanel Margin="0,6">
-                                                <DockPanel>
-                                                    <TextBlock Text="Hysteresis Threshold" Width="185" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                                    <TextBlock Text="{Binding HysteresisThreshold, StringFormat='{}{0:F4}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                                    <Slider Value="{Binding HysteresisThreshold}" Minimum="0" Maximum="0.1" TickFrequency="0.0005" IsSnapToTickEnabled="True" />
-                                                </DockPanel>
-                                                 <TextBlock Text="Minimum force change to move the output. DISABLED in current pipeline — slider has no effect (hysteresis removed). Kept for profile compatibility." Style="{StaticResource SliderDescription}" />
-                                            </StackPanel>
-                                            <StackPanel Margin="0,6">
-                                                <DockPanel>
-                                                    <TextBlock Text="Hysteresis Watchdog" Width="185" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
-                                                    <TextBlock Text="{Binding HysteresisWatchdogFrames, StringFormat='{}{0}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
-                                                    <Slider Value="{Binding HysteresisWatchdogFrames}" Minimum="1" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="True" />
-                                                </DockPanel>
-                                                 <TextBlock Text="Frames before a held force is force-updated. DISABLED in current pipeline — slider has no effect (hysteresis removed). Kept for profile compatibility." Style="{StaticResource SliderDescription}" />
-                                            </StackPanel>
+
                                             <StackPanel Margin="0,6">
                                                 <DockPanel>
                                                     <TextBlock Text="Center Knee Power" Width="185" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Left" />
