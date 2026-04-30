@@ -1989,6 +1989,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <Ellipse Grid.Column="0" Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
@@ -2102,9 +2103,24 @@
                     </Button>
                 </StackPanel>
 
-                <Border Grid.Column="7" Width="1" Background="#FF444466" Margin="4,2" />
+                <Button Grid.Column="7" Content="What's New" Click="OnWhatsNewClick" Cursor="Hand" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Padding="10,4" Margin="0,0,0,0">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="WhatsNewBtnBorder" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                                <TextBlock Text="{TemplateBinding Button.Content}" FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}" Foreground="#FF4FC3F7" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="WhatsNewBtnBorder" Property="Background" Value="#1A4FC3F7" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
 
-                <Button Grid.Column="8" Content="&#x2764; Donate" Click="OnDonateClick" Cursor="Hand" VerticalAlignment="Center" FontSize="14" FontWeight="Bold" Padding="12,4">
+                <Border Grid.Column="8" Width="1" Background="#FF444466" Margin="4,2" />
+
+                <Button Grid.Column="9" Content="&#x2764; Donate" Click="OnDonateClick" Cursor="Hand" VerticalAlignment="Center" FontSize="14" FontWeight="Bold" Padding="12,4">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">

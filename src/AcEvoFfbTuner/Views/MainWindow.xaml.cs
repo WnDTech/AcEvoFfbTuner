@@ -1198,6 +1198,12 @@ public partial class MainWindow : Window
         Process.Start(new ProcessStartInfo("https://paypal.me/willndad") { UseShellExecute = true });
     }
 
+    private void OnWhatsNewClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new WhatsNewDialog { Owner = this, ShowAllEntries = true };
+        dialog.ShowDialog();
+    }
+
     private void EqSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (sender is Slider s)

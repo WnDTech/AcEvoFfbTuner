@@ -68,6 +68,31 @@ public partial class App : Application
         var mainWindow = new MainWindow();
         MainWindow = mainWindow;
         mainWindow.Show();
+
+        ShowWhatsNewIfNeeded();
+    }
+
+    private void ShowWhatsNewIfNeeded()
+    {
+        var currentVersion = Services.ChangeLogService.CurrentVersion;
+        var lastSeen = Settings.LastSeenVersion;
+
+        if (lastSeen == currentVersion)
+            return;
+
+        var entries = Services.ChangeLogService.GetEntriesSince(lastSeen);
+        if (entries.Count == 0)
+        {
+            Settings.LastSeenVersion = currentVersion;
+            Settings.Save();
+            return;
+        }
+
+        var dialog = new Views.WhatsNewDialog { Owner = MainWindow };
+        dialog.ShowDialog();
+
+        Settings.LastSeenVersion = currentVersion;
+        Settings.Save();
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
