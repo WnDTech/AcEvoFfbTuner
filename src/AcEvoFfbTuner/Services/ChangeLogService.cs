@@ -29,7 +29,8 @@ public static class ChangeLogService
                 "Auto Setup & Live Tune: wheelbase-aware automatic FFB configuration",
                 "Tire Grip Feel: front scrub intensity and rear slip warning through the wheel",
                 "Dynamic heat-map colors on EQ sliders showing gain value at a glance",
-                "Custom LabeledSlider control with editable values, section colors, log scale, undo, and context menu"
+                "Custom LabeledSlider control with editable values, section colors, log scale, undo, and context menu",
+                "Session Recording: record your driving sessions and send video + telemetry to the developer for FFB diagnosis"
             ],
             Improvements =
             [
