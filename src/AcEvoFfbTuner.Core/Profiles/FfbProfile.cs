@@ -118,8 +118,6 @@ public sealed class FfbProfile
         pipeline.Damping.FrictionLevel = Damping.Friction;
         pipeline.Damping.InertiaWeight = Damping.Inertia;
         pipeline.Damping.MaxSpeedReference = Damping.MaxSpeedReference;
-        pipeline.Damping.LowSpeedDampingBoost = Damping.LowSpeedDampingBoost;
-        pipeline.Damping.LowSpeedThreshold = Damping.LowSpeedThreshold;
 
         pipeline.SlipEnhancer.SlipRatioGain = Slip.SlipRatioGain;
         pipeline.SlipEnhancer.SlipAngleGain = Slip.SlipAngleGain;
@@ -212,9 +210,7 @@ public sealed class FfbProfile
             SpeedDamping = pipeline.Damping.SpeedDampingCoefficient,
             Friction = pipeline.Damping.FrictionLevel,
             Inertia = pipeline.Damping.InertiaWeight,
-            MaxSpeedReference = pipeline.Damping.MaxSpeedReference,
-            LowSpeedDampingBoost = pipeline.Damping.LowSpeedDampingBoost,
-            LowSpeedThreshold = pipeline.Damping.LowSpeedThreshold
+            MaxSpeedReference = pipeline.Damping.MaxSpeedReference
         };
         Slip = new SlipConfig
         {
@@ -293,14 +289,14 @@ public sealed class FfbProfile
                 Name = "Heavy",
                 OutputGain = 1.3f,
                 NormalizationScale = 1.0f,
-                Damping = new DampingConfig { SpeedDamping = 0.2f, Friction = 0.1f, Inertia = 0.15f }
+                Damping = new DampingConfig { SpeedDamping = 0.2f, Friction = 0.1f, Inertia = 0.15f, MaxSpeedReference = 200f }
             },
             "Light" => new FfbProfile
             {
                 Name = "Light",
                 OutputGain = 0.8f,
                 NormalizationScale = 1.0f,
-                Damping = new DampingConfig { SpeedDamping = 0.05f, Friction = 0.02f, Inertia = 0.05f }
+                Damping = new DampingConfig { SpeedDamping = 0.05f, Friction = 0.02f, Inertia = 0.05f, MaxSpeedReference = 200f }
             },
             "Moza R5 - Final Stable Baseline" => new FfbProfile
             {
@@ -373,9 +369,7 @@ public sealed class FfbProfile
                     SpeedDamping = 0.4f,
                     Friction = 0.10f,
                     Inertia = 0.08f,
-                    MaxSpeedReference = 200f,
-                    LowSpeedDampingBoost = 1.0f,
-                    LowSpeedThreshold = 20f
+                    MaxSpeedReference = 200f
                 },
                 Slip = new SlipConfig { SlipRatioGain = 0.15f, SlipAngleGain = 0.15f, SlipThreshold = 0.05f, UseFrontOnly = true },
                 Dynamic = new DynamicConfig { LateralGGain = 0.3f, LongitudinalGGain = 0.1f, SuspensionGain = 0.4f, YawRateGain = 0.15f },
@@ -412,7 +406,7 @@ public sealed class FfbProfile
                 Damping = new DampingConfig
                 {
                     SpeedDamping = 0.5f, Friction = 0.15f, Inertia = 0.12f,
-                    MaxSpeedReference = 200f, LowSpeedDampingBoost = 1.0f, LowSpeedThreshold = 20f
+                    MaxSpeedReference = 200f
                 },
                 Slip = new SlipConfig { SlipRatioGain = 0.08f, SlipAngleGain = 0.15f, SlipThreshold = 0.05f, UseFrontOnly = true },
                 Dynamic = new DynamicConfig { LateralGGain = 0f, LongitudinalGGain = 0f, SuspensionGain = 0.3f, YawRateGain = 0f },
@@ -472,9 +466,7 @@ public sealed class FfbProfile
                 SpeedDamping = speedDamping,
                 Friction = friction,
                 Inertia = inertia,
-                MaxSpeedReference = 200f,
-                LowSpeedDampingBoost = 1.0f,
-                LowSpeedThreshold = 20f
+                MaxSpeedReference = 200f
             },
             Slip = new SlipConfig { SlipRatioGain = 0.08f, SlipAngleGain = 0.15f, SlipThreshold = 0.05f, UseFrontOnly = true },
             Dynamic = new DynamicConfig { LateralGGain = 0f, LongitudinalGGain = 0f, SuspensionGain = 0.3f, YawRateGain = 0f },
@@ -703,19 +695,14 @@ public sealed class DampingConfig
     [JsonPropertyName("dampingSpeedReference")]
     public float MaxSpeedReference { get; set; } = 300f;
 
-    /// <summary>
-    /// Low-speed damping boost multiplier. At 0 km/h, damping is this many times stronger.
-    /// Prevents wheel "hunting" at low/zero speed.
-    /// </summary>
-    public float LowSpeedDampingBoost { get; set; } = 3.0f;
+    [JsonIgnore]
+    public float LowSpeedDampingBoost { get; set; } = 1.0f;
 
-    /// <summary>
-    /// Speed (km/h) below which the low-speed damping boost fades in.
-    /// </summary>
+    [JsonIgnore]
     public float LowSpeedThreshold { get; set; } = 20f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { SpeedDamping = S(SpeedDamping); Friction = S(Friction); Inertia = S(Inertia); MaxSpeedReference = S(MaxSpeedReference); LowSpeedDampingBoost = S(LowSpeedDampingBoost); LowSpeedThreshold = S(LowSpeedThreshold); }
+    public void SanitizeFloats() { SpeedDamping = S(SpeedDamping); Friction = S(Friction); Inertia = S(Inertia); MaxSpeedReference = S(MaxSpeedReference); }
 }
 
 public sealed class SlipConfig

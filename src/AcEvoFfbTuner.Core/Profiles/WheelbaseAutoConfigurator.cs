@@ -31,25 +31,21 @@ public static class WheelbaseAutoConfigurator
         float outputGain = Math.Clamp(1.7f / MathF.Sqrt(Math.Max(torqueNm, 1f)), 0.25f, 1.0f);
         float normScale = Math.Clamp(250f + MathF.Sqrt(Math.Max(torqueNm, 1f)) * 140f, 200f, 900f);
         float compPower = Math.Clamp(1.2f + torqueNm * 0.02f, 1.1f, 2.0f);
-        float slewRate = isDD
-            ? Math.Clamp(0.15f - torqueNm * 0.003f, 0.05f, 0.15f)
-            : 0.20f;
+        float slewRate = 0.40f;
 
         float speedDamp = isDD
-            ? Math.Clamp(0.3f + torqueNm * 0.05f, 0.5f, 1.5f)
-            : Math.Clamp(0.2f + torqueNm * 0.1f, 0.2f, 0.5f);
+            ? Math.Clamp(0.3f + torqueNm * 0.01f, 0.3f, 0.6f)
+            : Math.Clamp(0.15f + torqueNm * 0.02f, 0.15f, 0.4f);
         float friction = isDD
-            ? Math.Clamp(0.2f + torqueNm * 0.02f, 0.3f, 0.8f)
-            : Math.Clamp(0.15f + torqueNm * 0.05f, 0.15f, 0.4f);
+            ? Math.Clamp(0.08f + torqueNm * 0.005f, 0.08f, 0.20f)
+            : Math.Clamp(0.05f + torqueNm * 0.01f, 0.05f, 0.15f);
         float inertia = isDD
-            ? Math.Clamp(0.1f + torqueNm * 0.01f, 0.15f, 0.4f)
-            : Math.Clamp(0.05f + torqueNm * 0.02f, 0.05f, 0.15f);
+            ? Math.Clamp(0.05f + torqueNm * 0.003f, 0.05f, 0.15f)
+            : Math.Clamp(0.03f + torqueNm * 0.005f, 0.03f, 0.10f);
 
-        float centerSupp = 0.5f;  // Physics Mz preserved; only narrow zero-crossing fade needed
-        float blendDeg = 0.5f;    // Reduced: Mz is primary signal, Fy blend zone minimal
-        float hystThresh = isDD ? 0.02f : 0.01f;
-        float noiseFloor = isDD ? 0.005f : 0.003f;
-        float boost = isDD ? 3.0f : 2.0f;
+        float centerSupp = 0.5f;
+        float blendDeg = 0.5f;
+        float noiseFloor = 0.003f;
 
         float vibMaster = Math.Clamp(0.6f - torqueNm * 0.015f, 0.15f, 0.6f);
         float suspRoadGain = Math.Clamp(1.2f - torqueNm * 0.03f, 0.3f, 1.2f);
@@ -82,9 +78,7 @@ public static class WheelbaseAutoConfigurator
                 SpeedDamping = speedDamp,
                 Friction = friction,
                 Inertia = inertia,
-                MaxSpeedReference = 200f,
-                LowSpeedDampingBoost = boost,
-                LowSpeedThreshold = 20f
+                MaxSpeedReference = 200f
             },
             Slip = new SlipConfig
             {
@@ -115,9 +109,7 @@ public static class WheelbaseAutoConfigurator
                 MaxSlewRate = slewRate,
                 CenterSuppressionDegrees = centerSupp,
                 CenterKneePower = 1.0f,
-                HysteresisThreshold = hystThresh,
                 NoiseFloor = noiseFloor,
-                HysteresisWatchdogFrames = 5,
                 CenterBlendDegrees = blendDeg,
                 SteerVelocityReference = 10.0f,
                 VelocityDeadzone = 0.05f,

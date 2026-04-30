@@ -39,8 +39,6 @@ public sealed class FfbPipeline
 
     public float CenterKneePower { get; set; } = 1.0f;
 
-    public int GearShiftSmoothingTicks { get; set; } = 7;
-    public float GearShiftSlewRate { get; set; } = 0.01f;
 
     private float _prevSlewOutput;
     private float _smoothSteerAngle;

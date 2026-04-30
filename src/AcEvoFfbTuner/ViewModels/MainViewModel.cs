@@ -1596,8 +1596,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnFrictionLevelChanged(float value) => _pipeline.Damping.FrictionLevel = value;
     partial void OnInertiaWeightChanged(float value) => _pipeline.Damping.InertiaWeight = value;
     partial void OnDampingSpeedReferenceChanged(float value) => _pipeline.Damping.MaxSpeedReference = value;
-    partial void OnLowSpeedDampingBoostChanged(float value) => _pipeline.Damping.LowSpeedDampingBoost = value;
-    partial void OnLowSpeedThresholdChanged(float value) => _pipeline.Damping.LowSpeedThreshold = value;
     partial void OnSlipRatioGainChanged(float value) => _pipeline.SlipEnhancer.SlipRatioGain = value;
     partial void OnSlipAngleGainChanged(float value) => _pipeline.SlipEnhancer.SlipAngleGain = value;
     partial void OnSlipThresholdChanged(float value) => _pipeline.SlipEnhancer.SlipThreshold = value;
@@ -1989,8 +1987,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         FrictionLevel = profile.Damping.Friction;
         InertiaWeight = profile.Damping.Inertia;
         DampingSpeedReference = profile.Damping.MaxSpeedReference;
-        LowSpeedDampingBoost = profile.Damping.LowSpeedDampingBoost;
-        LowSpeedThreshold = profile.Damping.LowSpeedThreshold;
         SlipRatioGain = profile.Slip.SlipRatioGain;
         SlipAngleGain = profile.Slip.SlipAngleGain;
         SlipThreshold = profile.Slip.SlipThreshold;
@@ -2075,8 +2071,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.Damping.FrictionLevel = FrictionLevel;
         _pipeline.Damping.InertiaWeight = InertiaWeight;
         _pipeline.Damping.MaxSpeedReference = DampingSpeedReference;
-        _pipeline.Damping.LowSpeedDampingBoost = LowSpeedDampingBoost;
-        _pipeline.Damping.LowSpeedThreshold = LowSpeedThreshold;
         _pipeline.SlipEnhancer.SlipRatioGain = SlipRatioGain;
         _pipeline.SlipEnhancer.SlipAngleGain = SlipAngleGain;
         _pipeline.SlipEnhancer.SlipThreshold = SlipThreshold;

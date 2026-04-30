@@ -567,8 +567,6 @@ public partial class MainWindow : Window
             sb.AppendLine($"Friction:           {p.Damping.FrictionLevel:F2}");
             sb.AppendLine($"Inertia:            {p.Damping.InertiaWeight:F2}");
             sb.AppendLine($"MaxSpeedRef:        {p.Damping.MaxSpeedReference:F0}");
-            sb.AppendLine($"LowSpeedBoost:      {p.Damping.LowSpeedDampingBoost:F1}");
-            sb.AppendLine($"LowSpeedThreshold:  {p.Damping.LowSpeedThreshold:F0}");
             sb.AppendLine();
             sb.AppendLine($"--- SLIP ENHANCER ---");
             sb.AppendLine($"SlipRatioGain:      {p.SlipEnhancer.SlipRatioGain:F2}");
@@ -601,7 +599,6 @@ public partial class MainWindow : Window
             sb.AppendLine($"NoiseFloor:         {p.NoiseFloor:F4}");
             sb.AppendLine($"SteerDirDeadzone:   {p.SteerDirDeadzone:F4}");
             sb.AppendLine($"CenterKneePower:    {p.CenterKneePower:F2}");
-            sb.AppendLine($"GearShiftSmooth:    {p.GearShiftSmoothingTicks} ticks @ {p.GearShiftSlewRate:F3}");
         }
         sb.AppendLine();
 

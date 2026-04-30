@@ -20,8 +20,8 @@ public sealed class FfbDamping
     /// </summary>
     public float VelocityDeadzone { get; set; } = 0.02f;
 
-    // Kept as no-ops for profile/UI compatibility. No longer used in Apply().
-    public float LowSpeedDampingBoost { get; set; } = 3.0f;
+    // No-ops kept for profile JSON backward compat. Not used in Apply().
+    public float LowSpeedDampingBoost { get; set; } = 1.0f;
     public float LowSpeedThreshold { get; set; } = 20f;
 
     private float _previousSteerAngle;
