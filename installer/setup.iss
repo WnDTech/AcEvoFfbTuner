@@ -27,6 +27,8 @@ UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\{#AppExeName}
 PrivilegesRequired=lowest
 MinVersion=10.0
+CloseApplications=force
+CloseApplicationsFilter=AcEvoFfbTuner.exe
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -47,6 +49,15 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: deskto
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  Result := '';
+  Exec('taskkill', '/f /im AcEvoFfbTuner.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\{#AppName}"
