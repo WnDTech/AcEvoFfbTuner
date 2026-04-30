@@ -509,26 +509,48 @@ namespace AcEvoFfbTuner.Controls
 
         private void BuildContextMenu()
         {
-            var menu = new ContextMenu();
+            var menuStyle = new Style(typeof(ContextMenu));
+            menuStyle.Setters.Add(new Setter(BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x22, 0x22, 0x3A))));
+            menuStyle.Setters.Add(new Setter(BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55))));
+            menuStyle.Setters.Add(new Setter(BorderThicknessProperty, new Thickness(1)));
+            menuStyle.Setters.Add(new Setter(ForegroundProperty, new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0))));
+            menuStyle.Setters.Add(new Setter(FontSizeProperty, 14.0));
 
-            var undoItem = new MenuItem { Header = "Undo last change", InputGestureText = "Ctrl+Z" };
-            undoItem.Click += (s, e) => UndoLastChange();
+            var itemStyle = new Style(typeof(MenuItem));
+            itemStyle.Setters.Add(new Setter(ForegroundProperty, new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0))));
+            itemStyle.Setters.Add(new Setter(FontSizeProperty, 14.0));
+            itemStyle.Setters.Add(new Setter(PaddingProperty, new Thickness(24, 6, 24, 6)));
+            var itemHoverTrigger = new Trigger { Property = IsMouseOverProperty, Value = true };
+            itemHoverTrigger.Setters.Add(new Setter(BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x55))));
+            itemHoverTrigger.Setters.Add(new Setter(ForegroundProperty, Brushes.White));
+            itemStyle.Triggers.Add(itemHoverTrigger);
+            var itemDisabledTrigger = new Trigger { Property = IsEnabledProperty, Value = false };
+            itemDisabledTrigger.Setters.Add(new Setter(ForegroundProperty, new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88))));
+            itemStyle.Triggers.Add(itemDisabledTrigger);
+
+            var menu = new ContextMenu { Style = menuStyle };
+
+            MenuItem MakeItem(string header, RoutedEventHandler handler)
+            {
+                var item = new MenuItem { Header = header, Style = itemStyle };
+                item.Click += handler;
+                return item;
+            }
+
+            var undoItem = MakeItem("Undo last change", (s, e) => UndoLastChange());
+            undoItem.InputGestureText = "Ctrl+Z";
             menu.Items.Add(undoItem);
 
             menu.Items.Add(new Separator());
 
-            var resetItem = new MenuItem { Header = "Reset to Default" };
-            resetItem.Click += (s, e) => { if (DefaultValue.HasValue) ResetToValue(DefaultValue.Value); };
+            var resetItem = MakeItem("Reset to Default", (s, e) => { if (DefaultValue.HasValue) ResetToValue(DefaultValue.Value); });
             menu.Items.Add(resetItem);
 
             menu.Items.Add(new Separator());
 
-            var copyItem = new MenuItem { Header = "Copy Value" };
-            copyItem.Click += (s, e) => Clipboard.SetText(Value.ToString("G", System.Globalization.CultureInfo.InvariantCulture));
-            menu.Items.Add(copyItem);
+            menu.Items.Add(MakeItem("Copy Value", (s, e) => Clipboard.SetText(Value.ToString("G", System.Globalization.CultureInfo.InvariantCulture))));
 
-            var pasteItem = new MenuItem { Header = "Paste Value" };
-            pasteItem.Click += (s, e) =>
+            menu.Items.Add(MakeItem("Paste Value", (s, e) =>
             {
                 if (double.TryParse(Clipboard.GetText(), System.Globalization.NumberStyles.Float,
                     System.Globalization.CultureInfo.InvariantCulture, out double val))
@@ -537,14 +559,11 @@ namespace AcEvoFfbTuner.Controls
                     val = SnapToTick(val);
                     ResetToValue(val);
                 }
-            };
-            menu.Items.Add(pasteItem);
+            }));
 
             menu.Items.Add(new Separator());
 
-            var setDefaultItem = new MenuItem { Header = "Set current as Default" };
-            setDefaultItem.Click += (s, e) => DefaultValue = Value;
-            menu.Items.Add(setDefaultItem);
+            menu.Items.Add(MakeItem("Set current as Default", (s, e) => DefaultValue = Value));
 
             menu.Opened += (s, e) =>
             {
