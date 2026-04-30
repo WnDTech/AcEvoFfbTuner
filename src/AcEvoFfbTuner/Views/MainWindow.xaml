@@ -725,6 +725,30 @@
                                 </StackPanel>
                             </Border>
 
+                            <!-- TIRE GRIP FEEL -->
+                            <TextBlock Text="TIRE GRIP FEEL" Style="{StaticResource GroupHeader}" />
+                            <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
+                                <StackPanel>
+                                    <TextBlock Text="Feel the tires approaching and exceeding their grip limit. Front scrub gives a grainy texture as front tires reach peak. Rear slip warns you when the back end is stepping out." FontSize="13" Foreground="#FF888888" Margin="0,0,0,8" TextWrapping="Wrap" />
+                                    <StackPanel Margin="0,6">
+                                        <DockPanel>
+                                            <TextBlock Text="Front Tire Scrub" Width="160" VerticalAlignment="Center" FontWeight="Bold" FontSize="15" DockPanel.Dock="Left" />
+                                            <TextBlock Text="{Binding ScrubGain, StringFormat='{}{0:F3}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding ScrubGain}" Minimum="0" Maximum="1" TickFrequency="0.01" IsSnapToTickEnabled="True" />
+                                        </DockPanel>
+                                        <TextBlock Text="High-frequency grain (30-50Hz) as front tires approach grip limit. Simulates rubber tearing at the contact patch before the Mz torque drops. 0 = off, 0.15 = subtle, 0.5 = strong." Style="{StaticResource SliderDescription}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,6">
+                                        <DockPanel>
+                                            <TextBlock Text="Rear Slip Warning" Width="160" VerticalAlignment="Center" FontWeight="Bold" FontSize="15" DockPanel.Dock="Left" />
+                                            <TextBlock Text="{Binding RearSlipGain, StringFormat='{}{0:F3}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
+                                            <Slider Value="{Binding RearSlipGain}" Minimum="0" Maximum="1" TickFrequency="0.01" IsSnapToTickEnabled="True" />
+                                        </DockPanel>
+                                        <TextBlock Text="Low-frequency rumble (12-25Hz) when rear tires lose grip. Detects rear slip angle and yaw acceleration for early oversteer warning. Distinctly different feel from front scrub. 0 = off, 0.25 = default, 0.5 = strong." Style="{StaticResource SliderDescription}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
                             <!-- DAMPING & FRICTION -->
                             <TextBlock Text="DAMPING &amp; FRICTION" Style="{StaticResource GroupHeader}" />
                             <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">

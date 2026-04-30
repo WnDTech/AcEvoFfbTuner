@@ -224,6 +224,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _suspensionRoadGain = 1.5f;
 
     [ObservableProperty]
+    private float _scrubGain = 0.50f;
+
+    [ObservableProperty]
+    private float _rearSlipGain = 0.60f;
+
+    [ObservableProperty]
     private bool _lfeEnabled;
 
     [ObservableProperty]
@@ -1593,6 +1599,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnAbsGainChanged(float value) => _pipeline.VibrationMixer.AbsGain = value;
     partial void OnVibrationMasterGainChanged(float value) => _pipeline.VibrationMixer.MasterGain = value;
     partial void OnSuspensionRoadGainChanged(float value) => _pipeline.VibrationMixer.SuspensionRoadGain = value;
+    partial void OnScrubGainChanged(float value) => _pipeline.VibrationMixer.ScrubGain = value;
+    partial void OnRearSlipGainChanged(float value) => _pipeline.VibrationMixer.RearSlipGain = value;
     partial void OnLfeEnabledChanged(bool value) => _pipeline.LfeGenerator.Enabled = value;
     partial void OnLfeGainChanged(float value) => _pipeline.LfeGenerator.Gain = value;
     partial void OnLfeFrequencyChanged(float value) => _pipeline.LfeGenerator.Frequency = value;
@@ -1979,6 +1987,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         AbsGain = profile.Vibrations.AbsGain;
         VibrationMasterGain = profile.Vibrations.MasterGain;
         SuspensionRoadGain = profile.Vibrations.SuspensionRoadGain;
+        ScrubGain = profile.Vibrations.ScrubGain;
+        RearSlipGain = profile.Vibrations.RearSlipGain;
         LfeEnabled = profile.Lfe.Enabled;
         LfeGain = profile.Lfe.Gain;
         LfeFrequency = profile.Lfe.Frequency;
@@ -2058,6 +2068,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.VibrationMixer.AbsGain = AbsGain;
         _pipeline.VibrationMixer.MasterGain = VibrationMasterGain;
         _pipeline.VibrationMixer.SuspensionRoadGain = SuspensionRoadGain;
+        _pipeline.VibrationMixer.ScrubGain = ScrubGain;
+        _pipeline.VibrationMixer.RearSlipGain = RearSlipGain;
         _pipeline.LfeGenerator.Enabled = LfeEnabled;
         _pipeline.LfeGenerator.Gain = LfeGain;
         _pipeline.LfeGenerator.Frequency = LfeFrequency;

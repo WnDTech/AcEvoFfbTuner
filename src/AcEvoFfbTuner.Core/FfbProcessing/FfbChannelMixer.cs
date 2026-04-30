@@ -43,15 +43,15 @@ public sealed class FfbChannelMixer
 
     // Center blend zone: below this steering angle (degrees), Fy is suppressed
     // in favor of the cleaner Mz signal. Removes the grainy Fy buzz at center.
-    public float CenterBlendDegrees { get; set; } = 1.0f;
+    public float CenterBlendDegrees { get; set; } = 0.5f;
 
     // Per-channel smoothing: higher alpha = more responsive, more noise.
     // Mz (steering torque): most responsive — detail matters most
-    private const float MzAlpha = 0.40f;   // was 0.20
+    private const float MzAlpha = 0.55f;   // was 0.40, increased to preserve Mz peak transient
     // Fx (longitudinal): moderate smoothing — noisiest channel
     private const float FxAlpha = 0.15f;   // was 0.08
     // Fy (lateral): responsive
-    private const float FyAlpha = 0.30f;   // was 0.12
+    private const float FyAlpha = 0.40f;   // was 0.30, increased for better transient response
 
     // Adaptive slip smoothing: alpha used for Fx when slip ratio exceeds threshold
     public float AdaptiveSlipThreshold { get; set; } = 0.05f;
@@ -59,8 +59,8 @@ public sealed class FfbChannelMixer
 
     // Low-speed alpha scaling: suppresses physics jitter at parking/creeping speeds.
     // Reduced from 25 to 15 km/h — less aggressive gating.
-    public float LowSpeedSmoothKmh { get; set; } = 15.0f;
-    private const float MinAlphaScale = 0.10f;  // was 0.05
+    public float LowSpeedSmoothKmh { get; set; } = 10.0f;
+    private const float MinAlphaScale = 0.20f;  // was 0.10, less low-speed Mz smoothing
 
     // 3-sample median filter buffers (ring buffers for each channel)
     private readonly int[] _medianPos = new int[6]; // per-channel ring position
@@ -92,7 +92,10 @@ public sealed class FfbChannelMixer
         else
         {
             float frontLoad = Math.Max(raw.WheelLoad[0] + raw.WheelLoad[1], 1f);
-            float loadFactor = Math.Clamp(frontLoad / LoadReference, 0.1f, 1.2f);
+            // Sublinear load sensitivity: real tire Mz scales roughly as sqrt(load/load_ref).
+            // Linear scaling over-amplifies load transfer effects and under-represents light-load feel.
+            float normalizedLoad = Math.Clamp(frontLoad / LoadReference, 0.1f, 2.0f);
+            float loadFactor = MathF.Sqrt(normalizedLoad);
 
             rawMzFront = (raw.Mz[0] + raw.Mz[1]) * 0.5f * loadFactor;
             rawFxFront = (raw.Fx[0] + raw.Fx[1]) * 0.5f;

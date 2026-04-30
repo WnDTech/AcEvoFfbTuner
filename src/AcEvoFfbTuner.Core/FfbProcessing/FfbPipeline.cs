@@ -30,7 +30,7 @@ public sealed class FfbPipeline
 
     public float SteerDirDeadzone { get; set; } = 0.004f;
 
-    public float CenterSuppressionDegrees { get; set; } = 1.5f;
+    public float CenterSuppressionDegrees { get; set; } = 0.5f;
 
     public float HysteresisThreshold { get; set; } = 0.015f;
 
@@ -77,29 +77,25 @@ public sealed class FfbPipeline
         if (Math.Abs(output) < effectiveNoiseFloor)
             output = 0f;
 
-        // ── Sign correction: ensure force opposes steering angle ──
-        // AC EVO's Mz sign convention + DirectInput device inversion (_invertForce=true)
-        // means the raw Mz direction produces force in the SAME direction as the turn.
-        // We must enforce self-aligning behavior: force always opposes steering angle.
-        // Uses a small center fade (CenterSuppressionDegrees, default 1.5°) to prevent
-        // notchiness right at center where the angle crosses zero.
+        // ── Physics-preserving center fade ──
+        // The physics model's Mz (self-aligning torque) already encodes the correct
+        // force direction and magnitude — including the critical Mz peak/dropoff that
+        // signals the approach to the tire's grip limit. We preserve the physics sign
+        // and magnitude, applying only a gentle linear fade within a narrow band around
+        // center to prevent notchiness at the zero-crossing point.
+        // Device-level inversion (_invertForce) is now handled at FfbDeviceManager.
         if (SignCorrectionEnabled && raw.SpeedKmh > 0.5f)
         {
-            float absOutput = Math.Abs(output);
-            if (absOutput > effectiveNoiseFloor)
+            if (Math.Abs(output) > effectiveNoiseFloor)
             {
-                float absRawAngle = Math.Abs(raw.SteerAngle);
-                float absRawDeg = absRawAngle * 450f;
+                float absRawDeg = Math.Abs(raw.SteerAngle) * 450f;
 
-                // Center fade: quadratic ramp from 0 at center to 1 at CenterSuppressionDegrees
-                float ct = Math.Clamp(absRawDeg / Math.Max(CenterSuppressionDegrees, 0.5f), 0f, 1f);
-                float centerFade = ct * ct;
+                // Linear ramp from 0 at center to 1 at CenterSuppressionDegrees (default 0.5°).
+                // Linear (not quadratic) preserves the Mz slope in the linear region where
+                // on-center sensitivity matters most.
+                float centerFade = Math.Clamp(absRawDeg / Math.Max(CenterSuppressionDegrees, 0.1f), 0f, 1f);
 
-                float forceDirection = absRawAngle > SteerDirDeadzone
-                    ? -Math.Sign(raw.SteerAngle)
-                    : 0f;
-
-                output = absOutput * forceDirection * centerFade;
+                output *= centerFade;
             }
         }
 
@@ -150,6 +146,21 @@ public sealed class FfbPipeline
         float roadMod = VibrationMixer.RoadForceModulation;
         if (Math.Abs(roadMod) > 0.001f)
             finalOutput = Math.Clamp(finalOutput + roadMod, -1f, 1f);
+
+        // ── Tire scrub texture: high-frequency grain at the limit ──
+        // Injected into main force when front slip angles approach Mz peak.
+        float scrubMod = VibrationMixer.ScrubModulation;
+        if (Math.Abs(scrubMod) > 0.001f)
+            finalOutput = Math.Clamp(finalOutput + scrubMod, -1f, 1f);
+
+
+        // ── Rear slip warning: low-frequency rumble when rear loses grip ──
+        // Distinct from front scrub — uses lower frequencies (12-25Hz) so the
+        // driver can distinguish "rear is sliding" from "front is at the limit".
+        // Also triggers on yaw acceleration (car snapping into oversteer).
+        float rearMod = VibrationMixer.RearSlipModulation;
+        if (Math.Abs(rearMod) > 0.001f)
+            finalOutput = Math.Clamp(finalOutput + rearMod, -1f, 1f);
 
         float lfe = LfeGenerator.Generate(raw);
         if (Math.Abs(lfe) > 0.001f)

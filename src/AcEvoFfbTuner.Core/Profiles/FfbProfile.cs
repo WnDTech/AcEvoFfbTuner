@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 9;
+    public const int CurrentVersion = 10;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -607,6 +607,19 @@ public sealed class FfbProfile
             Advanced.LowSpeedSmoothKmh = 15.0f;
         }
 
+        if (Version < 10)
+        {
+            // Mz Realism: physics-preserving sign handling, Mz curve fidelity
+            // Device inversion moved to FfbDeviceManager (_invertForce=false).
+            // CenterSuppression reduced: physics Mz sign preserved, only narrow zero-crossing fade.
+            // Mz alpha increased for better transient response.
+            // Load sensitivity now sublinear (sqrt).
+            Advanced ??= new AdvancedConfig();
+            Advanced.CenterSuppressionDegrees = 0.5f;
+            Advanced.CenterBlendDegrees = 0.5f;
+            Advanced.LowSpeedSmoothKmh = 10.0f;
+        }
+
         Version = CurrentVersion;
     }
 }
@@ -732,22 +745,26 @@ public sealed class VibrationConfig
     public float MasterGain { get; set; } = 0.7f;
     public float SuspensionRoadGain { get; set; } = 1.5f;
 
+    // ── Tire scrub / limit-feel vibration ──
+    public float ScrubGain { get; set; } = 0.50f;
+    public float RearSlipGain { get; set; } = 0.60f;
+
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { KerbGain = S(KerbGain); SlipGain = S(SlipGain); RoadGain = S(RoadGain); AbsGain = S(AbsGain); MasterGain = S(MasterGain); SuspensionRoadGain = S(SuspensionRoadGain); }
+    public void SanitizeFloats() { KerbGain = S(KerbGain); SlipGain = S(SlipGain); RoadGain = S(RoadGain); AbsGain = S(AbsGain); MasterGain = S(MasterGain); SuspensionRoadGain = S(SuspensionRoadGain);  ScrubGain = S(ScrubGain); RearSlipGain = S(RearSlipGain); }
 }
 
 public sealed class AdvancedConfig
 {
     public float MaxSlewRate { get; set; } = 0.40f;
-    public float CenterSuppressionDegrees { get; set; } = 1.5f;
+    public float CenterSuppressionDegrees { get; set; } = 0.5f;
     public float CenterKneePower { get; set; } = 1.0f;
     public float HysteresisThreshold { get; set; } = 0f;
     public float NoiseFloor { get; set; } = 0.003f;
     public int HysteresisWatchdogFrames { get; set; } = 0;
-    public float CenterBlendDegrees { get; set; } = 1.0f;
+    public float CenterBlendDegrees { get; set; } = 0.5f;
     public float SteerVelocityReference { get; set; } = 10.0f;
     public float VelocityDeadzone { get; set; } = 0.05f;
-    public float LowSpeedSmoothKmh { get; set; } = 15.0f;
+    public float LowSpeedSmoothKmh { get; set; } = 10.0f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
     public void SanitizeFloats() { MaxSlewRate = S(MaxSlewRate); CenterSuppressionDegrees = S(CenterSuppressionDegrees); CenterKneePower = S(CenterKneePower); HysteresisThreshold = S(HysteresisThreshold); NoiseFloor = S(NoiseFloor); CenterBlendDegrees = S(CenterBlendDegrees); SteerVelocityReference = S(SteerVelocityReference); VelocityDeadzone = S(VelocityDeadzone); LowSpeedSmoothKmh = S(LowSpeedSmoothKmh); }

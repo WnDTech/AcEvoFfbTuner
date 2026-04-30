@@ -15,7 +15,7 @@ public sealed class LiveAutoTuner
     private const float SpeedDampCeiling = 2.0f;
     private const float FrictionCeiling = 1.0f;
     private const float CompPowerCeiling = 2.5f;
-    private const float CenterSuppCeiling = 15.0f;
+    private const float CenterSuppCeiling = 2.0f;  // Physics Mz preserved; cap suppression
     private const float NoiseFloorCeiling = 0.04f;
 
     private const int TickWindowSize = 40;
@@ -181,7 +181,7 @@ public sealed class LiveAutoTuner
     private void CorrectCenterOscillation(float centerForceRatio, float avgCenterForce, float speedKmh)
     {
         float currentCenterSupp = _pipeline!.CenterSuppressionDegrees;
-        float increasedCenterSupp = Math.Min(currentCenterSupp + 0.5f, CenterSuppCeiling);
+        float increasedCenterSupp = Math.Min(currentCenterSupp + 0.2f, CenterSuppCeiling);
         _pipeline.CenterSuppressionDegrees = increasedCenterSupp;
         LogCorrection("CenterSuppressionDegrees", currentCenterSupp, increasedCenterSupp,
             $"Center osc {centerForceRatio:P0} active avgF={avgCenterForce:F3}");
@@ -226,7 +226,7 @@ public sealed class LiveAutoTuner
             LogCorrection("Friction", currentFriction, increasedFriction, $"Lap osc friction");
 
             float currentCenterSupp = _pipeline.CenterSuppressionDegrees;
-            float increasedCenterSupp = Math.Min(currentCenterSupp + 0.5f, CenterSuppCeiling);
+            float increasedCenterSupp = Math.Min(currentCenterSupp + 0.2f, CenterSuppCeiling);
             _pipeline.CenterSuppressionDegrees = increasedCenterSupp;
             LogCorrection("CenterSuppressionDegrees", currentCenterSupp, increasedCenterSupp, $"Lap osc center");
             return;

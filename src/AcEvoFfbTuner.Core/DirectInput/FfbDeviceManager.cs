@@ -34,7 +34,7 @@ public sealed class FfbDeviceManager : IDisposable
     private bool _periodicEffectPlaying;
     private IntPtr _windowHandle;
     private int[]? _ffAxes;
-    private bool _invertForce = true;
+    private bool _invertForce = false;
     private int _consecutiveForceErrors;
     private const int MaxConsecutiveErrors = 10;
     private volatile bool _reconnectRequested;

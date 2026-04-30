@@ -256,7 +256,7 @@ public sealed class TelemetryLoop : IDisposable
 
                     if (_deviceManager.IsDeviceAcquired && !_suppressOutput)
                     {
-                        if (raw.SpeedKmh < 2.0f)
+                        if (raw.SpeedKmh < 0.5f)
                         {
                             _deviceManager.SendConstantForce(0f);
                             _deviceManager.SetTargetVibration(0f);

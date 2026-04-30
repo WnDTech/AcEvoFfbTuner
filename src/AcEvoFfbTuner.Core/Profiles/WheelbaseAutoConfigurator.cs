@@ -45,10 +45,10 @@ public static class WheelbaseAutoConfigurator
             ? Math.Clamp(0.1f + torqueNm * 0.01f, 0.15f, 0.4f)
             : Math.Clamp(0.05f + torqueNm * 0.02f, 0.05f, 0.15f);
 
-        float centerSupp = isDD ? 6.0f : 4.0f;
-        float blendDeg = isDD ? 2.0f : 1.0f;
+        float centerSupp = 0.5f;  // Physics Mz preserved; only narrow zero-crossing fade needed
+        float blendDeg = 0.5f;    // Reduced: Mz is primary signal, Fy blend zone minimal
         float hystThresh = isDD ? 0.02f : 0.01f;
-        float noiseFloor = isDD ? 0.008f : 0.004f;
+        float noiseFloor = isDD ? 0.005f : 0.003f;
         float boost = isDD ? 3.0f : 2.0f;
 
         float vibMaster = Math.Clamp(0.6f - torqueNm * 0.015f, 0.15f, 0.6f);
@@ -121,7 +121,7 @@ public static class WheelbaseAutoConfigurator
                 CenterBlendDegrees = blendDeg,
                 SteerVelocityReference = 10.0f,
                 VelocityDeadzone = 0.05f,
-                LowSpeedSmoothKmh = 25.0f
+                LowSpeedSmoothKmh = 10.0f
             }
         };
 
