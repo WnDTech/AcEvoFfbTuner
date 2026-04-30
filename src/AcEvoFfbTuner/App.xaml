@@ -15,6 +15,16 @@
             <SolidColorBrush x:Key="TextBrush" Color="#FFE0E0E0" />
             <SolidColorBrush x:Key="TextDimBrush" Color="#FF888888" />
 
+            <SolidColorBrush x:Key="SectionTyreForces" Color="#FF90CAF9" />
+            <SolidColorBrush x:Key="SectionTyreSlip" Color="#FF4DB6AC" />
+            <SolidColorBrush x:Key="SectionGripFeel" Color="#FF66BB6A" />
+            <SolidColorBrush x:Key="SectionDamping" Color="#FFFFD600" />
+            <SolidColorBrush x:Key="SectionDynamic" Color="#FFFF9800" />
+            <SolidColorBrush x:Key="SectionOutput" Color="#FFE67E22" />
+            <SolidColorBrush x:Key="SectionVibration" Color="#FFCE93D8" />
+            <SolidColorBrush x:Key="SectionLfe" Color="#FFEF5350" />
+            <SolidColorBrush x:Key="SectionSignal" Color="#FF4FC3F7" />
+
             <Style TargetType="Window">
                 <Setter Property="Background" Value="{StaticResource BgDark}" />
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />

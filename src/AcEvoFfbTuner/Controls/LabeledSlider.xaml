@@ -1,0 +1,135 @@
+<UserControl x:Class="AcEvoFfbTuner.Controls.LabeledSlider"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+
+    <StackPanel x:Name="RootPanel" PreviewMouseWheel="OnPreviewMouseWheel">
+        <DockPanel x:Name="SliderRow" Margin="0,6,0,0">
+            <CheckBox x:Name="PART_CheckBox"
+                      DockPanel.Dock="Left"
+                      VerticalAlignment="Center"
+                      Margin="0,0,12,0"
+                      Visibility="Collapsed" />
+
+            <TextBlock x:Name="PART_Label"
+                       DockPanel.Dock="Left"
+                       VerticalAlignment="Center"
+                       FontSize="15"
+                       Text="" />
+
+            <Button x:Name="PART_ResetButton"
+                    DockPanel.Dock="Right"
+                    Width="24" Height="24"
+                    VerticalAlignment="Center"
+                    Margin="2,0,0,0"
+                    Cursor="Hand"
+                    Visibility="Collapsed"
+                    Click="OnResetClick">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ResetBd" Background="Transparent" CornerRadius="3" Padding="2">
+                            <TextBlock Text="&#x21BA;" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FF888888" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ResetBd" Property="Background" Value="#22FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+
+            <TextBox x:Name="PART_ValueTextBox"
+                     DockPanel.Dock="Right"
+                     Width="72"
+                     VerticalAlignment="Center"
+                     FontSize="14"
+                     TextAlignment="Right"
+                     Margin="8,0,0,0"
+                     Padding="2,0"
+                     IsReadOnly="False"
+                     GotFocus="OnTextBoxGotFocus"
+                     LostFocus="OnTextBoxLostFocus"
+                     KeyDown="OnTextBoxKeyDown">
+                <TextBox.Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="Foreground" Value="#FFE0E0E0" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                        <Setter Property="CaretBrush" Value="#FFE67E22" />
+                        <Setter Property="Padding" Value="2,0" />
+                        <Setter Property="FontSize" Value="14" />
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
+
+            <Slider x:Name="PART_Slider"
+                    VerticalAlignment="Center"
+                    Height="36"
+                    Minimum="0"
+                    Maximum="10000"
+                    SmallChange="1"
+                    LargeChange="100"
+                    ValueChanged="OnSliderValueChanged"
+                    PreviewMouseDown="OnSliderPreviewMouseDown"
+                    PreviewMouseUp="OnSliderPreviewMouseUp">
+                <Slider.Template>
+                    <ControlTemplate TargetType="Slider">
+                        <Border Background="Transparent" Padding="4,0">
+                            <Grid>
+                                <Border CornerRadius="7" Background="#FF333355" Height="14" VerticalAlignment="Center" />
+                                <Track x:Name="PART_Track" VerticalAlignment="Stretch">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="Slider.DecreaseLarge">
+                                            <RepeatButton.Template>
+                                                <ControlTemplate TargetType="RepeatButton">
+                                                    <Border Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}" CornerRadius="7" Height="14" VerticalAlignment="Center" Opacity="0.8" />
+                                                </ControlTemplate>
+                                            </RepeatButton.Template>
+                                        </RepeatButton>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="Slider.IncreaseLarge">
+                                            <RepeatButton.Template>
+                                                <ControlTemplate TargetType="RepeatButton">
+                                                    <Border Background="Transparent" />
+                                                </ControlTemplate>
+                                            </RepeatButton.Template>
+                                        </RepeatButton>
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb>
+                                            <Thumb.Template>
+                                                <ControlTemplate TargetType="Thumb">
+                                                    <Grid>
+                                                        <Ellipse Width="30" Height="30" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}" Opacity="0.15" />
+                                                        <Ellipse x:Name="ThumbFill" Width="22" Height="22" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}" Stroke="White" StrokeThickness="1.5" />
+                                                    </Grid>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="ThumbFill" Property="Opacity" Value="0.9" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsDragging" Value="True">
+                                                            <Setter TargetName="ThumbFill" Property="Opacity" Value="1.0" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Thumb.Template>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                </Track>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Slider.Template>
+            </Slider>
+        </DockPanel>
+
+        <TextBlock x:Name="PART_Description"
+                   FontSize="13"
+                   Foreground="#FF888888"
+                   TextWrapping="Wrap"
+                   Visibility="Collapsed" />
+    </StackPanel>
+</UserControl>
