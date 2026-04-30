@@ -743,7 +743,7 @@
                                             <TextBlock Text="{Binding FrictionLevel, StringFormat='{}{0:F3}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
                                             <Slider Value="{Binding FrictionLevel}" Minimum="0" Maximum="20" TickFrequency="0.001" IsSnapToTickEnabled="True" />
                                         </DockPanel>
-                                        <TextBlock Text="Constant friction resistance when turning the wheel. Higher = heavier, more resistant feel. Boosted at low speed (see Low Speed Damp Boost)." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
+                                        <TextBlock Text="Constant friction resistance when turning the wheel (Coulomb model). Higher = heavier, more resistant feel. Opposes steering motion regardless of speed." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                     </StackPanel>
 
                                     <Expander Style="{StaticResource SectionExpander}" Header="Detailed Damping Settings">
@@ -754,7 +754,7 @@
                                                     <TextBlock Text="{Binding InertiaWeight, StringFormat='{}{0:F3}'}" Width="66" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
                                                     <Slider Value="{Binding InertiaWeight}" Minimum="0" Maximum="20" TickFrequency="0.1" IsSnapToTickEnabled="True" />
                                                 </DockPanel>
-                                                <TextBlock Text="Simulates steering weight — resists rapid direction changes. Increases with car speed. Boosted at low speed (see Low Speed Damp Boost)." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
+                                                <TextBlock Text="Simulates steering inertia — resists rapid direction changes based on angular acceleration. Increases with car speed." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                             </StackPanel>
                                             <StackPanel Margin="0,6">
                                                 <DockPanel>
@@ -770,7 +770,7 @@
                                                     <TextBlock Text="{Binding LowSpeedDampingBoost, StringFormat='{}{0:F3}'}" Width="66" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
                                                     <Slider Value="{Binding LowSpeedDampingBoost}" Minimum="0" Maximum="10" TickFrequency="0.1" IsSnapToTickEnabled="True" />
                                                 </DockPanel>
-                                                <TextBlock Text="Multiplier for all damping forces at low speed. Prevents wheel wandering when stationary. Fades in below Low Speed Threshold." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
+                                                <TextBlock Text="Multiplier for all damping forces at low speed. DISABLED in current pipeline — slider has no effect. Kept for profile compatibility." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                             </StackPanel>
                                             <StackPanel Margin="0,6">
                                                 <DockPanel>
@@ -778,7 +778,7 @@
                                                     <TextBlock Text="{Binding LowSpeedThreshold, StringFormat='{}{0:F0}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
                                                     <Slider Value="{Binding LowSpeedThreshold}" Minimum="0" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True" />
                                                 </DockPanel>
-                                                <TextBlock Text="Speed (km/h) below which damping boost is fully active. At 0 km/h boost is max, fading to normal at this speed. Works with Low Speed Damp Boost." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
+                                                <TextBlock Text="Speed (km/h) below which damping boost is fully active. DISABLED in current pipeline — slider has no effect. Kept for profile compatibility." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Expander>
@@ -909,7 +909,7 @@
                                                     <TextBlock Text="{Binding CompressionPower, StringFormat='{}{0:F3}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
                                                     <Slider Value="{Binding CompressionPower}" Minimum="0.1" Maximum="5.0" TickFrequency="0.005" IsSnapToTickEnabled="True" />
                                                 </DockPanel>
-                                                <TextBlock Text="Compression curve shape. 1.0 = mild, 3.0+ = aggressive. Higher values boost light forces but cap peaks. Reduces the need for a low Max Force Limit." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
+                                                <TextBlock Text="Compression curve shape. DISABLED in current pipeline — slider has no effect (Tanh compression removed). LUT curve handles non-linearity now. Kept for profile compatibility." Style="{StaticResource SliderDescription}" Margin="0,0,0,0" />
                                             </StackPanel>
                                             <StackPanel Margin="0,6">
                                                 <DockPanel>
@@ -1101,7 +1101,7 @@
                                             <TextBlock Text="{Binding CenterSuppressionDegrees, StringFormat='{}{0:F3}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
                                             <Slider Value="{Binding CenterSuppressionDegrees}" Minimum="0" Maximum="30" TickFrequency="0.1" IsSnapToTickEnabled="True" />
                                         </DockPanel>
-                                        <TextBlock Text="Steering angle zone near center where forces are faded to zero. Wider = larger dead-feel zone. Only active when Sign Correction is enabled. Grows wider at high speed." Style="{StaticResource SliderDescription}" />
+                                        <TextBlock Text="Steering angle zone near center where forces are faded to zero (quadratic ramp). Wider = larger dead-feel zone. Only active when Sign Correction is enabled." Style="{StaticResource SliderDescription}" />
                                     </StackPanel>
 
                                     <Expander Style="{StaticResource SectionExpander}" Header="Detailed Signal Settings">
@@ -1120,7 +1120,7 @@
                                                     <TextBlock Text="{Binding HysteresisThreshold, StringFormat='{}{0:F4}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
                                                     <Slider Value="{Binding HysteresisThreshold}" Minimum="0" Maximum="0.1" TickFrequency="0.0005" IsSnapToTickEnabled="True" />
                                                 </DockPanel>
-                                                <TextBlock Text="Minimum force change to move the output. Prevents micro-jitter from reaching the wheel. Higher = smoother but can feel sticky. Works with Hysteresis Watchdog and Noise Floor." Style="{StaticResource SliderDescription}" />
+                                                 <TextBlock Text="Minimum force change to move the output. DISABLED in current pipeline — slider has no effect (hysteresis removed). Kept for profile compatibility." Style="{StaticResource SliderDescription}" />
                                             </StackPanel>
                                             <StackPanel Margin="0,6">
                                                 <DockPanel>
@@ -1128,7 +1128,7 @@
                                                     <TextBlock Text="{Binding HysteresisWatchdogFrames, StringFormat='{}{0}'}" Width="58" VerticalAlignment="Center" FontSize="15" DockPanel.Dock="Right" Margin="8,0,0,0" />
                                                     <Slider Value="{Binding HysteresisWatchdogFrames}" Minimum="1" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="True" />
                                                 </DockPanel>
-                                                <TextBlock Text="Frames before a held force is force-updated. Prevents the wheel getting stuck on one value. Only relevant when Hysteresis Threshold is above zero." Style="{StaticResource SliderDescription}" />
+                                                 <TextBlock Text="Frames before a held force is force-updated. DISABLED in current pipeline — slider has no effect (hysteresis removed). Kept for profile compatibility." Style="{StaticResource SliderDescription}" />
                                             </StackPanel>
                                             <StackPanel Margin="0,6">
                                                 <DockPanel>

@@ -9,25 +9,25 @@ public sealed class FfbDamping
     public float SteerVelocityReference { get; set; } = 10f;
 
     /// <summary>
+    /// Reference angular acceleration for normalizing steer acceleration.
+    /// Typical steering acceleration: ~20 rad/s² for aggressive maneuvers.
+    /// </summary>
+    public float SteerAccelReference { get; set; } = 20f;
+
+    /// <summary>
     /// Minimum normalized steer velocity below which all damping forces are zeroed.
-    /// Prevents residual damping from EMA tail when the wheel is stationary,
-    /// which causes the "bounce back" / notchy feel at center.
+    /// Prevents residual damping from EMA tail when the wheel is stationary.
     /// </summary>
     public float VelocityDeadzone { get; set; } = 0.02f;
 
-    /// <summary>
-    /// Low-speed damping multiplier. At 0 km/h, damping is this many times stronger
-    /// to prevent the wheel from "hunting" left-to-right when stationary or creeping.
-    /// </summary>
+    // Kept as no-ops for profile/UI compatibility. No longer used in Apply().
     public float LowSpeedDampingBoost { get; set; } = 3.0f;
-
-    /// <summary>
-    /// Speed (km/h) below which the low-speed damping boost starts fading in.
-    /// </summary>
     public float LowSpeedThreshold { get; set; } = 20f;
 
     private float _previousSteerAngle;
     private float _steerVelocity;
+    private float _previousSteerVelocity;
+    private bool _steerVelocityInitialized;
     private long _previousTimestamp;
     private float _prevDampingForce;
 
@@ -43,37 +43,41 @@ public sealed class FfbDamping
         _previousSteerAngle = steerAngle;
         _previousTimestamp = now;
 
+        // Calculate steering acceleration (radians/second²)
+        float steerAccel = 0f;
+        if (_steerVelocityInitialized)
+        {
+            steerAccel = (_steerVelocity - _previousSteerVelocity) / dt;
+        }
+        _previousSteerVelocity = _steerVelocity;
+        _steerVelocityInitialized = true;
+
         float normalizedSteerVel = Math.Clamp(_steerVelocity / SteerVelocityReference, -1f, 1f);
         float absSteerVel = Math.Abs(normalizedSteerVel);
 
         if (absSteerVel < VelocityDeadzone)
             return force;
 
-        // ── Inverse speed factor: damping is STRONGEST at low speed ──
-        // At 0 km/h: full boost. At LowSpeedThreshold+: normal damping.
-        // This prevents "hunting" oscillation when the car is slow/stationary.
-        float lowSpeedBlend = speedKmh < LowSpeedThreshold
-            ? 1.0f - (speedKmh / LowSpeedThreshold)
-            : 0f;
-        float dampingMultiplier = 1.0f + lowSpeedBlend * (LowSpeedDampingBoost - 1.0f);
-
         float speedFactor = Math.Clamp(speedKmh / MaxSpeedReference, 0f, 1f);
         float absForce = Math.Abs(force);
-        float forceRatio = Math.Clamp(absForce / 0.1f, 0f, 1f);
 
-        // ── Velocity-based friction: resists steering MOVEMENT, not position ──
-        // opposes the direction the wheel is physically turning
-        float frictionForce = -FrictionLevel * normalizedSteerVel * dampingMultiplier * forceRatio;
+        // ── Coulomb friction: constant magnitude, opposes motion direction ──
+        // Real steering rack friction is approximately constant (dry/Coulomb friction).
+        // It doesn't scale with velocity — it's always the same force opposing motion.
+        float frictionForce = -Math.Sign(normalizedSteerVel) * FrictionLevel;
 
         // ── Viscous damping: proportional to steering velocity × car speed ──
-        // increases naturally as the car goes faster (more tire contact force)
-        float dampingForce = -SpeedDampingCoefficient * normalizedSteerVel * speedFactor * dampingMultiplier;
+        // Represents tire contact patch drag that increases with vehicle speed.
+        float dampingForce = -SpeedDampingCoefficient * normalizedSteerVel * speedFactor;
 
-        // ── Inertia: resists changes in steering direction (weight of the wheel) ──
-        float inertiaForce = -InertiaWeight * normalizedSteerVel * speedFactor * forceRatio * dampingMultiplier;
+        // ── Inertia: proportional to angular ACCELERATION × car speed ──
+        // F = -I × α (moment of inertia × angular acceleration).
+        // Resists changes in steering direction — feels like the weight of the wheel.
+        float normalizedAccel = Math.Clamp(steerAccel / SteerAccelReference, -1f, 1f);
+        float inertiaForce = -InertiaWeight * normalizedAccel * speedFactor;
 
         float targetDamping = dampingForce + frictionForce + inertiaForce;
-        float maxDamp = absForce * 0.4f;
+        float maxDamp = absForce * 0.2f;
         _prevDampingForce = _prevDampingForce + (targetDamping - _prevDampingForce) * 0.4f;
         _prevDampingForce = Math.Clamp(_prevDampingForce, -maxDamp, maxDamp);
 
@@ -84,6 +88,8 @@ public sealed class FfbDamping
     {
         _previousSteerAngle = 0f;
         _steerVelocity = 0f;
+        _previousSteerVelocity = 0f;
+        _steerVelocityInitialized = false;
         _previousTimestamp = 0;
         _prevDampingForce = 0f;
     }

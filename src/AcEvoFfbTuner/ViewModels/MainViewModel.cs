@@ -302,22 +302,22 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _signCorrectionEnabled = true;
 
     [ObservableProperty]
-    private float _maxSlewRate = 0.20f;
+    private float _maxSlewRate = 0.40f;
 
     [ObservableProperty]
-    private float _centerSuppressionDegrees = 6.0f;
+    private float _centerSuppressionDegrees = 1.5f;
 
     [ObservableProperty]
     private float _centerKneePower = 1.0f;
 
     [ObservableProperty]
-    private float _hysteresisThreshold = 0.015f;
+    private float _hysteresisThreshold = 0f;
 
     [ObservableProperty]
-    private float _noiseFloor = 0.005f;
+    private float _noiseFloor = 0.003f;
 
     [ObservableProperty]
-    private int _hysteresisWatchdogFrames = 5;
+    private int _hysteresisWatchdogFrames = 0;
 
     [ObservableProperty]
     private float _centerBlendDegrees = 1.0f;
@@ -2675,12 +2675,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
             await GitHubUpdateService.DownloadAndInstallAsync(_pendingUpdate, progress);
 
-            UpdateStatusText = "Installer launched — shutting down...";
-            _ = Application.Current.Dispatcher.BeginInvoke(() =>
-            {
-                Dispose();
-                Application.Current.Shutdown();
-            });
+            UpdateStatusText = "Installer launched — closing app...";
+            Dispose();
+            Application.Current.Shutdown();
         }
         catch (Exception ex)
         {

@@ -93,8 +93,8 @@ public sealed class FfbVibrationMixer
         _smSuspRoad = _smSuspRoad * 0.3f + roadDelta * 0.7f;
 
         float suspSpeedScale = Math.Clamp(raw.SpeedKmh / 100f, 0f, 2f);
-        float curbForce = _smSuspCurb * 200f * MathF.Max(KerbGain, 0.1f) * suspSpeedScale;
-        float roadForce = _smSuspRoad * 500f * MathF.Max(RoadGain, 0.1f) * suspSpeedScale;
+        float curbForce = _smSuspCurb * 75f * MathF.Max(KerbGain, 0.1f) * suspSpeedScale;
+        float roadForce = _smSuspRoad * 150f * MathF.Max(RoadGain, 0.1f) * suspSpeedScale;
         float rawVib = (curbForce + roadForce) * SuspensionRoadGain;
         RoadForceModulation = Math.Clamp(rawVib, -0.15f, 0.15f);
 

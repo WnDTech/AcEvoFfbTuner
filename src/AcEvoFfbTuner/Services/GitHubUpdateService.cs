@@ -114,7 +114,7 @@ public sealed class GitHubUpdateService
         Process.Start(new ProcessStartInfo(filePath)
         {
             UseShellExecute = true,
-            Verb = "runas"
+            Arguments = "/FORCECLOSEAPPLICATIONS /CLOSEAPPLICATIONS"
         });
     }
 

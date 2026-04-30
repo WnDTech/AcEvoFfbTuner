@@ -25,12 +25,12 @@ public sealed class FfbPipeline
     public bool SignCorrectionEnabled { get; set; } = true;
     public float CenterDeadzone { get; set; } = 0.04f;
     public float SoftCenterDegrees { get; set; } = 1.5f;
-    public float NoiseFloor { get; set; } = 0.005f;
-    public float MaxSlewRate { get; set; } = 0.20f;
+    public float NoiseFloor { get; set; } = 0.003f;
+    public float MaxSlewRate { get; set; } = 0.40f;
 
     public float SteerDirDeadzone { get; set; } = 0.004f;
 
-    public float CenterSuppressionDegrees { get; set; } = 6f;
+    public float CenterSuppressionDegrees { get; set; } = 1.5f;
 
     public float HysteresisThreshold { get; set; } = 0.015f;
 
@@ -41,19 +41,8 @@ public sealed class FfbPipeline
     public int GearShiftSmoothingTicks { get; set; } = 7;
     public float GearShiftSlewRate { get; set; } = 0.01f;
 
-    private float _prevOutput;
     private float _prevSlewOutput;
-    private float _lastSentOutput;
-    private float _hysteresisOutput;
-    private bool _hysteresisInitialized;
-    private int _hysteresisHoldCount;
     private float _smoothSteerAngle;
-    private int _prevGear = -1;
-    private int _gearShiftCounter;
-
-    private int _oscillationCounter;
-    private float _prevOutputSign;
-    private float _lastPreOscOutput;
 
     public FfbProcessedData Process(FfbRawData raw)
     {
@@ -70,10 +59,7 @@ public sealed class FfbPipeline
         float normalized = mixedForce * MasterGain * autoGain / Math.Max(ForceScale, 0.001f);
 
         float absNorm = Math.Abs(normalized);
-        float compressed = MathF.Tanh(absNorm * CompressionPower);
-        float signedCompressed = Math.Sign(normalized) * compressed;
-
-        float postLut = LutCurve.Apply(compressed) * Math.Sign(normalized);
+        float postLut = LutCurve.Apply(absNorm) * Math.Sign(normalized);
 
         float postSlip = SlipEnhancer.Apply(postLut, raw);
 
@@ -83,23 +69,30 @@ public sealed class FfbPipeline
 
         float output = OutputClipper.Process(postDynamic * OutputGain, out bool isClipping);
 
-        if (SignCorrectionEnabled && raw.SpeedKmh > 2.0f)
+        float speedNoiseScale = raw.SpeedKmh < 10.0f
+            ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 2.0f
+            : 1.0f;
+        float effectiveNoiseFloor = NoiseFloor * speedNoiseScale;
+
+        if (Math.Abs(output) < effectiveNoiseFloor)
+            output = 0f;
+
+        // ── Sign correction: ensure force opposes steering angle ──
+        // AC EVO's Mz sign convention + DirectInput device inversion (_invertForce=true)
+        // means the raw Mz direction produces force in the SAME direction as the turn.
+        // We must enforce self-aligning behavior: force always opposes steering angle.
+        // Uses a small center fade (CenterSuppressionDegrees, default 1.5°) to prevent
+        // notchiness right at center where the angle crosses zero.
+        if (SignCorrectionEnabled && raw.SpeedKmh > 0.5f)
         {
             float absOutput = Math.Abs(output);
-            if (absOutput > NoiseFloor)
+            if (absOutput > effectiveNoiseFloor)
             {
                 float absRawAngle = Math.Abs(raw.SteerAngle);
                 float absRawDeg = absRawAngle * 450f;
 
-                float speedSuppScale = 1.0f + Math.Clamp((raw.SpeedKmh - 10.0f) / 200.0f, 0f, 0.5f);
-                float suppressionDeg = Math.Max(CenterSuppressionDegrees * speedSuppScale, 5f);
-
-                float oscillationDeadDeg = raw.SpeedKmh > 30.0f
-                    ? Math.Clamp((raw.SpeedKmh - 30.0f) / 40.0f, 0.5f, 3f)
-                    : 0f;
-
-                float totalZone = Math.Min(oscillationDeadDeg + Math.Max(suppressionDeg, 5f), 12f);
-                float ct = Math.Clamp(absRawDeg / Math.Max(totalZone, 0.1f), 0f, 1f);
+                // Center fade: quadratic ramp from 0 at center to 1 at CenterSuppressionDegrees
+                float ct = Math.Clamp(absRawDeg / Math.Max(CenterSuppressionDegrees, 0.5f), 0f, 1f);
                 float centerFade = ct * ct;
 
                 float forceDirection = absRawAngle > SteerDirDeadzone
@@ -110,64 +103,19 @@ public sealed class FfbPipeline
             }
         }
 
-        float speedNoiseScale = raw.SpeedKmh < 10.0f
-            ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 2.0f
-            : 1.0f;
-        float effectiveNoiseFloor = NoiseFloor * speedNoiseScale;
-
-        if (Math.Abs(output) < effectiveNoiseFloor)
-            output = 0f;
-
         if (CenterKneePower > 1.001f && Math.Abs(output) > 0f)
             output = Math.Sign(output) * MathF.Pow(Math.Abs(output), CenterKneePower);
 
-        if (_prevGear >= 0 && raw.Gear != _prevGear)
-            _gearShiftCounter = GearShiftSmoothingTicks;
-        _prevGear = raw.Gear;
-
-        float speedHystScale = raw.SpeedKmh < 15.0f
-            ? 1.0f + (1.0f - raw.SpeedKmh / 15.0f) * 19.0f
-            : 1.0f;
-        float effectiveHystThreshold = HysteresisThreshold * speedHystScale;
-
-        if (!_hysteresisInitialized)
-        {
-            _hysteresisOutput = output;
-            _hysteresisInitialized = true;
-        }
-        else if (Math.Abs(_hysteresisOutput) < effectiveNoiseFloor * 2f
-            && Math.Abs(output) >= effectiveNoiseFloor)
-        {
-            _hysteresisOutput = output;
-            _hysteresisHoldCount = 0;
-        }
-        else if (Math.Abs(output - _hysteresisOutput) < effectiveHystThreshold)
-        {
-            _hysteresisHoldCount++;
-            if (_hysteresisHoldCount >= HysteresisWatchdogFrames)
-            {
-                _hysteresisOutput = _hysteresisOutput * 0.5f + output * 0.5f;
-                _hysteresisHoldCount = 0;
-            }
-            output = _hysteresisOutput;
-        }
-        else
-        {
-            _hysteresisOutput = output;
-            _hysteresisHoldCount = 0;
-        }
-
         float finalOutput = output;
 
-        if (raw.SpeedKmh < 2.0f)
+        if (raw.SpeedKmh < 0.5f)
         {
             finalOutput = 0f;
             _prevSlewOutput = 0f;
-            _hysteresisInitialized = false;
         }
-        else if (raw.SpeedKmh < 20.0f)
+        else if (raw.SpeedKmh < 5.0f)
         {
-            float speedFactor = (raw.SpeedKmh - 2.0f) / 18.0f;
+            float speedFactor = (raw.SpeedKmh - 0.5f) / 4.5f;
             finalOutput *= speedFactor;
         }
 
@@ -176,66 +124,15 @@ public sealed class FfbPipeline
             ? Math.Max(1.0f - (raw.SpeedKmh - 200.0f) / 250.0f, 0.4f)
             : 1.0f;
         float speedSlewScale = lowSpeedSlewScale * highSpeedSlewScale;
-        float baseSlewRate = _gearShiftCounter > 0 ? GearShiftSlewRate : MaxSlewRate;
 
-        float oscSlewReduction = _oscillationCounter > 2
-            ? Math.Max(1.0f - (_oscillationCounter - 2) * 0.08f, 0.25f)
-            : 1.0f;
-        float effectiveSlewRate = baseSlewRate * speedSlewScale * oscSlewReduction;
-
-        float absSteerForSlew = Math.Abs(raw.SteerAngle);
-        if (raw.SpeedKmh > 150.0f && absSteerForSlew < 0.03f)
-        {
-            float speedFactor = Math.Clamp((raw.SpeedKmh - 150.0f) / 100.0f, 0f, 1f);
-            float centerFactor = 1.0f - absSteerForSlew / 0.03f;
-            float nearCenterScale = speedFactor * centerFactor;
-            effectiveSlewRate *= 1.0f - 0.5f * nearCenterScale;
-        }
-
-        if (_gearShiftCounter > 0)
-            _gearShiftCounter--;
+        float effectiveSlewRate = MaxSlewRate * speedSlewScale;
 
         float slewDelta = finalOutput - _prevSlewOutput;
         if (Math.Abs(slewDelta) > effectiveSlewRate)
         {
-            bool isSignFlip = finalOutput * _prevSlewOutput < -0.001f;
-            float dirChangeScale = (isSignFlip && raw.SpeedKmh > 30f) ? 0.20f : 1.0f;
-            finalOutput = _prevSlewOutput + Math.Sign(slewDelta) * effectiveSlewRate * dirChangeScale;
+            finalOutput = _prevSlewOutput + Math.Sign(slewDelta) * effectiveSlewRate;
         }
-        _prevSlewOutput = raw.SpeedKmh < 2.0f ? 0f : finalOutput;
-
-        float safetyDelta = finalOutput - _lastSentOutput;
-        if (Math.Abs(safetyDelta) > MaxSlewRate)
-            finalOutput = _lastSentOutput + Math.Sign(safetyDelta) * MaxSlewRate;
-        _lastSentOutput = raw.SpeedKmh < 2.0f ? 0f : finalOutput;
-
-        _prevOutput = finalOutput;
-
-        // ── Oscillation detection and adaptive suppression ──
-        // Tracks consecutive output direction reversals. When the output
-        // sign flips back and forth rapidly (oscillation), progressively
-        // smooths the output toward the previous value to break the loop.
-        if (raw.SpeedKmh > 15f)
-        {
-            float currentSign = Math.Sign(finalOutput);
-            if (currentSign != 0f && _prevOutputSign != 0f && currentSign != _prevOutputSign)
-                _oscillationCounter = Math.Min(_oscillationCounter + 3, 15);
-            else
-                _oscillationCounter = Math.Max(_oscillationCounter - 1, 0);
-            _prevOutputSign = currentSign;
-
-            if (_oscillationCounter > 3)
-            {
-                float suppressionStrength = Math.Min((_oscillationCounter - 3) * 0.12f, 0.75f);
-                finalOutput = _lastPreOscOutput + (finalOutput - _lastPreOscOutput) * (1f - suppressionStrength);
-            }
-        }
-        else
-        {
-            _oscillationCounter = 0;
-            _prevOutputSign = 0f;
-        }
-        _lastPreOscOutput = raw.SpeedKmh < 2.0f ? 0f : finalOutput;
+        _prevSlewOutput = raw.SpeedKmh < 0.5f ? 0f : finalOutput;
 
         finalOutput = Equalizer.Process(finalOutput);
 
@@ -270,7 +167,7 @@ public sealed class FfbPipeline
             ChannelFxRear = channels.FxRear,
             ChannelFyRear = channels.FyRear,
             ChannelFinalFf = channels.FinalFf,
-            PostCompressionForce = signedCompressed,
+            PostCompressionForce = normalized,
             PostLutForce = postLut,
             PostSlipForce = postSlip,
             PostDampingForce = postDamping,
@@ -285,22 +182,13 @@ public sealed class FfbPipeline
 
     public void Reset()
     {
+        ChannelMixer.Reset();
         Damping.Reset();
         DynamicEffects.Reset();
         VibrationMixer.Reset();
         LfeGenerator.Reset();
         Equalizer.Reset();
-        _prevOutput = 0f;
         _prevSlewOutput = 0f;
-        _lastSentOutput = 0f;
-        _hysteresisOutput = 0f;
-        _hysteresisInitialized = false;
-        _hysteresisHoldCount = 0;
         _smoothSteerAngle = 0f;
-        _prevGear = -1;
-        _gearShiftCounter = 0;
-        _oscillationCounter = 0;
-        _prevOutputSign = 0f;
-        _lastPreOscOutput = 0f;
     }
 }
