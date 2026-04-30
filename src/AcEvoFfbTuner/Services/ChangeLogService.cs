@@ -21,6 +21,42 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.7.0",
+            Date = new DateTime(2026, 4, 30),
+            Title = "FFB Realism Overhaul & Tyre Flex Simulation",
+            Features =
+            [
+                "FFB pipeline overhaul: stripped 12+ harmful processing stages for physics-faithful force output",
+                "Tyre flex/deformation simulation: contact patch dynamics for more realistic steering feel",
+                "Tire Grip Feel: front scrub intensity and rear slip warning through the wheel",
+                "Dynamic heat-map colors on EQ sliders showing gain value at a glance",
+                "Custom LabeledSlider control with editable values, section colors, log scale, undo, and context menu",
+                "What's New changelog dialog on startup and status bar button",
+                "Session Recording: record driving sessions for FFB diagnosis"
+            ],
+            Improvements =
+            [
+                "Fixed median filter bug: per-buffer initialization prevents zero-force warmup frames",
+                "Replaced SpikeClamp with 3-sample median filter preserving legitimate kerb strikes",
+                "Replaced parallel EMAs with single speed-dependent filter reducing ~40ms phase lag",
+                "Coulomb friction model: constant friction opposing motion (was velocity-proportional)",
+                "Fixed inertia to use angular acceleration instead of velocity",
+                "Removed: tanh compression, sign correction override, center suppression expansion, safety slew rate, direction-change suppression, hysteresis, oscillation detection, gear shift smoothing, low-speed damping boost",
+                "Raised slew rate to 0.40/tick for faster transients on kerb strikes and snap oversteer",
+                "Reduced center suppression to 1.5° for better on-center feel",
+                "Context menu restyled: dark background, light text, hover highlights",
+                "Auto-updater: installer now closes the running app instead of unreliable self-shutdown"
+            ],
+            Fixes =
+            [
+                "Fixed zero-FFB output: corrected force scale divisors and DirectInput fallback",
+                "Fixed EQ not affecting FFB output",
+                "Fixed LiveAutoTuner threshold and slider precision issues",
+                "Hidden 5 disabled sliders from UI to reduce clutter"
+            ]
+        },
+        new ChangeLogEntry
+        {
             Version = "1.5.1",
             Date = new DateTime(2026, 4, 28),
             Title = "FFB Realism Overhaul & UX Improvements",
