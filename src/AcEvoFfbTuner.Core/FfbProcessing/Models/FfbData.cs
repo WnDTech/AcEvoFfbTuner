@@ -40,6 +40,7 @@ public sealed class FfbRawData
     public bool IsRpmLimiterOn { get; set; }
     public bool IsChangeUpRpm { get; set; }
     public int Flag { get; set; }
+    public float[] TyreContactNormalY { get; set; } = new float[4];
     public float CarX { get; set; }
     public float CarY { get; set; }
     public float CarZ { get; set; }

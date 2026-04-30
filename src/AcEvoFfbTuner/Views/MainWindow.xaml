@@ -728,6 +728,38 @@
                                     </Expander>
                                 </StackPanel>
                             </Border>
+
+                            <!-- TYRE FLEX -->
+                            <TextBlock Text="TYRE FLEX" Style="{StaticResource GroupHeader}" />
+                            <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
+                                <StackPanel>
+                                    <controls:LabeledSlider Value="{Binding TyreFlexGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                        Label="Carcass Flex Gain" StringFormat="{}{0:F3}"
+                                        Description="Simulates tyre sidewall flex from load transfer. Adds subtle force from rapid weight shifts — braking, cornering entry, and kerb strikes. Set to 0 to disable."
+                                        SectionColor="{StaticResource SectionTyreFlex}" />
+                                    <controls:LabeledSlider Value="{Binding LoadFlexGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                        Label="Contact Patch Gain" StringFormat="{}{0:F3}"
+                                        Description="Simulates contact patch length changes under load and slip. Adds feel for how the tyre's grip footprint is changing — especially during trail braking and turn-in."
+                                        SectionColor="{StaticResource SectionTyreFlex}" />
+
+                                    <Expander Style="{StaticResource SectionExpander}" Header="Detailed Tyre Flex Settings">
+                                        <StackPanel>
+                                            <controls:LabeledSlider Value="{Binding CarcassStiffness, Mode=TwoWay}" Minimum="0.1" Maximum="5" TickFrequency="0.01"
+                                                Label="Carcass Stiffness" StringFormat="{}{0:F3}"
+                                                Description="Controls how stiff the tyre carcass is. Lower = more flex feel (softer tyres), higher = less flex (stiffer tyres). Default 1.0."
+                                                SectionColor="{StaticResource SectionTyreFlex}" />
+                                            <controls:LabeledSlider Value="{Binding FlexSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.95" TickFrequency="0.01"
+                                                Label="Flex Smoothing" StringFormat="{}{0:F3}"
+                                                Description="EMA smoothing for flex forces. Higher = smoother but more lag. Lower = more responsive but noisier. Default 0.70."
+                                                SectionColor="{StaticResource SectionTyreFlex}" />
+                                            <controls:LabeledSlider Value="{Binding ContactPatchWeight, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                                Label="Contact Patch Weight" StringFormat="{}{0:F3}"
+                                                Description="How much lateral G-force affects contact patch variation. Higher = more feel from weight transfer direction changes. Default 0.5."
+                                                SectionColor="{StaticResource SectionTyreFlex}" />
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
 
                         <!-- Right Column: Output & Processing -->

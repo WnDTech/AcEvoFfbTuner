@@ -713,6 +713,7 @@ public sealed class TelemetryLoop : IDisposable
             WheelLoad = new float[] { physics.WheelLoad[0], physics.WheelLoad[1], physics.WheelLoad[2], physics.WheelLoad[3] },
             SlipRatio = new float[] { physics.SlipRatio[0], physics.SlipRatio[1], physics.SlipRatio[2], physics.SlipRatio[3] },
             SlipAngle = new float[] { physics.SlipAngle[0], physics.SlipAngle[1], physics.SlipAngle[2], physics.SlipAngle[3] },
+            TyreContactNormalY = new float[] { physics.TyreContactNormal[0].Y, physics.TyreContactNormal[1].Y, physics.TyreContactNormal[2].Y, physics.TyreContactNormal[3].Y },
             SuspensionTravel = new float[] { physics.SuspensionTravel[0], physics.SuspensionTravel[1], physics.SuspensionTravel[2], physics.SuspensionTravel[3] },
             AccG = new float[] { physics.AccG[0], physics.AccG[1], physics.AccG[2] },
             LocalAngularVel = new float[] { physics.LocalAngularVel[0], physics.LocalAngularVel[1], physics.LocalAngularVel[2] },

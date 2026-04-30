@@ -20,6 +20,7 @@
             <SolidColorBrush x:Key="SectionGripFeel" Color="#FF66BB6A" />
             <SolidColorBrush x:Key="SectionDamping" Color="#FFFFD600" />
             <SolidColorBrush x:Key="SectionDynamic" Color="#FFFF9800" />
+            <SolidColorBrush x:Key="SectionTyreFlex" Color="#FF26C6DA" />
             <SolidColorBrush x:Key="SectionOutput" Color="#FFE67E22" />
             <SolidColorBrush x:Key="SectionVibration" Color="#FFCE93D8" />
             <SolidColorBrush x:Key="SectionLfe" Color="#FFEF5350" />

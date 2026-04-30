@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 10;
+    public const int CurrentVersion = 11;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -64,6 +64,7 @@ public sealed class FfbProfile
     public AdvancedConfig Advanced { get; set; } = new();
     public LfeConfig Lfe { get; set; } = new();
     public EqConfig Equalizer { get; set; } = new();
+    public TyreFlexConfig TyreFlex { get; set; } = new();
     public LedEffectConfigDto LedEffects { get; set; } = new();
     public TelemetrySnapshotDto? LastTelemetrySnapshot { get; set; }
 
@@ -163,6 +164,12 @@ public sealed class FfbProfile
         {
             pipeline.Equalizer.SetBandGain(i, Equalizer.GetGain(i));
         }
+
+        pipeline.TyreFlex.FlexGain = TyreFlex.FlexGain;
+        pipeline.TyreFlex.CarcassStiffness = TyreFlex.CarcassStiffness;
+        pipeline.TyreFlex.FlexSmoothing = TyreFlex.FlexSmoothing;
+        pipeline.TyreFlex.ContactPatchWeight = TyreFlex.ContactPatchWeight;
+        pipeline.TyreFlex.LoadFlexGain = TyreFlex.LoadFlexGain;
     }
 
     public static FfbProfile CreateFromPipeline(FfbPipeline pipeline, string name)
@@ -267,6 +274,14 @@ public sealed class FfbProfile
         {
             Equalizer.SetGain(i, pipeline.Equalizer.GetBandGain(i));
         }
+        TyreFlex = new TyreFlexConfig
+        {
+            FlexGain = pipeline.TyreFlex.FlexGain,
+            CarcassStiffness = pipeline.TyreFlex.CarcassStiffness,
+            FlexSmoothing = pipeline.TyreFlex.FlexSmoothing,
+            ContactPatchWeight = pipeline.TyreFlex.ContactPatchWeight,
+            LoadFlexGain = pipeline.TyreFlex.LoadFlexGain
+        };
     }
 
     public static FfbProfile GetDefaultProfile(string name)
@@ -511,6 +526,7 @@ public sealed class FfbProfile
         Advanced.SanitizeFloats();
         Lfe.SanitizeFloats();
         Equalizer.SanitizeFloats();
+        TyreFlex.SanitizeFloats();
     }
 
     private static float Sanitize(float v) =>
@@ -618,6 +634,11 @@ public sealed class FfbProfile
             Advanced.CenterSuppressionDegrees = 0.5f;
             Advanced.CenterBlendDegrees = 0.5f;
             Advanced.LowSpeedSmoothKmh = 10.0f;
+        }
+
+        if (Version < 11)
+        {
+            TyreFlex ??= new TyreFlexConfig();
         }
 
         Version = CurrentVersion;
@@ -815,6 +836,18 @@ public sealed class EqConfig
         for (int i = 0; i < _bandGains.Length; i++)
             _bandGains[i] = S(_bandGains[i]);
     }
+}
+
+public sealed class TyreFlexConfig
+{
+    public float FlexGain { get; set; } = 0.0f;
+    public float CarcassStiffness { get; set; } = 1.0f;
+    public float FlexSmoothing { get; set; } = 0.70f;
+    public float ContactPatchWeight { get; set; } = 0.5f;
+    public float LoadFlexGain { get; set; } = 0.3f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { FlexGain = S(FlexGain); CarcassStiffness = S(CarcassStiffness); FlexSmoothing = S(FlexSmoothing); ContactPatchWeight = S(ContactPatchWeight); LoadFlexGain = S(LoadFlexGain); }
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]

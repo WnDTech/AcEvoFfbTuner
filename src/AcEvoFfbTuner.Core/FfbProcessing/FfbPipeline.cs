@@ -13,6 +13,7 @@ public sealed class FfbPipeline
     public FfbLfeGenerator LfeGenerator { get; } = new();
     public FfbOutputClipper OutputClipper { get; } = new();
     public FfbEqualizer Equalizer { get; } = new();
+    public FfbTyreFlex TyreFlex { get; } = new();
 
     public float ForceScale { get; set; } = 1.0f;
     public float OutputGain { get; set; } = 1.0f;
@@ -67,7 +68,9 @@ public sealed class FfbPipeline
 
         float postDynamic = DynamicEffects.Apply(postDamping, raw);
 
-        float output = OutputClipper.Process(postDynamic * OutputGain, out bool isClipping);
+        float postTyreFlex = TyreFlex.Apply(postDynamic, raw);
+
+        float output = OutputClipper.Process(postTyreFlex * OutputGain, out bool isClipping);
 
         float speedNoiseScale = raw.SpeedKmh < 10.0f
             ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 2.0f
@@ -199,6 +202,7 @@ public sealed class FfbPipeline
         VibrationMixer.Reset();
         LfeGenerator.Reset();
         Equalizer.Reset();
+        TyreFlex.Reset();
         _prevSlewOutput = 0f;
         _smoothSteerAngle = 0f;
     }

@@ -200,6 +200,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _carRotationForce;
 
     [ObservableProperty]
+    private float _tyreFlexGain;
+
+    [ObservableProperty]
+    private float _carcassStiffness = 1.0f;
+
+    [ObservableProperty]
+    private float _flexSmoothing = 0.70f;
+
+    [ObservableProperty]
+    private float _contactPatchWeight = 0.5f;
+
+    [ObservableProperty]
+    private float _loadFlexGain = 0.3f;
+
+    [ObservableProperty]
     private bool _autoGainEnabled;
 
     [ObservableProperty]
@@ -1591,6 +1606,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnAccelerationBrakingForceChanged(float value) => _pipeline.DynamicEffects.LongitudinalGGain = value;
     partial void OnRoadFeelChanged(float value) => _pipeline.DynamicEffects.SuspensionGain = value;
     partial void OnCarRotationForceChanged(float value) => _pipeline.DynamicEffects.YawRateGain = value;
+    partial void OnTyreFlexGainChanged(float value) => _pipeline.TyreFlex.FlexGain = value;
+    partial void OnCarcassStiffnessChanged(float value) => _pipeline.TyreFlex.CarcassStiffness = value;
+    partial void OnFlexSmoothingChanged(float value) => _pipeline.TyreFlex.FlexSmoothing = value;
+    partial void OnContactPatchWeightChanged(float value) => _pipeline.TyreFlex.ContactPatchWeight = value;
+    partial void OnLoadFlexGainChanged(float value) => _pipeline.TyreFlex.LoadFlexGain = value;
     partial void OnAutoGainEnabledChanged(bool value) => _pipeline.AutoGainEnabled = value;
     partial void OnAutoGainScaleChanged(float value) => _pipeline.AutoGainScale = value;
     partial void OnCurbGainChanged(float value) => _pipeline.VibrationMixer.KerbGain = value;
@@ -1979,6 +1999,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         AccelerationBrakingForce = profile.Dynamic.LongitudinalGGain;
         RoadFeel = profile.Dynamic.SuspensionGain;
         CarRotationForce = profile.Dynamic.YawRateGain;
+        TyreFlexGain = profile.TyreFlex.FlexGain;
+        CarcassStiffness = profile.TyreFlex.CarcassStiffness;
+        FlexSmoothing = profile.TyreFlex.FlexSmoothing;
+        ContactPatchWeight = profile.TyreFlex.ContactPatchWeight;
+        LoadFlexGain = profile.TyreFlex.LoadFlexGain;
         AutoGainEnabled = profile.AutoGain.Enabled;
         AutoGainScale = profile.AutoGain.Scale;
         CurbGain = profile.Vibrations.KerbGain;
@@ -2060,6 +2085,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.DynamicEffects.LongitudinalGGain = AccelerationBrakingForce;
         _pipeline.DynamicEffects.SuspensionGain = RoadFeel;
         _pipeline.DynamicEffects.YawRateGain = CarRotationForce;
+        _pipeline.TyreFlex.FlexGain = TyreFlexGain;
+        _pipeline.TyreFlex.CarcassStiffness = CarcassStiffness;
+        _pipeline.TyreFlex.FlexSmoothing = FlexSmoothing;
+        _pipeline.TyreFlex.ContactPatchWeight = ContactPatchWeight;
+        _pipeline.TyreFlex.LoadFlexGain = LoadFlexGain;
         _pipeline.AutoGainEnabled = AutoGainEnabled;
         _pipeline.AutoGainScale = AutoGainScale;
         _pipeline.VibrationMixer.KerbGain = CurbGain;
