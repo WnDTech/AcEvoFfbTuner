@@ -33,8 +33,9 @@ public partial class App : Application
             {
                 try
                 {
-                    ShowMainWindow();
+                    ShowMainWindow(showWhatsNew: false);
                     splash.Close();
+                    ShowWhatsNewIfNeeded();
                 }
                 catch (Exception ex)
                 {
@@ -49,7 +50,7 @@ public partial class App : Application
         {
             try
             {
-                ShowMainWindow();
+                ShowMainWindow(showWhatsNew: true);
             }
             catch (Exception ex)
             {
@@ -59,7 +60,7 @@ public partial class App : Application
         }
     }
 
-    private void ShowMainWindow()
+    private void ShowMainWindow(bool showWhatsNew = true)
     {
         ViewModel = new MainViewModel();
         ViewModel.Initialize();
@@ -69,7 +70,8 @@ public partial class App : Application
         MainWindow = mainWindow;
         mainWindow.Show();
 
-        ShowWhatsNewIfNeeded();
+        if (showWhatsNew)
+            ShowWhatsNewIfNeeded();
     }
 
     private void ShowWhatsNewIfNeeded()

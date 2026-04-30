@@ -16,6 +16,7 @@ public partial class SplashScreen : Window
     private string? _tempAudioFile;
     private double _angle;
     private int _progressStep;
+    private int _fadeOutTicks;
 
     public event Action? LoadingComplete;
 
@@ -90,8 +91,9 @@ public partial class SplashScreen : Window
 
     private void OnFadeOutTick(object? sender, EventArgs e)
     {
+        _fadeOutTicks++;
         var vol = _mediaPlayer.Volume - 0.05;
-        if (vol <= 0)
+        if (vol <= 0 || _fadeOutTicks >= 20)
         {
             _fadeOutTimer.Stop();
             _mediaPlayer.Volume = 0;
