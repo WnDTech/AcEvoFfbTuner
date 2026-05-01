@@ -418,7 +418,7 @@ public sealed class FfbDeviceManager : IDisposable
         {
             int magnitude = (int)(Math.Clamp(_invertForce ? -normalizedForce : normalizedForce, -1f, 1f) * _maxForceMagnitude);
 
-            if (magnitude == _lastCfMagnitude)
+            if (magnitude == _lastCfMagnitude && _constantForceEffect != null)
                 return;
 
             _lastCfMagnitude = magnitude;

@@ -58,7 +58,31 @@
                     <TextBlock Text="Profile:" FontSize="14" Foreground="#FF888888" VerticalAlignment="Center" Margin="0,0,6,0" />
                     <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
                               DisplayMemberPath="Name" Width="260" Margin="4,0" />
-                    <Button Content="Save" Command="{Binding SaveCurrentProfileCommand}" Margin="4,0" Padding="12,4" FontSize="12" ToolTip="Save current profile" />
+                    <TextBlock FontSize="11" Foreground="#FF888888" VerticalAlignment="Center" Margin="4,0,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBuiltInProfileSelected}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Setter Property="Text" Value="(built-in)" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Button Content="Save" Command="{Binding SaveCurrentProfileCommand}" Margin="4,0" Padding="12,4" FontSize="12" ToolTip="Save current profile">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                <Setter Property="ToolTip" Value="Save current profile" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBuiltInProfileSelected}" Value="True">
+                                        <Setter Property="ToolTip" Value="Built-in profile — will prompt to Save As" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Button Content="Save As..." Command="{Binding SaveAsNewProfileCommand}" Margin="4,0" Padding="12,4" FontSize="12" Style="{StaticResource OutlinedButton}" ToolTip="Save as a new profile" />
                 </StackPanel>
             </Grid>
@@ -1650,10 +1674,43 @@
                         <TextBlock Text="Actions" Style="{StaticResource SubSectionHeader}" />
                         <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
                             <StackPanel>
-                                <Button Content="Save Current Profile" Command="{Binding SaveCurrentProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left" />
+                                <Button Content="Save Current Profile" Command="{Binding SaveCurrentProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                            <Setter Property="ToolTip" Value="Save current profile" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsBuiltInProfileSelected}" Value="True">
+                                                    <Setter Property="Content" Value="Save Current Profile (Built-in → Save As)" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
                                 <Button Content="Save As New Profile..." Command="{Binding SaveAsNewProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left" />
-                                <Button Content="Rename Profile" Command="{Binding RenameProfileCommand}" Margin="0,4" Padding="16,6" Style="{StaticResource OutlinedButton}" HorizontalAlignment="Left" />
-                                <Button Content="Delete Profile" Command="{Binding DeleteProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left" />
+                                <Button Content="Rename Profile" Command="{Binding RenameProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource OutlinedButton}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsBuiltInProfileSelected}" Value="True">
+                                                    <Setter Property="IsEnabled" Value="False" />
+                                                    <Setter Property="ToolTip" Value="Built-in profiles cannot be renamed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="Delete Profile" Command="{Binding DeleteProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsBuiltInProfileSelected}" Value="True">
+                                                    <Setter Property="IsEnabled" Value="False" />
+                                                    <Setter Property="ToolTip" Value="Built-in profiles cannot be deleted" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
                             </StackPanel>
                         </Border>
 

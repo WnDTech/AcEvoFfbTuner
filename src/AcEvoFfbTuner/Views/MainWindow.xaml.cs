@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private readonly float[] _pStatBuf = new float[PStatN];
     private int _pStatIdx, _pStatFrames, _pStatClips;
     private float _pPkMz, _pPkFx, _pPkFy;
+    private float _pPkOutMin, _pPkOutMax;
     private readonly List<string> _pCsv = new();
 
     private readonly SolidColorBrush _cOut = new(Color.FromRgb(0xFF, 0x45, 0x00));
@@ -284,6 +285,10 @@ public partial class MainWindow : Window
         if (afx > _pPkFx) _pPkFx = afx;
         if (afy > _pPkFy) _pPkFy = afy;
 
+        float absOut = Math.Abs(forceOut);
+        if (_pStatFrames == 1 || absOut < _pPkOutMin) _pPkOutMin = absOut;
+        if (absOut > _pPkOutMax) _pPkOutMax = absOut;
+
         ProfStats(speed, steerAngle, forceOut, rawFF, clipping, gasInput, brakeInput);
         RedrawProfilerTS();
 
@@ -340,7 +345,7 @@ public partial class MainWindow : Window
                 if (v > max) max = v;
                 sum += v;
             }
-            ProfMinMax.Text = $"{min:F2} / {max:F2}";
+            ProfMinMax.Text = $"{_pPkOutMin:F2} / {_pPkOutMax:F2}";
             ProfAvg.Text = (sum / count).ToString("F3");
         }
 
@@ -524,9 +529,9 @@ public partial class MainWindow : Window
         sb.AppendLine($"Profile: {prof?.Name ?? "None"}");
         sb.AppendLine();
 
-        sb.AppendLine($"=== PROFILER STATISTICS (last ~{count} frames) ===");
-        sb.AppendLine($"OutputMin:          {min:F6}  ({min * torqueNm:F2} Nm)");
-        sb.AppendLine($"OutputMax:          {max:F6}  ({max * torqueNm:F2} Nm)");
+        sb.AppendLine($"=== PROFILER STATISTICS (last ~{count} frames, global peak across {_pStatFrames}) ===");
+        sb.AppendLine($"OutputMin:          {_pPkOutMin:F6}  ({_pPkOutMin * torqueNm:F2} Nm)");
+        sb.AppendLine($"OutputMax:          {_pPkOutMax:F6}  ({_pPkOutMax * torqueNm:F2} Nm)");
         sb.AppendLine($"OutputAvg:          {avg:F6}  ({avg * torqueNm:F2} Nm)");
         sb.AppendLine($"ClippingPct:        {clipPct:F1}% ({_pStatClips}/{_pStatFrames})");
         sb.AppendLine($"PeakMz/Fx/Fy:       {_pPkMz:F4} / {_pPkFx:F4} / {_pPkFy:F4}  ({_pPkMz * torqueNm:F1} / {_pPkFx * torqueNm:F1} / {_pPkFy * torqueNm:F1} Nm)");
@@ -659,6 +664,7 @@ public partial class MainWindow : Window
         Array.Clear(_pStatBuf);
         _pStatIdx = 0; _pStatFrames = 0; _pStatClips = 0;
         _pPkMz = 0; _pPkFx = 0; _pPkFy = 0;
+        _pPkOutMin = 0; _pPkOutMax = 0;
         _pCsv.Clear();
         _profilerOverlay?.Clear();
 

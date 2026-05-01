@@ -18,6 +18,10 @@ public sealed class ProfileManager
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "AcEvoFfbTuner", "last_profile.txt");
 
+    private static readonly string DefaultsMigratedMarker = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "AcEvoFfbTuner", ".defaults_migrated_v12");
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -38,10 +42,7 @@ public sealed class ProfileManager
     {
         Directory.CreateDirectory(ProfilesDirectory);
 
-        if (!Directory.GetFiles(ProfilesDirectory, "*.json").Any())
-            CreateDefaultProfiles();
-        else
-            EnsureDefaultProfilesExist();
+        OverwriteDefaultProfiles();
 
         LoadAllProfiles();
 
@@ -167,8 +168,14 @@ public sealed class ProfileManager
         }
     }
 
-    private void CreateDefaultProfiles()
+    private void OverwriteDefaultProfiles()
     {
+        if (!File.Exists(DefaultsMigratedMarker))
+        {
+            PreserveCustomizedDefaults();
+            File.WriteAllText(DefaultsMigratedMarker, DateTime.UtcNow.ToString("O"));
+        }
+
         foreach (var name in FfbProfile.AllDefaultNames)
         {
             var profile = FfbProfile.GetDefaultProfile(name);
@@ -176,16 +183,34 @@ public sealed class ProfileManager
         }
     }
 
-    private void EnsureDefaultProfilesExist()
+    private void PreserveCustomizedDefaults()
     {
         foreach (var name in FfbProfile.AllDefaultNames)
         {
             var filePath = GetProfileFilePath(name);
-            if (!File.Exists(filePath))
+            if (!File.Exists(filePath)) continue;
+
+            try
             {
-                var profile = FfbProfile.GetDefaultProfile(name);
-                SaveProfile(profile);
+                var json = File.ReadAllText(filePath);
+                var existing = JsonSerializer.Deserialize<FfbProfile>(json, JsonOptions);
+                if (existing == null) continue;
+
+                var codeDefault = FfbProfile.GetDefaultProfile(name);
+
+                var existingJson = JsonSerializer.Serialize(existing, JsonOptions);
+                var defaultJson = JsonSerializer.Serialize(codeDefault, JsonOptions);
+                if (existingJson == defaultJson) continue;
+
+                string customName = $"{name} (Custom)";
+                string customPath = GetProfileFilePath(customName);
+                if (File.Exists(customPath)) continue;
+
+                existing.Name = customName;
+                var customJson = JsonSerializer.Serialize(existing, JsonOptions);
+                File.WriteAllText(customPath, customJson);
             }
+            catch { }
         }
     }
 

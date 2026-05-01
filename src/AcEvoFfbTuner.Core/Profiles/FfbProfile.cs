@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 11;
+    public const int CurrentVersion = 12;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -23,6 +23,9 @@ public sealed class FfbProfile
     }
 
     public override string ToString() => Name;
+
+    [JsonIgnore]
+    public bool IsBuiltIn => AllDefaultNames.Contains(Name);
 
     public FfbMixModeDto MixMode { get; set; } = FfbMixModeDto.Replace;
     public float OutputGain { get; set; } = 1.0f;
@@ -325,25 +328,25 @@ public sealed class FfbProfile
                 Dynamic = new DynamicConfig { LateralGGain = 0f, LongitudinalGGain = 0f, SuspensionGain = 0.4f, YawRateGain = 0f },                AutoGain = new AutoGainConfig { Enabled = false, Scale = 1.0f },
                 Vibrations = new VibrationConfig { KerbGain = 1.0f, SlipGain = 0.8f, RoadGain = 0.5f, AbsGain = 1.0f, MasterGain = 0.5f }
             },
-            "Safe - Logitech G29/G920" => CreateSafeWheelbaseProfile("Safe - Logitech G29/G920",
+            "Default - Logitech G29/G920" => CreateDefaultWheelbaseProfile("Default - Logitech G29/G920",
                 maxTorqueNm: 2.5f, outputGain: 0.7f, normalizationScale: 350f,
                 speedDamping: 0.2f, friction: 0.10f, inertia: 0.1f,
                 vibrationMaster: 0.4f),
-            "Safe - Thrustmaster T300/TX" => CreateSafeWheelbaseProfile("Safe - Thrustmaster T300/TX",
+            "Default - Thrustmaster T300/TX" => CreateDefaultWheelbaseProfile("Default - Thrustmaster T300/TX",
                 maxTorqueNm: 4.5f, outputGain: 0.7f, normalizationScale: 500f,
                 speedDamping: 0.4f, friction: 0.12f, inertia: 0.08f,
                 vibrationMaster: 0.5f),
-            "Safe - Fanatec CSL DD 5Nm" => CreateSafeWheelbaseProfile("Safe - Fanatec CSL DD 5Nm",
+            "Default - Fanatec CSL DD 5Nm" => CreateDefaultWheelbaseProfile("Default - Fanatec CSL DD 5Nm",
                 maxTorqueNm: 5.0f, outputGain: 0.7f, normalizationScale: 550f,
                 speedDamping: 0.4f, friction: 0.12f, inertia: 0.08f,
                 vibrationMaster: 0.4f),
-            "Safe - Fanatec CSL DD 8Nm" => CreateSafeWheelbaseProfile("Safe - Fanatec CSL DD 8Nm",
+            "Default - Fanatec CSL DD 8Nm" => CreateDefaultWheelbaseProfile("Default - Fanatec CSL DD 8Nm",
                 maxTorqueNm: 8.0f, outputGain: 0.55f, normalizationScale: 600f,
                 speedDamping: 0.45f, friction: 0.12f, inertia: 0.08f,
                 vibrationMaster: 0.35f),
-            "Safe - Moza R9" => new FfbProfile
+            "Default - Moza R9" => new FfbProfile
             {
-                Name = "Safe - Moza R9",
+                Name = "Default - Moza R9",
                 OutputGain = 0.55f,
                 NormalizationScale = 650f,
                 ForceScale = 1.0f,
@@ -376,13 +379,13 @@ public sealed class FfbProfile
                 AutoGain = new AutoGainConfig { Enabled = false, Scale = 1.0f },
                 Vibrations = new VibrationConfig { KerbGain = 0.8f, SlipGain = 0.6f, RoadGain = 0.4f, AbsGain = 0.8f, MasterGain = 0.3f }
             },
-            "Safe - Fanatec ClubSport DD" => CreateSafeWheelbaseProfile("Safe - Fanatec ClubSport DD",
+            "Default - Fanatec ClubSport DD" => CreateDefaultWheelbaseProfile("Default - Fanatec ClubSport DD",
                 maxTorqueNm: 15.0f, outputGain: 0.4f, normalizationScale: 700f,
                 speedDamping: 0.5f, friction: 0.15f, inertia: 0.12f,
                 vibrationMaster: 0.25f),
-            "Safe - Simagic Alpha" => new FfbProfile
+            "Default - Simagic Alpha" => new FfbProfile
             {
-                Name = "Safe - Simagic Alpha",
+                Name = "Default - Simagic Alpha",
                 OutputGain = 0.75f,
                 NormalizationScale = 700f,
                 ForceScale = 1.0f,
@@ -413,7 +416,7 @@ public sealed class FfbProfile
                 AutoGain = new AutoGainConfig { Enabled = false, Scale = 1.0f },
                 Vibrations = new VibrationConfig { KerbGain = 0.8f, SlipGain = 0.6f, RoadGain = 0.4f, AbsGain = 0.8f, MasterGain = 0.25f }
             },
-            "Safe - Simucube 2 Pro" => CreateSafeWheelbaseProfile("Safe - Simucube 2 Pro",
+            "Default - Simucube 2 Pro" => CreateDefaultWheelbaseProfile("Default - Simucube 2 Pro",
                 maxTorqueNm: 25.0f, outputGain: 0.3f, normalizationScale: 800f,
                 speedDamping: 0.5f, friction: 0.15f, inertia: 0.15f,
                 vibrationMaster: 0.2f),
@@ -434,7 +437,7 @@ public sealed class FfbProfile
         };
     }
 
-    private static FfbProfile CreateSafeWheelbaseProfile(
+    private static FfbProfile CreateDefaultWheelbaseProfile(
         string name, float maxTorqueNm, float outputGain, float normalizationScale,
         float speedDamping, float friction, float inertia, float vibrationMaster)
     {
@@ -478,14 +481,14 @@ public sealed class FfbProfile
     public static string[] AllDefaultNames => new[]
     {
         "Default", "Heavy", "Light", "Moza R5 - Final Stable Baseline",
-        "Safe - Logitech G29/G920",
-        "Safe - Thrustmaster T300/TX",
-        "Safe - Fanatec CSL DD 5Nm",
-        "Safe - Fanatec CSL DD 8Nm",
-        "Safe - Moza R9",
-        "Safe - Fanatec ClubSport DD",
-        "Safe - Simagic Alpha",
-        "Safe - Simucube 2 Pro"
+        "Default - Logitech G29/G920",
+        "Default - Thrustmaster T300/TX",
+        "Default - Fanatec CSL DD 5Nm",
+        "Default - Fanatec CSL DD 8Nm",
+        "Default - Moza R9",
+        "Default - Fanatec ClubSport DD",
+        "Default - Simagic Alpha",
+        "Default - Simucube 2 Pro"
     };
 
     public void SanitizeFloats()
@@ -631,6 +634,36 @@ public sealed class FfbProfile
         if (Version < 11)
         {
             TyreFlex ??= new TyreFlexConfig();
+        }
+
+        if (Version < 12)
+        {
+            if (Name.StartsWith("Default - ") && AllDefaultNames.Contains(Name))
+            {
+                var codeDefault = GetDefaultProfile(Name);
+                OutputGain = codeDefault.OutputGain;
+                NormalizationScale = codeDefault.NormalizationScale;
+                ForceScale = codeDefault.ForceScale;
+                SoftClipThreshold = codeDefault.SoftClipThreshold;
+                CompressionPower = codeDefault.CompressionPower;
+                SignCorrectionEnabled = codeDefault.SignCorrectionEnabled;
+                WheelMaxTorqueNm = codeDefault.WheelMaxTorqueNm;
+                MzFront = codeDefault.MzFront;
+                FxFront = codeDefault.FxFront;
+                FyFront = codeDefault.FyFront;
+                MzRear = codeDefault.MzRear;
+                FxRear = codeDefault.FxRear;
+                FyRear = codeDefault.FyRear;
+                FinalFf = codeDefault.FinalFf;
+                WheelLoadWeighting = codeDefault.WheelLoadWeighting;
+                MzScale = codeDefault.MzScale;
+                FxScale = codeDefault.FxScale;
+                FyScale = codeDefault.FyScale;
+                Damping = codeDefault.Damping;
+                Slip = codeDefault.Slip;
+                Dynamic = codeDefault.Dynamic;
+                Vibrations = codeDefault.Vibrations;
+            }
         }
 
         Version = CurrentVersion;

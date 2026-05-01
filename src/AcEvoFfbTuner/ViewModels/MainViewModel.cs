@@ -364,6 +364,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private FfbProfile? _selectedProfile;
 
+    public bool IsBuiltInProfileSelected => SelectedProfile?.IsBuiltIn ?? false;
+
     [ObservableProperty]
     private int _ledBrightness = 100;
 
@@ -1161,6 +1163,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         if (SelectedProfile == null) return;
 
+        if (SelectedProfile.IsBuiltIn)
+        {
+            StatusText = $"\"{SelectedProfile.Name}\" is a built-in profile. Use Save As to create your own copy.";
+            SaveAsNewProfile();
+            return;
+        }
+
         try
         {
             PushValuesToPipeline();
@@ -1247,6 +1256,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void DeleteProfile()
     {
         if (SelectedProfile == null) return;
+        if (SelectedProfile.IsBuiltIn)
+        {
+            StatusText = $"Cannot delete built-in profile \"{SelectedProfile.Name}\".";
+            return;
+        }
         _profileManager.DeleteProfile(SelectedProfile);
         RefreshProfiles();
         SelectedProfile = _profileManager.ActiveProfile;
@@ -1256,6 +1270,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void RenameProfile()
     {
         if (SelectedProfile == null) return;
+        if (SelectedProfile.IsBuiltIn)
+        {
+            StatusText = $"Cannot rename built-in profile \"{SelectedProfile.Name}\". Use Save As to create a renamed copy.";
+            return;
+        }
 
         var dialog = new Views.InputDialog(SelectedProfile.Name)
         {
@@ -1711,6 +1730,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _profileManager.SetActiveProfile(value);
         value.ApplyToPipeline(_pipeline);
         LoadProfileValues(value);
+        OnPropertyChanged(nameof(IsBuiltInProfileSelected));
     }
 
     private void OnUiUpdate(object? sender, EventArgs e)

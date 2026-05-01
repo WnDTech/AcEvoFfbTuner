@@ -31,7 +31,7 @@ public sealed class FfbPipeline
 
     public float SteerDirDeadzone { get; set; } = 0.004f;
 
-    public float CenterSuppressionDegrees { get; set; } = 0.5f;
+    public float CenterSuppressionDegrees { get; set; } = 1.5f;
 
     public float HysteresisThreshold { get; set; } = 0.015f;
 
@@ -78,25 +78,25 @@ public sealed class FfbPipeline
         if (Math.Abs(output) < effectiveNoiseFloor)
             output = 0f;
 
-        // ── Physics-preserving center fade ──
-        // The physics model's Mz (self-aligning torque) already encodes the correct
-        // force direction and magnitude — including the critical Mz peak/dropoff that
-        // signals the approach to the tire's grip limit. We preserve the physics sign
-        // and magnitude, applying only a gentle linear fade within a narrow band around
-        // center to prevent notchiness at the zero-crossing point.
-        // Device-level inversion (_invertForce) is now handled at FfbDeviceManager.
+        // ── Sign correction: force opposes steering angle (self-aligning torque) ──
+        // AC EVO's Mz telemetry sign follows the slip angle, not the correcting force.
+        // Combined with DirectInput's force direction, the raw output pushes INTO the turn.
+        // We must enforce self-aligning behavior: force always opposes steering angle.
+        // A linear center fade prevents notchiness at the zero-crossing.
         if (SignCorrectionEnabled && raw.SpeedKmh > 0.5f)
         {
-            if (Math.Abs(output) > effectiveNoiseFloor)
+            float absOutput = Math.Abs(output);
+            if (absOutput > effectiveNoiseFloor)
             {
                 float absRawDeg = Math.Abs(raw.SteerAngle) * 450f;
 
-                // Linear ramp from 0 at center to 1 at CenterSuppressionDegrees (default 0.5°).
-                // Linear (not quadratic) preserves the Mz slope in the linear region where
-                // on-center sensitivity matters most.
                 float centerFade = Math.Clamp(absRawDeg / Math.Max(CenterSuppressionDegrees, 0.1f), 0f, 1f);
 
-                output *= centerFade;
+                float forceDirection = Math.Abs(raw.SteerAngle) > SteerDirDeadzone
+                    ? -Math.Sign(raw.SteerAngle)
+                    : 0f;
+
+                output = absOutput * forceDirection * centerFade;
             }
         }
 
