@@ -78,25 +78,19 @@ public sealed class FfbPipeline
         if (Math.Abs(output) < effectiveNoiseFloor)
             output = 0f;
 
-        // ── Sign correction: force opposes steering angle (self-aligning torque) ──
-        // AC EVO's Mz telemetry sign follows the slip angle, not the correcting force.
-        // Combined with DirectInput's force direction, the raw output pushes INTO the turn.
-        // We must enforce self-aligning behavior: force always opposes steering angle.
-        // A linear center fade prevents notchiness at the zero-crossing.
+        // ── Center suppression: linear fade near center to prevent notchiness ──
+        // Preserves the physics sign — the force direction comes from the tire
+        // physics (Mz, Fy, Fx). Different wheelbases handle DirectInput force
+        // direction differently, so we never override the physics sign here.
+        // Per-wheelbase inversion is handled by ForceInvertEnabled at the device level.
         if (SignCorrectionEnabled && raw.SpeedKmh > 0.5f)
         {
             float absOutput = Math.Abs(output);
             if (absOutput > effectiveNoiseFloor)
             {
                 float absRawDeg = Math.Abs(raw.SteerAngle) * 450f;
-
                 float centerFade = Math.Clamp(absRawDeg / Math.Max(CenterSuppressionDegrees, 0.1f), 0f, 1f);
-
-                float forceDirection = Math.Abs(raw.SteerAngle) > SteerDirDeadzone
-                    ? -Math.Sign(raw.SteerAngle)
-                    : 0f;
-
-                output = absOutput * forceDirection * centerFade;
+                output *= centerFade;
             }
         }
 

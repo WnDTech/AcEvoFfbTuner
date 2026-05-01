@@ -23,6 +23,17 @@ public static class WheelbaseAutoConfigurator
         return WheelCharacteristics.DirectDrive;
     }
 
+    public static bool DetectForceInversion(string deviceName)
+    {
+        if (string.IsNullOrEmpty(deviceName)) return false;
+        var n = deviceName.ToUpperInvariant();
+
+        if (n.Contains("SIMAGIC"))
+            return true;
+
+        return false;
+    }
+
     public static FfbProfile GenerateProfile(float torqueNm, string deviceName, EvoDetectedSettings? evoSettings)
     {
         var wheelType = DetectWheelType(deviceName);
@@ -59,6 +70,7 @@ public static class WheelbaseAutoConfigurator
             SoftClipThreshold = 0.8f,
             CompressionPower = compPower,
             SignCorrectionEnabled = true,
+            ForceInvertEnabled = DetectForceInversion(deviceName),
             WheelMaxTorqueNm = torqueNm,
             MzFront = new ChannelConfig { Gain = 1.0f, Enabled = true },
             FxFront = new ChannelConfig { Gain = 0.12f, Enabled = true },

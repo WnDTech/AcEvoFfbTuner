@@ -1211,6 +1211,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             });
             _profileManager.SaveProfileFromPipeline(_pipeline, SelectedProfile.Name);
             SelectedProfile.WheelMaxTorqueNm = WheelMaxTorqueNm;
+            SelectedProfile.ForceInvertEnabled = ForceInvertEnabled;
             SelectedProfile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
             _profileManager.SaveProfile(SelectedProfile);
             _profileManager.SetActiveProfile(SelectedProfile);
@@ -1231,6 +1232,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             string diagName = $"{baseName}_diag_{DateTime.Now:yyyyMMdd_HHmmss}";
             var profile = _profileManager.SaveProfileFromPipeline(_pipeline, diagName);
             profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
+            profile.ForceInvertEnabled = ForceInvertEnabled;
             profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
             _profileManager.SaveProfile(profile);
         }
@@ -1254,6 +1256,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             var profile = _profileManager.SaveProfileFromPipeline(_pipeline, dialog.Result!);
             profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
+            profile.ForceInvertEnabled = ForceInvertEnabled;
             profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
             _profileManager.SaveProfile(profile);
             _profileManager.SetActiveProfile(profile);
@@ -2060,6 +2063,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         SteeringLockDegrees = profile.SteeringLockDegrees;
         ForceScale = profile.ForceScale;
         SignCorrectionEnabled = profile.SignCorrectionEnabled;
+        ForceInvertEnabled = profile.ForceInvertEnabled;
         MaxSlewRate = profile.Advanced.MaxSlewRate;
         CenterSuppressionDegrees = profile.Advanced.CenterSuppressionDegrees;
         CenterKneePower = profile.Advanced.CenterKneePower;

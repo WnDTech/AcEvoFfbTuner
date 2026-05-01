@@ -37,6 +37,7 @@ public sealed class FfbProfile
     public float SoftClipThreshold { get; set; } = 0.8f;
     public float CompressionPower { get; set; } = 1.0f;
     public bool SignCorrectionEnabled { get; set; } = true;
+    public bool ForceInvertEnabled { get; set; } = false;
     public float WheelMaxTorqueNm { get; set; } = 5.5f;
 
     public ChannelConfig MzFront { get; set; } = new() { Gain = 1.0f, Enabled = true };
@@ -392,10 +393,8 @@ public sealed class FfbProfile
                 SoftClipThreshold = 0.75f,
                 CompressionPower = 1.0f,
                 SignCorrectionEnabled = true,
+                ForceInvertEnabled = true,
                 WheelMaxTorqueNm = 15.0f,
-                MzFront = new ChannelConfig { Gain = 1.0f, Enabled = true },
-                FxFront = new ChannelConfig { Gain = 0.15f, Enabled = true },
-                FyFront = new ChannelConfig { Gain = 0.3f, Enabled = true },
                 MzRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
                 FxRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
                 FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
