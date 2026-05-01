@@ -1097,16 +1097,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         var profile = WheelbaseAutoConfigurator.GenerateProfile(torque, deviceName, null);
         if (evoSettings != null)
-        {
             profile.SteeringLockDegrees = evoSettings.RecommendedSteeringLock;
-        }
-        profile.Name = $"Auto - {deviceName} ({torque:F1}Nm)";
+
+        profile.Name = $"Auto Setup - {deviceName}";
 
         var existing = Profiles.FirstOrDefault(p => p.Name == profile.Name);
         if (existing != null)
-        {
             _profileManager.DeleteProfile(existing);
-        }
 
         _profileManager.SaveProfile(profile);
         RefreshProfiles();
@@ -1122,7 +1119,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         LastCorrectionText = "";
 
         var wheelType = WheelbaseAutoConfigurator.DetectWheelType(deviceName);
-        AutoSetupStatus = $"Auto-configured for {deviceName} — {torque:F1}Nm, {wheelType}";
+        AutoSetupStatus = $"Auto Setup — {deviceName} ({torque:F1}Nm, {wheelType})";
         StatusText = AutoSetupStatus;
     }
 
@@ -1131,9 +1128,32 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         if (IsLiveAutoTuneEnabled)
         {
+            if (!IsDeviceConnected) { IsLiveAutoTuneEnabled = false; return; }
+
+            float torque = WheelMaxTorqueNm;
+            string deviceName = DeviceName;
+
+            if (SelectedProfile != null && SelectedProfile.IsBuiltIn)
+            {
+                var profile = WheelbaseAutoConfigurator.GenerateProfile(torque, deviceName, null);
+                profile.Name = $"Live Tune - {deviceName}";
+
+                var existing = Profiles.FirstOrDefault(p => p.Name == profile.Name);
+                if (existing != null)
+                    _profileManager.DeleteProfile(existing);
+
+                _profileManager.SaveProfile(profile);
+                RefreshProfiles();
+
+                SelectedProfile = profile;
+                profile.ApplyToPipeline(_pipeline);
+                LoadProfileValues(profile);
+                _profileManager.SetActiveProfile(profile);
+            }
+
             _liveAutoTuner.Enabled = true;
-            _liveAutoTuner.Configure(_pipeline, WheelMaxTorqueNm);
-            AutoSetupStatus = string.IsNullOrEmpty(AutoSetupStatus) ? "Live tune active" : AutoSetupStatus + " | LIVE";
+            _liveAutoTuner.Configure(_pipeline, torque);
+            AutoSetupStatus = $"Live tune active — {SelectedProfile?.Name ?? deviceName}";
             StatusText = "Live auto-tune enabled — corrections will appear below";
         }
         else
