@@ -1,4 +1,5 @@
-using System;
+using System.Diagnostics;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -6,6 +7,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
+using NAudio.CoreAudioApi;
+using NAudio.Wave;
 
 namespace AcEvoFfbTuner.Services;
 
@@ -15,16 +18,27 @@ public sealed class GameRecordingService : IDisposable
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "AcEvoFfbTuner", "recordings");
 
-    private NativeVideoRecorder? _recorder;
+    private static readonly string BundledFFmpegPath = Path.Combine(
+        AppDomain.CurrentDomain.BaseDirectory, "ffmpeg.exe");
+
+    private Process? _ffmpegProcess;
     private string? _currentOutputPath;
+    private string? _audioTempPath;
+    private string? _videoOnlyPath;
     private DateTime _recordingStartTime;
     private bool _isRecording;
     private bool _disposed;
+    private bool _ffmpegNotFound;
     private readonly TaskCompletionSource<bool> _stopCompletion = new();
     private int _stoppedTickCount;
     private const int StopAfterTicks = 90;
     private Window? _overlayWindow;
-    private bool _recorderFailed;
+    private static string? _cachedEncoder;
+    private static string? _cachedCaptureMethod;
+
+    private WasapiLoopbackCapture? _audioCapture;
+    private WaveFileWriter? _audioWriter;
+    private double _audioVideoOffsetSec;
 
     public bool IsRecording => _isRecording;
     public string? CurrentOutputPath => _currentOutputPath;
@@ -36,7 +50,7 @@ public sealed class GameRecordingService : IDisposable
 
     public void OnTelemetryTick(float speedKmh)
     {
-        if (_disposed || _recorderFailed) return;
+        if (_disposed || _ffmpegNotFound) return;
 
         if (speedKmh > 5.0f)
         {
@@ -58,60 +72,149 @@ public sealed class GameRecordingService : IDisposable
 
         try
         {
+            string? ffmpegPath = FindFFmpeg();
+            if (ffmpegPath == null)
+            {
+                _ffmpegNotFound = true;
+                RecordingStateChanged?.Invoke(
+                    "Recording unavailable — ffmpeg.exe not found next to app", false);
+                return;
+            }
             Directory.CreateDirectory(RecordingsDir);
             string ts = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            _videoOnlyPath = Path.Combine(RecordingsDir, $"acevo_session_{ts}_video.mp4");
+            _audioTempPath = Path.Combine(RecordingsDir, $"acevo_session_{ts}_audio.wav");
             _currentOutputPath = Path.Combine(RecordingsDir, $"acevo_session_{ts}.mp4");
             _recordingStartTime = DateTime.Now;
             _stoppedTickCount = 0;
 
-            _recorder = new NativeVideoRecorder(fps: 30, bitrate: 15_000_000);
-            bool ok = _recorder.Start(_currentOutputPath);
+            string encoder = GetBestEncoder(ffmpegPath);
+            string captureMethod = GetCaptureMethod(ffmpegPath);
 
-            if (!ok)
+            string args = captureMethod == "ddagrab"
+                ? BuildDdagrabArgs(encoder, _videoOnlyPath)
+                : BuildGdigrabArgs(encoder, _videoOnlyPath);
+
+            var psi = new ProcessStartInfo
             {
-                _recorderFailed = true;
-                RecordingStateChanged?.Invoke(
-                    $"Recording failed: {_recorder.Error ?? "Unknown error"}", false);
-                _recorder.Dispose();
-                _recorder = null;
+                FileName = ffmpegPath,
+                Arguments = args,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardInput = true,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true
+            };
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            StartAudioCapture();
+            long audioStartTicks = sw.ElapsedTicks;
+
+            _ffmpegProcess = new Process { StartInfo = psi };
+            _ffmpegProcess.EnableRaisingEvents = true;
+            _ffmpegProcess.Exited += OnFFmpegExited;
+            _ffmpegProcess.ErrorDataReceived += OnFFmpegError;
+            _ffmpegProcess.Start();
+            _ffmpegProcess.BeginErrorReadLine();
+            long videoStartTicks = sw.ElapsedTicks;
+
+            _audioVideoOffsetSec = (double)(audioStartTicks - videoStartTicks) / System.Diagnostics.Stopwatch.Frequency;
+
+            System.Threading.Thread.Sleep(300);
+            if (_ffmpegProcess.HasExited)
+            {
+                StopAudioCapture();
+                try { if (_videoOnlyPath != null && File.Exists(_videoOnlyPath)) File.Delete(_videoOnlyPath); } catch { }
+                CleanupProcess();
+                RecordingStateChanged?.Invoke("Recording failed: FFmpeg exited immediately", false);
                 return;
             }
 
             _isRecording = true;
             ShowOverlay();
             RecordingStateChanged?.Invoke(
-                $"Recording AC EVO (MF/H.264): {Path.GetFileName(_currentOutputPath)}", true);
+                $"Recording AC EVO ({captureMethod}/{encoder}): {Path.GetFileName(_currentOutputPath)}", true);
         }
         catch (Exception ex)
         {
+            StopAudioCapture();
             RecordingStateChanged?.Invoke($"Recording failed: {ex.Message}", false);
-            _recorder?.Dispose();
-            _recorder = null;
+            CleanupProcess();
         }
+    }
+
+    private void StartAudioCapture()
+    {
+        try
+        {
+            using var enumerator = new MMDeviceEnumerator();
+            var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            _audioCapture = new WasapiLoopbackCapture(device);
+            _audioWriter = new WaveFileWriter(_audioTempPath, _audioCapture.WaveFormat);
+
+            _audioCapture.DataAvailable += (s, e) =>
+            {
+                try { _audioWriter?.Write(e.Buffer, 0, e.BytesRecorded); }
+                catch { }
+            };
+
+            _audioCapture.RecordingStopped += (s, e) =>
+            {
+                try { _audioWriter?.Flush(); } catch { }
+                try { _audioWriter?.Dispose(); } catch { }
+                _audioWriter = null;
+            };
+
+            _audioCapture.StartRecording();
+        }
+        catch
+        {
+            _audioTempPath = null;
+        }
+    }
+
+    private void StopAudioCapture()
+    {
+        try
+        {
+            if (_audioCapture != null && _audioCapture.CaptureState != CaptureState.Stopped)
+                _audioCapture.StopRecording();
+        }
+        catch { }
+
+        try { _audioCapture?.Dispose(); } catch { }
+        _audioCapture = null;
     }
 
     public string? StopRecording()
     {
-        if (!_isRecording || _recorder == null) return null;
+        if (!_isRecording || _ffmpegProcess == null) return null;
 
         _isRecording = false;
         _stoppedTickCount = 0;
         HideOverlay();
 
-        var recorder = _recorder;
-        _recorder = null;
+        StopAudioCapture();
 
-        _ = Task.Run(() =>
+        try { _ffmpegProcess.StandardInput.WriteLine("q"); } catch { }
+
+        _ = System.Threading.Tasks.Task.Run(() =>
         {
             try
             {
-                recorder.Stop();
-                recorder.Dispose();
+                if (!_ffmpegProcess.WaitForExit(10000))
+                    try { _ffmpegProcess.Kill(); } catch { }
             }
             catch { }
 
-            if (_currentOutputPath != null && File.Exists(_currentOutputPath) && new FileInfo(_currentOutputPath).Length > 0)
-                RecordingStateChanged?.Invoke($"Recording saved: {Path.GetFileName(_currentOutputPath)}", false);
+            CleanupProcess();
+            string? muxedPath = MuxAudioVideo();
+            CleanupTempFiles();
+
+            string? finalPath = muxedPath ?? _currentOutputPath;
+            if (finalPath != null && File.Exists(finalPath) && new FileInfo(finalPath).Length > 0)
+                RecordingStateChanged?.Invoke($"Recording saved: {Path.GetFileName(finalPath)}", false);
             else
                 RecordingStateChanged?.Invoke("Recording saved", false);
 
@@ -120,6 +223,247 @@ public sealed class GameRecordingService : IDisposable
 
         RecordingStateChanged?.Invoke("Recording stopped — finalizing...", false);
         return _currentOutputPath;
+    }
+
+    private string? MuxAudioVideo()
+    {
+        if (_videoOnlyPath == null || !File.Exists(_videoOnlyPath) || new FileInfo(_videoOnlyPath).Length == 0)
+            return null;
+
+        bool hasAudio = _audioTempPath != null && File.Exists(_audioTempPath) && new FileInfo(_audioTempPath).Length > 44;
+
+        if (!hasAudio)
+        {
+            try { File.Move(_videoOnlyPath, _currentOutputPath!, overwrite: true); }
+            catch { try { File.Copy(_videoOnlyPath, _currentOutputPath!, true); } catch { } }
+            return _currentOutputPath;
+        }
+
+        string? ffmpegPath = FindFFmpeg();
+        if (ffmpegPath == null)
+        {
+            try { File.Copy(_videoOnlyPath, _currentOutputPath!, true); } catch { }
+            return _currentOutputPath;
+        }
+
+        try
+        {
+            string itsoffset = Math.Abs(_audioVideoOffsetSec) > 0.005
+                ? $"-itsoffset {_audioVideoOffsetSec:F4}"
+                : "";
+
+            string muxArgs = $"-y -hide_banner -loglevel error " +
+                             $"-i \"{_videoOnlyPath}\" {itsoffset} -i \"{_audioTempPath}\" " +
+                             $"-c:v copy -c:a aac -b:a 192k -shortest \"{_currentOutputPath}\"";
+
+            using var proc = Process.Start(new ProcessStartInfo
+            {
+                FileName = ffmpegPath,
+                Arguments = muxArgs,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardError = true
+            });
+            proc?.WaitForExit(30000);
+
+            if (proc?.ExitCode == 0 && _currentOutputPath != null &&
+                File.Exists(_currentOutputPath) && new FileInfo(_currentOutputPath).Length > 0)
+                return _currentOutputPath;
+        }
+        catch { }
+
+        try { File.Copy(_videoOnlyPath, _currentOutputPath!, true); } catch { }
+        return _currentOutputPath;
+    }
+
+    private void CleanupTempFiles()
+    {
+        try { if (_videoOnlyPath != null && File.Exists(_videoOnlyPath)) File.Delete(_videoOnlyPath); } catch { }
+        try { if (_audioTempPath != null && File.Exists(_audioTempPath)) File.Delete(_audioTempPath); } catch { }
+        _videoOnlyPath = null;
+        _audioTempPath = null;
+    }
+
+    private static string BuildDdagrabArgs(string encoder, string outputPath)
+    {
+        var sb = new StringBuilder();
+        sb.Append("-y -hide_banner -loglevel warning ");
+        sb.Append("-init_hw_device d3d11va=dev ");
+        sb.Append("-filter_complex \"ddagrab=framerate=30:output_fmt=8bit,hwdownload,format=bgra\" ");
+        sb.Append($"-c:v {encoder} ");
+        if (encoder == "libx264")
+            sb.Append("-preset ultrafast -crf 23 ");
+        else
+            sb.Append("-b:v 15M ");
+        sb.Append("-an ");
+        sb.Append($"\"{outputPath}\"");
+        return sb.ToString();
+    }
+
+    private static string BuildGdigrabArgs(string encoder, string outputPath)
+    {
+        var sb = new StringBuilder();
+        sb.Append("-y -hide_banner -loglevel warning ");
+        sb.Append("-f gdigrab -framerate 30 -i desktop ");
+        sb.Append($"-c:v {encoder} ");
+        if (encoder == "libx264")
+            sb.Append("-preset ultrafast -crf 23 ");
+        else
+            sb.Append("-b:v 15M ");
+        sb.Append("-an ");
+        sb.Append($"\"{outputPath}\"");
+        return sb.ToString();
+    }
+
+    private static string GetCaptureMethod(string ffmpegPath)
+    {
+        if (_cachedCaptureMethod != null)
+            return _cachedCaptureMethod;
+
+        _cachedCaptureMethod = ProbeDdagrab(ffmpegPath) ? "ddagrab" : "gdigrab";
+        return _cachedCaptureMethod;
+    }
+
+    private static bool ProbeDdagrab(string ffmpegPath)
+    {
+        try
+        {
+            using var proc = Process.Start(new ProcessStartInfo
+            {
+                FileName = ffmpegPath,
+                Arguments = "-hide_banner -loglevel error -init_hw_device d3d11va=dev -filter_complex \"ddagrab=framerate=1:output_fmt=8bit,hwdownload,format=bgra\" -c:v libx264 -preset ultrafast -t 0.1 -y -f null -",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardError = true
+            });
+            proc?.WaitForExit(10000);
+            return proc?.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string GetBestEncoder(string ffmpegPath)
+    {
+        if (_cachedEncoder != null)
+            return _cachedEncoder;
+
+        string[] encoders = { "h264_mf", "h264_nvenc", "h264_amf", "h264_qsv", "libx264" };
+
+        foreach (var enc in encoders)
+        {
+            try
+            {
+                string filterArgs = enc == "libx264" || enc == "h264_mf"
+                    ? "-init_hw_device d3d11va=dev -filter_complex \"ddagrab=framerate=10:output_fmt=8bit,hwdownload,format=bgra\""
+                    : $"-f lavfi -i nullsrc=s=256x256:d=0.1";
+
+                using var proc = Process.Start(new ProcessStartInfo
+                {
+                    FileName = ffmpegPath,
+                    Arguments = $"-hide_banner -loglevel error {filterArgs} -c:v {enc} -t 0.2 -y -f null -",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardError = true
+                });
+                proc?.WaitForExit(10000);
+                if (proc?.ExitCode == 0)
+                {
+                    _cachedEncoder = enc;
+                    return enc;
+                }
+            }
+            catch { }
+        }
+
+        _cachedEncoder = "libx264";
+        return _cachedEncoder;
+    }
+
+    private static string? FindFFmpeg()
+    {
+        if (File.Exists(BundledFFmpegPath))
+            return BundledFFmpegPath;
+
+        try
+        {
+            using var proc = Process.Start(new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = "-version",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true
+            });
+            if (proc != null)
+            {
+                proc.WaitForExit(3000);
+                if (proc.ExitCode == 0)
+                    return "ffmpeg";
+            }
+        }
+        catch { }
+
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+        string[] commonPaths =
+        {
+            Path.Combine(localAppData, "Microsoft", "WinGet", "Links", "ffmpeg.exe"),
+            @"C:\ffmpeg\bin\ffmpeg.exe",
+            Path.Combine(localAppData, "Programs", "ffmpeg", "bin", "ffmpeg.exe"),
+            @"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
+            @"C:\Program Files\FFmpeg\bin\ffmpeg.exe",
+            @"C:\ProgramData\chocolatey\bin\ffmpeg.exe"
+        };
+
+        foreach (var p in commonPaths)
+            if (File.Exists(p))
+                return p;
+
+        string wingetPackages = Path.Combine(localAppData, "Microsoft", "WinGet", "Packages");
+        if (Directory.Exists(wingetPackages))
+        {
+            try
+            {
+                var found = Directory.GetFiles(wingetPackages, "ffmpeg.exe", SearchOption.AllDirectories)
+                    .FirstOrDefault();
+                if (found != null)
+                    return found;
+            }
+            catch { }
+        }
+
+        return null;
+    }
+
+    private void OnFFmpegError(object sender, DataReceivedEventArgs e)
+    {
+    }
+
+    private void OnFFmpegExited(object? sender, EventArgs e)
+    {
+        _isRecording = false;
+        HideOverlay();
+        _stopCompletion.TrySetResult(true);
+    }
+
+    private void CleanupProcess()
+    {
+        if (_ffmpegProcess != null)
+        {
+            try
+            {
+                _ffmpegProcess.Exited -= OnFFmpegExited;
+                _ffmpegProcess.ErrorDataReceived -= OnFFmpegError;
+                if (!_ffmpegProcess.HasExited)
+                    try { _ffmpegProcess.Kill(); } catch { }
+                _ffmpegProcess.Dispose();
+            }
+            catch { }
+            _ffmpegProcess = null;
+        }
     }
 
     private void ShowOverlay()
@@ -254,9 +598,9 @@ public sealed class GameRecordingService : IDisposable
         });
         using var content = new MultipartFormDataContent
         {
+            { new StreamContent(progressStream), "fileToUpload", Path.GetFileName(filePath) },
             { new StringContent("fileupload"), "reqtype" },
-            { new StringContent("72h"), "time" },
-            { new StreamContent(progressStream), "fileToUpload", Path.GetFileName(filePath) }
+            { new StringContent("72h"), "time" }
         };
 
         var response = await httpClient.PostAsync("https://litterbox.catbox.moe/resources/internals/api.php", content);
@@ -334,9 +678,10 @@ public sealed class GameRecordingService : IDisposable
         _disposed = true;
         StopRecording();
         HideOverlay();
-        _recorder?.Dispose();
-        _recorder = null;
+        StopAudioCapture();
         _stopCompletion.Task.Wait(TimeSpan.FromSeconds(15));
+        CleanupProcess();
+        CleanupTempFiles();
     }
 }
 

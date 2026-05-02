@@ -8,7 +8,6 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Resources\wheel.ico</ApplicationIcon>
     <PlatformTarget>x64</PlatformTarget>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <StartupObject>AcEvoFfbTuner.App</StartupObject>
     <Version>1.7.0</Version>
@@ -32,6 +31,10 @@
     <Resource Include="Resources\wheel_nobg.png" />
     <Resource Include="Resources\wheel.ico" />
     <Resource Include="Resources\engine_start_default.wav" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
