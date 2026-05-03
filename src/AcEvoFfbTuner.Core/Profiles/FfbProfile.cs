@@ -28,10 +28,10 @@ public sealed class FfbProfile
     public bool IsBuiltIn => AllDefaultNames.Contains(Name);
 
     public FfbMixModeDto MixMode { get; set; } = FfbMixModeDto.Replace;
-    public float OutputGain { get; set; } = 1.0f;
+    public float OutputGain { get; set; } = 0.621f;
 
     [JsonPropertyName("forceSensitivity")]
-    public float NormalizationScale { get; set; } = 1.0f;
+    public float NormalizationScale { get; set; } = 1000f;
 
     public float ForceScale { get; set; } = 1.0f;
     public float SoftClipThreshold { get; set; } = 0.8f;
@@ -40,9 +40,9 @@ public sealed class FfbProfile
     public bool ForceInvertEnabled { get; set; } = false;
     public float WheelMaxTorqueNm { get; set; } = 5.5f;
 
-    public ChannelConfig MzFront { get; set; } = new() { Gain = 1.0f, Enabled = true };
-    public ChannelConfig FxFront { get; set; } = new() { Gain = 0.1f, Enabled = true };
-    public ChannelConfig FyFront { get; set; } = new() { Gain = 0.1f, Enabled = true };
+    public ChannelConfig MzFront { get; set; } = new() { Gain = 0.42f, Enabled = true };
+    public ChannelConfig FxFront { get; set; } = new() { Gain = 0.15f, Enabled = true };
+    public ChannelConfig FyFront { get; set; } = new() { Gain = 0.20f, Enabled = true };
     public ChannelConfig MzRear { get; set; } = new() { Gain = 0.0f, Enabled = false };
     public ChannelConfig FxRear { get; set; } = new() { Gain = 0.0f, Enabled = false };
     public ChannelConfig FyRear { get; set; } = new() { Gain = 0.0f, Enabled = false };
@@ -293,162 +293,114 @@ public sealed class FfbProfile
             "Heavy" => new FfbProfile
             {
                 Name = "Heavy",
-                OutputGain = 1.3f,
-                NormalizationScale = 1.0f,
-                Damping = new DampingConfig { SpeedDamping = 0.2f, Friction = 0.1f, Inertia = 0.15f, MaxSpeedReference = 200f }
+                OutputGain = 0.85f,
+                NormalizationScale = 1000f,
+                MzScale = 30f, FxScale = 4000f, FyScale = 5000f,
+                SoftClipThreshold = 0.8f,
+                MzFront = new ChannelConfig { Gain = 0.50f, Enabled = true },
+                FxFront = new ChannelConfig { Gain = 0.15f, Enabled = true },
+                FyFront = new ChannelConfig { Gain = 0.22f, Enabled = true },
+                Damping = new DampingConfig { ViscousDamping = 0.15f, SpeedDamping = 0.50f, Friction = 0.18f, Inertia = 0.12f, MaxSpeedReference = 200f },
+                Slip = new SlipConfig { SlipRatioGain = 0.10f, SlipAngleGain = 0.20f, SlipThreshold = 0.10f, UseFrontOnly = true },
+                Dynamic = new DynamicConfig { SuspensionGain = 0.40f },
+                Vibrations = new VibrationConfig { KerbGain = 1.0f, SlipGain = 0.8f, RoadGain = 0f, AbsGain = 1.0f, MasterGain = 0.55f, ScrubGain = 0.5f, RearSlipGain = 0.6f },
+                Advanced = new AdvancedConfig { MaxSlewRate = 0.85f, NoiseFloor = 0.003f, CenterBlendDegrees = 1.0f }
             },
             "Light" => new FfbProfile
             {
                 Name = "Light",
-                OutputGain = 0.8f,
-                NormalizationScale = 1.0f,
-                Damping = new DampingConfig { SpeedDamping = 0.05f, Friction = 0.02f, Inertia = 0.05f, MaxSpeedReference = 200f }
-            },
-            "Moza R5 - Final Stable Baseline" => new FfbProfile
-            {
-                Name = "Moza R5 - Final Stable Baseline",
-                OutputGain = 0.8f,
-                NormalizationScale = 600f,
-                ForceScale = 1.0f,
+                OutputGain = 0.45f,
+                NormalizationScale = 1000f,
+                MzScale = 30f, FxScale = 4000f, FyScale = 5000f,
                 SoftClipThreshold = 0.8f,
-                CompressionPower = 1.0f,
-                SignCorrectionEnabled = true,
-                MzFront = new ChannelConfig { Gain = 1.0f, Enabled = true },
-                FxFront = new ChannelConfig { Gain = 0.15f, Enabled = true },
-                FyFront = new ChannelConfig { Gain = 0.2f, Enabled = true },
-                MzRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                FxRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                WheelLoadWeighting = 0.0f,
-                MzScale = 30f,
-                FxScale = 4000f,
-                FyScale = 5000f,
-                LutCurve = LutCurveDto.Linear(),
-                SteeringLockDegrees = 900,
-                Damping = new DampingConfig { SpeedDamping = 0.5f, Friction = 0.15f, Inertia = 0.1f, MaxSpeedReference = 200f },
-                Slip = new SlipConfig { SlipRatioGain = 0.1f, SlipAngleGain = 0.2f, SlipThreshold = 0.05f, UseFrontOnly = true },
-                Dynamic = new DynamicConfig { LateralGGain = 0f, LongitudinalGGain = 0f, SuspensionGain = 0.4f, YawRateGain = 0f },                AutoGain = new AutoGainConfig { Enabled = false, Scale = 1.0f },
-                Vibrations = new VibrationConfig { KerbGain = 1.0f, SlipGain = 0.8f, RoadGain = 0.5f, AbsGain = 1.0f, MasterGain = 0.5f }
-            },
-            "Default - Logitech G29/G920" => CreateDefaultWheelbaseProfile("Default - Logitech G29/G920",
-                maxTorqueNm: 2.5f, outputGain: 0.7f, normalizationScale: 350f,
-                viscousDamping: 0.12f,
-                speedDamping: 0.2f, friction: 0.10f, inertia: 0.1f,
-                vibrationMaster: 0.4f),
-            "Default - Thrustmaster T300/TX" => CreateDefaultWheelbaseProfile("Default - Thrustmaster T300/TX",
-                maxTorqueNm: 4.5f, outputGain: 0.7f, normalizationScale: 500f,
-                viscousDamping: 0.15f,
-                speedDamping: 0.4f, friction: 0.12f, inertia: 0.08f,
-                vibrationMaster: 0.5f),
-            "Default - Fanatec CSL DD 5Nm" => CreateDefaultWheelbaseProfile("Default - Fanatec CSL DD 5Nm",
-                maxTorqueNm: 5.0f, outputGain: 0.7f, normalizationScale: 550f,
-                viscousDamping: 0.15f,
-                speedDamping: 0.4f, friction: 0.12f, inertia: 0.08f,
-                vibrationMaster: 0.4f),
-            "Default - Fanatec CSL DD 8Nm" => CreateDefaultWheelbaseProfile("Default - Fanatec CSL DD 8Nm",
-                maxTorqueNm: 8.0f, outputGain: 0.55f, normalizationScale: 600f,
-                viscousDamping: 0.18f,
-                speedDamping: 0.45f, friction: 0.12f, inertia: 0.08f,
-                vibrationMaster: 0.35f),
-            "Default - Moza R9" => new FfbProfile
-            {
-                Name = "Default - Moza R9",
-                OutputGain = 0.55f,
-                NormalizationScale = 650f,
-                ForceScale = 1.0f,
-                SoftClipThreshold = 0.8f,
-                CompressionPower = 1.0f,
-                SignCorrectionEnabled = true,
-                WheelMaxTorqueNm = 9.0f,
-                MzFront = new ChannelConfig { Gain = 1.0f, Enabled = true },
+                MzFront = new ChannelConfig { Gain = 0.35f, Enabled = true },
                 FxFront = new ChannelConfig { Gain = 0.12f, Enabled = true },
                 FyFront = new ChannelConfig { Gain = 0.15f, Enabled = true },
-                MzRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                FxRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                WheelLoadWeighting = 0.0f,
-                MzScale = 30f,
-                FxScale = 4000f,
-                FyScale = 5000f,
-                LutCurve = LutCurveDto.Linear(),
-                SteeringLockDegrees = 900,
-                Damping = new DampingConfig
-                {
-                    ViscousDamping = 0.18f,
-                    SpeedDamping = 0.4f,
-                    Friction = 0.10f,
-                    Inertia = 0.08f,
-                    MaxSpeedReference = 200f
-                },
-                Slip = new SlipConfig { SlipRatioGain = 0.15f, SlipAngleGain = 0.15f, SlipThreshold = 0.05f, UseFrontOnly = true },
-                Dynamic = new DynamicConfig { LateralGGain = 0.3f, LongitudinalGGain = 0.1f, SuspensionGain = 0.4f, YawRateGain = 0.15f },
-                AutoGain = new AutoGainConfig { Enabled = false, Scale = 1.0f },
-                Vibrations = new VibrationConfig { KerbGain = 0.8f, SlipGain = 0.6f, RoadGain = 0.4f, AbsGain = 0.8f, MasterGain = 0.3f }
+                Damping = new DampingConfig { ViscousDamping = 0.10f, SpeedDamping = 0.30f, Friction = 0.10f, Inertia = 0.08f, MaxSpeedReference = 200f },
+                Slip = new SlipConfig { SlipRatioGain = 0.08f, SlipAngleGain = 0.15f, SlipThreshold = 0.10f, UseFrontOnly = true },
+                Dynamic = new DynamicConfig { SuspensionGain = 0.30f },
+                Vibrations = new VibrationConfig { KerbGain = 0.8f, SlipGain = 0.6f, RoadGain = 0f, AbsGain = 0.8f, MasterGain = 0.40f, ScrubGain = 0.4f, RearSlipGain = 0.5f },
+                Advanced = new AdvancedConfig { MaxSlewRate = 0.85f, NoiseFloor = 0.003f, CenterBlendDegrees = 1.0f }
             },
+
+            // ──── Moza R5 Baseline (5.5Nm) — tested V2 profile ────
+            "Moza R5 - Final Stable Baseline" => CreateDefaultWheelbaseProfile("Moza R5 - Final Stable Baseline",
+                maxTorqueNm: 5.5f, outputGain: 0.621f, normalizationScale: 1000f,
+                viscousDamping: 0.15f, speedDamping: 0.50f, friction: 0.15f, inertia: 0.10f,
+                vibrationMaster: 0.50f),
+
+            // ──── Logitech G29/G920 (2.5Nm) ────
+            "Default - Logitech G29/G920" => CreateDefaultWheelbaseProfile("Default - Logitech G29/G920",
+                maxTorqueNm: 2.5f, outputGain: 1.20f, normalizationScale: 1000f,
+                viscousDamping: 0.10f, speedDamping: 0.35f, friction: 0.12f, inertia: 0.08f,
+                vibrationMaster: 0.55f),
+
+            // ──── Thrustmaster T300/TX (4.5Nm) ────
+            "Default - Thrustmaster T300/TX" => CreateDefaultWheelbaseProfile("Default - Thrustmaster T300/TX",
+                maxTorqueNm: 4.5f, outputGain: 0.72f, normalizationScale: 1000f,
+                viscousDamping: 0.13f, speedDamping: 0.45f, friction: 0.14f, inertia: 0.09f,
+                vibrationMaster: 0.50f),
+
+            // ──── Fanatec CSL DD 5Nm ────
+            "Default - Fanatec CSL DD 5Nm" => CreateDefaultWheelbaseProfile("Default - Fanatec CSL DD 5Nm",
+                maxTorqueNm: 5.0f, outputGain: 0.65f, normalizationScale: 1000f,
+                viscousDamping: 0.14f, speedDamping: 0.48f, friction: 0.15f, inertia: 0.10f,
+                vibrationMaster: 0.50f),
+
+            // ──── Fanatec CSL DD 8Nm ────
+            "Default - Fanatec CSL DD 8Nm" => CreateDefaultWheelbaseProfile("Default - Fanatec CSL DD 8Nm",
+                maxTorqueNm: 8.0f, outputGain: 0.42f, normalizationScale: 1000f,
+                viscousDamping: 0.18f, speedDamping: 0.50f, friction: 0.15f, inertia: 0.10f,
+                vibrationMaster: 0.42f),
+
+            // ──── Moza R9 (9Nm) ────
+            "Default - Moza R9" => CreateDefaultWheelbaseProfile("Default - Moza R9",
+                maxTorqueNm: 9.0f, outputGain: 0.38f, normalizationScale: 1000f,
+                viscousDamping: 0.19f, speedDamping: 0.50f, friction: 0.15f, inertia: 0.10f,
+                vibrationMaster: 0.40f),
+
+            // ──── Fanatec ClubSport DD (15Nm) ────
             "Default - Fanatec ClubSport DD" => CreateDefaultWheelbaseProfile("Default - Fanatec ClubSport DD",
-                maxTorqueNm: 15.0f, outputGain: 0.4f, normalizationScale: 700f,
-                viscousDamping: 0.20f,
-                speedDamping: 0.5f, friction: 0.15f, inertia: 0.12f,
-                vibrationMaster: 0.25f),
-            "Default - Simagic Alpha" => new FfbProfile
-            {
-                Name = "Default - Simagic Alpha",
-                OutputGain = 0.75f,
-                NormalizationScale = 700f,
-                ForceScale = 1.0f,
-                SoftClipThreshold = 0.75f,
-                CompressionPower = 1.0f,
-                SignCorrectionEnabled = true,
-                ForceInvertEnabled = true,
-                WheelMaxTorqueNm = 15.0f,
-                MzRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                FxRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
-                WheelLoadWeighting = 0.0f,
-                MzScale = 30f,
-                FxScale = 4000f,
-                FyScale = 5000f,
-                LutCurve = LutCurveDto.Linear(),
-                SteeringLockDegrees = 900,
-                Damping = new DampingConfig
-                {
-                    ViscousDamping = 0.20f,
-                    SpeedDamping = 0.5f, Friction = 0.15f, Inertia = 0.12f,
-                    MaxSpeedReference = 200f
-                },
-                Slip = new SlipConfig { SlipRatioGain = 0.08f, SlipAngleGain = 0.15f, SlipThreshold = 0.05f, UseFrontOnly = true },
-                Dynamic = new DynamicConfig { LateralGGain = 0f, LongitudinalGGain = 0f, SuspensionGain = 0.3f, YawRateGain = 0f },
-                AutoGain = new AutoGainConfig { Enabled = false, Scale = 1.0f },
-                Vibrations = new VibrationConfig { KerbGain = 0.8f, SlipGain = 0.6f, RoadGain = 0.4f, AbsGain = 0.8f, MasterGain = 0.25f }
-            },
+                maxTorqueNm: 15.0f, outputGain: 0.23f, normalizationScale: 1000f,
+                viscousDamping: 0.25f, speedDamping: 0.50f, friction: 0.16f, inertia: 0.12f,
+                vibrationMaster: 0.35f),
+
+            // ──── Simagic Alpha (15Nm) ────
+            "Default - Simagic Alpha" => CreateDefaultWheelbaseProfile("Default - Simagic Alpha",
+                maxTorqueNm: 15.0f, outputGain: 0.23f, normalizationScale: 1000f,
+                viscousDamping: 0.25f, speedDamping: 0.50f, friction: 0.16f, inertia: 0.12f,
+                vibrationMaster: 0.35f,
+                forceInvert: true),
+
+            // ──── Simucube 2 Pro (25Nm) ────
             "Default - Simucube 2 Pro" => CreateDefaultWheelbaseProfile("Default - Simucube 2 Pro",
-                maxTorqueNm: 25.0f, outputGain: 0.3f, normalizationScale: 800f,
-                viscousDamping: 0.22f,
-                speedDamping: 0.5f, friction: 0.15f, inertia: 0.15f,
-                vibrationMaster: 0.2f),
+                maxTorqueNm: 25.0f, outputGain: 0.14f, normalizationScale: 1000f,
+                viscousDamping: 0.32f, speedDamping: 0.50f, friction: 0.18f, inertia: 0.14f,
+                vibrationMaster: 0.30f),
+
             _ => new FfbProfile
             {
                 Name = name,
-                OutputGain = 0.8f,
-                NormalizationScale = 250f,
-                MzScale = 30f,
-                FxScale = 4000f,
-                FyScale = 5000f,
-                CompressionPower = 1.0f,
-                Damping = new DampingConfig { SpeedDamping = 0.5f, Friction = 0.15f, Inertia = 0.1f, MaxSpeedReference = 200f },
+                OutputGain = 0.621f,
+                NormalizationScale = 1000f,
+                MzScale = 30f, FxScale = 4000f, FyScale = 5000f,
+                SoftClipThreshold = 0.8f,
+                MzFront = new ChannelConfig { Gain = 0.42f, Enabled = true },
                 FxFront = new ChannelConfig { Gain = 0.15f, Enabled = true },
-                FyFront = new ChannelConfig { Gain = 0.2f, Enabled = true },
-                Dynamic = new DynamicConfig { SuspensionGain = 0.4f }
+                FyFront = new ChannelConfig { Gain = 0.20f, Enabled = true },
+                Damping = new DampingConfig { ViscousDamping = 0.15f, SpeedDamping = 0.50f, Friction = 0.15f, Inertia = 0.10f, MaxSpeedReference = 200f },
+                Slip = new SlipConfig { SlipRatioGain = 0.10f, SlipAngleGain = 0.20f, SlipThreshold = 0.10f, UseFrontOnly = true },
+                Dynamic = new DynamicConfig { SuspensionGain = 0.40f },
+                Vibrations = new VibrationConfig { KerbGain = 1.0f, SlipGain = 0.8f, RoadGain = 0f, AbsGain = 1.0f, MasterGain = 0.50f, ScrubGain = 0.5f, RearSlipGain = 0.6f },
+                Advanced = new AdvancedConfig { MaxSlewRate = 0.85f, NoiseFloor = 0.003f, CenterBlendDegrees = 1.0f }
             }
         };
     }
 
     private static FfbProfile CreateDefaultWheelbaseProfile(
         string name, float maxTorqueNm, float outputGain, float normalizationScale,
-        float viscousDamping, float speedDamping, float friction, float inertia, float vibrationMaster)
+        float viscousDamping, float speedDamping, float friction, float inertia, float vibrationMaster,
+        bool forceInvert = false)
     {
         return new FfbProfile
         {
@@ -456,38 +408,40 @@ public sealed class FfbProfile
             OutputGain = outputGain,
             NormalizationScale = normalizationScale,
             ForceScale = 1.0f,
-            SoftClipThreshold = 0.75f,
+            SoftClipThreshold = 0.8f,
             CompressionPower = 1.0f,
             SignCorrectionEnabled = true,
+            ForceInvertEnabled = forceInvert,
             WheelMaxTorqueNm = maxTorqueNm,
-            MzFront = new ChannelConfig { Gain = 1.0f, Enabled = true },
-            FxFront = new ChannelConfig { Gain = 0.12f, Enabled = true },
-            FyFront = new ChannelConfig { Gain = 0.15f, Enabled = true },
+            MzFront = new ChannelConfig { Gain = 0.42f, Enabled = true },
+            FxFront = new ChannelConfig { Gain = 0.15f, Enabled = true },
+            FyFront = new ChannelConfig { Gain = 0.20f, Enabled = true },
             MzRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
             FxRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
             FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
             FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
             WheelLoadWeighting = 0.0f,
-                MzScale = 30f,
-                FxScale = 4000f,
-                FyScale = 5000f,
-                LutCurve = LutCurveDto.Linear(),
-                SteeringLockDegrees = 900,
-                Damping = new DampingConfig
-                {
+            MzScale = 30f,
+            FxScale = 4000f,
+            FyScale = 5000f,
+            LutCurve = LutCurveDto.Linear(),
+            SteeringLockDegrees = 900,
+            Damping = new DampingConfig
+            {
                 ViscousDamping = viscousDamping,
                 SpeedDamping = speedDamping,
                 Friction = friction,
                 Inertia = inertia,
                 MaxSpeedReference = 200f
             },
-            Slip = new SlipConfig { SlipRatioGain = 0.08f, SlipAngleGain = 0.15f, SlipThreshold = 0.05f, UseFrontOnly = true },
-            Dynamic = new DynamicConfig { LateralGGain = 0f, LongitudinalGGain = 0f, SuspensionGain = 0.3f, YawRateGain = 0f },
+            Slip = new SlipConfig { SlipRatioGain = 0.10f, SlipAngleGain = 0.20f, SlipThreshold = 0.10f, UseFrontOnly = true },
+            Dynamic = new DynamicConfig { LateralGGain = 0f, LongitudinalGGain = 0f, SuspensionGain = 0.40f, YawRateGain = 0f },
             AutoGain = new AutoGainConfig { Enabled = false, Scale = 1.0f },
-            Vibrations = new VibrationConfig { KerbGain = 0.8f, SlipGain = 0.6f, RoadGain = 0.4f, AbsGain = 0.8f, MasterGain = vibrationMaster }
+            Vibrations = new VibrationConfig { KerbGain = 1.0f, SlipGain = 0.8f, RoadGain = 0f, AbsGain = 1.0f, MasterGain = vibrationMaster, ScrubGain = 0.5f, RearSlipGain = 0.6f },
+            Advanced = new AdvancedConfig { MaxSlewRate = 0.85f, NoiseFloor = 0.003f, CenterBlendDegrees = 1.0f },
+            TyreFlex = new TyreFlexConfig { FlexGain = 0.12f }
         };
     }
-
     public static string[] AllDefaultNames => new[]
     {
         "Default", "Heavy", "Light", "Moza R5 - Final Stable Baseline",
@@ -752,13 +706,13 @@ public sealed class DampingConfig
     /// Gyroscopic (speed-sensitive) damping coefficient.
     /// </summary>
     [JsonPropertyName("speedDamping")]
-    public float SpeedDamping { get; set; } = 0.3f;
+    public float SpeedDamping { get; set; } = 0.50f;
 
-    public float Friction { get; set; } = 0.25f;
+    public float Friction { get; set; } = 0.15f;
     public float Inertia { get; set; } = 0.1f;
 
     [JsonPropertyName("dampingSpeedReference")]
-    public float MaxSpeedReference { get; set; } = 300f;
+    public float MaxSpeedReference { get; set; } = 200f;
 
     [JsonIgnore]
     public float LowSpeedDampingBoost { get; set; } = 1.0f;
@@ -772,9 +726,9 @@ public sealed class DampingConfig
 
 public sealed class SlipConfig
 {
-    public float SlipRatioGain { get; set; } = 0.0f;
-    public float SlipAngleGain { get; set; } = 0.0f;
-    public float SlipThreshold { get; set; } = 0.05f;
+    public float SlipRatioGain { get; set; } = 0.10f;
+    public float SlipAngleGain { get; set; } = 0.20f;
+    public float SlipThreshold { get; set; } = 0.10f;
     public bool UseFrontOnly { get; set; } = true;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
@@ -790,7 +744,7 @@ public sealed class DynamicConfig
     public float LongitudinalGGain { get; set; } = 0.0f;
 
     [JsonPropertyName("roadFeel")]
-    public float SuspensionGain { get; set; } = 0.0f;
+    public float SuspensionGain { get; set; } = 0.40f;
 
     [JsonPropertyName("carRotationForce")]
     public float YawRateGain { get; set; } = 0.0f;
@@ -813,9 +767,9 @@ public sealed class VibrationConfig
     [JsonPropertyName("curbGain")]
     public float KerbGain { get; set; } = 1.0f;
     public float SlipGain { get; set; } = 0.8f;
-    public float RoadGain { get; set; } = 0.5f;
+    public float RoadGain { get; set; } = 0f;
     public float AbsGain { get; set; } = 1.0f;
-    public float MasterGain { get; set; } = 0.7f;
+    public float MasterGain { get; set; } = 0.5f;
     public float SuspensionRoadGain { get; set; } = 1.5f;
 
     // ── Tire scrub / limit-feel vibration ──
@@ -892,7 +846,7 @@ public sealed class EqConfig
 
 public sealed class TyreFlexConfig
 {
-    public float FlexGain { get; set; } = 0.0f;
+    public float FlexGain { get; set; } = 0.12f;
     public float CarcassStiffness { get; set; } = 1.0f;
     public float FlexSmoothing { get; set; } = 0.70f;
     public float ContactPatchWeight { get; set; } = 0.5f;
