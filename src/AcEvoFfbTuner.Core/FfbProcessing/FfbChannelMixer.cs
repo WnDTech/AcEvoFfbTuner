@@ -37,33 +37,32 @@ public sealed class FfbChannelMixer
     /// </summary>
     public bool FyInverted { get; set; } = true;
 
-    // Single EMA state per channel
+    // Single EMA state per channel (detail path only)
     private float _smMzFront, _smFxFront, _smFyFront;
     private float _smMzRear, _smFxRear, _smFyRear;
 
     // Center blend zone: below this steering angle (degrees), Fy is suppressed
     // in favor of the cleaner Mz signal. Removes the grainy Fy buzz at center.
-    public float CenterBlendDegrees { get; set; } = 0.5f;
+    public float CenterBlendDegrees { get; set; } = 1.0f;
 
     // Per-channel smoothing: higher alpha = more responsive, more noise.
     // Mz (steering torque): most responsive — detail matters most
-    private const float MzAlpha = 0.55f;   // was 0.40, increased to preserve Mz peak transient
+    private const float MzAlpha = 0.40f;
     // Fx (longitudinal): moderate smoothing — noisiest channel
-    private const float FxAlpha = 0.15f;   // was 0.08
+    private const float FxAlpha = 0.15f;
     // Fy (lateral): responsive
-    private const float FyAlpha = 0.40f;   // was 0.30, increased for better transient response
+    private const float FyAlpha = 0.30f;
 
     // Adaptive slip smoothing: alpha used for Fx when slip ratio exceeds threshold
     public float AdaptiveSlipThreshold { get; set; } = 0.05f;
-    private const float FxSlipAlpha = 0.08f; // was 0.04, slightly more responsive during slip
+    private const float FxSlipAlpha = 0.08f;
 
     // Low-speed alpha scaling: suppresses physics jitter at parking/creeping speeds.
-    // Reduced from 25 to 15 km/h — less aggressive gating.
-    public float LowSpeedSmoothKmh { get; set; } = 10.0f;
-    private const float MinAlphaScale = 0.20f;  // was 0.10, less low-speed Mz smoothing
+    public float LowSpeedSmoothKmh { get; set; } = 15.0f;
+    private const float MinAlphaScale = 0.10f;
 
     // 3-sample median filter buffers (ring buffers for each channel)
-    private readonly int[] _medianPos = new int[6]; // per-channel ring position
+    private readonly int[] _medianPos = new int[6];
     private readonly float[] _medMzFront = new float[3];
     private readonly float[] _medFxFront = new float[3];
     private readonly float[] _medFyFront = new float[3];
@@ -71,7 +70,7 @@ public sealed class FfbChannelMixer
     private readonly float[] _medFxRear = new float[3];
     private readonly float[] _medFyRear = new float[3];
     private readonly bool[] _medianBufReady = new bool[6];
-    private int _medianBufIdx; // tracks which buffer is being processed (0-5)
+    private int _medianBufIdx;
 
     public float Mix(FfbRawData raw, out FfbChannelOutputs channels)
     {
@@ -92,8 +91,6 @@ public sealed class FfbChannelMixer
         else
         {
             float frontLoad = Math.Max(raw.WheelLoad[0] + raw.WheelLoad[1], 1f);
-            // Sublinear load sensitivity: real tire Mz scales roughly as sqrt(load/load_ref).
-            // Linear scaling over-amplifies load transfer effects and under-represents light-load feel.
             float normalizedLoad = Math.Clamp(frontLoad / LoadReference, 0.1f, 2.0f);
             float loadFactor = MathF.Sqrt(normalizedLoad);
 
@@ -105,8 +102,7 @@ public sealed class FfbChannelMixer
             rawFyRear = fySign * (raw.Fy[2] + raw.Fy[3]) * 0.5f;
         }
 
-        // 3-sample median filter: rejects single-sample spikes (noise) but preserves
-        // real transients (multi-sample changes like kerb strikes).
+        // 3-sample median filter: rejects single-sample spikes
         _medianBufIdx = 0;
         rawMzFront = MedianFilter(rawMzFront, _medMzFront);
         rawFxFront = MedianFilter(rawFxFront, _medFxFront);
@@ -115,6 +111,9 @@ public sealed class FfbChannelMixer
         rawFxRear = MedianFilter(rawFxRear, _medFxRear);
         rawFyRear = MedianFilter(rawFyRear, _medFyRear);
 
+        // ═══════════════════════════════════════════════════════════════
+        // Normalize (post-median, pre-EMA) — used for both core & detail
+        // ═══════════════════════════════════════════════════════════════
         float mzFront = MzFrontEnabled ? Normalize(rawMzFront, MzScale) * MzFrontGain : 0f;
         float fxFront = FxFrontEnabled ? Normalize(rawFxFront, FxScale) * FxFrontGain : 0f;
         float fyFront = FyFrontEnabled ? Normalize(rawFyFront, FyScale) * FyFrontGain : 0f;
@@ -122,13 +121,27 @@ public sealed class FfbChannelMixer
         float fxRear = FxRearEnabled ? Normalize(rawFxRear, FxScale) * FxRearGain : 0f;
         float fyRear = FyRearEnabled ? Normalize(rawFyRear, FyScale) * FyRearGain : 0f;
 
-        // Adaptive Fx alpha: heavier smoothing when front wheels are slipping (ABS/TC active)
+        // Center blend zone (uses raw steer angle — no latency)
+        float maxDeg = 450f;
+        float absSteerDeg = Math.Abs(raw.SteerAngle * maxDeg);
+        float bt = Math.Clamp(absSteerDeg / Math.Max(CenterBlendDegrees, 0.1f), 0f, 1f);
+        float fyBlend = bt * bt * (3f - 2f * bt);
+
+        // ═══════════════════════════════════════════════════════════════
+        // CORE PATH: unfiltered normalized channels (zero-latency)
+        // Median-filtered for spike rejection, but NO EMA smoothing.
+        // ═══════════════════════════════════════════════════════════════
+        float coreBlendedFyFront = fyFront * fyBlend;
+        float coreBlendedFyRear = fyRear * fyBlend;
+        float rawCoreForce = mzFront + fxFront + coreBlendedFyFront
+                           + mzRear + fxRear + coreBlendedFyRear;
+
+        // ═══════════════════════════════════════════════════════════════
+        // DETAIL PATH: EMA-smoothed channels (for diagnostics & detail extraction)
+        // ═══════════════════════════════════════════════════════════════
         float maxFrontSlip = Math.Max(Math.Abs(raw.SlipRatio[0]), Math.Abs(raw.SlipRatio[1]));
         float fxFrontAlpha = maxFrontSlip > AdaptiveSlipThreshold ? FxSlipAlpha : FxAlpha;
 
-        // Speed-dependent alpha scaling: at low speed, tire physics is noisy.
-        // Scale alphas down (heavier smoothing) below LowSpeedSmoothKmh.
-        // At 0 km/h: alpha = normal * 0.10. At LowSpeedSmoothKmh+: alpha = normal * 1.0.
         float speedAlphaScale = Math.Clamp(raw.SpeedKmh / LowSpeedSmoothKmh, MinAlphaScale, 1.0f);
 
         float mzAlphaS = MzAlpha * speedAlphaScale;
@@ -136,7 +149,6 @@ public sealed class FfbChannelMixer
         float fxRearAlphaS = FxAlpha * speedAlphaScale;
         float fyAlphaS = FyAlpha * speedAlphaScale;
 
-        // Single EMA per channel — no parallel slow EMAs, no high-speed blend.
         _smMzFront = _smMzFront * (1f - mzAlphaS) + mzFront * mzAlphaS;
         _smFxFront = _smFxFront * (1f - fxFrontAlphaS) + fxFront * fxFrontAlphaS;
         _smFyFront = _smFyFront * (1f - fyAlphaS) + fyFront * fyAlphaS;
@@ -144,11 +156,6 @@ public sealed class FfbChannelMixer
         _smFxRear = _smFxRear * (1f - fxRearAlphaS) + fxRear * fxRearAlphaS;
         _smFyRear = _smFyRear * (1f - fyAlphaS) + fyRear * fyAlphaS;
 
-        // Center Blend Zone: at very low steering angles, suppress Fy in favor of Mz.
-        float maxDeg = 450f;
-        float absSteerDeg = Math.Abs(raw.SteerAngle * maxDeg);
-        float bt = Math.Clamp(absSteerDeg / Math.Max(CenterBlendDegrees, 0.1f), 0f, 1f);
-        float fyBlend = bt * bt * (3f - 2f * bt);
         float blendedFyFront = _smFyFront * fyBlend;
         float blendedFyRear = _smFyRear * fyBlend;
 
@@ -162,7 +169,8 @@ public sealed class FfbChannelMixer
             MzRear = _smMzRear,
             FxRear = _smFxRear,
             FyRear = blendedFyRear,
-            FinalFf = finalFf
+            FinalFf = finalFf,
+            RawCoreForce = rawCoreForce
         };
 
         float mixed = MixMode switch
@@ -171,8 +179,6 @@ public sealed class FfbChannelMixer
             FfbMixMode.Overlay => raw.FinalFf + _smMzFront + _smFxFront + blendedFyFront + _smMzRear + _smFxRear + blendedFyRear,
             _ => raw.FinalFf
         };
-
-        // No mixed-output rate limiter — the pipeline's slew rate handles this.
 
         return mixed;
     }
@@ -195,17 +201,11 @@ public sealed class FfbChannelMixer
         return (forces[idxA] + forces[idxB]) * blended;
     }
 
-    /// <summary>
-    /// 3-sample median filter. Writes new sample into ring buffer and returns
-    /// the median of the last 3 samples. Rejects single-sample spikes (noise)
-    /// while preserving real transients (multi-sample changes like kerb strikes).
-    /// </summary>
     private float MedianFilter(float sample, float[] buffer)
     {
         int bufIdx = _medianBufIdx++;
         if (!_medianBufReady[bufIdx])
         {
-            // Fill buffer with first sample to avoid startup transient
             buffer[0] = sample;
             buffer[1] = sample;
             buffer[2] = sample;
@@ -222,9 +222,6 @@ public sealed class FfbChannelMixer
         return (a + b + c) - max - min;
     }
 
-    /// <summary>
-    /// Called when the median filter should reset (e.g., car respawn, new session).
-    /// </summary>
     public void Reset()
     {
         _smMzFront = _smFxFront = _smFyFront = 0f;
@@ -255,4 +252,11 @@ public struct FfbChannelOutputs
     public float FxRear;
     public float FyRear;
     public float FinalFf;
+
+    /// <summary>
+    /// Raw core steering force (zero-latency path).
+    /// Median-filtered for spike rejection but NOT EMA-smoothed.
+    /// Sum of normalized Mz + Fx + Fy with center blend applied.
+    /// </summary>
+    public float RawCoreForce;
 }

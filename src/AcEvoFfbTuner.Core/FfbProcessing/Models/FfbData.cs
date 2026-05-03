@@ -73,7 +73,23 @@ public sealed class FfbProcessedData
     public float PostDynamicForce { get; set; }
     public float AutoGainApplied { get; set; }
     public bool IsClipping { get; set; }
+    public bool IsOscillating { get; set; }
+    public float OscillationLevel { get; set; }
+    public float OscillationStabilityFactor { get; set; } = 1f;
+    public bool ForceDirectionWarning { get; set; }
     public float SpeedKmh { get; set; }
     public float SteerAngle { get; set; }
     public int PacketId { get; set; }
+
+    /// <summary>
+    /// Core steering force (zero-latency path): raw Mz+Fx+Fy after LUT, damping, and gain.
+    /// This is the primary self-aligning torque that keeps the wheel centered.
+    /// </summary>
+    public float CoreForce { get; set; }
+
+    /// <summary>
+    /// Detail force (filtered path): slip enhancement, dynamic effects, tyre flex,
+    /// vibrations, scrub, LFE — all routed through EQ biquads.
+    /// </summary>
+    public float DetailForce { get; set; }
 }

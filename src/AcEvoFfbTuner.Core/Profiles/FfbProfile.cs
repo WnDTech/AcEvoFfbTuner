@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 12;
+    public const int CurrentVersion = 13;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -53,7 +53,7 @@ public sealed class FfbProfile
     public bool FyInverted { get; set; } = true;
 
     public float MzScale { get; set; } = 30f;
-    public float FxScale { get; set; } = 500f;
+    public float FxScale { get; set; } = 4000f;
     public float FyScale { get; set; } = 5000f;
 
     public LutCurveDto LutCurve { get; set; } = LutCurveDto.Linear();
@@ -118,6 +118,7 @@ public sealed class FfbProfile
             pipeline.LutCurve.OutputValues = LutCurve.OutputValues;
         }
 
+        pipeline.Damping.ViscousCoefficient = Damping.ViscousDamping;
         pipeline.Damping.SpeedDampingCoefficient = Damping.SpeedDamping;
         pipeline.Damping.FrictionLevel = Damping.Friction;
         pipeline.Damping.InertiaWeight = Damping.Inertia;
@@ -211,6 +212,7 @@ public sealed class FfbProfile
 
         Damping = new DampingConfig
         {
+            ViscousDamping = pipeline.Damping.ViscousCoefficient,
             SpeedDamping = pipeline.Damping.SpeedDampingCoefficient,
             Friction = pipeline.Damping.FrictionLevel,
             Inertia = pipeline.Damping.InertiaWeight,
@@ -320,7 +322,7 @@ public sealed class FfbProfile
                 FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
                 WheelLoadWeighting = 0.0f,
                 MzScale = 30f,
-                FxScale = 500f,
+                FxScale = 4000f,
                 FyScale = 5000f,
                 LutCurve = LutCurveDto.Linear(),
                 SteeringLockDegrees = 900,
@@ -331,18 +333,22 @@ public sealed class FfbProfile
             },
             "Default - Logitech G29/G920" => CreateDefaultWheelbaseProfile("Default - Logitech G29/G920",
                 maxTorqueNm: 2.5f, outputGain: 0.7f, normalizationScale: 350f,
+                viscousDamping: 0.12f,
                 speedDamping: 0.2f, friction: 0.10f, inertia: 0.1f,
                 vibrationMaster: 0.4f),
             "Default - Thrustmaster T300/TX" => CreateDefaultWheelbaseProfile("Default - Thrustmaster T300/TX",
                 maxTorqueNm: 4.5f, outputGain: 0.7f, normalizationScale: 500f,
+                viscousDamping: 0.15f,
                 speedDamping: 0.4f, friction: 0.12f, inertia: 0.08f,
                 vibrationMaster: 0.5f),
             "Default - Fanatec CSL DD 5Nm" => CreateDefaultWheelbaseProfile("Default - Fanatec CSL DD 5Nm",
                 maxTorqueNm: 5.0f, outputGain: 0.7f, normalizationScale: 550f,
+                viscousDamping: 0.15f,
                 speedDamping: 0.4f, friction: 0.12f, inertia: 0.08f,
                 vibrationMaster: 0.4f),
             "Default - Fanatec CSL DD 8Nm" => CreateDefaultWheelbaseProfile("Default - Fanatec CSL DD 8Nm",
                 maxTorqueNm: 8.0f, outputGain: 0.55f, normalizationScale: 600f,
+                viscousDamping: 0.18f,
                 speedDamping: 0.45f, friction: 0.12f, inertia: 0.08f,
                 vibrationMaster: 0.35f),
             "Default - Moza R9" => new FfbProfile
@@ -364,12 +370,13 @@ public sealed class FfbProfile
                 FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
                 WheelLoadWeighting = 0.0f,
                 MzScale = 30f,
-                FxScale = 500f,
+                FxScale = 4000f,
                 FyScale = 5000f,
                 LutCurve = LutCurveDto.Linear(),
                 SteeringLockDegrees = 900,
                 Damping = new DampingConfig
                 {
+                    ViscousDamping = 0.18f,
                     SpeedDamping = 0.4f,
                     Friction = 0.10f,
                     Inertia = 0.08f,
@@ -382,6 +389,7 @@ public sealed class FfbProfile
             },
             "Default - Fanatec ClubSport DD" => CreateDefaultWheelbaseProfile("Default - Fanatec ClubSport DD",
                 maxTorqueNm: 15.0f, outputGain: 0.4f, normalizationScale: 700f,
+                viscousDamping: 0.20f,
                 speedDamping: 0.5f, friction: 0.15f, inertia: 0.12f,
                 vibrationMaster: 0.25f),
             "Default - Simagic Alpha" => new FfbProfile
@@ -401,12 +409,13 @@ public sealed class FfbProfile
                 FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
                 WheelLoadWeighting = 0.0f,
                 MzScale = 30f,
-                FxScale = 500f,
+                FxScale = 4000f,
                 FyScale = 5000f,
                 LutCurve = LutCurveDto.Linear(),
                 SteeringLockDegrees = 900,
                 Damping = new DampingConfig
                 {
+                    ViscousDamping = 0.20f,
                     SpeedDamping = 0.5f, Friction = 0.15f, Inertia = 0.12f,
                     MaxSpeedReference = 200f
                 },
@@ -417,6 +426,7 @@ public sealed class FfbProfile
             },
             "Default - Simucube 2 Pro" => CreateDefaultWheelbaseProfile("Default - Simucube 2 Pro",
                 maxTorqueNm: 25.0f, outputGain: 0.3f, normalizationScale: 800f,
+                viscousDamping: 0.22f,
                 speedDamping: 0.5f, friction: 0.15f, inertia: 0.15f,
                 vibrationMaster: 0.2f),
             _ => new FfbProfile
@@ -425,7 +435,7 @@ public sealed class FfbProfile
                 OutputGain = 0.8f,
                 NormalizationScale = 250f,
                 MzScale = 30f,
-                FxScale = 500f,
+                FxScale = 4000f,
                 FyScale = 5000f,
                 CompressionPower = 1.0f,
                 Damping = new DampingConfig { SpeedDamping = 0.5f, Friction = 0.15f, Inertia = 0.1f, MaxSpeedReference = 200f },
@@ -438,7 +448,7 @@ public sealed class FfbProfile
 
     private static FfbProfile CreateDefaultWheelbaseProfile(
         string name, float maxTorqueNm, float outputGain, float normalizationScale,
-        float speedDamping, float friction, float inertia, float vibrationMaster)
+        float viscousDamping, float speedDamping, float friction, float inertia, float vibrationMaster)
     {
         return new FfbProfile
         {
@@ -458,13 +468,14 @@ public sealed class FfbProfile
             FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
             FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
             WheelLoadWeighting = 0.0f,
-            MzScale = 30f,
-            FxScale = 500f,
-            FyScale = 5000f,
-            LutCurve = LutCurveDto.Linear(),
-            SteeringLockDegrees = 900,
-            Damping = new DampingConfig
-            {
+                MzScale = 30f,
+                FxScale = 4000f,
+                FyScale = 5000f,
+                LutCurve = LutCurveDto.Linear(),
+                SteeringLockDegrees = 900,
+                Damping = new DampingConfig
+                {
+                ViscousDamping = viscousDamping,
                 SpeedDamping = speedDamping,
                 Friction = friction,
                 Inertia = inertia,
@@ -542,6 +553,7 @@ public sealed class FfbProfile
             {
                 Damping = new DampingConfig
                 {
+                    ViscousDamping = 0.15f,
                     SpeedDamping = 1.0f,
                     Friction = 0.5f,
                     Inertia = 0.2f,
@@ -553,6 +565,7 @@ public sealed class FfbProfile
                 MzScale = 30f;
                 Damping = new DampingConfig
                 {
+                    ViscousDamping = 0.15f,
                     SpeedDamping = 1.0f,
                     Friction = 0.5f,
                     Inertia = 0.2f,
@@ -562,7 +575,7 @@ public sealed class FfbProfile
             else if (Name == "Default")
             {
                 MzScale = 30f;
-                FxScale = 500f;
+                FxScale = 4000f;
                 FyScale = 5000f;
                 FxFront = new ChannelConfig { Gain = 0.15f, Enabled = true };
                 FyFront = new ChannelConfig { Gain = 0.2f, Enabled = true };
@@ -619,15 +632,12 @@ public sealed class FfbProfile
 
         if (Version < 10)
         {
-            // Mz Realism: physics-preserving sign handling, Mz curve fidelity
-            // Device inversion moved to FfbDeviceManager (_invertForce=false).
-            // CenterSuppression reduced: physics Mz sign preserved, only narrow zero-crossing fade.
-            // Mz alpha increased for better transient response.
-            // Load sensitivity now sublinear (sqrt).
+            // Mz Realism update: restored sign correction with _invertForce=true.
+            // CenterSuppression restored to 1.5° for smooth quadratic center fade.
             Advanced ??= new AdvancedConfig();
-            Advanced.CenterSuppressionDegrees = 0.5f;
-            Advanced.CenterBlendDegrees = 0.5f;
-            Advanced.LowSpeedSmoothKmh = 10.0f;
+            Advanced.CenterSuppressionDegrees = 1.5f;
+            Advanced.CenterBlendDegrees = 1.0f;
+            Advanced.LowSpeedSmoothKmh = 15.0f;
         }
 
         if (Version < 11)
@@ -663,6 +673,17 @@ public sealed class FfbProfile
                 Dynamic = codeDefault.Dynamic;
                 Vibrations = codeDefault.Vibrations;
             }
+        }
+
+
+        if (Version < 13)
+        {
+            // Split-frequency pipeline: separated pure viscous damping from speed-sensitive.
+            // MaxSlewRate increased from 0.40 to 0.85 (only affects detail path now).
+            Damping ??= new DampingConfig();
+            Damping.ViscousDamping = 0.15f;
+            Advanced ??= new AdvancedConfig();
+            Advanced.MaxSlewRate = 0.85f;
         }
 
         Version = CurrentVersion;
@@ -720,7 +741,19 @@ public sealed class LutCurveDto
 
 public sealed class DampingConfig
 {
+    /// <summary>
+    /// Pure viscous damping — always active, NOT speed-dependent.
+    /// Represents steering column friction / hydraulic fluid resistance.
+    /// Primary defense against DD wheel oscillation at all speeds.
+    /// </summary>
+    public float ViscousDamping { get; set; } = 0.15f;
+
+    /// <summary>
+    /// Gyroscopic (speed-sensitive) damping coefficient.
+    /// </summary>
+    [JsonPropertyName("speedDamping")]
     public float SpeedDamping { get; set; } = 0.3f;
+
     public float Friction { get; set; } = 0.25f;
     public float Inertia { get; set; } = 0.1f;
 
@@ -734,7 +767,7 @@ public sealed class DampingConfig
     public float LowSpeedThreshold { get; set; } = 20f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { SpeedDamping = S(SpeedDamping); Friction = S(Friction); Inertia = S(Inertia); MaxSpeedReference = S(MaxSpeedReference); }
+    public void SanitizeFloats() { ViscousDamping = S(ViscousDamping); SpeedDamping = S(SpeedDamping); Friction = S(Friction); Inertia = S(Inertia); MaxSpeedReference = S(MaxSpeedReference); }
 }
 
 public sealed class SlipConfig
@@ -795,16 +828,16 @@ public sealed class VibrationConfig
 
 public sealed class AdvancedConfig
 {
-    public float MaxSlewRate { get; set; } = 0.40f;
-    public float CenterSuppressionDegrees { get; set; } = 0.5f;
+    public float MaxSlewRate { get; set; } = 0.85f;
+    public float CenterSuppressionDegrees { get; set; } = 1.5f;
     public float CenterKneePower { get; set; } = 1.0f;
     public float HysteresisThreshold { get; set; } = 0f;
     public float NoiseFloor { get; set; } = 0.003f;
     public int HysteresisWatchdogFrames { get; set; } = 0;
-    public float CenterBlendDegrees { get; set; } = 0.5f;
+    public float CenterBlendDegrees { get; set; } = 1.0f;
     public float SteerVelocityReference { get; set; } = 10.0f;
     public float VelocityDeadzone { get; set; } = 0.05f;
-    public float LowSpeedSmoothKmh { get; set; } = 10.0f;
+    public float LowSpeedSmoothKmh { get; set; } = 15.0f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
     public void SanitizeFloats() { MaxSlewRate = S(MaxSlewRate); CenterSuppressionDegrees = S(CenterSuppressionDegrees); CenterKneePower = S(CenterKneePower); HysteresisThreshold = S(HysteresisThreshold); NoiseFloor = S(NoiseFloor); CenterBlendDegrees = S(CenterBlendDegrees); SteerVelocityReference = S(SteerVelocityReference); VelocityDeadzone = S(VelocityDeadzone); LowSpeedSmoothKmh = S(LowSpeedSmoothKmh); }

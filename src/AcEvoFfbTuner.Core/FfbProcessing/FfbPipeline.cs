@@ -14,6 +14,9 @@ public sealed class FfbPipeline
     public FfbOutputClipper OutputClipper { get; } = new();
     public FfbEqualizer Equalizer { get; } = new();
     public FfbTyreFlex TyreFlex { get; } = new();
+    public OscillationGuard OscillationGuard { get; } = new();
+
+    public bool OscillationGuardEnabled { get; set; } = false;
 
     public float ForceScale { get; set; } = 1.0f;
     public float OutputGain { get; set; } = 1.0f;
@@ -23,25 +26,27 @@ public sealed class FfbPipeline
     public bool AutoGainEnabled { get; set; } = false;
     public float AutoGainScale { get; set; } = 1.0f;
 
+    // No-op: sign correction is handled by device-level inversion
     public bool SignCorrectionEnabled { get; set; } = true;
+
     public float CenterDeadzone { get; set; } = 0.04f;
     public float SoftCenterDegrees { get; set; } = 1.5f;
     public float NoiseFloor { get; set; } = 0.003f;
-    public float MaxSlewRate { get; set; } = 0.40f;
+
+    /// <summary>
+    /// Maximum slew rate for the DETAIL path only (per frame).
+    /// The core path has NO slew limit (zero-latency).
+    /// Default 0.85 — high enough to pass transients, low enough for USB spike protection.
+    /// </summary>
+    public float MaxSlewRate { get; set; } = 0.85f;
 
     public float SteerDirDeadzone { get; set; } = 0.004f;
-
     public float CenterSuppressionDegrees { get; set; } = 1.5f;
-
     public float HysteresisThreshold { get; set; } = 0.015f;
-
     public int HysteresisWatchdogFrames { get; set; } = 5;
-
     public float CenterKneePower { get; set; } = 1.0f;
 
-
-    private float _prevSlewOutput;
-    private float _smoothSteerAngle;
+    private float _prevDetailOutput;
 
     public FfbProcessedData Process(FfbRawData raw)
     {
@@ -51,115 +56,134 @@ public sealed class FfbPipeline
             autoGain = AutoGainScale / raw.CarFfbMultiplier;
         }
 
-        _smoothSteerAngle = _smoothSteerAngle * 0.85f + raw.SteerAngle * 0.15f;
-
+        // Get both raw core force (zero-latency) and smoothed detail from mixer
         float mixedForce = ChannelMixer.Mix(raw, out var channels);
+        float rawCoreForce = channels.RawCoreForce;
 
-        float normalized = mixedForce * MasterGain * autoGain / Math.Max(ForceScale, 0.001f);
+        // ═══════════════════════════════════════════════════════════════════════
+        // CORE PATH — Zero-Latency Steering Forces
+        //
+        // Raw Mz + Fx + Fy → Normalize → LUT → Damping → Gain → Speed Fade
+        // No EMAs, no biquads, no slew limits. The primary self-aligning torque
+        // reaches the DirectInput device with absolute minimum phase delay.
+        // Median filter only (3-sample) for USB spike rejection (adds max 3ms).
+        // ═══════════════════════════════════════════════════════════════════════
 
-        float absNorm = Math.Abs(normalized);
-        float postLut = LutCurve.Apply(absNorm) * Math.Sign(normalized);
+        float coreNorm = rawCoreForce * MasterGain * autoGain / Math.Max(ForceScale, 0.001f);
+        float absCoreNorm = Math.Abs(coreNorm);
+        float corePostLut = LutCurve.Apply(absCoreNorm) * Math.Sign(coreNorm);
 
-        float postSlip = SlipEnhancer.Apply(postLut, raw);
+        // Damping: uses RAW steer angle (not smoothed) for maximum responsiveness.
+        // Pure viscous + Coulomb are ALWAYS ACTIVE (not speed-dependent).
+        // Gyroscopic + inertia are speed-scaled.
+        float coreDamped = Damping.Apply(corePostLut, raw.SpeedKmh, raw.SteerAngle);
 
-        float postDamping = Damping.Apply(postSlip, raw.SpeedKmh, _smoothSteerAngle);
+        // Center knee power (optional non-linear shaping of core force)
+        if (CenterKneePower > 1.001f && Math.Abs(coreDamped) > 0f)
+            coreDamped = Math.Sign(coreDamped) * MathF.Pow(Math.Abs(coreDamped), CenterKneePower);
 
-        float postDynamic = DynamicEffects.Apply(postDamping, raw);
+        // Output gain
+        float coreOutput = coreDamped * OutputGain;
 
-        float postTyreFlex = TyreFlex.Apply(postDynamic, raw);
-
-        float output = OutputClipper.Process(postTyreFlex * OutputGain, out bool isClipping);
-
-        float speedNoiseScale = raw.SpeedKmh < 10.0f
-            ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 2.0f
-            : 1.0f;
-        float effectiveNoiseFloor = NoiseFloor * speedNoiseScale;
-
-        if (Math.Abs(output) < effectiveNoiseFloor)
-            output = 0f;
-
-        // ── Center suppression: linear fade near center to prevent notchiness ──
-        // Preserves the physics sign — the force direction comes from the tire
-        // physics (Mz, Fy, Fx). Different wheelbases handle DirectInput force
-        // direction differently, so we never override the physics sign here.
-        // Per-wheelbase inversion is handled by ForceInvertEnabled at the device level.
-        if (SignCorrectionEnabled && raw.SpeedKmh > 0.5f)
-        {
-            float absOutput = Math.Abs(output);
-            if (absOutput > effectiveNoiseFloor)
-            {
-                float absRawDeg = Math.Abs(raw.SteerAngle) * 450f;
-                float centerFade = Math.Clamp(absRawDeg / Math.Max(CenterSuppressionDegrees, 0.1f), 0f, 1f);
-                output *= centerFade;
-            }
-        }
-
-        if (CenterKneePower > 1.001f && Math.Abs(output) > 0f)
-            output = Math.Sign(output) * MathF.Pow(Math.Abs(output), CenterKneePower);
-
-        float finalOutput = output;
-
+        // Speed fade: zero below 0.5 km/h, ramp to full at 5 km/h
         if (raw.SpeedKmh < 0.5f)
         {
-            finalOutput = 0f;
-            _prevSlewOutput = 0f;
+            coreOutput = 0f;
+            _prevDetailOutput = 0f;
         }
         else if (raw.SpeedKmh < 5.0f)
         {
             float speedFactor = (raw.SpeedKmh - 0.5f) / 4.5f;
-            finalOutput *= speedFactor;
+            coreOutput *= speedFactor;
         }
 
-        float lowSpeedSlewScale = Math.Clamp(raw.SpeedKmh / 15.0f, 0.05f, 1.0f);
-        float highSpeedSlewScale = raw.SpeedKmh > 200.0f
-            ? Math.Max(1.0f - (raw.SpeedKmh - 200.0f) / 250.0f, 0.4f)
-            : 1.0f;
-        float speedSlewScale = lowSpeedSlewScale * highSpeedSlewScale;
+        // ═══════════════════════════════════════════════════════════════════════
+        // DETAIL PATH — Filtered Textural Forces
+        //
+        // Additive effects only: slip enhancement, dynamic effects, tyre flex,
+        // vibration signals (scrub, road, ABS, rear slip), LFE.
+        // These run through EQ biquads and a slew rate limiter.
+        // Phase delay is acceptable here — these are "feel" details, not the
+        // primary self-aligning torque that prevents oscillation.
+        // ═══════════════════════════════════════════════════════════════════════
 
-        float effectiveSlewRate = MaxSlewRate * speedSlewScale;
+        float detailForce = 0f;
 
-        float slewDelta = finalOutput - _prevSlewOutput;
-        if (Math.Abs(slewDelta) > effectiveSlewRate)
-        {
-            finalOutput = _prevSlewOutput + Math.Sign(slewDelta) * effectiveSlewRate;
-        }
-        _prevSlewOutput = raw.SpeedKmh < 0.5f ? 0f : finalOutput;
+        // Slip enhancer contribution (force-relative scaling)
+        float postSlip = SlipEnhancer.Apply(corePostLut, raw);
+        detailForce += (postSlip - corePostLut);
 
-        finalOutput = Equalizer.Process(finalOutput);
+        // Dynamic effects contribution (independent of force magnitude)
+        float dynamicContrib = DynamicEffects.Apply(0f, raw);
+        detailForce += dynamicContrib;
 
+        // Tyre flex contribution (independent of force magnitude)
+        float flexContrib = TyreFlex.Apply(0f, raw);
+        detailForce += flexContrib;
+
+        // Vibration signals (suspension-based road/curb, scrub, rear slip)
         float vibration = VibrationMixer.Mix(raw);
 
+        // ABS force modulation (directional — follows core force sign)
         float absMod = VibrationMixer.AbsForceModulation;
         if (absMod > 0.001f)
         {
-            float sign = finalOutput >= 0f ? 1f : -1f;
-            if (Math.Abs(finalOutput) < 0.01f)
+            float sign = coreOutput >= 0f ? 1f : -1f;
+            if (Math.Abs(coreOutput) < 0.01f)
                 sign = Math.Abs(raw.SteerAngle) > SteerDirDeadzone ? -Math.Sign(raw.SteerAngle) : 1f;
-            finalOutput = Math.Clamp(finalOutput + absMod * sign, -1f, 1f);
+            detailForce += absMod * sign;
         }
 
         float roadMod = VibrationMixer.RoadForceModulation;
         if (Math.Abs(roadMod) > 0.001f)
-            finalOutput = Math.Clamp(finalOutput + roadMod, -1f, 1f);
+            detailForce += roadMod;
 
-        // ── Tire scrub texture: high-frequency grain at the limit ──
-        // Injected into main force when front slip angles approach Mz peak.
+        // Front tire scrub texture (30-50Hz grain at the limit)
         float scrubMod = VibrationMixer.ScrubModulation;
         if (Math.Abs(scrubMod) > 0.001f)
-            finalOutput = Math.Clamp(finalOutput + scrubMod, -1f, 1f);
+            detailForce += scrubMod;
 
-
-        // ── Rear slip warning: low-frequency rumble when rear loses grip ──
-        // Distinct from front scrub — uses lower frequencies (12-25Hz) so the
-        // driver can distinguish "rear is sliding" from "front is at the limit".
-        // Also triggers on yaw acceleration (car snapping into oversteer).
+        // Rear slip warning (12-25Hz rumble when rear loses grip)
         float rearMod = VibrationMixer.RearSlipModulation;
         if (Math.Abs(rearMod) > 0.001f)
-            finalOutput = Math.Clamp(finalOutput + rearMod, -1f, 1f);
+            detailForce += rearMod;
 
+        // LFE (engine RPM / suspension-driven low-frequency effects)
         float lfe = LfeGenerator.Generate(raw);
         if (Math.Abs(lfe) > 0.001f)
-            finalOutput = Math.Clamp(finalOutput + lfe, -1f, 1f);
+            detailForce += lfe;
+
+        // Apply EQ (biquad filters) to detail path ONLY
+        detailForce = Equalizer.Process(detailForce);
+
+        // Slew rate limiter on detail path only (higher limit for transients).
+        // Core path has NO slew limit — preserving zero-latency centering force.
+        if (raw.SpeedKmh >= 0.5f)
+        {
+            float slewDelta = detailForce - _prevDetailOutput;
+            if (Math.Abs(slewDelta) > MaxSlewRate)
+            {
+                detailForce = _prevDetailOutput + Math.Sign(slewDelta) * MaxSlewRate;
+            }
+        }
+        _prevDetailOutput = raw.SpeedKmh < 0.5f ? 0f : detailForce;
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // FINAL MIX — Core (zero-latency) + Detail (filtered)
+        // ═══════════════════════════════════════════════════════════════════════
+
+        float finalOutput = coreOutput + detailForce;
+
+        // Output clipper (soft clip at threshold)
+        finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
+
+        // Noise floor gate (amplified at low speed for physics jitter suppression)
+        float speedNoiseScale = raw.SpeedKmh < 10.0f
+            ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 2.0f
+            : 1.0f;
+        float effectiveNoiseFloor = NoiseFloor * speedNoiseScale;
+        if (Math.Abs(finalOutput) < effectiveNoiseFloor)
+            finalOutput = 0f;
 
         return new FfbProcessedData
         {
@@ -173,16 +197,22 @@ public sealed class FfbPipeline
             ChannelFxRear = channels.FxRear,
             ChannelFyRear = channels.FyRear,
             ChannelFinalFf = channels.FinalFf,
-            PostCompressionForce = normalized,
-            PostLutForce = postLut,
-            PostSlipForce = postSlip,
-            PostDampingForce = postDamping,
-            PostDynamicForce = postDynamic,
+            PostCompressionForce = coreNorm,
+            PostLutForce = corePostLut,
+            PostSlipForce = coreDamped,
+            PostDampingForce = coreOutput,
+            PostDynamicForce = detailForce,
             AutoGainApplied = autoGain,
             IsClipping = isClipping,
+            IsOscillating = false,
+            OscillationLevel = 0f,
+            OscillationStabilityFactor = 1f,
+            ForceDirectionWarning = false,
             SpeedKmh = raw.SpeedKmh,
             SteerAngle = raw.SteerAngle,
-            PacketId = raw.PacketId
+            PacketId = raw.PacketId,
+            CoreForce = coreOutput,
+            DetailForce = detailForce
         };
     }
 
@@ -195,7 +225,7 @@ public sealed class FfbPipeline
         LfeGenerator.Reset();
         Equalizer.Reset();
         TyreFlex.Reset();
-        _prevSlewOutput = 0f;
-        _smoothSteerAngle = 0f;
+        OscillationGuard.Reset();
+        _prevDetailOutput = 0f;
     }
 }
