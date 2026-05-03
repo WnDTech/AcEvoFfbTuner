@@ -75,6 +75,8 @@ public sealed class TelemetryLoop : IDisposable
     private string _lastDetectedTrackName = "";
     private bool _staticDataRead;
 
+    public readonly FfbLiveServer LiveServer = new();
+
     public TelemetryLoop(SharedMemoryReader reader, FfbPipeline pipeline, FfbDeviceManager deviceManager)
     {
         _reader = reader;
@@ -130,6 +132,9 @@ public sealed class TelemetryLoop : IDisposable
         if (_running) return;
         _running = true;
 
+        DataUpdated += LiveServer.OnData;
+        LiveServer.Start();
+
         _loopThread = new Thread(Loop)
         {
             Name = "AC Evo FFB Telemetry",
@@ -146,6 +151,9 @@ public sealed class TelemetryLoop : IDisposable
         _running = false;
         _loopThread?.Join(2000);
         _loopThread = null;
+
+        LiveServer.Stop();
+        DataUpdated -= LiveServer.OnData;
 
         _deviceManager.ZeroForce();
 

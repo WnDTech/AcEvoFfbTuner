@@ -25,13 +25,7 @@ public static class WheelbaseAutoConfigurator
 
     public static bool DetectForceInversion(string deviceName)
     {
-        if (string.IsNullOrEmpty(deviceName)) return false;
-        var n = deviceName.ToUpperInvariant();
-
-        if (n.Contains("SIMAGIC"))
-            return true;
-
-        return false;
+        return DirectInput.FfbDeviceManager.DetectForceInversion(deviceName);
     }
 
     public static FfbProfile GenerateProfile(float torqueNm, string deviceName, EvoDetectedSettings? evoSettings)
@@ -54,8 +48,8 @@ public static class WheelbaseAutoConfigurator
             ? Math.Clamp(0.05f + torqueNm * 0.003f, 0.05f, 0.15f)
             : Math.Clamp(0.03f + torqueNm * 0.005f, 0.03f, 0.10f);
 
-        float centerSupp = 0.5f;
-        float blendDeg = 0.5f;
+        float centerSupp = 1.5f;
+        float blendDeg = 1.0f;
         float noiseFloor = 0.003f;
 
         float vibMaster = Math.Clamp(0.6f - torqueNm * 0.015f, 0.15f, 0.6f);
@@ -81,7 +75,7 @@ public static class WheelbaseAutoConfigurator
             FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
             WheelLoadWeighting = 0.0f,
             MzScale = 30f,
-            FxScale = 500f,
+            FxScale = 4000f,
             FyScale = 5000f,
             LutCurve = LutCurveDto.Linear(),
             SteeringLockDegrees = 900,
@@ -125,7 +119,7 @@ public static class WheelbaseAutoConfigurator
                 CenterBlendDegrees = blendDeg,
                 SteerVelocityReference = 10.0f,
                 VelocityDeadzone = 0.05f,
-                LowSpeedSmoothKmh = 10.0f
+                LowSpeedSmoothKmh = 15.0f
             }
         };
 
