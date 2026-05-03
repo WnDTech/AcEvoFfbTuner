@@ -417,6 +417,19 @@ After all phases are complete:
 - MedianFilter() uses ufIdx = _medianBufIdx++ to track which buffer, checks _medianBufReady[bufIdx] independently
 - Reset() uses Array.Clear(_medianBufReady) instead of single bool
 
+### Bugfix 3: Auto-Detect Force Direction Unreliable on Reconnect (2026-05-03)
+
+**File:** src/AcEvoFfbTuner.Core/DirectInput/FfbDeviceManager.cs
+**Problem:** `AutoDetectForceDirection()` produced inconsistent results on repeated connects (alternating between `true` and `false`). Root cause: `_invertForce` was never reset between sessions. On reconnect, the stale inversion from the previous session caused the auto-detect pulse to be sent inverted, flipping the result. For example on Moza R5: first connect correctly detected `invert=true`, but on reconnect `_invertForce=true` caused the test pulse to send -0.04 instead of +0.04, making the axis move in the opposite direction and incorrectly returning `invert=false`.
+**Fix:**
+- Force `_invertForce = false` at the start of auto-detect, ensuring the test always sends a clean positive force
+- Increased test pulse from 0.04 → 0.12 (~0.66 Nm on R5) for more reliable axis movement detection
+- Increased settle time 200ms → 300ms before baseline sampling
+- Increased pulse hold time 40ms → 100ms for wheel to fully respond
+- Increased samples from 5 → 8 for both baseline and during-pulse averaging
+- Increased minimum delta threshold from 15 → 20 to reject borderline readings
+- Force released immediately after sampling (no stale force held during computation)
+
 ## Rollback Plan
 
 If realism changes cause new issues:

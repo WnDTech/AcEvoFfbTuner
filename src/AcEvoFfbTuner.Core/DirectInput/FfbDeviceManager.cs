@@ -34,7 +34,7 @@ public sealed class FfbDeviceManager : IDisposable
     private bool _periodicEffectPlaying;
     private IntPtr _windowHandle;
     private int[]? _ffAxes;
-    private bool _invertForce = false;
+    private bool _invertForce;
     private int _consecutiveForceErrors;
     private const int MaxConsecutiveErrors = 10;
     private volatile bool _reconnectRequested;
@@ -88,6 +88,104 @@ public sealed class FfbDeviceManager : IDisposable
     public string? LastError { get; private set; }
     public DateTime LastReconnectAttempt { get; set; } = DateTime.MinValue;
     public int ReconnectAttemptCount { get; set; }
+    public bool AutoDetectedForceInvert { get; private set; }
+
+    public static bool DetectForceInversion(string productName)
+    {
+        if (string.IsNullOrEmpty(productName)) return false;
+        var n = productName.ToUpperInvariant();
+
+        if (n.Contains("SIMAGIC")) return true;
+        if (n.Contains("CAMMUS")) return true;
+
+        return false;
+    }
+
+    public bool AutoDetectForceDirection()
+    {
+        if (_device == null || !_isAcquired || _ffAxes == null || _ffAxes.Length == 0)
+        {
+            ConnLog("AutoDetect: skipped — device not ready");
+            return DetectForceInversion(ConnectedDevice?.ProductName ?? "");
+        }
+
+        try
+        {
+            string fallbackName = ConnectedDevice?.ProductName ?? "";
+
+            _invertForce = false;
+            ConnLog("AutoDetect: reset _invertForce=false for clean test");
+
+            SendConstantForceDirect(0f);
+            Thread.Sleep(300);
+
+            float baseline = AverageAxisX(8, 8);
+            if (float.IsNaN(baseline))
+            {
+                ConnLog("AutoDetect: could not read baseline — falling back to product name");
+                return DetectForceInversion(fallbackName);
+            }
+
+            ConnLog($"AutoDetect: baseline axis={baseline:F0}");
+
+            SendConstantForceDirect(0.12f);
+            Thread.Sleep(100);
+
+            float duringPulse = AverageAxisX(8, 8);
+            SendConstantForceDirect(0f);
+
+            if (float.IsNaN(duringPulse))
+            {
+                ConnLog("AutoDetect: could not read during pulse — falling back to product name");
+                Thread.Sleep(200);
+                return DetectForceInversion(fallbackName);
+            }
+
+            Thread.Sleep(200);
+
+            float delta = duringPulse - baseline;
+            ConnLog($"AutoDetect: baseline={baseline:F0} duringPulse={duringPulse:F0} delta={delta:F0}");
+
+            const float minDelta = 20f;
+
+            if (Math.Abs(delta) < minDelta)
+            {
+                ConnLog($"AutoDetect: delta {delta:F0} below threshold {minDelta} — falling back to product name");
+                return DetectForceInversion(fallbackName);
+            }
+
+            bool needsInversion = delta < 0;
+            ConnLog($"AutoDetect: positive force caused axis delta={delta:F0} → invert={needsInversion}");
+            return needsInversion;
+        }
+        catch (Exception ex)
+        {
+            ConnLog($"AutoDetect: failed — {ex.Message}");
+            return DetectForceInversion(ConnectedDevice?.ProductName ?? "");
+        }
+    }
+
+    private float AverageAxisX(int samples, int intervalMs)
+    {
+        float sum = 0;
+        int valid = 0;
+        for (int i = 0; i < samples; i++)
+        {
+            try
+            {
+                _device!.Poll();
+                var js = _device.GetCurrentState() as DI.JoystickState;
+                if (js != null)
+                {
+                    sum += js.X;
+                    valid++;
+                }
+            }
+            catch { }
+            if (i < samples - 1) Thread.Sleep(intervalMs);
+        }
+        return valid > 0 ? sum / valid : float.NaN;
+    }
 
     public void ResetLostState()
     {
@@ -205,6 +303,10 @@ public sealed class FfbDeviceManager : IDisposable
                 _inlineReacquireCount = 0;
                 ReconnectAttemptCount = 0;
                 ConnLog("Lost state and reconnect counters reset after successful connect");
+
+                _invertForce = AutoDetectForceDirection();
+                AutoDetectedForceInvert = _invertForce;
+                ConnLog($"Auto-detected force direction for '{deviceInfo.ProductName}': invert={_invertForce}");
 
                 StartInterpolationThread();
 
