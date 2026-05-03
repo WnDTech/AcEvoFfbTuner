@@ -27,7 +27,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly TelemetryLoop _telemetryLoop;
     private readonly ProfileManager _profileManager;
     private readonly Services.GameRecordingService _gameRecordingService = new();
-    private readonly LiveAutoTuner _liveAutoTuner = new();
 
     public string AppVersion { get; } =
         System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
@@ -308,13 +307,22 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _isLiveAutoTuneEnabled;
 
     [ObservableProperty]
+    private bool _isOscillating;
+
+    [ObservableProperty]
+    private float _oscillationLevel;
+
+    [ObservableProperty]
+    private float _stabilityFactor = 1f;
+
+    [ObservableProperty]
+    private bool _forceDirectionWarning;
+
+    [ObservableProperty]
+    private string _oscillationStatusText = "STABLE";
+
+    [ObservableProperty]
     private string _autoSetupStatus = "";
-
-    [ObservableProperty]
-    private int _liveCorrectionsCount;
-
-    [ObservableProperty]
-    private string _lastCorrectionText = "";
 
     [ObservableProperty]
     private float _compressionPower = 1.0f;
@@ -624,6 +632,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     {
                         string path = mw3.AutoSaveSnapshot();
                         StatusText = $"Wheel snapshot saved: {Path.GetFileName(path)}";
+                        _telemetryLoop.LiveServer.TriggerSnapshot();
                     }
                 }
             }
@@ -709,21 +718,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _deviceManager = new FfbDeviceManager();
         _telemetryLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
         _profileManager = new ProfileManager();
-
-        _liveAutoTuner.CorrectionApplied += (parameter, newValue) =>
-        {
-            switch (parameter)
-            {
-                case "OutputGain": OutputGain = newValue; break;
-                case "SpeedDamping": SpeedDamping = newValue; break;
-                case "Friction": FrictionLevel = newValue; break;
-                case "CompressionPower": CompressionPower = newValue; break;
-                case "HysteresisThreshold": HysteresisThreshold = newValue; break;
-                case "CenterSuppressionDegrees": CenterSuppressionDegrees = newValue; break;
-                case "NoiseFloor": NoiseFloor = newValue; break;
-                case "SuspensionRoadGain": SuspensionRoadGain = newValue; break;
-            }
-        };
 
         _deviceManager.DeviceRequiresReconnect += () => Application.Current?.Dispatcher.BeginInvoke(() =>
         {
@@ -893,6 +887,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             IsDeviceConnected = true;
             DeviceName = SelectedDevice.ProductName;
             AutoDetectWheelTorque(SelectedDevice.ProductName);
+            ForceInvertEnabled = _deviceManager.AutoDetectedForceInvert;
             IsAutoSetupAvailable = WheelMaxTorqueNm > 0;
             RefreshSnapshotButtonNames();
             if (!_uiUpdateTimer.IsEnabled)
@@ -1113,11 +1108,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         LoadProfileValues(profile);
         _profileManager.SetActiveProfile(profile);
 
-        _liveAutoTuner.Configure(_pipeline, torque);
-        _liveAutoTuner.Reset();
-        LiveCorrectionsCount = 0;
-        LastCorrectionText = "";
-
         var wheelType = WheelbaseAutoConfigurator.DetectWheelType(deviceName);
         AutoSetupStatus = $"Auto Setup — {deviceName} ({torque:F1}Nm, {wheelType})";
         StatusText = AutoSetupStatus;
@@ -1130,8 +1120,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             if (!IsDeviceConnected) { IsLiveAutoTuneEnabled = false; return; }
 
-            float torque = WheelMaxTorqueNm;
             string deviceName = DeviceName;
+            float torque = WheelMaxTorqueNm;
 
             if (SelectedProfile != null && SelectedProfile.IsBuiltIn)
             {
@@ -1151,15 +1141,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 _profileManager.SetActiveProfile(profile);
             }
 
-            _liveAutoTuner.Enabled = true;
-            _liveAutoTuner.Configure(_pipeline, torque);
-            AutoSetupStatus = $"Live tune active — {SelectedProfile?.Name ?? deviceName}";
-            StatusText = "Live auto-tune enabled — corrections will appear below";
+            AutoSetupStatus = $"Live Auto Tune active — {SelectedProfile?.Name ?? deviceName}";
+            StatusText = "Live Auto Tune enabled";
         }
         else
         {
-            _liveAutoTuner.Enabled = false;
-            StatusText = "Live auto-tune disabled";
+            IsOscillating = false;
+            OscillationLevel = 0f;
+            StabilityFactor = 1f;
+            ForceDirectionWarning = false;
+            OscillationStatusText = "STABLE";
+            StatusText = "Live Auto Tune disabled";
         }
     }
 
@@ -1770,13 +1762,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
             if (IsLiveAutoTuneEnabled && IsRunning && IsDeviceConnected)
             {
-                int prevCorrections = _liveAutoTuner.CorrectionsApplied;
-                _liveAutoTuner.OnTick(processed.MainForce, processed.IsClipping, processed.SpeedKmh, raw.SteerAngle);
-                if (_liveAutoTuner.CorrectionsApplied > prevCorrections)
-                {
-                    LiveCorrectionsCount = _liveAutoTuner.CorrectionsApplied;
-                    LastCorrectionText = _liveAutoTuner.LastCorrection;
-                }
+                IsOscillating = processed.IsOscillating;
+                OscillationLevel = processed.OscillationLevel;
+                StabilityFactor = processed.OscillationStabilityFactor;
+                ForceDirectionWarning = processed.ForceDirectionWarning;
+
+                if (IsOscillating)
+                    OscillationStatusText = $"OSCILLATING {StabilityFactor:P0}";
+                else if (StabilityFactor < 0.95f)
+                    OscillationStatusText = $"CALMING {StabilityFactor:P0}";
+                else
+                    OscillationStatusText = $"STABLE {StabilityFactor:P0}";
             }
 
             _gameRecordingService.OnTelemetryTick(processed.SpeedKmh);
@@ -1954,12 +1950,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 if (completedSummary != null && completedSummary.TotalEvents > 0)
                 {
                     UpdateRecommendations(completedSummary);
-                    if (IsLiveAutoTuneEnabled)
-                    {
-                        _liveAutoTuner.OnLapSummary(completedSummary);
-                        LiveCorrectionsCount = _liveAutoTuner.CorrectionsApplied;
-                        LastCorrectionText = _liveAutoTuner.LastCorrection;
-                    }
                 }
                 else if (runningSummary != null && runningSummary.TotalEvents > 0)
                 {

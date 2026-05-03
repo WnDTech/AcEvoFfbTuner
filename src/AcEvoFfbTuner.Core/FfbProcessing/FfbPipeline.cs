@@ -14,9 +14,7 @@ public sealed class FfbPipeline
     public FfbOutputClipper OutputClipper { get; } = new();
     public FfbEqualizer Equalizer { get; } = new();
     public FfbTyreFlex TyreFlex { get; } = new();
-    public OscillationGuard OscillationGuard { get; } = new();
 
-    public bool OscillationGuardEnabled { get; set; } = false;
 
     public float ForceScale { get; set; } = 1.0f;
     public float OutputGain { get; set; } = 1.0f;
@@ -225,7 +223,8 @@ public sealed class FfbPipeline
         LfeGenerator.Reset();
         Equalizer.Reset();
         TyreFlex.Reset();
-        OscillationGuard.Reset();
+
+
         _prevDetailOutput = 0f;
     }
 }
