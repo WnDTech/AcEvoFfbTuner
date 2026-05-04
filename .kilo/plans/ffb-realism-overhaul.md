@@ -234,7 +234,7 @@ Add `SteerAccelReference` property (default ~20 rad/s²). Add `_previousSteerVel
 
 ## Phase 4 — Clean Up Remaining Stages
 
-**Status:** ⬜ Not started
+**Status:** ✅ Complete (applied during Phases 1–5 work, verified 2026-05-04)
 
 ### 4a. Don't zero force at very low speed
 
