@@ -65,6 +65,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private string _screenRecordingPath = "";
 
     [ObservableProperty]
+    private string _ffmpegStatusText = "";
+
+    [ObservableProperty]
+    private bool _isFfmpegDownloading;
+
+    [ObservableProperty]
+    private bool _isFfmpegReady;
+
+    [ObservableProperty]
     private string _updateStatusText = "";
 
     [ObservableProperty]
@@ -846,6 +855,43 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         _ = CheckForUpdatesAsync();
+        _ = EnsureFfmpegAsync();
+    }
+
+    private async Task EnsureFfmpegAsync()
+    {
+        if (Services.FfmpegDownloader.IsInstalled)
+        {
+            IsFfmpegReady = true;
+            FfmpegStatusText = "FFmpeg ready";
+            return;
+        }
+
+        IsFfmpegDownloading = true;
+        FfmpegStatusText = "Downloading FFmpeg...";
+
+        var result = await Services.FfmpegDownloader.EnsureFfmpegAsync(
+            new Progress<(int percent, string message)>(p =>
+            {
+                Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    FfmpegStatusText = p.message;
+                });
+            }));
+
+        Application.Current?.Dispatcher.Invoke(() =>
+        {
+            IsFfmpegDownloading = false;
+            if (result != null)
+            {
+                IsFfmpegReady = true;
+                FfmpegStatusText = "FFmpeg ready";
+            }
+            else
+            {
+                FfmpegStatusText = "FFmpeg unavailable — recording disabled";
+            }
+        });
     }
 
     [RelayCommand]

@@ -387,6 +387,10 @@ public sealed class GameRecordingService : IDisposable
         if (File.Exists(BundledFFmpegPath))
             return BundledFFmpegPath;
 
+        string? downloaded = FfmpegDownloader.FfmpegExePath;
+        if (downloaded != null)
+            return downloaded;
+
         try
         {
             using var proc = Process.Start(new ProcessStartInfo

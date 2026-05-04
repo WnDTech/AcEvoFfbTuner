@@ -33,8 +33,4 @@
     <Resource Include="Resources\engine_start_default.wav" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
-</Project>
+ </Project>
