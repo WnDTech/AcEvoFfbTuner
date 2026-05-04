@@ -73,7 +73,9 @@ public sealed class TelemetryLoop : IDisposable
     private int _latencyFrameCount;
 
     private string _lastDetectedTrackName = "";
+    private string _lastDetectedCarModel = "";
     private bool _staticDataRead;
+    private long _lastStaticReReadTicks;
 
     public readonly FfbLiveServer LiveServer = new();
 
@@ -93,6 +95,7 @@ public sealed class TelemetryLoop : IDisposable
     public float AvgLatencyMs => _avgLatencyMs;
 
     public string DetectedTrackName => _lastDetectedTrackName;
+    public string DetectedCarModel => _lastDetectedCarModel;
 
     private static string DecodeString(byte[] data)
     {
@@ -126,6 +129,7 @@ public sealed class TelemetryLoop : IDisposable
     public event Action<string>? StatusChanged;
     public event Action<TrackMap>? TrackMapCompleted;
     public event Action<string, string, float>? StaticDataReceived;
+    public event Action<string>? CarModelChanged;
 
     public void Start()
     {
@@ -205,9 +209,13 @@ public sealed class TelemetryLoop : IDisposable
                             StatusChanged?.Invoke("Connected to AC Evo");
                         }
 
-                        if (!_staticDataRead && _reader.TryReadStatic(out var staticData))
+                        bool shouldReadStatic = !_staticDataRead ||
+                            (System.Diagnostics.Stopwatch.GetTimestamp() - _lastStaticReReadTicks) > 2 * TicksPerSecond;
+
+                        if (shouldReadStatic && _reader.TryReadStatic(out var staticData))
                         {
                             _staticDataRead = true;
+                            _lastStaticReReadTicks = System.Diagnostics.Stopwatch.GetTimestamp();
                             _lastDetectedTrackName = DecodeString(staticData.Track);
                             var trackConfig = DecodeString(staticData.TrackConfiguration);
                             var nation = DecodeString(staticData.Nation);
@@ -216,7 +224,17 @@ public sealed class TelemetryLoop : IDisposable
 
                             _latestStaticRaw = staticData;
 
-                            StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
+                            var carModel = DecodeString(staticData.CarModel);
+                            if (!string.IsNullOrEmpty(carModel) && carModel != _lastDetectedCarModel)
+                            {
+                                _lastDetectedCarModel = carModel;
+                                CarModelChanged?.Invoke(carModel);
+                            }
+
+                            if (!string.IsNullOrEmpty(_lastDetectedCarModel))
+                                StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Car: '{_lastDetectedCarModel}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
+                            else
+                                StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
                             StaticDataReceived?.Invoke(_lastDetectedTrackName, trackConfig, officialLength);
                         }
                     }

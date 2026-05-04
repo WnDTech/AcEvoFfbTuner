@@ -70,6 +70,7 @@ public static class StaticFieldReader
     public static int GetMaxRpm(byte[] buf) => ReadI32(buf, 208);
     public static float GetMaxFuel(byte[] buf) => ReadF32(buf, 212);
     public static float GetSteerRatio(byte[] buf) => ReadF32(buf, 216);
+    public static string GetCarModel(byte[] buf) => ReadStr(buf, 335, 33);
 
     private static string ReadStr(byte[] buf, int offset, int maxLen)
     {

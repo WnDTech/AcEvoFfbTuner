@@ -362,6 +362,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private int _steeringLockDegrees = 900;
 
     [ObservableProperty]
+    private string _profileCarMatch = "";
+
+    [ObservableProperty]
     private FfbProfile? _selectedProfile;
 
     public bool IsBuiltInProfileSelected => SelectedProfile?.IsBuiltIn ?? false;
@@ -591,6 +594,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private string _detectedTrackName = "";
 
     [ObservableProperty]
+    private string _detectedCarModel = "";
+
+    [ObservableProperty]
+    private bool _isPerCarAutoLoadEnabled = true;
+
+    [ObservableProperty]
     private bool _isPitDetected;
 
     [ObservableProperty]
@@ -748,6 +757,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public int PanicDeviceButtonCount => _deviceManager.SecondaryButtonCount;
 
     public FfbPipeline Pipeline => _pipeline;
+    public FfbDeviceManager DeviceManager => _deviceManager;
+    public TelemetryLoop TelemetryLoop => _telemetryLoop;
     public int DeviceButtonCount => _deviceManager.ButtonCount;
 
     private readonly DispatcherTimer _uiUpdateTimer;
@@ -865,6 +876,26 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     TrackMapStatus = $"Auto-loaded: {savedMap.Waypoints.Count} pts | {savedMap.TrackLengthM:F0}m | {savedMap.Corners.Count} corners | {savedMap.Sectors.Count} sectors";
                     StatusText = $"Auto-loaded track map: {trackName} ({savedMap.Waypoints.Count} pts, {savedMap.Corners.Count} corners)";
                 }
+            }
+        });
+        _telemetryLoop.CarModelChanged += carModel => Application.Current?.Dispatcher.Invoke(() =>
+        {
+            DetectedCarModel = carModel;
+            StatusText = $"Car detected: {carModel}";
+
+            if (!IsPerCarAutoLoadEnabled) return;
+
+            var match = Profiles.FirstOrDefault(p =>
+                !string.IsNullOrEmpty(p.CarMatch) &&
+                p.CarMatch.Equals(carModel, StringComparison.OrdinalIgnoreCase));
+
+            if (match != null && (SelectedProfile == null || match.Name != SelectedProfile.Name))
+            {
+                SelectedProfile = match;
+                match.ApplyToPipeline(_pipeline);
+                LoadProfileValues(match);
+                _profileManager.SetActiveProfile(match);
+                StatusText = $"Auto-loaded profile '{match.Name}' for {carModel}";
             }
         });
 
@@ -1321,6 +1352,22 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _profileManager.DeleteProfile(SelectedProfile);
         RefreshProfiles();
         SelectedProfile = _profileManager.ActiveProfile;
+    }
+
+    [RelayCommand]
+    private void SetCarMatchFromDetected()
+    {
+        if (string.IsNullOrEmpty(DetectedCarModel))
+        {
+            StatusText = "No car model detected yet — start a session in AC EVO first";
+            return;
+        }
+        ProfileCarMatch = DetectedCarModel;
+        if (SelectedProfile != null)
+        {
+            SelectedProfile.CarMatch = DetectedCarModel;
+            StatusText = $"Car Match set to '{DetectedCarModel}' — this profile will auto-load for that car";
+        }
     }
 
     [RelayCommand]
@@ -1906,6 +1953,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     processed.ChannelMzFront, processed.ChannelFxFront, processed.ChannelFyFront,
                     processed.PostLutForce, processed.IsClipping,
                     raw.GasInput, raw.BrakeInput);
+
+                mw.UpdateCalibrationWizard(raw.SpeedKmh, processed.MainForce, processed.IsClipping);
             }
 
             CarPosX = raw.CarX;
@@ -2035,6 +2084,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private void LoadProfileValues(FfbProfile profile)
     {
+        ProfileCarMatch = profile.CarMatch;
         SelectedMixMode = profile.MixMode switch
         {
             FfbMixModeDto.Replace => FfbMixMode.Replace,
@@ -2147,6 +2197,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private void PushValuesToPipeline()
     {
+        if (SelectedProfile != null)
+            SelectedProfile.CarMatch = ProfileCarMatch;
+
         _pipeline.ChannelMixer.MzFrontGain = MzFrontGain;
         _pipeline.ChannelMixer.MzFrontEnabled = MzFrontEnabled;
         _pipeline.ChannelMixer.FxFrontGain = FxFrontGain;

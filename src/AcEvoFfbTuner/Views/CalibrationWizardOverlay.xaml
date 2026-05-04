@@ -1,0 +1,267 @@
+<Window x:Class="AcEvoFfbTuner.Views.CalibrationWizardOverlay"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FFB Tuner — Calibration Wizard"
+        Width="480"
+        Height="700"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        Loaded="OnLoaded"
+        Deactivated="OnDeactivated">
+
+    <Window.Resources>
+        <Style TargetType="Border">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#FF333355" />
+            <Setter Property="Foreground" Value="#FFE0E0E0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FFE0E0E0" />
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder" CornerRadius="8" Padding="1"
+            Background="#DDE67E22"
+            MouseLeftButtonDown="OnDragMove"
+            MouseWheel="OnMouseWheel">
+
+        <Border x:Name="ContentBorder" CornerRadius="7" Background="#EB0D0D0D">
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="#FF1A1A2E" CornerRadius="7,7,0,0" Padding="12,8"
+                        MouseLeftButtonDown="OnDragMove">
+                    <Grid>
+                        <TextBlock Text="CALIBRATION WIZARD" FontSize="17" FontWeight="Black"
+                                   Foreground="#FFE67E22" VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="BtnTransparency" ToolTip="Toggle transparency"
+                                    Width="28" Height="28" FontSize="12" Padding="0" Margin="0,0,4,0"
+                                    Click="ToggleTransparency">
+                                <TextBlock x:Name="TransparencyIcon" Text="OPQ" FontSize="12" FontWeight="Bold" Foreground="#FFE0E0E0" />
+                            </Button>
+                            <Button x:Name="BtnClose" ToolTip="Close"
+                                    Width="28" Height="28" FontSize="16" Padding="0"
+                                    Background="#FF552222" Click="CloseOverlay">
+                                <TextBlock Text="X" FontWeight="Bold" Foreground="#FFE0E0E0" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="1" Background="#FF111122" Padding="12,6">
+                    <StackPanel>
+                        <DockPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Border x:Name="StepDot0" Width="10" Height="10" CornerRadius="5" Background="#FFE67E22" Margin="3,0" />
+                                <Border x:Name="StepDot1" Width="10" Height="10" CornerRadius="5" Background="#FF333355" Margin="3,0" />
+                                <Border x:Name="StepDot2" Width="10" Height="10" CornerRadius="5" Background="#FF333355" Margin="3,0" />
+                                <Border x:Name="StepDot3" Width="10" Height="10" CornerRadius="5" Background="#FF333355" Margin="3,0" />
+                                <Border x:Name="StepDot4" Width="10" Height="10" CornerRadius="5" Background="#FF333355" Margin="3,0" />
+                                <Border x:Name="StepDot5" Width="10" Height="10" CornerRadius="5" Background="#FF333355" Margin="3,0" />
+                            </StackPanel>
+                        </DockPanel>
+                        <TextBlock x:Name="StepTitle" Text="Step 1: Wheel Setup" FontSize="16" FontWeight="Bold"
+                                   Foreground="#FFE67E22" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="12,10">
+                    <StackPanel>
+
+                        <StackPanel x:Name="PanelStep0">
+                            <TextBlock TextWrapping="Wrap" FontSize="14" Margin="0,0,0,8"
+                                       Text="The wizard will guide you through setting up your FFB for the best experience. Make sure your wheel is connected before starting." />
+                            <Border Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
+                                        <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" Close other wheel software (Pit House, G HUB, etc.)" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
+                                        <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" In AC EVO: Set FFB Gain to 0, then restart the game" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
+                                        <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" Select BMW M4 GT3, any track, Practice mode" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock x:Name="Step0Status" Text="Waiting for wheel connection..." FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel x:Name="PanelStep1" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="14" Margin="0,0,0,8"
+                                       Text="Let's verify your wheel is responding correctly. The app will send a test pulse and check the direction." />
+                            <Border Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
+                                        <Run Text="Click " /><Run FontWeight="Bold" Text="Test Force Direction" /><Run Text=" below." />
+                                    </TextBlock>
+                                    <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
+                                        <Run Text="Your wheel will move briefly. This is normal." />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                            <Button x:Name="BtnTestDirection" Content="Test Force Direction" Click="OnTestDirection" HorizontalAlignment="Left" Margin="0,4" />
+                            <TextBlock x:Name="Step1Status" Text="" FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel x:Name="PanelStep2" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="14" Margin="0,0,0,8"
+                                       Text="Drive in a straight line at ~100 km/h. The wheel should feel light at center with a slight pull to correct your line." />
+                            <Border Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
+                                        <Run Text="Adjust " /><Run FontWeight="Bold" Foreground="#FFE67E22" Text="Output Gain" /><Run Text=" until the force feels natural." />
+                                    </TextBlock>
+                                    <TextBlock FontSize="13" Foreground="#FF888888" Margin="0,2" TextWrapping="Wrap">
+                                        <Run FontStyle="Italic" Text="Too weak? Increase gain. Wheel fighting you? Decrease gain." />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Output Gain" Width="100" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderOutputGain" Minimum="0.1" Maximum="1.5" Value="0.62" Width="200"
+                                        VerticalAlignment="Center" ValueChanged="OnOutputGainChanged" />
+                                <TextBlock x:Name="LblOutputGain" Text="0.62" Width="45" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <TextBlock x:Name="Step2Status" Text="Waiting for telemetry data..." FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel x:Name="PanelStep3" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="14" Margin="0,0,0,8"
+                                       Text="Drive through some corners at increasing speed. The wheel should build resistance progressively — heavy at high speed, light when slow." />
+                            <Border Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
+                                        <Run Text="Adjust " /><Run FontWeight="Bold" Foreground="#FFE67E22" Text="Friction" /><Run Text=" if the wheel feels scratchy/buzzy." />
+                                    </TextBlock>
+                                    <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
+                                        <Run Text="Adjust " /><Run FontWeight="Bold" Foreground="#FFE67E22" Text="Speed Damping" /><Run Text=" if the wheel is too loose at high speed." />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Friction" Width="100" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderFriction" Minimum="0" Maximum="0.15" Value="0.03" Width="200"
+                                        VerticalAlignment="Center" ValueChanged="OnFrictionChanged" />
+                                <TextBlock x:Name="LblFriction" Text="0.030" Width="45" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Speed Damp" Width="100" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderSpeedDamp" Minimum="0" Maximum="0.3" Value="0.08" Width="200"
+                                        VerticalAlignment="Center" ValueChanged="OnSpeedDampChanged" />
+                                <TextBlock x:Name="LblSpeedDamp" Text="0.080" Width="45" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <TextBlock x:Name="Step3Status" Text="" FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel x:Name="PanelStep4" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="14" Margin="0,0,0,8"
+                                       Text="Hit some kerbs and brake hard. You should feel distinct texture from kerbs and the ABS pulsing through the wheel." />
+                            <Border Background="#FF1A1A2E" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
+                                        <Run Text="Adjust " /><Run FontWeight="Bold" Foreground="#FFE67E22" Text="Kerb / Road Vibration" /><Run Text=" to taste." />
+                                    </TextBlock>
+                                    <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
+                                        <Run Text="Adjust " /><Run FontWeight="Bold" Foreground="#FFE67E22" Text="Slip Gain" /><Run Text=" if you want more tire slip texture." />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Kerb Gain" Width="100" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderKerb" Minimum="0" Maximum="2.0" Value="1.0" Width="200"
+                                        VerticalAlignment="Center" ValueChanged="OnKerbChanged" />
+                                <TextBlock x:Name="LblKerb" Text="1.00" Width="45" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Slip Gain" Width="100" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderSlip" Minimum="0" Maximum="2.0" Value="0.8" Width="200"
+                                        VerticalAlignment="Center" ValueChanged="OnSlipChanged" />
+                                <TextBlock x:Name="LblSlip" Text="0.80" Width="45" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <TextBlock x:Name="Step4Status" Text="" FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel x:Name="PanelStep5" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="14" Margin="0,0,0,8"
+                                       Text="Calibration complete! All slider adjustments have been applied in real-time. Click 'Save &amp; Finish' to save them to your current profile." />
+                            <Border Background="#FF1A3A1A" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock FontSize="15" Foreground="#FF66BB6A" FontWeight="Bold" Margin="0,1">
+                                        <Run Text="&#x2713; Force direction verified" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="15" Foreground="#FF66BB6A" FontWeight="Bold" Margin="0,1">
+                                        <Run Text="&#x2713; Output gain calibrated" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="15" Foreground="#FF66BB6A" FontWeight="Bold" Margin="0,1">
+                                        <Run Text="&#x2713; Damping adjusted" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="15" Foreground="#FF66BB6A" FontWeight="Bold" Margin="0,1">
+                                        <Run Text="&#x2713; Vibration effects tuned" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="#FF332211" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <TextBlock TextWrapping="Wrap" FontSize="14" Foreground="#FFFFD600">
+                                    <Run FontWeight="Bold" Text="Your changes are live but NOT saved yet." />
+                                    <Run Text=" Click 'Save &amp; Finish' below to persist them, or 'Back' to keep adjusting." />
+                                </TextBlock>
+                            </Border>
+                            <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF888888" Margin="0,4"
+                                       Text="You can re-run this wizard at any time, or fine-tune individual settings in the FFB Settings tab." />
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <Border Grid.Row="3" Background="#FF1A1A2E" CornerRadius="0,0,7,7" Padding="10,8">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                            <TextBlock x:Name="FooterStatus" FontSize="13" Foreground="#FF666666" VerticalAlignment="Center">
+                                <Run Text="Drag to move  |  Scroll to resize" />
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="BtnBack" Content="Back" Click="OnBack" Margin="0,0,8,0" />
+                            <Button x:Name="BtnNext" Content="Next" Click="OnNext" Background="#FF445566" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+            </Grid>
+        </Border>
+    </Border>
+</Window>
