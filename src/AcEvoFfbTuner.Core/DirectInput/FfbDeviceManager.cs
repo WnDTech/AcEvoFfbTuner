@@ -90,31 +90,48 @@ public sealed class FfbDeviceManager : IDisposable
     public int ReconnectAttemptCount { get; set; }
     public bool AutoDetectedForceInvert { get; private set; }
 
-    public static bool DetectForceInversion(string productName)
+    public static bool? DetectForceInversionKnown(string productName)
     {
-        if (string.IsNullOrEmpty(productName)) return false;
+        if (string.IsNullOrEmpty(productName)) return null;
         var n = productName.ToUpperInvariant();
 
         if (n.Contains("SIMAGIC")) return true;
         if (n.Contains("CAMMUS")) return true;
 
-        return false;
+        if (n.Contains("MOZA")) return false;
+        if (n.Contains("LOGITECH") || n.Contains("G29") || n.Contains("G920") || n.Contains("G923")) return false;
+        if (n.Contains("THRUSTMASTER") || n.Contains("T300") || n.Contains("T150") || n.Contains("TX ")) return false;
+        if (n.Contains("FANATEC") || n.Contains("CLUBSPORT") || n.Contains("CSL ")) return false;
+
+        return null;
+    }
+
+    public static bool DetectForceInversion(string productName)
+    {
+        return DetectForceInversionKnown(productName) ?? false;
     }
 
     public bool AutoDetectForceDirection()
     {
+        string productName = ConnectedDevice?.ProductName ?? "";
+
+        bool? knownResult = DetectForceInversionKnown(productName);
+        if (knownResult.HasValue)
+        {
+            ConnLog($"AutoDetect: known device '{productName}' → invert={knownResult.Value} (static database)");
+            return knownResult.Value;
+        }
+
         if (_device == null || !_isAcquired || _ffAxes == null || _ffAxes.Length == 0)
         {
             ConnLog("AutoDetect: skipped — device not ready");
-            return DetectForceInversion(ConnectedDevice?.ProductName ?? "");
+            return DetectForceInversion(productName);
         }
 
         try
         {
-            string fallbackName = ConnectedDevice?.ProductName ?? "";
-
             _invertForce = false;
-            ConnLog("AutoDetect: reset _invertForce=false for clean test");
+            ConnLog("AutoDetect: unknown device, running dynamic axis test");
 
             SendConstantForceDirect(0f);
             Thread.Sleep(300);
@@ -123,7 +140,7 @@ public sealed class FfbDeviceManager : IDisposable
             if (float.IsNaN(baseline))
             {
                 ConnLog("AutoDetect: could not read baseline — falling back to product name");
-                return DetectForceInversion(fallbackName);
+                return DetectForceInversion(productName);
             }
 
             ConnLog($"AutoDetect: baseline axis={baseline:F0}");
@@ -138,7 +155,7 @@ public sealed class FfbDeviceManager : IDisposable
             {
                 ConnLog("AutoDetect: could not read during pulse — falling back to product name");
                 Thread.Sleep(200);
-                return DetectForceInversion(fallbackName);
+                return DetectForceInversion(productName);
             }
 
             Thread.Sleep(200);
@@ -151,17 +168,17 @@ public sealed class FfbDeviceManager : IDisposable
             if (Math.Abs(delta) < minDelta)
             {
                 ConnLog($"AutoDetect: delta {delta:F0} below threshold {minDelta} — falling back to product name");
-                return DetectForceInversion(fallbackName);
+                return DetectForceInversion(productName);
             }
 
-            bool needsInversion = delta < 0;
-            ConnLog($"AutoDetect: positive force caused axis delta={delta:F0} → invert={needsInversion}");
+            bool needsInversion = delta > 0;
+            ConnLog($"AutoDetect: positive force caused axis delta={delta:F0} → invert={needsInversion} (positive=left is standard)");
             return needsInversion;
         }
         catch (Exception ex)
         {
             ConnLog($"AutoDetect: failed — {ex.Message}");
-            return DetectForceInversion(ConnectedDevice?.ProductName ?? "");
+            return DetectForceInversion(productName);
         }
     }
 
