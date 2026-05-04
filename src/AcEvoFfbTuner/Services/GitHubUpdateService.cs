@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -12,6 +13,14 @@ public sealed class GitHubUpdateService
     private const string Owner = "WnDTech";
     private const string Repo = "AcEvoFfbTuner";
     private const string ApiUrl = $"https://api.github.com/repos/{Owner}/{Repo}/releases/latest";
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool DeleteFile(string lpFileName);
+
+    private static void UnblockFile(string path)
+    {
+        DeleteFile(path + ":Zone.Identifier");
+    }
 
     private static readonly HttpClient _http = new()
     {
@@ -110,6 +119,8 @@ public sealed class GitHubUpdateService
         }
 
         progress?.Report(new DownloadProgress { State = DownloadState.Installing, Percent = 100 });
+
+        UnblockFile(filePath);
 
         Process.Start(new ProcessStartInfo(filePath)
         {

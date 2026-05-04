@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -10,6 +11,13 @@ namespace AcEvoFfbTuner.Services;
 
 public sealed class FfmpegDownloader
 {
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool DeleteFile(string lpFileName);
+
+    private static void UnblockFile(string path)
+    {
+        DeleteFile(path + ":Zone.Identifier");
+    }
     private static readonly string AppDir = AppDomain.CurrentDomain.BaseDirectory;
     private static readonly string FfmpegPath = Path.Combine(AppDir, "ffmpeg.exe");
     private static readonly string FfmpegVersionFile = Path.Combine(AppDir, "ffmpeg.version");
@@ -61,6 +69,8 @@ public sealed class FfmpegDownloader
         {
             await DownloadFileAsync(ZipUrl, zipPath, progress);
 
+            UnblockFile(zipPath);
+
             progress?.Report((90, "Extracting FFmpeg..."));
             await Task.Run(() => ZipFile.ExtractToDirectory(zipPath, TempDir, overwriteFiles: true));
 
@@ -75,6 +85,8 @@ public sealed class FfmpegDownloader
                 File.Delete(FfmpegPath);
 
             File.Move(exe, FfmpegPath);
+
+            UnblockFile(FfmpegPath);
 
             if (!ValidateFfmpeg(FfmpegPath))
             {
