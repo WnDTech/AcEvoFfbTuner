@@ -73,10 +73,6 @@ public sealed class FfbProcessedData
     public float PostDynamicForce { get; set; }
     public float AutoGainApplied { get; set; }
     public bool IsClipping { get; set; }
-    public bool IsOscillating { get; set; }
-    public float OscillationLevel { get; set; }
-    public float OscillationStabilityFactor { get; set; } = 1f;
-    public bool ForceDirectionWarning { get; set; }
     public float SpeedKmh { get; set; }
     public float SteerAngle { get; set; }
     public int PacketId { get; set; }

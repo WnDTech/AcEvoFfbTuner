@@ -312,23 +312,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isAutoSetupAvailable;
 
-    [ObservableProperty]
-    private bool _isLiveAutoTuneEnabled;
-
-    [ObservableProperty]
-    private bool _isOscillating;
-
-    [ObservableProperty]
-    private float _oscillationLevel;
-
-    [ObservableProperty]
-    private float _stabilityFactor = 1f;
-
-    [ObservableProperty]
-    private bool _forceDirectionWarning;
-
-    [ObservableProperty]
-    private string _oscillationStatusText = "STABLE";
 
     [ObservableProperty]
     private string _autoSetupStatus = "";
@@ -1160,48 +1143,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void ToggleLiveAutoTune()
-    {
-        if (IsLiveAutoTuneEnabled)
-        {
-            if (!IsDeviceConnected) { IsLiveAutoTuneEnabled = false; return; }
-
-            string deviceName = DeviceName;
-            float torque = WheelMaxTorqueNm;
-
-            if (SelectedProfile != null && SelectedProfile.IsBuiltIn)
-            {
-                var profile = WheelbaseAutoConfigurator.GenerateProfile(torque, deviceName, null);
-                profile.Name = $"Live Tune - {deviceName}";
-
-                var existing = Profiles.FirstOrDefault(p => p.Name == profile.Name);
-                if (existing != null)
-                    _profileManager.DeleteProfile(existing);
-
-                _profileManager.SaveProfile(profile);
-                RefreshProfiles();
-
-                SelectedProfile = profile;
-                profile.ApplyToPipeline(_pipeline);
-                LoadProfileValues(profile);
-                _profileManager.SetActiveProfile(profile);
-            }
-
-            AutoSetupStatus = $"Live Auto Tune active — {SelectedProfile?.Name ?? deviceName}";
-            StatusText = "Live Auto Tune enabled";
-        }
-        else
-        {
-            IsOscillating = false;
-            OscillationLevel = 0f;
-            StabilityFactor = 1f;
-            ForceDirectionWarning = false;
-            OscillationStatusText = "STABLE";
-            StatusText = "Live Auto Tune disabled";
-        }
-    }
-
-    [RelayCommand]
     private void ApplyLutPreset()
     {
         var lut = _pipeline.LutCurve;
@@ -1805,21 +1746,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CurrentRawForce = processed.RawFinalFf;
             IsClipping = processed.IsClipping;
             SpeedKmh = processed.SpeedKmh;
-
-            if (IsLiveAutoTuneEnabled && IsRunning && IsDeviceConnected)
-            {
-                IsOscillating = processed.IsOscillating;
-                OscillationLevel = processed.OscillationLevel;
-                StabilityFactor = processed.OscillationStabilityFactor;
-                ForceDirectionWarning = processed.ForceDirectionWarning;
-
-                if (IsOscillating)
-                    OscillationStatusText = $"OSCILLATING {StabilityFactor:P0}";
-                else if (StabilityFactor < 0.95f)
-                    OscillationStatusText = $"CALMING {StabilityFactor:P0}";
-                else
-                    OscillationStatusText = $"STABLE {StabilityFactor:P0}";
-            }
 
             _gameRecordingService.OnTelemetryTick(processed.SpeedKmh);
             IsScreenRecording = _gameRecordingService.IsRecording;

@@ -122,14 +122,6 @@ public sealed class FfbLiveServer : IDisposable
             _sb.Append(proc.PostDynamicForce.ToString("F6"));
             _sb.Append(",\"cl\":");
             _sb.Append(proc.IsClipping ? "1" : "0");
-            _sb.Append(",\"og\":");
-            _sb.Append(proc.IsOscillating ? "1" : "0");
-            _sb.Append(",\"osf\":");
-            _sb.Append(proc.OscillationStabilityFactor.ToString("F3"));
-            _sb.Append(",\"olvl\":");
-            _sb.Append(proc.OscillationLevel.ToString("F3"));
-            _sb.Append(",\"fdw\":");
-            _sb.Append(proc.ForceDirectionWarning ? "1" : "0");
             _sb.Append(",\"wl0\":");
             _sb.Append(raw.WheelLoad[0].ToString("F0"));
             _sb.Append(",\"wl1\":");
