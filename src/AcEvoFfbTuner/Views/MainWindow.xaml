@@ -239,8 +239,9 @@
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                             <TextBlock Text="TESTER SETUP GUIDE" FontSize="26" FontWeight="Black" Foreground="#FFE67E22" VerticalAlignment="Center" Margin="0,0,16,0" />
-                            <Button Content="Pop Out Overlay" Click="OpenGuideOverlay" Padding="12,4" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" />
-                            <TextBlock Text="— draggable overlay for single-screen users" FontSize="14" Foreground="#FF888888" VerticalAlignment="Center" Margin="8,0,0,0" />
+                            <Button Content="Calibration Wizard" Click="OpenCalibrationWizard" Padding="12,4" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Background="#FF445566" />
+                            <Button Content="Pop Out Overlay" Click="OpenGuideOverlay" Padding="12,4" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                            <TextBlock Text="— overlay for single-screen users" FontSize="14" Foreground="#FF888888" VerticalAlignment="Center" Margin="8,0,0,0" />
                         </StackPanel>
                         <TextBlock Text="Follow these steps in order. Your profile, track map, and telemetry data are all captured automatically when you send diagnostics." FontSize="16" Foreground="#FF888888" Margin="0,0,0,16" TextWrapping="Wrap" />
                         <Border Background="#FF333355" Height="1" Margin="0,0,0,16" />
@@ -1617,6 +1618,36 @@
                                     <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
                                               DisplayMemberPath="Name" Width="280" HorizontalAlignment="Left" />
                                 </DockPanel>
+                                <DockPanel Margin="0,4">
+                                    <TextBlock Text="Car Match" Width="100" VerticalAlignment="Center" FontSize="15" />
+                                    <TextBox Text="{Binding ProfileCarMatch, UpdateSourceTrigger=PropertyChanged}"
+                                             Width="195" HorizontalAlignment="Left" FontSize="14"
+                                             ToolTip="AC EVO car model name for auto-loading this profile. Click 'Use Detected' to auto-fill." />
+                                    <Button Content="Use Detected" Command="{Binding SetCarMatchFromDetectedCommand}"
+                                            Padding="8,3" FontSize="12" Margin="4,0,0,0" VerticalAlignment="Center"
+                                            ToolTip="Fill from detected car model" />
+                                </DockPanel>
+                                <DockPanel Margin="0,4">
+                                    <TextBlock Text="Detected" Width="100" VerticalAlignment="Center" FontSize="15" Foreground="#FF888888" />
+                                    <TextBlock VerticalAlignment="Center" FontSize="14">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#FF66BB6A" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DetectedCarModel}" Value="">
+                                                        <Setter Property="Foreground" Value="#FF888888" />
+                                                        <Setter Property="Text" Value="Start a session in AC EVO to detect car model" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                        <TextBlock.Text>
+                                            <Binding Path="DetectedCarModel" />
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </DockPanel>
+                                <CheckBox Content="Auto-load profile when car changes" IsChecked="{Binding IsPerCarAutoLoadEnabled}"
+                                          Margin="100,4,0,4" FontSize="13" Foreground="#FFCCCCCC" />
                             </StackPanel>
                         </Border>
 

@@ -202,6 +202,7 @@ public partial class MainWindow : Window
         _guideOverlay?.Close();
         _profilerOverlay?.Close();
         _trackMapPopout?.Close();
+        _calibrationWizard?.Close();
         Application.Current.Shutdown();
     }
 
@@ -217,6 +218,7 @@ public partial class MainWindow : Window
     private TestingGuideOverlay? _guideOverlay;
     private ProfilerOverlay? _profilerOverlay;
     private TrackMapPopout? _trackMapPopout;
+    private CalibrationWizardOverlay? _calibrationWizard;
 
     private void OpenGuideOverlay(object sender, RoutedEventArgs e)
     {
@@ -257,7 +259,33 @@ public partial class MainWindow : Window
         _trackMapPopout.Show();
     }
 
+    private void OpenCalibrationWizard(object sender, RoutedEventArgs e)
+    {
+        if (_calibrationWizard != null)
+        {
+            _calibrationWizard.Activate();
+            return;
+        }
+
+        if (DataContext is not ViewModels.MainViewModel vm) return;
+
+        _calibrationWizard = new CalibrationWizardOverlay(
+            vm.Pipeline,
+            vm.DeviceManager,
+            vm.TelemetryLoop,
+            () => vm.SaveCurrentProfileCommand.Execute(null));
+
+        _calibrationWizard.InitializeSlidersFromPipeline();
+        _calibrationWizard.Closed += (_, _) => _calibrationWizard = null;
+        _calibrationWizard.Show();
+    }
+
     // === PROFILER METHODS ===
+
+    public void UpdateCalibrationWizard(float speedKmh, float mainForce, bool isClipping)
+    {
+        _calibrationWizard?.UpdateLiveValues(speedKmh, mainForce, isClipping);
+    }
 
     public void UpdateProfiler(float speed, float steerAngle, float forceOut, float rawFF,
         float compress, float slip, float damping, float dynEff,
