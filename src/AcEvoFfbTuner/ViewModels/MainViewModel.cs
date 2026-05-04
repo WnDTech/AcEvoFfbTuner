@@ -1240,6 +1240,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             _profileManager.SaveProfileFromPipeline(_pipeline, SelectedProfile.Name);
             SelectedProfile.WheelMaxTorqueNm = WheelMaxTorqueNm;
             SelectedProfile.ForceInvertEnabled = ForceInvertEnabled;
+            SelectedProfile.SteeringLockDegrees = SteeringLockDegrees;
+            SelectedProfile.Hf8.OutputRateHz = Hf8OutputRateHz;
             SelectedProfile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
             _profileManager.SaveProfile(SelectedProfile);
             _profileManager.SetActiveProfile(SelectedProfile);
@@ -1261,6 +1263,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             var profile = _profileManager.SaveProfileFromPipeline(_pipeline, diagName);
             profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
             profile.ForceInvertEnabled = ForceInvertEnabled;
+            profile.SteeringLockDegrees = SteeringLockDegrees;
+            profile.Hf8.OutputRateHz = Hf8OutputRateHz;
             profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
             _profileManager.SaveProfile(profile);
         }
@@ -1285,6 +1289,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             var profile = _profileManager.SaveProfileFromPipeline(_pipeline, dialog.Result!);
             profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
             profile.ForceInvertEnabled = ForceInvertEnabled;
+            profile.SteeringLockDegrees = SteeringLockDegrees;
+            profile.Hf8.OutputRateHz = Hf8OutputRateHz;
             profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
             _profileManager.SaveProfile(profile);
             _profileManager.SetActiveProfile(profile);

@@ -144,6 +144,8 @@ public sealed class FfbProfile
         pipeline.VibrationMixer.AbsGain = Vibrations.AbsGain;
         pipeline.VibrationMixer.MasterGain = Vibrations.MasterGain;
         pipeline.VibrationMixer.SuspensionRoadGain = Vibrations.SuspensionRoadGain;
+        pipeline.VibrationMixer.ScrubGain = Vibrations.ScrubGain;
+        pipeline.VibrationMixer.RearSlipGain = Vibrations.RearSlipGain;
 
         pipeline.MaxSlewRate = Advanced.MaxSlewRate;
         pipeline.CenterSuppressionDegrees = Advanced.CenterSuppressionDegrees;
@@ -253,7 +255,9 @@ public sealed class FfbProfile
             RoadGain = pipeline.VibrationMixer.RoadGain,
             AbsGain = pipeline.VibrationMixer.AbsGain,
             MasterGain = pipeline.VibrationMixer.MasterGain,
-            SuspensionRoadGain = pipeline.VibrationMixer.SuspensionRoadGain
+            SuspensionRoadGain = pipeline.VibrationMixer.SuspensionRoadGain,
+            ScrubGain = pipeline.VibrationMixer.ScrubGain,
+            RearSlipGain = pipeline.VibrationMixer.RearSlipGain
         };
         Advanced = new AdvancedConfig
         {
@@ -298,7 +302,8 @@ public sealed class FfbProfile
             Enabled = pipeline.Hf8SignalMapper.Enabled,
             MasterGain = pipeline.Hf8SignalMapper.MasterGain,
             ZoneGains = (float[])pipeline.Hf8SignalMapper.ZoneGains.Clone(),
-            ZoneEnabled = (bool[])pipeline.Hf8SignalMapper.ZoneEnabled.Clone()
+            ZoneEnabled = (bool[])pipeline.Hf8SignalMapper.ZoneEnabled.Clone(),
+            OutputRateHz = Hf8?.OutputRateHz ?? 75
         };
     }
 
