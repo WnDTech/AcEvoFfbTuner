@@ -195,6 +195,7 @@ public sealed class FfbDeviceManager : IDisposable
     }
 
     private readonly WheelLedController _ledController = new();
+    private readonly Hf8HapticController _hf8Controller = new();
 
     public event Action<string>? DeviceConnected;
     public event Action? DeviceDisconnected;
@@ -322,6 +323,15 @@ public sealed class FfbDeviceManager : IDisposable
                     ConnLog("LED controller connected");
                 }
 
+                if (!_hf8Controller.TryConnect())
+                {
+                    ConnLog($"HF8 haptic pad: {_hf8Controller.LastError}");
+                }
+                else
+                {
+                    ConnLog($"HF8 haptic pad connected: {_hf8Controller.DeviceInfo}");
+                }
+
                 DeviceConnected?.Invoke(deviceInfo.ProductName);
                 return true;
             }
@@ -362,6 +372,7 @@ public sealed class FfbDeviceManager : IDisposable
             "LGS", "LogitechG", "LogiJoy",
             "Fanatec", "FanatecDriver",
             "SimHub", "simhub",
+            "HFS", "hfs",
             "vJoy",
         };
 
@@ -464,6 +475,7 @@ public sealed class FfbDeviceManager : IDisposable
         StopInterpolationThread();
         StopEffects();
         _ledController.Disconnect();
+        _hf8Controller.Disconnect();
 
         try
         {
@@ -752,6 +764,7 @@ public sealed class FfbDeviceManager : IDisposable
         SendConstantForceDirect(0f);
         StopVibration();
         ClearWheelLeds();
+        _hf8Controller.AllMotorsOff();
     }
 
     private static bool IsNotExclusiveError(Exception ex)
@@ -833,6 +846,24 @@ public sealed class FfbDeviceManager : IDisposable
     public bool LedSupportsBrightness => _ledController.SupportsBrightnessControl;
     public bool LedSupportsFlags => _ledController.SupportsFlagIndicators;
     public string LedVendorDisplayName => _ledController.VendorDisplayName;
+
+    public bool IsHf8Connected => _hf8Controller.IsConnected;
+    public string Hf8DiagnosticInfo => _hf8Controller.DiagnosticSummary;
+    public string Hf8DeviceInfo => _hf8Controller.IsConnected
+        ? _hf8Controller.DeviceInfo
+        : "Not connected";
+
+    public void UpdateHf8Motors(float[] intensities)
+    {
+        if (_hf8Controller.IsConnected)
+            _hf8Controller.SetMotorIntensities(intensities);
+    }
+
+    public void ApplyHf8Config(int outputRateHz)
+    {
+        if (_hf8Controller.IsConnected)
+            _hf8Controller.OutputRateHz = outputRateHz;
+    }
 
     public int ButtonCount
     {
@@ -1115,6 +1146,7 @@ public sealed class FfbDeviceManager : IDisposable
         DisconnectSecondaryDevice();
         DisconnectDevice();
         _ledController.Dispose();
+        _hf8Controller.Dispose();
         _directInput?.Dispose();
     }
 }

@@ -451,6 +451,55 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _ledRpmThreshold10Visible;
 
     [ObservableProperty]
+    private bool _hf8Enabled;
+
+    [ObservableProperty]
+    private float _hf8MasterGain = 0.7f;
+
+    [ObservableProperty]
+    private int _hf8OutputRateHz = 75;
+
+    [ObservableProperty]
+    private float _hf8ZoneGain0 = 0.8f;
+    [ObservableProperty]
+    private float _hf8ZoneGain1 = 0.8f;
+    [ObservableProperty]
+    private float _hf8ZoneGain2 = 0.8f;
+    [ObservableProperty]
+    private float _hf8ZoneGain3 = 0.8f;
+    [ObservableProperty]
+    private float _hf8ZoneGain4 = 0.6f;
+    [ObservableProperty]
+    private float _hf8ZoneGain5 = 0.6f;
+    [ObservableProperty]
+    private float _hf8ZoneGain6 = 0.5f;
+    [ObservableProperty]
+    private float _hf8ZoneGain7 = 0.7f;
+
+    [ObservableProperty]
+    private bool _hf8ZoneEnabled0 = true;
+    [ObservableProperty]
+    private bool _hf8ZoneEnabled1 = true;
+    [ObservableProperty]
+    private bool _hf8ZoneEnabled2 = true;
+    [ObservableProperty]
+    private bool _hf8ZoneEnabled3 = true;
+    [ObservableProperty]
+    private bool _hf8ZoneEnabled4 = true;
+    [ObservableProperty]
+    private bool _hf8ZoneEnabled5 = true;
+    [ObservableProperty]
+    private bool _hf8ZoneEnabled6 = true;
+    [ObservableProperty]
+    private bool _hf8ZoneEnabled7 = true;
+
+    [ObservableProperty]
+    private string _hf8ConnectionStatus = "No HF8 device detected";
+
+    [ObservableProperty]
+    private bool _hf8Connected;
+
+    [ObservableProperty]
     private int _snapshotButtonIndex = -1;
 
     [ObservableProperty]
@@ -1726,6 +1775,26 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnLedRpmThreshold9Changed(int value) => PushLedConfig();
     partial void OnLedRpmThreshold10Changed(int value) => PushLedConfig();
 
+    partial void OnHf8EnabledChanged(bool value) => _pipeline.Hf8SignalMapper.Enabled = value;
+    partial void OnHf8MasterGainChanged(float value) => _pipeline.Hf8SignalMapper.MasterGain = value;
+    partial void OnHf8OutputRateHzChanged(int value) => _deviceManager.ApplyHf8Config(value);
+    partial void OnHf8ZoneGain0Changed(float value) => _pipeline.Hf8SignalMapper.ZoneGains[0] = value;
+    partial void OnHf8ZoneGain1Changed(float value) => _pipeline.Hf8SignalMapper.ZoneGains[1] = value;
+    partial void OnHf8ZoneGain2Changed(float value) => _pipeline.Hf8SignalMapper.ZoneGains[2] = value;
+    partial void OnHf8ZoneGain3Changed(float value) => _pipeline.Hf8SignalMapper.ZoneGains[3] = value;
+    partial void OnHf8ZoneGain4Changed(float value) => _pipeline.Hf8SignalMapper.ZoneGains[4] = value;
+    partial void OnHf8ZoneGain5Changed(float value) => _pipeline.Hf8SignalMapper.ZoneGains[5] = value;
+    partial void OnHf8ZoneGain6Changed(float value) => _pipeline.Hf8SignalMapper.ZoneGains[6] = value;
+    partial void OnHf8ZoneGain7Changed(float value) => _pipeline.Hf8SignalMapper.ZoneGains[7] = value;
+    partial void OnHf8ZoneEnabled0Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[0] = value;
+    partial void OnHf8ZoneEnabled1Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[1] = value;
+    partial void OnHf8ZoneEnabled2Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[2] = value;
+    partial void OnHf8ZoneEnabled3Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[3] = value;
+    partial void OnHf8ZoneEnabled4Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[4] = value;
+    partial void OnHf8ZoneEnabled5Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[5] = value;
+    partial void OnHf8ZoneEnabled6Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[6] = value;
+    partial void OnHf8ZoneEnabled7Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[7] = value;
+
     partial void OnSelectedProfileChanged(FfbProfile? value)
     {
         if (value == null) return;
@@ -2048,6 +2117,26 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         EqBand8Gain = profile.Equalizer.GetGain(8);
         EqBand9Gain = profile.Equalizer.GetGain(9);
         LoadLedValues(profile.LedEffects);
+
+        Hf8Enabled = profile.Hf8.Enabled;
+        Hf8MasterGain = profile.Hf8.MasterGain;
+        Hf8OutputRateHz = profile.Hf8.OutputRateHz;
+        Hf8ZoneGain0 = profile.Hf8.GetZoneGain(0);
+        Hf8ZoneGain1 = profile.Hf8.GetZoneGain(1);
+        Hf8ZoneGain2 = profile.Hf8.GetZoneGain(2);
+        Hf8ZoneGain3 = profile.Hf8.GetZoneGain(3);
+        Hf8ZoneGain4 = profile.Hf8.GetZoneGain(4);
+        Hf8ZoneGain5 = profile.Hf8.GetZoneGain(5);
+        Hf8ZoneGain6 = profile.Hf8.GetZoneGain(6);
+        Hf8ZoneGain7 = profile.Hf8.GetZoneGain(7);
+        Hf8ZoneEnabled0 = profile.Hf8.GetZoneEnabled(0);
+        Hf8ZoneEnabled1 = profile.Hf8.GetZoneEnabled(1);
+        Hf8ZoneEnabled2 = profile.Hf8.GetZoneEnabled(2);
+        Hf8ZoneEnabled3 = profile.Hf8.GetZoneEnabled(3);
+        Hf8ZoneEnabled4 = profile.Hf8.GetZoneEnabled(4);
+        Hf8ZoneEnabled5 = profile.Hf8.GetZoneEnabled(5);
+        Hf8ZoneEnabled6 = profile.Hf8.GetZoneEnabled(6);
+        Hf8ZoneEnabled7 = profile.Hf8.GetZoneEnabled(7);
     }
 
     private void PushValuesToPipeline()
@@ -2169,6 +2258,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         supported.Add($"{count} RPM LEDs");
 
         LedSupportedInfo = $"{LedVendorName} wheel detected — {string.Join(" · ", supported)}";
+
+        Hf8Connected = _deviceManager.IsHf8Connected;
+        Hf8ConnectionStatus = _deviceManager.IsHf8Connected
+            ? $"Connected: {_deviceManager.Hf8DeviceInfo}"
+            : "No HF8 device detected — connect via USB and ensure HFS software is closed";
     }
 
     private void ResetLedCapabilities()
@@ -2190,6 +2284,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         LedRpmThreshold8Visible = false;
         LedRpmThreshold9Visible = false;
         LedRpmThreshold10Visible = false;
+
+        Hf8Connected = false;
+        Hf8ConnectionStatus = "No HF8 device detected";
     }
 
     private void PushLedConfig()

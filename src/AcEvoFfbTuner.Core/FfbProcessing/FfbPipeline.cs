@@ -1,3 +1,4 @@
+using AcEvoFfbTuner.Core.DirectInput;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
 
 namespace AcEvoFfbTuner.Core.FfbProcessing;
@@ -14,6 +15,7 @@ public sealed class FfbPipeline
     public FfbOutputClipper OutputClipper { get; } = new();
     public FfbEqualizer Equalizer { get; } = new();
     public FfbTyreFlex TyreFlex { get; } = new();
+    public Hf8SignalMapper Hf8SignalMapper { get; } = new();
 
 
     public float ForceScale { get; set; } = 1.0f;
@@ -219,6 +221,7 @@ public sealed class FfbPipeline
         LfeGenerator.Reset();
         Equalizer.Reset();
         TyreFlex.Reset();
+        Hf8SignalMapper.Reset();
 
 
         _prevDetailOutput = 0f;

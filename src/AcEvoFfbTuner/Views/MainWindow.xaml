@@ -1826,6 +1826,136 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
+            <TabItem Header="Haptic Pad">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="HAPTIC PAD" FontSize="24" FontWeight="Black" Foreground="#FFE67E22" Margin="0,0,0,4" />
+                        <TextBlock Text="{Binding Hf8ConnectionStatus}" FontSize="15" Foreground="#FF888888" Margin="0,0,0,4" />
+                        <Border Background="#FF333355" Height="1" Margin="0,0,0,16" />
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="MASTER SETTINGS" Style="{StaticResource GroupHeader}" />
+                                <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
+                                    <StackPanel>
+                                        <DockPanel Margin="0,6">
+                                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                                <CheckBox IsChecked="{Binding Hf8Enabled}" Margin="0,0,12,0" />
+                                                <TextBlock Text="Enable HF8 Haptic Output" FontSize="15" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <TextBlock Text="Enable motor output to the NLR HF8 / HF8 Pro haptic pad" Style="{StaticResource SliderDescription}" Margin="0,0,0,6" />
+
+                                        <controls:LabeledSlider Value="{Binding Hf8MasterGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Master Gain" StringFormat="{}{0:F2}"
+                                            Description="Overall intensity scaling for all 8 motor zones"
+                                            SectionColor="{StaticResource AccentBrush}" />
+
+                                        <controls:LabeledSlider Value="{Binding Hf8OutputRateHz, Mode=TwoWay}" Minimum="15" Maximum="120" TickFrequency="1"
+                                            Label="Output Rate" StringFormat="{}{0}" Suffix=" Hz"
+                                            Description="Motor update rate (75 Hz for HF8 Pro, 15 Hz for original HF8)"
+                                            SectionColor="{StaticResource AccentBrush}" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="ZONE MAPPING" Style="{StaticResource GroupHeader}" />
+                                <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
+                                    <StackPanel>
+                                        <TextBlock Text="Motor Zone" Style="{StaticResource SubSectionHeader}" Margin="0,0,0,2" />
+                                        <TextBlock Text="Each motor zone gets a unique telemetry signal mix" Style="{StaticResource SliderDescription}" Margin="0,0,0,8" />
+
+                                        <controls:LabeledSlider Value="{Binding Hf8ZoneGain0, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="FL Tire" StringFormat="{}{0:F2}" ValueWidth="52"
+                                            Description="Front-left: suspension + slip ratio + kerbs"
+                                            SectionColor="{StaticResource AccentBrush}" />
+                                        <CheckBox IsChecked="{Binding Hf8ZoneEnabled0}" Content="Enabled" FontSize="12" Foreground="#FFAAAAAA" Margin="0,0,0,8" />
+
+                                        <controls:LabeledSlider Value="{Binding Hf8ZoneGain1, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="FR Tire" StringFormat="{}{0:F2}" ValueWidth="52"
+                                            Description="Front-right: suspension + slip ratio + kerbs"
+                                            SectionColor="{StaticResource AccentBrush}" />
+                                        <CheckBox IsChecked="{Binding Hf8ZoneEnabled1}" Content="Enabled" FontSize="12" Foreground="#FFAAAAAA" Margin="0,0,0,8" />
+
+                                        <controls:LabeledSlider Value="{Binding Hf8ZoneGain2, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="RL Tire" StringFormat="{}{0:F2}" ValueWidth="52"
+                                            Description="Rear-left: suspension + slip ratio"
+                                            SectionColor="{StaticResource AccentBrush}" />
+                                        <CheckBox IsChecked="{Binding Hf8ZoneEnabled2}" Content="Enabled" FontSize="12" Foreground="#FFAAAAAA" Margin="0,0,0,8" />
+
+                                        <controls:LabeledSlider Value="{Binding Hf8ZoneGain3, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="RR Tire" StringFormat="{}{0:F2}" ValueWidth="52"
+                                            Description="Rear-right: suspension + slip ratio"
+                                            SectionColor="{StaticResource AccentBrush}" />
+                                        <CheckBox IsChecked="{Binding Hf8ZoneEnabled3}" Content="Enabled" FontSize="12" Foreground="#FFAAAAAA" Margin="0,0,0,8" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding Hf8ZoneGain4, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Seat Left" StringFormat="{}{0:F2}" ValueWidth="52"
+                                            Description="Seat left: LFE + lateral G + slip vibration"
+                                            SectionColor="{StaticResource AccentBrush}" />
+                                        <CheckBox IsChecked="{Binding Hf8ZoneEnabled4}" Content="Enabled" FontSize="12" Foreground="#FFAAAAAA" Margin="0,0,0,8" />
+
+                                        <controls:LabeledSlider Value="{Binding Hf8ZoneGain5, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Seat Right" StringFormat="{}{0:F2}" ValueWidth="52"
+                                            Description="Seat right: LFE + lateral G + slip vibration"
+                                            SectionColor="{StaticResource AccentBrush}" />
+                                        <CheckBox IsChecked="{Binding Hf8ZoneEnabled5}" Content="Enabled" FontSize="12" Foreground="#FFAAAAAA" Margin="0,0,0,8" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <Border Background="#FF22223A" CornerRadius="6" Padding="16,10" Margin="0,4">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding Hf8ZoneGain6, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Back Upper" StringFormat="{}{0:F2}" ValueWidth="52"
+                                            Description="Back upper: RPM envelope + rear slip + scrub"
+                                            SectionColor="{StaticResource AccentBrush}" />
+                                        <CheckBox IsChecked="{Binding Hf8ZoneEnabled6}" Content="Enabled" FontSize="12" Foreground="#FFAAAAAA" Margin="0,0,0,8" />
+
+                                        <controls:LabeledSlider Value="{Binding Hf8ZoneGain7, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Back Lower" StringFormat="{}{0:F2}" ValueWidth="52"
+                                            Description="Back lower: road vibration + ABS + LFE"
+                                            SectionColor="{StaticResource AccentBrush}" />
+                                        <CheckBox IsChecked="{Binding Hf8ZoneEnabled7}" Content="Enabled" FontSize="12" Foreground="#FFAAAAAA" Margin="0,0,0,8" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Background="#443B00" CornerRadius="4" Padding="10,6" Margin="0,12,0,0">
+                            <TextBlock TextWrapping="Wrap" FontSize="14" Foreground="#FFFFAB00">
+                                <Run Text="HF8 / HF8 Pro haptic pad support requires the device connected via USB." />
+                                <LineBreak />
+                                <Run Text="Close NLR HFS software before using — it holds exclusive HID access." />
+                                <LineBreak />
+                                <Run Text="The HID protocol is reverse-engineered. Use the Debug tab to view discovery logs." />
+                            </TextBlock>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
             <TabItem Header="Settings" DockPanel.Dock="Right">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                     <Grid>

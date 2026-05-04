@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 13;
+    public const int CurrentVersion = 14;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -70,6 +70,7 @@ public sealed class FfbProfile
     public EqConfig Equalizer { get; set; } = new();
     public TyreFlexConfig TyreFlex { get; set; } = new();
     public LedEffectConfigDto LedEffects { get; set; } = new();
+    public Hf8Config Hf8 { get; set; } = new();
     public TelemetrySnapshotDto? LastTelemetrySnapshot { get; set; }
 
     public void ApplyToPipeline(FfbPipeline pipeline)
@@ -173,6 +174,14 @@ public sealed class FfbProfile
         pipeline.TyreFlex.FlexSmoothing = TyreFlex.FlexSmoothing;
         pipeline.TyreFlex.ContactPatchWeight = TyreFlex.ContactPatchWeight;
         pipeline.TyreFlex.LoadFlexGain = TyreFlex.LoadFlexGain;
+
+        pipeline.Hf8SignalMapper.Enabled = Hf8.Enabled;
+        pipeline.Hf8SignalMapper.MasterGain = Hf8.MasterGain;
+        for (int i = 0; i < Hf8SignalMapper.ZoneCount; i++)
+        {
+            pipeline.Hf8SignalMapper.ZoneGains[i] = Hf8.GetZoneGain(i);
+            pipeline.Hf8SignalMapper.ZoneEnabled[i] = Hf8.GetZoneEnabled(i);
+        }
     }
 
     public static FfbProfile CreateFromPipeline(FfbPipeline pipeline, string name)
@@ -283,6 +292,13 @@ public sealed class FfbProfile
             FlexSmoothing = pipeline.TyreFlex.FlexSmoothing,
             ContactPatchWeight = pipeline.TyreFlex.ContactPatchWeight,
             LoadFlexGain = pipeline.TyreFlex.LoadFlexGain
+        };
+        Hf8 = new Hf8Config
+        {
+            Enabled = pipeline.Hf8SignalMapper.Enabled,
+            MasterGain = pipeline.Hf8SignalMapper.MasterGain,
+            ZoneGains = (float[])pipeline.Hf8SignalMapper.ZoneGains.Clone(),
+            ZoneEnabled = (bool[])pipeline.Hf8SignalMapper.ZoneEnabled.Clone()
         };
     }
 
@@ -486,6 +502,7 @@ public sealed class FfbProfile
         Lfe.SanitizeFloats();
         Equalizer.SanitizeFloats();
         TyreFlex.SanitizeFloats();
+        Hf8.SanitizeFloats();
     }
 
     private static float Sanitize(float v) =>
@@ -632,12 +649,15 @@ public sealed class FfbProfile
 
         if (Version < 13)
         {
-            // Split-frequency pipeline: separated pure viscous damping from speed-sensitive.
-            // MaxSlewRate increased from 0.40 to 0.85 (only affects detail path now).
             Damping ??= new DampingConfig();
             Damping.ViscousDamping = 0.15f;
             Advanced ??= new AdvancedConfig();
             Advanced.MaxSlewRate = 0.85f;
+        }
+
+        if (Version < 14)
+        {
+            Hf8 ??= new Hf8Config();
         }
 
         Version = CurrentVersion;
@@ -910,5 +930,49 @@ public sealed class LedEffectConfigDto
             RpmThresholds = config.RpmThresholds,
             CustomColors = config.CustomColors
         };
+    }
+}
+
+public sealed class Hf8Config
+{
+    public bool Enabled { get; set; } = false;
+    public float MasterGain { get; set; } = 0.7f;
+    public int OutputRateHz { get; set; } = 75;
+
+    public float[] ZoneGains { get; set; } = new float[8]
+    {
+        0.8f, 0.8f, 0.8f, 0.8f, 0.6f, 0.6f, 0.5f, 0.7f
+    };
+
+    public bool[] ZoneEnabled { get; set; } = new bool[8]
+    {
+        true, true, true, true, true, true, true, true
+    };
+
+    public float GetZoneGain(int zone) =>
+        zone >= 0 && zone < ZoneGains.Length ? ZoneGains[zone] : 0f;
+
+    public void SetZoneGain(int zone, float gain)
+    {
+        if (zone >= 0 && zone < ZoneGains.Length)
+            ZoneGains[zone] = gain;
+    }
+
+    public bool GetZoneEnabled(int zone) =>
+        zone >= 0 && zone < ZoneEnabled.Length && ZoneEnabled[zone];
+
+    public void SetZoneEnabled(int zone, bool enabled)
+    {
+        if (zone >= 0 && zone < ZoneEnabled.Length)
+            ZoneEnabled[zone] = enabled;
+    }
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats()
+    {
+        MasterGain = S(MasterGain);
+        if (ZoneGains != null)
+            for (int i = 0; i < ZoneGains.Length; i++)
+                ZoneGains[i] = S(ZoneGains[i]);
     }
 }

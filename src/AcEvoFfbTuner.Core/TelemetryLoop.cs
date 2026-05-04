@@ -276,6 +276,12 @@ public sealed class TelemetryLoop : IDisposable
                         }
 
                         _deviceManager.UpdateWheelLeds(raw.RpmPercent, raw.IsChangeUpRpm, raw.IsRpmLimiterOn, raw.Flag, raw.AbsVibrations > 0.001f);
+
+                        if (_deviceManager.IsHf8Connected)
+                        {
+                            var motorIntensities = _pipeline.Hf8SignalMapper.Map(raw, processed, _pipeline.VibrationMixer, _pipeline.LfeGenerator);
+                            _deviceManager.UpdateHf8Motors(motorIntensities);
+                        }
                     }
 
                     // Measure round-trip latency: shared memory read → process → device command
