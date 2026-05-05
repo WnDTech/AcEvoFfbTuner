@@ -133,28 +133,33 @@ public sealed class GitHubUpdateService
 
         progress?.Report(new DownloadProgress { State = DownloadState.Downloading, Percent = 0 });
 
-        using var response = await _downloadHttp.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
-        Log($"DownloadAndInstall: download HTTP {(int)response.StatusCode}, content-length={response.Content.Headers.ContentLength}");
-        response.EnsureSuccessStatusCode();
+        long downloadedBytes;
+        long totalBytes;
 
-        var totalBytes = response.Content.Headers.ContentLength ?? update.FileSize;
-        var downloadedBytes = 0L;
-
-        using var contentStream = await response.Content.ReadAsStreamAsync();
-        using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-
-        var buffer = new byte[81920];
-        int bytesRead;
-
-        while ((bytesRead = await contentStream.ReadAsync(buffer)) > 0)
         {
-            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
-            downloadedBytes += bytesRead;
+            using var response = await _downloadHttp.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
+            Log($"DownloadAndInstall: download HTTP {(int)response.StatusCode}, content-length={response.Content.Headers.ContentLength}");
+            response.EnsureSuccessStatusCode();
 
-            if (totalBytes > 0)
+            totalBytes = response.Content.Headers.ContentLength ?? update.FileSize;
+            downloadedBytes = 0L;
+
+            using var contentStream = await response.Content.ReadAsStreamAsync();
+            using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+
+            var buffer = new byte[81920];
+            int bytesRead;
+
+            while ((bytesRead = await contentStream.ReadAsync(buffer)) > 0)
             {
-                var percent = (int)((double)downloadedBytes / totalBytes * 100);
-                progress?.Report(new DownloadProgress { State = DownloadState.Downloading, Percent = percent });
+                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
+                downloadedBytes += bytesRead;
+
+                if (totalBytes > 0)
+                {
+                    var percent = (int)((double)downloadedBytes / totalBytes * 100);
+                    progress?.Report(new DownloadProgress { State = DownloadState.Downloading, Percent = percent });
+                }
             }
         }
 
