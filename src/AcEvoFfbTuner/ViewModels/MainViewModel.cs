@@ -2822,6 +2822,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         catch { }
     }
 
+    private static void LogUpdate(string message)
+    {
+        try
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "AcEvoFfbTuner");
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(Path.Combine(dir, "update.log"),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}\n");
+        }
+        catch { }
+    }
+
     [RelayCommand]
     private async Task CheckForUpdatesAsync()
     {
@@ -2831,6 +2844,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         try
         {
             var service = new GitHubUpdateService();
+            LogUpdate($"CheckForUpdates: current version={service.CurrentVersion}, checking...");
             var update = await service.CheckForUpdateAsync();
 
             if (update != null)
@@ -2839,16 +2853,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 LatestVersionText = $"v{update.Version}";
                 IsUpdateAvailable = true;
                 UpdateStatusText = $"Update available: v{update.Version}";
+                LogUpdate($"CheckForUpdates: update available v{update.Version}, url={update.DownloadUrl}");
             }
             else
             {
                 UpdateStatusText = $"You're up to date (v{service.CurrentVersion.ToString(3)})";
                 _pendingUpdate = null;
+                LogUpdate("CheckForUpdates: up to date");
             }
         }
-        catch
+        catch (Exception ex)
         {
             UpdateStatusText = "Update check failed";
+            LogUpdate($"CheckForUpdates FAILED: {ex.GetType().Name}: {ex.Message}");
         }
     }
 
@@ -2860,6 +2877,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         IsDownloadingUpdate = true;
         IsUpdateAvailable = false;
         UpdateStatusText = "Downloading update...";
+        LogUpdate($"DownloadAndInstall: starting for v{_pendingUpdate.Version}");
 
         try
         {
@@ -2873,6 +2891,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
             await GitHubUpdateService.DownloadAndInstallAsync(_pendingUpdate, progress);
 
+            LogUpdate("DownloadAndInstall: installer launched successfully, shutting down app");
             UpdateStatusText = "Installer launched — closing app...";
             Dispose();
             Application.Current.Shutdown();
@@ -2881,6 +2900,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             UpdateStatusText = $"Download failed: {ex.Message}";
             IsUpdateAvailable = true;
+            LogUpdate($"DownloadAndInstall FAILED: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
         }
         finally
         {
