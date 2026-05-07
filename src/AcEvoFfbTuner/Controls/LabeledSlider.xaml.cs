@@ -2,6 +2,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 
 namespace AcEvoFfbTuner.Controls
 {
@@ -107,6 +109,84 @@ namespace AcEvoFfbTuner.Controls
         public double LabelWidth { get => (double)GetValue(LabelWidthProperty); set => SetValue(LabelWidthProperty, value); }
         public string DisplayText { get => (string)GetValue(DisplayTextProperty); set => SetValue(DisplayTextProperty, value); }
         public double ValueWidth { get => (double)GetValue(ValueWidthProperty); set => SetValue(ValueWidthProperty, value); }
+
+        public static readonly DependencyProperty RecentlyChangedProperty =
+            DependencyProperty.Register(nameof(RecentlyChanged), typeof(bool), typeof(LabeledSlider),
+                new PropertyMetadata(false, OnRecentlyChanged));
+
+        public bool RecentlyChanged { get => (bool)GetValue(RecentlyChangedProperty); set => SetValue(RecentlyChangedProperty, value); }
+
+        private DispatcherTimer? _glowTimer;
+        private static readonly Duration GlowDuration = TimeSpan.FromSeconds(5);
+
+        private static void OnRecentlyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var c = (LabeledSlider)d;
+            if (c.GlowBorder == null) return;
+
+            if ((bool)e.NewValue)
+            {
+                c.StartGlowAnimation();
+            }
+        }
+
+        private void StartGlowAnimation()
+        {
+            _glowTimer?.Stop();
+
+            var sectionBrush = SectionColor as SolidColorBrush;
+            var glowColor = sectionBrush?.Color ?? Color.FromRgb(0xF0, 0x88, 0x3E);
+
+            var borderAnim = new ColorAnimation
+            {
+                From = glowColor,
+                To = Colors.Transparent,
+                Duration = GlowDuration,
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            var thicknessAnim = new ThicknessAnimation
+            {
+                From = new Thickness(2, 1, 2, 1),
+                To = new Thickness(0),
+                Duration = GlowDuration,
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            Storyboard.SetTarget(borderAnim, GlowBorder);
+            Storyboard.SetTargetProperty(borderAnim, new PropertyPath("(Border.BorderBrush).(SolidColorBrush.Color)"));
+            Storyboard.SetTarget(thicknessAnim, GlowBorder);
+            Storyboard.SetTargetProperty(thicknessAnim, new PropertyPath("(Border.BorderThickness)"));
+
+            var sb = new Storyboard();
+            sb.Children.Add(borderAnim);
+            sb.Children.Add(thicknessAnim);
+
+            GlowBorder.BorderBrush = new SolidColorBrush(glowColor);
+            GlowBorder.BorderThickness = new Thickness(2, 1, 2, 1);
+
+            sb.Completed += (s, e) =>
+            {
+                RecentlyChanged = false;
+                GlowBorder.BorderThickness = new Thickness(0);
+            };
+
+            sb.Begin(GlowBorder);
+
+            _glowTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5.1) };
+            _glowTimer.Tick += (s, e) =>
+            {
+                _glowTimer.Stop();
+                RecentlyChanged = false;
+            };
+            _glowTimer.Start();
+        }
+
+        private void TriggerRecentlyChanged()
+        {
+            RecentlyChanged = false;
+            RecentlyChanged = true;
+        }
 
         public LabeledSlider()
         {
@@ -266,6 +346,7 @@ namespace AcEvoFfbTuner.Controls
             _isUpdatingValue = false;
             SyncTextBoxFromValue();
             UpdateResetButton();
+            TriggerRecentlyChanged();
         }
 
         private void OnSliderPreviewMouseDown(object sender, MouseButtonEventArgs e)
@@ -313,6 +394,7 @@ namespace AcEvoFfbTuner.Controls
             SyncTextBoxFromValue();
             UpdateResetButton();
             e.Handled = true;
+            TriggerRecentlyChanged();
         }
 
         #endregion
@@ -400,6 +482,7 @@ namespace AcEvoFfbTuner.Controls
                 _isUpdatingValue = false;
                 SyncSliderFromValue();
                 UpdateResetButton();
+                TriggerRecentlyChanged();
             }
             SyncTextBoxFromValue();
         }

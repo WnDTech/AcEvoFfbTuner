@@ -5,26 +5,27 @@
              >
     <Application.Resources>
         <ResourceDictionary>
-            <SolidColorBrush x:Key="BgDark" Color="#FF0D0D0D" />
-            <SolidColorBrush x:Key="BgPanel" Color="#FF1A1A2E" />
-            <SolidColorBrush x:Key="BgCard" Color="#FF22223A" />
-            <SolidColorBrush x:Key="BgInput" Color="#FF2A2A45" />
-            <SolidColorBrush x:Key="AccentBrush" Color="#FFE67E22" />
+            <SolidColorBrush x:Key="BgDark" Color="#FF0F1117" />
+            <SolidColorBrush x:Key="BgPanel" Color="#FF161B22" />
+            <SolidColorBrush x:Key="BgCard" Color="#FF1C2128" />
+            <SolidColorBrush x:Key="BgInput" Color="#FF21262D" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#FFF0883E" />
             <SolidColorBrush x:Key="GreenBrush" Color="#FF00E676" />
             <SolidColorBrush x:Key="YellowBrush" Color="#FFFFD600" />
-            <SolidColorBrush x:Key="TextBrush" Color="#FFE0E0E0" />
-            <SolidColorBrush x:Key="TextDimBrush" Color="#FF888888" />
+            <SolidColorBrush x:Key="TextBrush" Color="#FFE6EDF3" />
+            <SolidColorBrush x:Key="TextDimBrush" Color="#FF8B949E" />
+            <SolidColorBrush x:Key="BorderBrush" Color="#FF30363D" />
 
-            <SolidColorBrush x:Key="SectionTyreForces" Color="#FF90CAF9" />
-            <SolidColorBrush x:Key="SectionTyreSlip" Color="#FF4DB6AC" />
-            <SolidColorBrush x:Key="SectionGripFeel" Color="#FF66BB6A" />
-            <SolidColorBrush x:Key="SectionDamping" Color="#FFFFD600" />
-            <SolidColorBrush x:Key="SectionDynamic" Color="#FFFF9800" />
-            <SolidColorBrush x:Key="SectionTyreFlex" Color="#FF26C6DA" />
-            <SolidColorBrush x:Key="SectionOutput" Color="#FFE67E22" />
-            <SolidColorBrush x:Key="SectionVibration" Color="#FFCE93D8" />
-            <SolidColorBrush x:Key="SectionLfe" Color="#FFEF5350" />
-            <SolidColorBrush x:Key="SectionSignal" Color="#FF4FC3F7" />
+            <SolidColorBrush x:Key="SectionTyreForces" Color="#FF79C0FF" />
+            <SolidColorBrush x:Key="SectionTyreSlip" Color="#FF56D4A0" />
+            <SolidColorBrush x:Key="SectionGripFeel" Color="#FF7EE787" />
+            <SolidColorBrush x:Key="SectionDamping" Color="#FFE3B341" />
+            <SolidColorBrush x:Key="SectionDynamic" Color="#FFF0883E" />
+            <SolidColorBrush x:Key="SectionTyreFlex" Color="#FF58A6FF" />
+            <SolidColorBrush x:Key="SectionOutput" Color="#FFF0883E" />
+            <SolidColorBrush x:Key="SectionVibration" Color="#FFD2A8FF" />
+            <SolidColorBrush x:Key="SectionLfe" Color="#FFFF7B72" />
+            <SolidColorBrush x:Key="SectionSignal" Color="#FF79C0FF" />
 
             <Style TargetType="Window">
                 <Setter Property="Background" Value="{StaticResource BgDark}" />
@@ -33,14 +34,14 @@
             </Style>
 
             <Style TargetType="TabControl">
-                <Setter Property="Background" Value="#FF0D0D0D" />
+                <Setter Property="Background" Value="#FF0F1117" />
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="BorderThickness" Value="0" />
             </Style>
 
             <Style TargetType="TabItem">
                 <Setter Property="Background" Value="{StaticResource BgPanel}" />
-                <Setter Property="Foreground" Value="#FF888888" />
+                <Setter Property="Foreground" Value="#FF8B949E" />
                 <Setter Property="FontSize" Value="15" />
                 <Setter Property="Padding" Value="18,10" />
                 <Setter Property="BorderThickness" Value="0" />
@@ -52,13 +53,13 @@
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="#FF252545" />
-                                    <Setter Property="Foreground" Value="#FFCCCCCC" />
+                                    <Setter TargetName="Bd" Property="Background" Value="#FF21262D" />
+                                    <Setter Property="Foreground" Value="#FFE6EDF3" />
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="#FF0D0D0D" />
-                                    <Setter Property="Foreground" Value="#FFE67E22" />
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#FFE67E22" />
+                                    <Setter TargetName="Bd" Property="Background" Value="#FF0F1117" />
+                                    <Setter Property="Foreground" Value="#FFF0883E" />
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#FFF0883E" />
                                     <Setter TargetName="Bd" Property="BorderThickness" Value="0,2,0,0" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
@@ -126,7 +127,7 @@
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="BorderBrush" Value="#FF555555" />
+                <Setter Property="BorderBrush" Value="#FF8B949E" />
                 <Setter Property="Padding" Value="16,8" />
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="Cursor" Value="Hand" />
@@ -175,7 +176,7 @@
                 <Setter Property="Background" Value="{StaticResource BgInput}" />
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="BorderBrush" Value="#FF555555" />
+                <Setter Property="BorderBrush" Value="#FF8B949E" />
                 <Setter Property="Padding" Value="20,8" />
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="FontWeight" Value="Bold" />
@@ -204,7 +205,7 @@
                 <Setter Property="Background" Value="{StaticResource BgInput}" />
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="BorderBrush" Value="#FF555555" />
+                <Setter Property="BorderBrush" Value="#FF8B949E" />
                 <Setter Property="Padding" Value="8,6" />
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -222,7 +223,7 @@
                                                         <ColumnDefinition Width="30" />
                                                     </Grid.ColumnDefinitions>
                                                     <ContentPresenter Grid.Column="0" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" Margin="8,4" HorizontalAlignment="Left" VerticalAlignment="Center" />
-                                                    <Path Grid.Column="1" Data="M0,0 L0,2 L4,6 L8,2 L8,0 Z" Fill="#FFE0E0E0" Width="8" Height="6" Margin="0,0,10,0" HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Fill" />
+                                                    <Path Grid.Column="1" Data="M0,0 L0,2 L4,6 L8,2 L8,0 Z" Fill="#FFE6EDF3" Width="8" Height="6" Margin="0,0,10,0" HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Fill" />
                                                 </Grid>
                                             </Border>
                                         </ControlTemplate>
@@ -230,7 +231,7 @@
                                     <ContentPresenter Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
                                 </ToggleButton>
                                 <Popup x:Name="Popup" Placement="Bottom" IsOpen="{Binding Path=IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
-                                    <Border Background="#FF22223A" BorderBrush="#FF555555" BorderThickness="1" CornerRadius="4" MaxHeight="300" MinWidth="{TemplateBinding ActualWidth}">
+                                    <Border Background="#FF1C2128" BorderBrush="#FF8B949E" BorderThickness="1" CornerRadius="4" MaxHeight="300" MinWidth="{TemplateBinding ActualWidth}">
                                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                                             <ItemsPresenter />
                                         </ScrollViewer>
@@ -252,7 +253,7 @@
 
             <Style TargetType="ComboBoxItem">
                 <Setter Property="Background" Value="Transparent" />
-                <Setter Property="Foreground" Value="#FFE0E0E0" />
+                <Setter Property="Foreground" Value="#FFE6EDF3" />
                 <Setter Property="Padding" Value="10,10" />
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -314,7 +315,7 @@
                                                     <ControlTemplate TargetType="Thumb">
                                                         <Grid>
                                                             <Ellipse Width="36" Height="36" Fill="#33E67E22" />
-                                                            <Ellipse x:Name="ThumbFill" Width="28" Height="28" Fill="#FFE67E22" Stroke="White" StrokeThickness="2" />
+                                                            <Ellipse x:Name="ThumbFill" Width="28" Height="28" Fill="#FFF0883E" Stroke="White" StrokeThickness="2" />
                                                         </Grid>
                                                         <ControlTemplate.Triggers>
                                                             <Trigger Property="IsMouseOver" Value="True">
@@ -372,7 +373,7 @@
                                                     <ControlTemplate TargetType="Thumb">
                                                         <Grid>
                                                             <Ellipse Width="32" Height="32" Fill="#33E67E22" />
-                                                            <Ellipse x:Name="ThumbFill" Width="24" Height="24" Fill="#FFE67E22" Stroke="White" StrokeThickness="2" />
+                                                            <Ellipse x:Name="ThumbFill" Width="24" Height="24" Fill="#FFF0883E" Stroke="White" StrokeThickness="2" />
                                                         </Grid>
                                                         <ControlTemplate.Triggers>
                                                             <Trigger Property="IsMouseOver" Value="True">
@@ -402,7 +403,7 @@
 
             <Style x:Key="SectionExpander" TargetType="Expander">
                 <Setter Property="Background" Value="#1AE67E22" />
-                <Setter Property="Foreground" Value="#FFAAAAAA" />
+                <Setter Property="Foreground" Value="#FF8B949E" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="Margin" Value="0,8,0,0" />
@@ -416,7 +417,7 @@
                                         <ControlTemplate TargetType="ToggleButton">
                                             <Border x:Name="ToggleBd" Background="Transparent" Padding="4,4" CornerRadius="3">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock x:Name="Arrow" Text="&#x25B6;" FontSize="12" Foreground="#FFAAAAAA" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                    <TextBlock x:Name="Arrow" Text="&#x25B6;" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
                                                     <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Border>
@@ -454,7 +455,7 @@
                 <Setter Property="Background" Value="{StaticResource BgInput}" />
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="BorderBrush" Value="#FF555555" />
+                <Setter Property="BorderBrush" Value="#FF8B949E" />
                 <Setter Property="Padding" Value="8,6" />
                 <Setter Property="FontSize" Value="14" />
                 <Style.Triggers>
@@ -473,14 +474,14 @@
             </Style>
 
             <Style TargetType="ScrollBar">
-                <Setter Property="Background" Value="#FF1A1A2E" />
-                <Setter Property="Foreground" Value="#FF555555" />
+                <Setter Property="Background" Value="#FF161B22" />
+                <Setter Property="Foreground" Value="#FF8B949E" />
                 <Setter Property="Width" Value="14" />
             </Style>
 
             <Style TargetType="RepeatButton" x:Key="ScrollButtonStyle">
-                <Setter Property="Background" Value="#FF1A1A2E" />
-                <Setter Property="Foreground" Value="#FF555555" />
+                <Setter Property="Background" Value="#FF161B22" />
+                <Setter Property="Foreground" Value="#FF8B949E" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -492,7 +493,7 @@
             </Style>
 
             <Style TargetType="Thumb" x:Key="ScrollThumbStyle">
-                <Setter Property="Background" Value="#FF555555" />
+                <Setter Property="Background" Value="#FF8B949E" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -503,10 +504,10 @@
                 </Setter>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="#FF888888" />
+                        <Setter Property="Background" Value="#FF8B949E" />
                     </Trigger>
                     <Trigger Property="IsDragging" Value="True">
-                        <Setter Property="Background" Value="#FFAAAAAA" />
+                        <Setter Property="Background" Value="#FF8B949E" />
                     </Trigger>
                 </Style.Triggers>
             </Style>

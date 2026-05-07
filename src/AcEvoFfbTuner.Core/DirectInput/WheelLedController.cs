@@ -159,6 +159,10 @@ public sealed class WheelLedController : IDisposable
 
     private volatile LedEffectConfig _config = new();
 
+    private volatile int _activeLedCount;
+
+    public int ActiveLedCount => _activeLedCount;
+
     private readonly List<string> _diagnosticLog = new();
 
     private int _sendCount;
@@ -878,14 +882,19 @@ public sealed class WheelLedController : IDisposable
     private int CountLedsForRpm(float rpmFraction, int ledCount)
     {
         int[] thresholds = _config.GetEffectiveRpmThresholds();
+        float rpmPct = rpmFraction * 100f;
         int count = 0;
         for (int i = 0; i < ledCount && i < thresholds.Length; i++)
         {
-            if (rpmFraction * 100f >= thresholds[i])
+            float threshold = thresholds[i];
+            if (i == ledCount - 1)
+                threshold -= 0.9f;
+            if (rpmPct >= threshold)
                 count = i + 1;
             else
                 break;
         }
+        _activeLedCount = count;
         return count;
     }
 

@@ -1,0 +1,50 @@
+<UserControl x:Class="AcEvoFfbTuner.Controls.SectionCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <Border Background="{StaticResource BgCard}" CornerRadius="8"
+            BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+            Margin="0,0,0,12">
+        <DockPanel>
+            <Border DockPanel.Dock="Left" Width="3"
+                    Background="{Binding SectionBrush, ElementName=Root}"
+                    CornerRadius="8,0,0,8" />
+            <StackPanel Margin="16,14">
+                <DockPanel>
+                    <ToggleButton x:Name="ExpandToggle" DockPanel.Dock="Right"
+                                  IsChecked="{Binding IsExpanded, ElementName=Root, Mode=TwoWay}"
+                                  Cursor="Hand">
+                        <ToggleButton.Template>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <Border x:Name="Bd" Background="Transparent" Padding="6,2" CornerRadius="3">
+                                    <TextBlock x:Name="Arrow" Text="&#x25B6;" FontSize="11"
+                                               Foreground="#FF8B949E" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#1AFFFFFF" />
+                                    </Trigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="Arrow" Property="Text" Value="&#x25BC;" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </ToggleButton.Template>
+                    </ToggleButton>
+                    <TextBlock Text="{Binding Title, ElementName=Root}"
+                               FontSize="15" FontWeight="Bold"
+                               Foreground="{Binding SectionBrush, ElementName=Root}"
+                               VerticalAlignment="Center" />
+                </DockPanel>
+
+                <ContentPresenter x:Name="SummaryPart"
+                                  Content="{Binding SummaryContent, ElementName=Root}"
+                                  Margin="0,6,0,0" />
+
+                <ContentPresenter x:Name="ContentPart"
+                                  Content="{Binding InnerContent, ElementName=Root}"
+                                  Margin="0,6,0,0" />
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</UserControl>

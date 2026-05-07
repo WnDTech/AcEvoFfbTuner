@@ -859,6 +859,7 @@ public sealed class FfbDeviceManager : IDisposable
     public WheelVendor LedControllerVendor => _ledController.Vendor;
     public string LedDiagnosticInfo => _ledController.DiagnosticSummary;
     public int LedCount => _ledController.LedCount;
+    public int ActiveLedCount => _ledController.ActiveLedCount;
     public bool LedSupportsRgb => _ledController.SupportsRgbColors;
     public bool LedSupportsBrightness => _ledController.SupportsBrightnessControl;
     public bool LedSupportsFlags => _ledController.SupportsFlagIndicators;

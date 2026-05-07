@@ -19,7 +19,7 @@
         </Style>
         <Style TargetType="Button">
             <Setter Property="Background" Value="#FF333355" />
-            <Setter Property="Foreground" Value="#FFE0E0E0" />
+            <Setter Property="Foreground" Value="#FFE6EDF3" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="8,4" />
             <Setter Property="FontSize" Value="13" />
@@ -40,7 +40,7 @@
             </Setter>
         </Style>
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FFE0E0E0" />
+            <Setter Property="Foreground" Value="#FFE6EDF3" />
         </Style>
     </Window.Resources>
 
@@ -65,7 +65,7 @@
                     <Grid>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="TRACK MAP" FontSize="15" FontWeight="Black"
-                                       Foreground="#FFE67E22" VerticalAlignment="Center" />
+                                       Foreground="#FFF0883E" VerticalAlignment="Center" />
                             <TextBlock x:Name="OvTrackName" Text="" FontSize="13" Foreground="#FF00E676"
                                        VerticalAlignment="Center" Margin="10,0,0,0" />
                         </StackPanel>
@@ -77,18 +77,18 @@
                             <Button x:Name="BtnTransparency" ToolTip="Toggle transparency"
                                     Width="28" Height="28" FontSize="16" Padding="0" Margin="0,0,4,0"
                                     Click="ToggleTransparency">
-                                <TextBlock x:Name="TransparencyIcon" Text="OPQ" FontSize="12" FontWeight="Bold" Foreground="#FFE0E0E0" />
+                                <TextBlock x:Name="TransparencyIcon" Text="OPQ" FontSize="12" FontWeight="Bold" Foreground="#FFE6EDF3" />
                             </Button>
                             <Button x:Name="BtnClose" ToolTip="Close"
                                     Width="28" Height="28" FontSize="16" Padding="0"
                                     Background="#FF552222" Click="CloseOverlay">
-                                <TextBlock Text="X" FontWeight="Bold" Foreground="#FFE0E0E0" />
+                                <TextBlock Text="X" FontWeight="Bold" Foreground="#FFE6EDF3" />
                             </Button>
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="1" Background="#FF1A1A2E" Padding="8,4" Margin="0,1,0,0">
+                <Border Grid.Row="1" Background="#FF161B22" Padding="8,4" Margin="0,1,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -101,29 +101,29 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                            <TextBlock Text="Progress" FontSize="10" Foreground="#FF888888" />
+                            <TextBlock Text="Progress" FontSize="10" Foreground="#FF8B949E" />
                             <TextBlock x:Name="OvProgress" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="0,0,4,0">
-                            <TextBlock Text="Corner" FontSize="10" Foreground="#FF888888" />
+                            <TextBlock Text="Corner" FontSize="10" Foreground="#FF8B949E" />
                             <TextBlock x:Name="OvCorner" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" />
                         </StackPanel>
                         <StackPanel Grid.Column="2" Margin="0,0,4,0">
-                            <TextBlock Text="Sector" FontSize="10" Foreground="#FF888888" />
+                            <TextBlock Text="Sector" FontSize="10" Foreground="#FF8B949E" />
                             <TextBlock x:Name="OvSector" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FF00BCD4" />
                         </StackPanel>
                         <StackPanel Grid.Column="3" Margin="0,0,4,0">
-                            <TextBlock Text="Status" FontSize="10" Foreground="#FF888888" />
-                            <TextBlock x:Name="OvOnTrack" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FF555555" />
+                            <TextBlock Text="Status" FontSize="10" Foreground="#FF8B949E" />
+                            <TextBlock x:Name="OvOnTrack" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FF8B949E" />
                         </StackPanel>
                         <StackPanel Grid.Column="4" Margin="0,0,4,0">
-                            <TextBlock Text="Waypoints" FontSize="10" Foreground="#FF888888" />
-                            <TextBlock x:Name="OvWaypoints" Text="--" FontSize="14" Foreground="#FFE0E0E0" />
+                            <TextBlock Text="Waypoints" FontSize="10" Foreground="#FF8B949E" />
+                            <TextBlock x:Name="OvWaypoints" Text="--" FontSize="14" Foreground="#FFE6EDF3" />
                         </StackPanel>
                         <CheckBox x:Name="OvShowHeatmap" Grid.Column="5" Content="Heat" IsChecked="True"
-                                  FontSize="12" Foreground="#FFAAAAAA" VerticalAlignment="Center" Margin="4,0" />
+                                  FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="4,0" />
                         <CheckBox x:Name="OvShowEdges" Grid.Column="6" Content="Edges" IsChecked="False"
-                                  FontSize="12" Foreground="#FFAAAAAA" VerticalAlignment="Center" Margin="4,0" />
+                                  FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="4,0" />
                         <CheckBox x:Name="OvShowDiag" Grid.Column="7" Content="Diag" IsChecked="True"
                                   FontSize="12" Foreground="#FFFF8A65" VerticalAlignment="Center" Margin="4,0" />
                     </Grid>
@@ -133,7 +133,7 @@
                     <Canvas x:Name="OvCanvas" ClipToBounds="True" />
                 </Border>
 
-                <Border Grid.Row="3" Background="#FF1A1A2E" Padding="8,4" Margin="0,1,0,0">
+                <Border Grid.Row="3" Background="#FF161B22" Padding="8,4" Margin="0,1,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -143,24 +143,24 @@
                             <Ellipse Width="8" Height="8" Margin="0,0,4,0" VerticalAlignment="Center">
                                 <Ellipse.Style>
                                     <Style TargetType="Ellipse">
-                                        <Setter Property="Fill" Value="#FF555555" />
+                                        <Setter Property="Fill" Value="#FF8B949E" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding ElementName=OvStatusDot}" Value="True">
-                                                <Setter Property="Fill" Value="#FFE67E22" />
+                                                <Setter Property="Fill" Value="#FFF0883E" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Ellipse.Style>
                             </Ellipse>
                             <TextBlock x:Name="OvStatusDot" />
-                            <TextBlock x:Name="OvMapStatus" Text="No Map" FontSize="12" Foreground="#FF888888" VerticalAlignment="Center" />
+                            <TextBlock x:Name="OvMapStatus" Text="No Map" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" />
                             <TextBlock x:Name="OvTrackStats" Text="" FontSize="11" Foreground="#FF666666" VerticalAlignment="Center" Margin="12,0,0,0" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="X:" FontSize="12" Foreground="#FF888888" Margin="0,0,3,0" />
-                            <TextBlock x:Name="OvCarX" Text="--" FontSize="12" Foreground="#FFE0E0E0" FontFamily="Consolas" Margin="0,0,10,0" />
-                            <TextBlock Text="Z:" FontSize="12" Foreground="#FF888888" Margin="0,0,3,0" />
-                            <TextBlock x:Name="OvCarZ" Text="--" FontSize="12" Foreground="#FFE0E0E0" FontFamily="Consolas" />
+                            <TextBlock Text="X:" FontSize="12" Foreground="#FF8B949E" Margin="0,0,3,0" />
+                            <TextBlock x:Name="OvCarX" Text="--" FontSize="12" Foreground="#FFE6EDF3" FontFamily="Consolas" Margin="0,0,10,0" />
+                            <TextBlock Text="Z:" FontSize="12" Foreground="#FF8B949E" Margin="0,0,3,0" />
+                            <TextBlock x:Name="OvCarZ" Text="--" FontSize="12" Foreground="#FFE6EDF3" FontFamily="Consolas" />
                         </StackPanel>
                     </Grid>
                 </Border>

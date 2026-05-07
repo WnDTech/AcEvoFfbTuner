@@ -35,6 +35,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private string _statusText = "Ready";
 
     [ObservableProperty]
+    private NavPage _currentPage = NavPage.FfbTuning;
+
+    [ObservableProperty]
     private bool _isGameConnected;
 
     [ObservableProperty]
@@ -427,6 +430,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private int _ledVisibleCount;
 
     [ObservableProperty]
+    private int _activeLedCount;
+
+    [ObservableProperty]
     private string _ledVendorName = string.Empty;
 
     [ObservableProperty]
@@ -633,8 +639,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var buttons = _deviceManager.PollButtons();
         if (buttons == null)
         {
-            if (Application.Current?.MainWindow is MainWindow mw)
-                mw.ProfButtonsDetected.Text = "";
+            ButtonDetectionText = "";
         }
         else
         {
@@ -651,8 +656,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 }
             }
 
-            if (Application.Current?.MainWindow is MainWindow mw2)
-                mw2.ProfButtonsDetected.Text = pressed.Length > 0 ? $"Pressed: {pressed}" : "";
+            ButtonDetectionText = pressed.Length > 0 ? $"Pressed: {pressed}" : "";
 
             if (IsAssigningSnapshotButton)
             {
@@ -752,6 +756,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _panicAssignStatus = "";
+
+    [ObservableProperty]
+    private string _buttonDetectionText = "";
 
     public int PanicButtonIndex => PanicButtonComboIndex <= 0 ? -1 : PanicButtonComboIndex - 1;
     public int PanicDeviceButtonCount => _deviceManager.SecondaryButtonCount;
@@ -1868,6 +1875,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CurrentRawForce = processed.RawFinalFf;
             IsClipping = processed.IsClipping;
             SpeedKmh = processed.SpeedKmh;
+            ActiveLedCount = _deviceManager.ActiveLedCount;
 
             _gameRecordingService.OnTelemetryTick(processed.SpeedKmh);
             IsScreenRecording = _gameRecordingService.IsRecording;

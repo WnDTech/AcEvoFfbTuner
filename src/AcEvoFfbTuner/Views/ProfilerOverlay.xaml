@@ -18,7 +18,7 @@
         </Style>
         <Style TargetType="Button">
             <Setter Property="Background" Value="#FF333355" />
-            <Setter Property="Foreground" Value="#FFE0E0E0" />
+            <Setter Property="Foreground" Value="#FFE6EDF3" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="8,4" />
             <Setter Property="FontSize" Value="14" />
@@ -39,7 +39,7 @@
             </Setter>
         </Style>
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FFE0E0E0" />
+            <Setter Property="Foreground" Value="#FFE6EDF3" />
         </Style>
     </Window.Resources>
 
@@ -67,18 +67,18 @@
                             <Button x:Name="BtnTransparency" ToolTip="Toggle transparency"
                                     Width="28" Height="28" FontSize="16" Padding="0" Margin="0,0,4,0"
                                     Click="ToggleTransparency">
-                                <TextBlock x:Name="TransparencyIcon" Text="OPQ" FontSize="12" FontWeight="Bold" Foreground="#FFE0E0E0" />
+                                <TextBlock x:Name="TransparencyIcon" Text="OPQ" FontSize="12" FontWeight="Bold" Foreground="#FFE6EDF3" />
                             </Button>
                             <Button x:Name="BtnClose" ToolTip="Close"
                                     Width="28" Height="28" FontSize="16" Padding="0"
                                     Background="#FF552222" Click="CloseOverlay">
-                                <TextBlock Text="X" FontWeight="Bold" Foreground="#FFE0E0E0" />
+                                <TextBlock Text="X" FontWeight="Bold" Foreground="#FFE6EDF3" />
                             </Button>
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="1" Background="#FF1A1A2E" Padding="10,6" Margin="0,1,0,0">
+                <Border Grid.Row="1" Background="#FF161B22" Padding="10,6" Margin="0,1,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -89,27 +89,27 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                            <TextBlock Text="Speed" FontSize="11" Foreground="#FF888888" />
+                            <TextBlock Text="Speed" FontSize="11" Foreground="#FF8B949E" />
                             <TextBlock x:Name="OvSpeed" Text="--" FontSize="16" FontWeight="Bold" Foreground="#FFFFD600" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="0,0,4,0">
-                            <TextBlock Text="Force" FontSize="11" Foreground="#FF888888" />
-                            <TextBlock x:Name="OvForce" Text="--" FontSize="16" FontWeight="Bold" Foreground="#FFE67E22" />
+                            <TextBlock Text="Force" FontSize="11" Foreground="#FF8B949E" />
+                            <TextBlock x:Name="OvForce" Text="--" FontSize="16" FontWeight="Bold" Foreground="#FFF0883E" />
                         </StackPanel>
                         <StackPanel Grid.Column="2" Margin="0,0,4,0">
-                            <TextBlock Text="Throttle" FontSize="11" Foreground="#FF888888" />
+                            <TextBlock Text="Throttle" FontSize="11" Foreground="#FF8B949E" />
                             <TextBlock x:Name="OvGas" Text="--" FontSize="16" FontWeight="Bold" Foreground="#FF4CAF50" />
                         </StackPanel>
                         <StackPanel Grid.Column="3" Margin="0,0,4,0">
-                            <TextBlock Text="Brake" FontSize="11" Foreground="#FF888888" />
+                            <TextBlock Text="Brake" FontSize="11" Foreground="#FF8B949E" />
                             <TextBlock x:Name="OvBrake" Text="--" FontSize="16" FontWeight="Bold" Foreground="#FFE53935" />
                         </StackPanel>
                         <StackPanel Grid.Column="4" Margin="0,0,4,0">
-                            <TextBlock Text="Clipping" FontSize="11" Foreground="#FF888888" />
+                            <TextBlock Text="Clipping" FontSize="11" Foreground="#FF8B949E" />
                             <TextBlock x:Name="OvClip" Text="0.0%" FontSize="16" FontWeight="Bold" Foreground="#FF00E676" />
                         </StackPanel>
                         <StackPanel Grid.Column="5" Margin="0,0,4,0">
-                            <TextBlock Text="Min / Max" FontSize="11" Foreground="#FF888888" />
+                            <TextBlock Text="Min / Max" FontSize="11" Foreground="#FF8B949E" />
                             <TextBlock x:Name="OvMinMax" Text="-- / --" FontSize="14" Foreground="#FF00BCD4" />
                         </StackPanel>
                     </Grid>
@@ -119,7 +119,7 @@
                     <Canvas x:Name="OvCanvas" ClipToBounds="True" />
                 </Border>
 
-                <Border Grid.Row="3" Background="#FF1A1A2E" CornerRadius="0,0,7,7" Padding="10,4">
+                <Border Grid.Row="3" Background="#FF161B22" CornerRadius="0,0,7,7" Padding="10,4">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -132,8 +132,8 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" FontSize="12" Foreground="#FF666666" VerticalAlignment="Center"
                                    Text="Drag to move | Scroll to resize" Margin="0,0,8,0" />
-                        <Border Grid.Column="2" Width="1" Background="#FF444466" Margin="0,0,6,0" />
-                        <CheckBox x:Name="OvShowOutput" Grid.Column="3" Content="Out" IsChecked="True" FontSize="13" Foreground="#FFE67E22" Margin="0,0,4,0" VerticalAlignment="Center" />
+                        <Border Grid.Column="2" Width="1" Background="#FF30363D" Margin="0,0,6,0" />
+                        <CheckBox x:Name="OvShowOutput" Grid.Column="3" Content="Out" IsChecked="True" FontSize="13" Foreground="#FFF0883E" Margin="0,0,4,0" VerticalAlignment="Center" />
                         <CheckBox x:Name="OvShowRaw" Grid.Column="4" Content="Raw" IsChecked="True" FontSize="13" Foreground="#FF00E676" Margin="0,0,4,0" VerticalAlignment="Center" />
                         <CheckBox x:Name="OvShowSteer" Grid.Column="5" Content="Steer" IsChecked="True" FontSize="13" Foreground="#FFFFD600" Margin="0,0,4,0" VerticalAlignment="Center" />
                         <CheckBox x:Name="OvShowGas" Grid.Column="6" Content="T/B" IsChecked="True" FontSize="13" Foreground="#FF4CAF50" Margin="0,0,0,0" VerticalAlignment="Center" />

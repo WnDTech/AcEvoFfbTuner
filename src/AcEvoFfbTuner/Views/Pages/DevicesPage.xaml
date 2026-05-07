@@ -1,0 +1,473 @@
+<UserControl x:Class="AcEvoFfbTuner.Views.Pages.DevicesPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls"
+             xmlns:converters="clr-namespace:AcEvoFfbTuner.Converters">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <converters:InverseBoolToVisibilityConverter x:Key="InvertBoolToVis" />
+        <converters:NullToVisibilityConverter x:Key="NullToVis" />
+        <converters:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis" />
+    </UserControl.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="160" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ═══ LEFT: VERTICAL DEVICE TABS ═══ -->
+        <Border Grid.Column="0" Background="{StaticResource BgPanel}"
+                BorderThickness="0,0,1,0" BorderBrush="{StaticResource BorderBrush}">
+            <StackPanel Margin="0,20,0,0">
+                <TextBlock Text="DEVICES" FontSize="11" FontWeight="Bold"
+                           Foreground="{StaticResource TextDimBrush}" Margin="16,0,0,12" />
+
+                <RadioButton x:Name="LedTab" GroupName="DeviceTab" IsChecked="True"
+                             Checked="OnTabChecked" Cursor="Hand">
+                    <RadioButton.Template>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="TabBd" Background="Transparent" Padding="16,12" BorderThickness="3,0,0,0" BorderBrush="Transparent">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="💡" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock Text="LED Effects" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
+                                    <Setter TargetName="TabBd" Property="BorderBrush" Value="#FF79C0FF" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </RadioButton.Template>
+                </RadioButton>
+
+                <RadioButton x:Name="HapticTab" GroupName="DeviceTab"
+                             Checked="OnTabChecked" Cursor="Hand">
+                    <RadioButton.Template>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="TabBd" Background="Transparent" Padding="16,12" BorderThickness="3,0,0,0" BorderBrush="Transparent">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="📳" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock Text="Haptic Pad" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
+                                    <Setter TargetName="TabBd" Property="BorderBrush" Value="#FFD2A8FF" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </RadioButton.Template>
+                </RadioButton>
+
+                <RadioButton x:Name="ButtonsTab" GroupName="DeviceTab"
+                             Checked="OnTabChecked" Cursor="Hand">
+                    <RadioButton.Template>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="TabBd" Background="Transparent" Padding="16,12" BorderThickness="3,0,0,0" BorderBrush="Transparent">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="🎮" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock Text="Buttons" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
+                                    <Setter TargetName="TabBd" Property="BorderBrush" Value="#FFE3B341" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </RadioButton.Template>
+                </RadioButton>
+            </StackPanel>
+        </Border>
+
+        <!-- ═══ RIGHT: CONTENT PANELS ═══ -->
+        <Grid Grid.Column="1">
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- PANEL 1: LED EFFECTS                      -->
+            <!-- ═══════════════════════════════════════════ -->
+            <ScrollViewer x:Name="LedPanel" VerticalScrollBarVisibility="Auto" Padding="24,20">
+                <StackPanel>
+
+                    <!-- Header -->
+                    <TextBlock Text="{Binding LedSupportedInfo}" FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
+
+                    <!-- LED Strip Preview -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="{StaticResource BorderBrush}">
+                        <StackPanel>
+                            <TextBlock Text="LED PREVIEW" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+                            <StackPanel x:Name="LedPreviewBar" Orientation="Horizontal" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Two columns -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Column: Flash + Brightness -->
+                        <StackPanel Grid.Column="0">
+
+                            <!-- BRIGHTNESS -->
+                            <StackPanel Visibility="{Binding LedBrightnessVisible, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="BRIGHTNESS" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,8" />
+                                <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,12" Margin="0,0,0,16"
+                                        BorderThickness="1" BorderBrush="{StaticResource BorderBrush}">
+                                    <controls:LabeledSlider Value="{Binding LedBrightness, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
+                                        Label="Brightness" StringFormat="{}{0}" Suffix="%"
+                                        Description="LED brightness (SDK-connected wheels only)"
+                                        SectionColor="#FF79C0FF" />
+                                </Border>
+                            </StackPanel>
+
+                            <!-- FLASH EFFECTS -->
+                            <TextBlock Text="FLASH EFFECTS" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,8" />
+                            <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,12"
+                                    BorderThickness="1" BorderBrush="{StaticResource BorderBrush}">
+                                <StackPanel>
+                                    <DockPanel Margin="0,4">
+                                        <TextBlock Text="Shift / Limiter Flash" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" />
+                                        <CheckBox IsChecked="{Binding LedShiftLimiterFlashEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <TextBlock Text="All LEDs flash at redline" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+
+                                    <DockPanel Margin="0,4">
+                                        <TextBlock Text="ABS Flash" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" />
+                                        <CheckBox IsChecked="{Binding LedAbsFlashEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <TextBlock Text="First &amp; last LED when ABS active" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+
+                                    <StackPanel Visibility="{Binding LedFlagIndicatorsVisible, Converter={StaticResource BoolToVis}}">
+                                        <DockPanel Margin="0,4">
+                                            <TextBlock Text="Race Flag Indicators" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" />
+                                            <CheckBox IsChecked="{Binding LedFlagIndicatorsEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                        <TextBlock Text="Yellow, red, blue flags on LEDs" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+                                    </StackPanel>
+
+                                    <Border Background="{StaticResource BgInput}" CornerRadius="6" Padding="12,10" Margin="0,4,0,0">
+                                        <controls:LabeledSlider Value="{Binding LedFlashRate, Mode=TwoWay}" Minimum="2" Maximum="60" TickFrequency="1"
+                                            Label="Flash Speed" StringFormat="{}{0}"
+                                            Description="Lower = faster (2=very fast, 60=slow)"
+                                            SectionColor="#FF79C0FF" />
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- COLOR SCHEME -->
+                            <StackPanel Visibility="{Binding LedColorSchemeVisible, Converter={StaticResource BoolToVis}}" Margin="0,16,0,0">
+                                <TextBlock Text="COLOR SCHEME" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,8" />
+                                <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,12"
+                                        BorderThickness="1" BorderBrush="{StaticResource BorderBrush}">
+                                    <StackPanel>
+                                        <TextBlock Text="Color Preset" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                        <TextBlock Text="For wheels with per-LED RGB control" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8" />
+                                        <ComboBox SelectedIndex="{Binding LedColorSchemeIndex}" Width="240" FontSize="14" Padding="6,4" HorizontalAlignment="Left">
+                                            <ComboBoxItem Content="Traffic Light (Green/Yellow/Red)" />
+                                            <ComboBoxItem Content="Blue Gradient" />
+                                            <ComboBoxItem Content="Red Hot" />
+                                            <ComboBoxItem Content="Monochrome" />
+                                            <ComboBoxItem Content="Custom" />
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Right Column: RPM Thresholds -->
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="RPM THRESHOLDS" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,8" />
+                            <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,12"
+                                    BorderThickness="1" BorderBrush="{StaticResource BorderBrush}">
+                                <StackPanel>
+                                    <TextBlock Text="Preset" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <ComboBox SelectedIndex="{Binding LedRpmPresetIndex}" Width="240" FontSize="14" Padding="6,4" HorizontalAlignment="Left" Margin="0,0,0,12">
+                                        <ComboBoxItem Content="Default (50-100%)" />
+                                        <ComboBoxItem Content="Early (30-100%)" />
+                                        <ComboBoxItem Content="Late (70-100%)" />
+                                        <ComboBoxItem Content="Linear (10-100%)" />
+                                        <ComboBoxItem Content="Custom" />
+                                    </ComboBox>
+
+                                    <Expander Style="{StaticResource SectionExpander}" Header="Individual RPM Thresholds">
+                                        <StackPanel>
+                                            <TextBlock Text="Each LED lights up when RPM reaches its threshold (% of redline)" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8" />
+                                            <controls:LabeledSlider Value="{Binding LedRpmThreshold1, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
+                                                Label="LED 1" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
+                                                SectionColor="#FF79C0FF"
+                                                Visibility="{Binding LedRpmThreshold1Visible, Converter={StaticResource BoolToVis}}" />
+                                            <controls:LabeledSlider Value="{Binding LedRpmThreshold2, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
+                                                Label="LED 2" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
+                                                SectionColor="#FF79C0FF"
+                                                Visibility="{Binding LedRpmThreshold2Visible, Converter={StaticResource BoolToVis}}" />
+                                            <controls:LabeledSlider Value="{Binding LedRpmThreshold3, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
+                                                Label="LED 3" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
+                                                SectionColor="#FF79C0FF"
+                                                Visibility="{Binding LedRpmThreshold3Visible, Converter={StaticResource BoolToVis}}" />
+                                            <controls:LabeledSlider Value="{Binding LedRpmThreshold4, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
+                                                Label="LED 4" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
+                                                SectionColor="#FF79C0FF"
+                                                Visibility="{Binding LedRpmThreshold4Visible, Converter={StaticResource BoolToVis}}" />
+                                            <controls:LabeledSlider Value="{Binding LedRpmThreshold5, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
+                                                Label="LED 5" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
+                                                SectionColor="#FF79C0FF"
+                                                Visibility="{Binding LedRpmThreshold5Visible, Converter={StaticResource BoolToVis}}" />
+                                            <controls:LabeledSlider Value="{Binding LedRpmThreshold6, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
+                                                Label="LED 6" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
+                                                SectionColor="#FF79C0FF"
+                                                Visibility="{Binding LedRpmThreshold6Visible, Converter={StaticResource BoolToVis}}" />
+                                            <controls:LabeledSlider Value="{Binding LedRpmThreshold7, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
+                                                Label="LED 7" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
+                                                SectionColor="#FF79C0FF"
+                                                Visibility="{Binding LedRpmThreshold7Visible, Converter={StaticResource BoolToVis}}" />
+                                            <controls:LabeledSlider Value="{Binding LedRpmThreshold8, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
+                                                Label="LED 8" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
+                                                SectionColor="#FF79C0FF"
+                                                Visibility="{Binding LedRpmThreshold8Visible, Converter={StaticResource BoolToVis}}" />
+                                            <controls:LabeledSlider Value="{Binding LedRpmThreshold9, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
+                                                Label="LED 9" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
+                                                SectionColor="#FF79C0FF"
+                                                Visibility="{Binding LedRpmThreshold9Visible, Converter={StaticResource BoolToVis}}" />
+                                            <controls:LabeledSlider Value="{Binding LedRpmThreshold10, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
+                                                Label="LED 10" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
+                                                SectionColor="#FF79C0FF"
+                                                Visibility="{Binding LedRpmThreshold10Visible, Converter={StaticResource BoolToVis}}" />
+                                            <TextBlock Text="Select a preset first, then switch to Custom to fine-tune" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,8,0,0" />
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- PANEL 2: HAPTIC PAD (HF8)                 -->
+            <!-- ═══════════════════════════════════════════ -->
+            <ScrollViewer x:Name="HapticPanel" VerticalScrollBarVisibility="Auto" Padding="24,20" Visibility="Collapsed">
+                <StackPanel>
+
+                    <!-- Connection Status -->
+                    <TextBlock Text="{Binding Hf8ConnectionStatus}" FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
+
+                    <!-- MASTER CONTROLS BAR -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16" Margin="0,0,0,20"
+                            BorderThickness="1" BorderBrush="#33D2A8FF">
+                        <DockPanel>
+                            <DockPanel DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,24,0">
+                                <CheckBox IsChecked="{Binding Hf8Enabled}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <TextBlock Text="HF8 Output" FontSize="16" FontWeight="Bold" Foreground="#FFD2A8FF" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <controls:LabeledSlider Value="{Binding Hf8MasterGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                Label="Master Gain" StringFormat="{}{0:F2}" LabelWidth="110"
+                                Description="Overall intensity for all zones"
+                                SectionColor="#FFD2A8FF" />
+                            <controls:LabeledSlider Value="{Binding Hf8OutputRateHz, Mode=TwoWay}" Minimum="15" Maximum="120" TickFrequency="1"
+                                Label="Output Rate" StringFormat="{}{0}" Suffix=" Hz" LabelWidth="110"
+                                Description="75 Hz for HF8 Pro, 15 Hz for original"
+                                SectionColor="#FFD2A8FF" />
+                        </DockPanel>
+                    </Border>
+
+                    <!-- QUADRANT LAYOUT -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="16" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- QUADRANT TOP-LEFT: FRONT TIRES -->
+                        <Border Grid.Row="0" Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="#3379C0FF">
+                            <StackPanel>
+                                <TextBlock Text="FRONT TIRES" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,10" />
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain0, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="FL Tire" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Front-left: suspension + slip ratio + kerbs"
+                                    SectionColor="#FF79C0FF" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled0}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain1, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="FR Tire" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Front-right: suspension + slip ratio + kerbs"
+                                    SectionColor="#FF79C0FF" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled1}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- QUADRANT TOP-RIGHT: REAR TIRES -->
+                        <Border Grid.Row="0" Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="#3356D4A0">
+                            <StackPanel>
+                                <TextBlock Text="REAR TIRES" FontSize="12" FontWeight="Bold" Foreground="#FF56D4A0" Margin="0,0,0,10" />
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain2, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="RL Tire" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Rear-left: suspension + slip ratio"
+                                    SectionColor="#FF56D4A0" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled2}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain3, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="RR Tire" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Rear-right: suspension + slip ratio"
+                                    SectionColor="#FF56D4A0" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled3}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- QUADRANT BOTTOM-LEFT: SEAT ZONES -->
+                        <Border Grid.Row="2" Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="#33E3B341">
+                            <StackPanel>
+                                <TextBlock Text="SEAT ZONES" FontSize="12" FontWeight="Bold" Foreground="#FFE3B341" Margin="0,0,0,10" />
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain4, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Seat Left" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="LFE + lateral G + slip vibration"
+                                    SectionColor="#FFE3B341" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled4}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain5, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Seat Right" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="LFE + lateral G + slip vibration"
+                                    SectionColor="#FFE3B341" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled5}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- QUADRANT BOTTOM-RIGHT: BACK ZONES -->
+                        <Border Grid.Row="2" Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="#33F0883E">
+                            <StackPanel>
+                                <TextBlock Text="BACK ZONES" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,10" />
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain6, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Back Upper" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="RPM envelope + rear slip + scrub"
+                                    SectionColor="#FFF0883E" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled6}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain7, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Back Lower" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Road vibration + ABS + LFE"
+                                    SectionColor="#FFF0883E" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled7}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- CONNECTION INFO PANEL -->
+                    <Border Background="#FF1A1A2E" CornerRadius="6" Padding="14,10" Margin="0,16,0,0"
+                            BorderThickness="1" BorderBrush="#333355">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="USB" FontSize="11" FontWeight="Bold" Foreground="#FF6666AA" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF9999CC" VerticalAlignment="Center">
+                                <Run Text="HF8 / HF8 Pro requires USB connection. Close NLR HFS software first — it holds exclusive HID access." />
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- PANEL 3: BUTTON ASSIGNMENTS               -->
+            <!-- ═══════════════════════════════════════════ -->
+            <ScrollViewer x:Name="ButtonsPanel" VerticalScrollBarVisibility="Auto" Padding="24,20" Visibility="Collapsed">
+                <StackPanel>
+
+                    <TextBlock Text="Configure wheel and button box inputs for in-app actions." FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,20" TextWrapping="Wrap" />
+
+                    <!-- Snapshot Button Card -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="#33E3B341">
+                        <StackPanel>
+                            <TextBlock Text="SNAPSHOT BUTTON" FontSize="12" FontWeight="Bold" Foreground="#FFE3B341" Margin="0,0,0,4" />
+                            <TextBlock Text="Press while driving to auto-save a telemetry snapshot" FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" />
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Button:" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding SnapshotButtonNames}" SelectedIndex="{Binding SnapshotButtonComboIndex}" FontSize="14" Padding="6,4" Margin="0,0,6,0" />
+                                <Button Grid.Column="2" Content="Assign" Command="{Binding AssignSnapshotButtonCommand}" Padding="12,6" FontSize="14" Style="{StaticResource OutlinedButton}" />
+                            </Grid>
+                            <TextBlock Text="{Binding SnapshotAssignStatus}" FontSize="13" Foreground="#FFFFD600" FontWeight="Bold" Visibility="{Binding SnapshotAssignStatus, Converter={StaticResource NotEmptyToVis}}" />
+                            <TextBlock Text="{Binding ButtonDetectionText}" FontSize="13" Foreground="#FFFFD600" FontWeight="Bold" />
+                            <TextBlock Text="Uses your FFB wheel device. Select a button easy to reach while driving." FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Panic Stop Button Card -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="#33FF7B72">
+                        <StackPanel>
+                            <TextBlock Text="PANIC STOP BUTTON" FontSize="12" FontWeight="Bold" Foreground="#FFFF7B72" Margin="0,0,0,4" />
+                            <TextBlock Text="Assign a button on a SEPARATE device (e.g. button box) as hardware panic stop. Immediately zeros all FFB output." FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" />
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Device:" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding PanicDevices}" SelectedItem="{Binding SelectedPanicDevice}" FontSize="14" Padding="6,4" Margin="0,0,10,0">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding ProductName}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <Button Grid.Column="2" Content="Refresh" Command="{Binding RefreshDevicesCommand}" Padding="12,6" FontSize="14" Style="{StaticResource OutlinedButton}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Button:" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding PanicButtonNames}" SelectedIndex="{Binding PanicButtonComboIndex}" FontSize="14" Padding="6,4" Margin="0,0,6,0" />
+                                <Button Grid.Column="2" Content="Assign" Command="{Binding AssignPanicButtonCommand}" Padding="12,6" FontSize="14" Style="{StaticResource OutlinedButton}" />
+                            </Grid>
+
+                            <TextBlock Text="{Binding PanicAssignStatus}" FontSize="13" Foreground="#FFFFD600" FontWeight="Bold" Visibility="{Binding PanicAssignStatus, Converter={StaticResource NotEmptyToVis}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Panic Info -->
+                    <Border Background="#FF1A1A2E" CornerRadius="6" Padding="14,10"
+                            BorderThickness="1" BorderBrush="#333355">
+                        <TextBlock Text="The panic device is opened in non-exclusive mode, so it won't conflict with the game or your FFB wheel." FontSize="13" Foreground="#FF9999CC" TextWrapping="Wrap" />
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+        </Grid>
+    </Grid>
+</UserControl>

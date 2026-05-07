@@ -1,0 +1,645 @@
+<UserControl x:Class="AcEvoFfbTuner.Views.Pages.FfbTuningPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls"
+             xmlns:converters="clr-namespace:AcEvoFfbTuner.Converters">
+    <UserControl.Resources>
+        <converters:EnumToBoolConverter x:Key="EnumToBoolConverter" />
+        <converters:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis" />
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ═══ PROFILE SUMMARY BAR ═══ -->
+        <Border Grid.Row="0" Background="{StaticResource BgCard}" Padding="24,10"
+                BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderBrush}">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="CAR" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <Grid VerticalAlignment="Center" Margin="0,0,24,0">
+                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextDimBrush}"
+                               Text="No car detected" />
+                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#FF79C0FF"
+                               Text="{Binding DetectedCarModel}"
+                               Visibility="{Binding DetectedCarModel, Converter={StaticResource NotEmptyToVis}}" />
+                </Grid>
+
+                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,24,2" />
+
+                <TextBlock Text="WHEEL" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,24,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
+                            <Setter Property="Text" Value="{Binding DeviceName, FallbackValue='No device', TargetNullValue='No device'}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDeviceConnected}" Value="True">
+                                    <Setter Property="Foreground" Value="#FF7EE787" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,24,2" />
+
+                <TextBlock Text="PROFILE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="{Binding SelectedProfile.Name, FallbackValue='No profile', TargetNullValue='No profile'}"
+                           FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"
+                           VerticalAlignment="Center" Margin="0,0,24,0" />
+
+                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,24,2" />
+
+                <TextBlock Text="PEAK" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="{Binding OutputGainNmText}" FontSize="14" FontWeight="SemiBold"
+                           Foreground="#FFF0883E" VerticalAlignment="Center" />
+
+                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,24,2" />
+
+                <TextBlock Text="MIX" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedMixMode}" Value="Replace">
+                                    <Setter Property="Foreground" Value="#FF79C0FF" />
+                                    <Setter Property="Text" Value="Replace" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding SelectedMixMode}" Value="Overlay">
+                                    <Setter Property="Foreground" Value="#FF56D4A0" />
+                                    <Setter Property="Text" Value="Overlay" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- ═══ MAIN CONTENT: Effects + Output Sidebar ═══ -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ═══ LEFT: EFFECTS SCROLLVIEWER (full-width accordions) ═══ -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,16,12,20">
+                <StackPanel>
+
+                    <!-- ═══ GROUP A: CORE PHYSICS ═══ -->
+                    <TextBlock Text="C O R E   P H Y S I C S" FontSize="12" FontWeight="Bold"
+                               Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" />
+
+                    <!-- TYRE FORCES -->
+                    <controls:SectionCard Title="TYRE FORCES"
+                                          SectionBrush="{StaticResource SectionTyreForces}"
+                                          IsExpanded="True">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Mz: " /><Run Text="{Binding MzFrontGain, StringFormat='{}{0:F2}'}" Foreground="#FF79C0FF" />
+                                <Run Text=" · " /><Run Text="Fx: " /><Run Text="{Binding FxFrontGain, StringFormat='{}{0:F2}'}" Foreground="#FF79C0FF" />
+                                <Run Text=" · " /><Run Text="Fy: " /><Run Text="{Binding FyFrontGain, StringFormat='{}{0:F2}'}" Foreground="#FF79C0FF" />
+                                <Run Text=" · " /><Run Text="MzScale: " /><Run Text="{Binding MzScale, StringFormat='{}{0:F0}'}" Foreground="#FF79C0FF" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <TextBlock Text="Front Axle" Style="{StaticResource SubSectionHeader}" />
+                                <controls:LabeledSlider Value="{Binding MzFrontGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
+                                    Label="Mz (Self-Align)" StringFormat="{}{0:F3}"
+                                    Description="Main steering feel — the force that pulls the wheel back to center. Higher = stronger self-centering. Scaled by Mz Scale below."
+                                    ShowCheckBox="True" IsChecked="{Binding MzFrontEnabled}"
+                                    SectionColor="{StaticResource SectionTyreForces}" />
+                                <controls:LabeledSlider Value="{Binding FxFrontGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
+                                    Label="Fx (Longitudinal)" StringFormat="{}{0:F3}"
+                                    Description="Braking and acceleration forces through the wheel. Scaled by Fx Scale below."
+                                    ShowCheckBox="True" IsChecked="{Binding FxFrontEnabled}"
+                                    SectionColor="{StaticResource SectionTyreForces}" />
+                                <controls:LabeledSlider Value="{Binding FyFrontGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
+                                    Label="Fy (Lateral)" StringFormat="{}{0:F3}"
+                                    Description="Cornering loads — adds weight feel during turns. Suppressed near center (see Center Blend in Signal Processing). Scaled by Fy Scale below."
+                                    ShowCheckBox="True" IsChecked="{Binding FyFrontEnabled}"
+                                    SectionColor="{StaticResource SectionTyreForces}" />
+
+                                <TextBlock Text="Normalization Scales" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
+                                <controls:LabeledSlider Value="{Binding MzScale, Mode=TwoWay}" Minimum="1" Maximum="500" TickFrequency="0.5"
+                                    Label="Mz Scale (Aligning)" StringFormat="{}{0:F3}" IsLogarithmic="True"
+                                    Description="Divides raw Mz values to normalize them. Lower = stronger Mz feel. If steering feels weak, try lowering this. Affects both front and rear Mz."
+                                    SectionColor="{StaticResource SectionTyreForces}" />
+                                <controls:LabeledSlider Value="{Binding FxScale, Mode=TwoWay}" Minimum="100" Maximum="20000" TickFrequency="100"
+                                    Label="Fx Scale (Longitudinal)" StringFormat="{}{0:F0}" IsLogarithmic="True"
+                                    Description="Divides raw Fx values to normalize them. Lower = stronger braking/acceleration feel. Affects both front and rear Fx."
+                                    SectionColor="{StaticResource SectionTyreForces}" />
+                                <controls:LabeledSlider Value="{Binding FyScale, Mode=TwoWay}" Minimum="100" Maximum="20000" TickFrequency="100"
+                                    Label="Fy Scale (Lateral)" StringFormat="{}{0:F0}" IsLogarithmic="True"
+                                    Description="Divides raw Fy values to normalize them. Lower = stronger cornering feel. Affects both front and rear Fy."
+                                    SectionColor="{StaticResource SectionTyreForces}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Rear Axle &amp; Other">
+                                    <StackPanel>
+                                        <TextBlock Text="Rear Axle" Style="{StaticResource SubSectionHeader}" Margin="0,4,0,2" />
+                                        <controls:LabeledSlider Value="{Binding MzRearGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
+                                            Label="Mz Rear" StringFormat="{}{0:F3}"
+                                            Description="Rear self-aligning torque — usually left off. Can add subtle rear-end feel but may increase noise."
+                                            ShowCheckBox="True" IsChecked="{Binding MzRearEnabled}"
+                                            SectionColor="{StaticResource SectionTyreForces}" />
+                                        <controls:LabeledSlider Value="{Binding FxRearGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
+                                            Label="Fx Rear" StringFormat="{}{0:F3}"
+                                            Description="Rear braking/acceleration feel."
+                                            ShowCheckBox="True" IsChecked="{Binding FxRearEnabled}"
+                                            SectionColor="{StaticResource SectionTyreForces}" />
+                                        <controls:LabeledSlider Value="{Binding FyRearGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
+                                            Label="Fy Rear" StringFormat="{}{0:F3}"
+                                            Description="Rear cornering force. Also affected by Center Blend."
+                                            ShowCheckBox="True" IsChecked="{Binding FyRearEnabled}"
+                                            SectionColor="{StaticResource SectionTyreForces}" />
+
+                                        <TextBlock Text="Other" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
+                                        <controls:LabeledSlider Value="{Binding FinalFfGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.1"
+                                            Label="Game FFB Output" StringFormat="{}{0:F3}"
+                                            Description="The game's built-in FFB signal. In Replace mode it's added on top; in Overlay mode it's the base."
+                                            ShowCheckBox="True" IsChecked="{Binding FinalFfEnabled}"
+                                            SectionColor="{StaticResource SectionTyreForces}" />
+                                        <controls:LabeledSlider Value="{Binding WheelLoadWeighting, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Wheel Load Weighting" StringFormat="{}{0:F3}"
+                                            Description="How much actual tire load affects force mixing. 0 = simple average, 1 = load-proportional."
+                                            SectionColor="{StaticResource SectionTyreForces}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- TYRE SLIP -->
+                    <controls:SectionCard Title="TYRE SLIP"
+                                          SectionBrush="{StaticResource SectionTyreSlip}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Ratio: " /><Run Text="{Binding SlipRatioGain, StringFormat='{}{0:F2}'}" Foreground="#FF56D4A0" />
+                                <Run Text=" · " /><Run Text="Angle: " /><Run Text="{Binding SlipAngleGain, StringFormat='{}{0:F2}'}" Foreground="#FF56D4A0" />
+                                <Run Text=" · " /><Run Text="Thresh: " /><Run Text="{Binding SlipThreshold, StringFormat='{}{0:F2}'}" Foreground="#FF56D4A0" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <controls:LabeledSlider Value="{Binding SlipRatioGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                    Label="Slip Ratio Gain" StringFormat="{}{0:F3}"
+                                    Description="Adds extra force during wheelspin or wheel lock-up. Needs Slip Threshold set correctly."
+                                    SectionColor="{StaticResource SectionTyreSlip}" />
+                                <controls:LabeledSlider Value="{Binding SlipAngleGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                    Label="Slip Angle Gain" StringFormat="{}{0:F3}"
+                                    Description="Adds extra force when tires slide sideways (oversteer). Needs Slip Threshold set correctly."
+                                    SectionColor="{StaticResource SectionTyreSlip}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Slip Settings">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding SlipThreshold, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Slip Threshold" StringFormat="{}{0:F3}"
+                                            Description="Minimum slip level before the slip enhancer activates. Lower = more sensitive."
+                                            SectionColor="{StaticResource SectionTyreSlip}" />
+                                        <DockPanel Margin="0,6">
+                                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                                <CheckBox IsChecked="{Binding SlipUseFrontOnly}" Margin="0,0,12,0" />
+                                                <TextBlock Text="Front Wheels Only" FontSize="15" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- TIRE GRIP FEEL -->
+                    <controls:SectionCard Title="TIRE GRIP FEEL"
+                                          SectionBrush="{StaticResource SectionGripFeel}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Scrub: " /><Run Text="{Binding ScrubGain, StringFormat='{}{0:F2}'}" Foreground="#FF7EE787" />
+                                <Run Text=" · " /><Run Text="Rear Slip: " /><Run Text="{Binding RearSlipGain, StringFormat='{}{0:F2}'}" Foreground="#FF7EE787" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <TextBlock Text="Feel the tires approaching and exceeding their grip limit. Front scrub gives a grainy texture as front tires reach peak. Rear slip warns you when the back end is stepping out." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+                                <controls:LabeledSlider Value="{Binding ScrubGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Front Tire Scrub" StringFormat="{}{0:F3}"
+                                    Description="High-frequency grain (30-50Hz) as front tires approach grip limit. Simulates rubber tearing at the contact patch before the Mz torque drops. 0 = off, 0.15 = subtle, 0.5 = strong."
+                                    SectionColor="{StaticResource SectionGripFeel}" />
+                                <controls:LabeledSlider Value="{Binding RearSlipGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Rear Slip Warning" StringFormat="{}{0:F3}"
+                                    Description="Low-frequency rumble (12-25Hz) when rear tires lose grip. Detects rear slip angle and yaw acceleration for early oversteer warning. 0 = off, 0.25 = default, 0.5 = strong."
+                                    SectionColor="{StaticResource SectionGripFeel}" />
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- TYRE FLEX -->
+                    <controls:SectionCard Title="TYRE FLEX"
+                                          SectionBrush="{StaticResource SectionTyreFlex}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Flex: " /><Run Text="{Binding TyreFlexGain, StringFormat='{}{0:F2}'}" Foreground="#FF58A6FF" />
+                                <Run Text=" · " /><Run Text="Patch: " /><Run Text="{Binding LoadFlexGain, StringFormat='{}{0:F2}'}" Foreground="#FF58A6FF" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <controls:LabeledSlider Value="{Binding TyreFlexGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                    Label="Carcass Flex Gain" StringFormat="{}{0:F3}"
+                                    Description="Simulates tyre sidewall flex from load transfer. Adds subtle force from rapid weight shifts — braking, cornering entry, and kerb strikes."
+                                    SectionColor="{StaticResource SectionTyreFlex}" />
+                                <controls:LabeledSlider Value="{Binding LoadFlexGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                    Label="Contact Patch Gain" StringFormat="{}{0:F3}"
+                                    Description="Simulates contact patch length changes under load and slip. Adds feel for how the tyre's grip footprint is changing."
+                                    SectionColor="{StaticResource SectionTyreFlex}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Tyre Flex Settings">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding CarcassStiffness, Mode=TwoWay}" Minimum="0.1" Maximum="5" TickFrequency="0.01"
+                                            Label="Carcass Stiffness" StringFormat="{}{0:F3}"
+                                            Description="Controls how stiff the tyre carcass is. Lower = more flex feel (softer tyres), higher = less flex (stiffer tyres). Default 1.0."
+                                            SectionColor="{StaticResource SectionTyreFlex}" />
+                                        <controls:LabeledSlider Value="{Binding FlexSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.95" TickFrequency="0.01"
+                                            Label="Flex Smoothing" StringFormat="{}{0:F3}"
+                                            Description="EMA smoothing for flex forces. Higher = smoother but more lag. Lower = more responsive but noisier. Default 0.70."
+                                            SectionColor="{StaticResource SectionTyreFlex}" />
+                                        <controls:LabeledSlider Value="{Binding ContactPatchWeight, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="Contact Patch Weight" StringFormat="{}{0:F3}"
+                                            Description="How much lateral G-force affects contact patch variation. Higher = more feel from weight transfer direction changes. Default 0.5."
+                                            SectionColor="{StaticResource SectionTyreFlex}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- ═══ GROUP B: MECHANICAL FEEDBACK ═══ -->
+                    <TextBlock Text="M E C H A N I C A L   F E E D B A C K" FontSize="12" FontWeight="Bold"
+                               Foreground="{StaticResource TextDimBrush}" Margin="0,20,0,12" />
+
+                    <!-- VIBRATION -->
+                    <controls:SectionCard Title="VIBRATION"
+                                          SectionBrush="{StaticResource SectionVibration}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Master: " /><Run Text="{Binding VibrationMasterGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
+                                <Run Text=" · " /><Run Text="Curb: " /><Run Text="{Binding CurbGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
+                                <Run Text=" · " /><Run Text="Slip: " /><Run Text="{Binding SlipGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <controls:LabeledSlider Value="{Binding VibrationMasterGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Master" StringFormat="{}{0:F3}"
+                                    Description="Master volume for all vibration effects. Scales Curb, Slip, Road, and ABS together."
+                                    SectionColor="{StaticResource SectionVibration}" />
+                                <controls:LabeledSlider Value="{Binding CurbGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Curb" StringFormat="{}{0:F3}"
+                                    Description="Kerb strike vibration intensity. Also scales suspension-derived kerb bumps in the main force."
+                                    SectionColor="{StaticResource SectionVibration}" />
+                                <controls:LabeledSlider Value="{Binding SlipGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Slip" StringFormat="{}{0:F3}"
+                                    Description="Tire slip vibration intensity. Scaled by Master."
+                                    SectionColor="{StaticResource SectionVibration}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Vibration Settings">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding RoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                            Label="Road" StringFormat="{}{0:F3}"
+                                            Description="Road surface vibration intensity. Also scales suspension-derived road texture in the main force."
+                                            SectionColor="{StaticResource SectionVibration}" />
+                                        <controls:LabeledSlider Value="{Binding AbsGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                            Label="ABS" StringFormat="{}{0:F3}"
+                                            Description="ABS pulse vibration intensity. Also adds pulses to the main steering force when ABS activates."
+                                            SectionColor="{StaticResource SectionVibration}" />
+                                        <controls:LabeledSlider Value="{Binding SuspensionRoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.01"
+                                            Label="Suspension Road" StringFormat="{}{0:F3}"
+                                            Description="Suspension-derived road texture gain for the main force channel. Works with Road and Curb vibration gains."
+                                            SectionColor="{StaticResource SectionVibration}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- DAMPING & FRICTION -->
+                    <controls:SectionCard Title="DAMPING &amp; FRICTION"
+                                          SectionBrush="{StaticResource SectionDamping}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Damp: " /><Run Text="{Binding SpeedDamping, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
+                                <Run Text=" · " /><Run Text="Fric: " /><Run Text="{Binding FrictionLevel, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
+                                <Run Text=" · " /><Run Text="Inertia: " /><Run Text="{Binding InertiaWeight, StringFormat='{}{0:F1}'}" Foreground="#FFE3B341" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <controls:LabeledSlider Value="{Binding SpeedDamping, Mode=TwoWay}" Minimum="0" Maximum="25" TickFrequency="0.001"
+                                    Label="Speed Damping" StringFormat="{}{0:F3}"
+                                    Description="Viscous damping — adds resistance that increases with car speed. Higher = heavier steering at speed. Scaled by Damping Speed Ref."
+                                    SectionColor="{StaticResource SectionDamping}" />
+                                <controls:LabeledSlider Value="{Binding FrictionLevel, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.001"
+                                    Label="Friction" StringFormat="{}{0:F3}"
+                                    Description="Constant friction resistance when turning the wheel (Coulomb model). Higher = heavier, more resistant feel."
+                                    SectionColor="{StaticResource SectionDamping}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Damping Settings">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding InertiaWeight, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.1"
+                                            Label="Inertia" StringFormat="{}{0:F3}"
+                                            Description="Simulates steering inertia — resists rapid direction changes based on angular acceleration. Increases with car speed."
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                        <controls:LabeledSlider Value="{Binding DampingSpeedReference, Mode=TwoWay}" Minimum="50" Maximum="500" TickFrequency="5"
+                                            Label="Damping Speed Ref (km/h)" StringFormat="{}{0:F0}"
+                                            Description="Speed where speed-based damping reaches full strength. Lower = damping kicks in sooner."
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- DYNAMIC EFFECTS -->
+                    <controls:SectionCard Title="DYNAMIC EFFECTS"
+                                          SectionBrush="{StaticResource SectionDynamic}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Corner: " /><Run Text="{Binding CorneringForce, StringFormat='{}{0:F2}'}" Foreground="#FFF0883E" />
+                                <Run Text=" · " /><Run Text="Road: " /><Run Text="{Binding RoadFeel, StringFormat='{}{0:F2}'}" Foreground="#FFF0883E" />
+                                <Run Text=" · " /><Run Text="Accel: " /><Run Text="{Binding AccelerationBrakingForce, StringFormat='{}{0:F2}'}" Foreground="#FFF0883E" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <controls:LabeledSlider Value="{Binding CorneringForce, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                    Label="Cornering Force" StringFormat="{}{0:F3}"
+                                    Description="Adds force based on lateral G-forces during cornering. Gives a sense of how hard the car is turning."
+                                    SectionColor="{StaticResource SectionDynamic}" />
+                                <controls:LabeledSlider Value="{Binding RoadFeel, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                    Label="Road Feel" StringFormat="{}{0:F3}"
+                                    Description="Adds force from suspension compression changes (bumps, kerbs). Only detects rapid changes, not steady-state."
+                                    SectionColor="{StaticResource SectionDynamic}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Dynamic Settings">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding AccelerationBrakingForce, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                            Label="Accel/Braking Force" StringFormat="{}{0:F3}"
+                                            Description="Adds force from forward/backward G-forces. Feel weight transfer under braking and acceleration."
+                                            SectionColor="{StaticResource SectionDynamic}" />
+                                        <controls:LabeledSlider Value="{Binding CarRotationForce, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                            Label="Car Rotation Force" StringFormat="{}{0:F3}"
+                                            Description="Adds force based on how fast the car is rotating (yaw rate). Helps feel slides and transitions."
+                                            SectionColor="{StaticResource SectionDynamic}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- LFE — LOW-FREQUENCY EFFECTS -->
+                    <controls:SectionCard Title="LFE — LOW-FREQUENCY EFFECTS"
+                                          SectionBrush="{StaticResource SectionLfe}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Gain: " /><Run Text="{Binding LfeGain, StringFormat='{}{0:F2}'}" Foreground="#FFFF7B72" />
+                                <Run Text=" · " /><Run Text="Freq: " /><Run Text="{Binding LfeFrequency, StringFormat='{}{0:F1}'}" Foreground="#FFFF7B72" />
+                                <Run Text=" Hz" Foreground="#FFFF7B72" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <TextBlock Text="Low-frequency rumble from suspension travel and speed, felt as chassis road texture on strong wheel bases." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+                                <DockPanel Margin="0,6">
+                                    <TextBlock Text="Enable LFE" Width="160" VerticalAlignment="Center" FontWeight="Bold" FontSize="15" DockPanel.Dock="Left" />
+                                    <CheckBox IsChecked="{Binding LfeEnabled}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                                </DockPanel>
+                                <controls:LabeledSlider Value="{Binding LfeGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="LFE Gain" StringFormat="{}{0:F3}"
+                                    Description="Overall intensity of the low-frequency effect mixed into the main force."
+                                    SectionColor="{StaticResource SectionLfe}" />
+                                <controls:LabeledSlider Value="{Binding LfeFrequency, Mode=TwoWay}" Minimum="3" Maximum="30" TickFrequency="0.5"
+                                    Label="Frequency" StringFormat="{}{0:F1}" Suffix=" Hz"
+                                    Description="Base rumble frequency in Hz. Lower = deeper thump, higher = faster buzz."
+                                    SectionColor="{StaticResource SectionLfe}" />
+                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed LFE Settings">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding LfeSuspensionDrive, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Suspension Drive" StringFormat="{}{0:F3}"
+                                            Description="How much suspension travel drives the LFE envelope. Higher = more reactive to bumps."
+                                            SectionColor="{StaticResource SectionLfe}" />
+                                        <controls:LabeledSlider Value="{Binding LfeSpeedScaling, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Speed Scaling" StringFormat="{}{0:F3}"
+                                            Description="How much vehicle speed modulates LFE frequency. Higher = faster rumble at speed."
+                                            SectionColor="{StaticResource SectionLfe}" />
+                                        <controls:LabeledSlider Value="{Binding LfeRpmDrive, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="RPM Drive" StringFormat="{}{0:F3}"
+                                            Description="How much engine RPM drives the LFE intensity and frequency. Higher = more engine vibration rumble at high RPM."
+                                            SectionColor="{StaticResource SectionLfe}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- SIGNAL PROCESSING -->
+                    <controls:SectionCard Title="SIGNAL PROCESSING"
+                                          SectionBrush="{StaticResource SectionSignal}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Suppress: " /><Run Text="{Binding CenterSuppressionDegrees, StringFormat='{}{0:F1}&#176;'}" Foreground="#FF79C0FF" />
+                                <Run Text=" · " /><Run Text="Noise: " /><Run Text="{Binding NoiseFloor, StringFormat='{}{0:F4}'}" Foreground="#FF79C0FF" />
+                                <Run Text=" · " /><Run Text="Blend: " /><Run Text="{Binding CenterBlendDegrees, StringFormat='{}{0:F1}&#176;'}" Foreground="#FF79C0FF" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <TextBlock Text="Center Feel" Style="{StaticResource SubSectionHeader}" />
+                                <controls:LabeledSlider Value="{Binding CenterSuppressionDegrees, Mode=TwoWay}" Minimum="0" Maximum="30" TickFrequency="0.1"
+                                    Label="Center Suppress (deg)" LabelWidth="185" StringFormat="{}{0:F3}"
+                                    Description="Steering angle zone near center where forces are faded to zero (quadratic ramp). Wider = larger dead-feel zone. Only active when Sign Correction is enabled."
+                                    SectionColor="{StaticResource SectionSignal}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Signal Settings">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding NoiseFloor, Mode=TwoWay}" Minimum="0" Maximum="0.05" TickFrequency="0.0005"
+                                            Label="Noise Floor" LabelWidth="185" StringFormat="{}{0:F4}"
+                                            Description="Forces below this are silenced. Eliminates tiny vibrations when the wheel should be still. Higher = quieter center but may lose fine detail."
+                                            SectionColor="{StaticResource SectionSignal}" />
+                                        <controls:LabeledSlider Value="{Binding CenterKneePower, Mode=TwoWay}" Minimum="0.5" Maximum="3.0" TickFrequency="0.01"
+                                            Label="Center Knee Power" LabelWidth="185" StringFormat="{}{0:F3}"
+                                            Description="Shapes how forces ramp up from zero. 1.0 = normal, higher = lighter at center with sharper force onset."
+                                            SectionColor="{StaticResource SectionSignal}" />
+                                        <controls:LabeledSlider Value="{Binding CenterBlendDegrees, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                            Label="Center Blend (deg)" LabelWidth="185" StringFormat="{}{0:F3}"
+                                            Description="Steering angle where Fy (cornering force) is suppressed near center. Prevents Fy buzz at straight-ahead."
+                                            SectionColor="{StaticResource SectionSignal}" />
+
+                                        <TextBlock Text="Damping Tuning" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
+                                        <controls:LabeledSlider Value="{Binding SteerVelocityReference, Mode=TwoWay}" Minimum="1" Maximum="50" TickFrequency="1"
+                                            Label="Steer Vel Reference" LabelWidth="185" StringFormat="{}{0:F0}"
+                                            Description="Reference speed for steering velocity normalization. Higher = less damping response to fast inputs."
+                                            SectionColor="{StaticResource SectionSignal}" />
+                                        <controls:LabeledSlider Value="{Binding VelocityDeadzone, Mode=TwoWay}" Minimum="0" Maximum="0.5" TickFrequency="0.01"
+                                            Label="Velocity Deadzone" LabelWidth="185" StringFormat="{}{0:F3}"
+                                            Description="Minimum steering speed for damping to activate. Higher = damping only during fast turns. Helps prevent center bounce-back."
+                                            SectionColor="{StaticResource SectionSignal}" />
+
+                                        <TextBlock Text="Smoothing" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
+                                        <controls:LabeledSlider Value="{Binding LowSpeedSmoothKmh, Mode=TwoWay}" Minimum="0" Maximum="100" TickFrequency="1"
+                                            Label="Low Speed Smooth (km/h)" LabelWidth="185" StringFormat="{}{0:F0}"
+                                            Description="Speed below which all channel smoothing is increased. Higher = smoother low-speed feel but less detail in slow corners."
+                                            SectionColor="{StaticResource SectionSignal}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- AUTO-GAIN -->
+                    <controls:SectionCard Title="AUTO-GAIN"
+                                          SectionBrush="{StaticResource SectionOutput}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Scale: " /><Run Text="{Binding AutoGainScale, StringFormat='{}{0:F2}'}" Foreground="#FFF0883E" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <DockPanel Margin="0,6">
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                        <CheckBox IsChecked="{Binding AutoGainEnabled}" Margin="0,0,12,0" />
+                                        <TextBlock Text="Enable Auto-Gain" FontSize="15" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <controls:LabeledSlider Value="{Binding AutoGainScale, Mode=TwoWay}" Minimum="0.1" Maximum="5" TickFrequency="0.01"
+                                    Label="Auto-Gain Scale" StringFormat="{}{0:F3}"
+                                    Description="Target level when Auto-Gain is active. Higher = stronger auto-compensation so different cars feel similar."
+                                    SectionColor="{StaticResource SectionOutput}" />
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══ RIGHT: MASTER OUTPUT SIDEBAR (pinned, always visible) ═══ -->
+            <Border Grid.Column="1" Width="420"
+                    Background="{StaticResource BgPanel}"
+                    BorderThickness="2,0,0,0">
+                <Border.BorderBrush>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#33F0883E" Offset="0" />
+                        <GradientStop Color="#19F0883E" Offset="0.5" />
+                        <GradientStop Color="#33F0883E" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.BorderBrush>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,20,20,20">
+                    <StackPanel>
+                        <TextBlock Text="MASTER OUTPUT" FontSize="13" FontWeight="Bold"
+                                   Foreground="{StaticResource SectionOutput}" Margin="0,0,0,4" />
+                        <TextBlock Text="Always-accessible master controls" FontSize="12"
+                                   Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" />
+
+                        <controls:LabeledSlider Value="{Binding OutputGain, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.001"
+                            Label="Output Gain" DisplayText="{Binding OutputGainNmText}" ValueWidth="100" LabelWidth="120"
+                            Description="Master output strength — the final multiplier before the force limiter."
+                            SectionColor="{StaticResource SectionOutput}" />
+
+                        <controls:LabeledSlider Value="{Binding MaxForceLimit, Mode=TwoWay}" Minimum="0.1" Maximum="1.0" TickFrequency="0.01"
+                            Label="Max Force Limit" DisplayText="{Binding MaxForceLimitNmText}" ValueWidth="100" LabelWidth="120"
+                            Description="Soft limiter — forces above this are gently rounded off."
+                            SectionColor="{StaticResource SectionOutput}" />
+
+                        <controls:LabeledSlider Value="{Binding ForceSensitivity, Mode=TwoWay}" Minimum="1" Maximum="1000" TickFrequency="1"
+                            Label="Sensitivity" StringFormat="{}{0:F0}" IsLogarithmic="True" LabelWidth="120"
+                            Description="Inverse sensitivity — higher = weaker forces. First gain stage."
+                            SectionColor="{StaticResource SectionOutput}" />
+
+                        <controls:LabeledSlider Value="{Binding MaxSlewRate, Mode=TwoWay}" Minimum="0.03" Maximum="0.50" TickFrequency="0.001"
+                            Label="Max Slew Rate" StringFormat="{}{0:F4}" LabelWidth="120"
+                            Description="Max force change per frame. Lower = smoother, higher = snappier."
+                            SectionColor="{StaticResource SectionOutput}" />
+
+                        <!-- Safety Toggles -->
+                        <Border Background="{StaticResource BgInput}" CornerRadius="6" Padding="12,10" Margin="0,12,0,0">
+                            <StackPanel>
+                                <DockPanel Margin="0,2">
+                                    <TextBlock Text="Sign Correction" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" />
+                                    <CheckBox IsChecked="{Binding SignCorrectionEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <TextBlock Text="Self-centering forces near center" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,6" />
+
+                                <DockPanel Margin="0,2">
+                                    <TextBlock Text="Invert Force" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" />
+                                    <CheckBox IsChecked="{Binding ForceInvertEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <TextBlock Text="Flips all forces at the wheel" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Advanced Settings (collapsible) -->
+                        <Expander Style="{StaticResource SectionExpander}" Header="Advanced Output" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Mix Mode" Style="{StaticResource SubSectionHeader}" Margin="0,4,0,4" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <RadioButton Content="Replace" GroupName="MixMode" Margin="0,0,20,0" FontSize="15">
+                                        <RadioButton.IsChecked>
+                                            <Binding Path="SelectedMixMode" Converter="{StaticResource EnumToBoolConverter}" ConverterParameter="Replace" Mode="TwoWay" />
+                                        </RadioButton.IsChecked>
+                                    </RadioButton>
+                                    <RadioButton Content="Overlay" GroupName="MixMode" FontSize="15">
+                                        <RadioButton.IsChecked>
+                                            <Binding Path="SelectedMixMode" Converter="{StaticResource EnumToBoolConverter}" ConverterParameter="Overlay" Mode="TwoWay" />
+                                        </RadioButton.IsChecked>
+                                    </RadioButton>
+                                </StackPanel>
+
+                                <controls:LabeledSlider Value="{Binding ForceScale, Mode=TwoWay}" Minimum="0.01" Maximum="20" TickFrequency="0.01"
+                                    Label="Force Scale" StringFormat="{}{0:F3}" IsLogarithmic="True" LabelWidth="140"
+                                    Description="Divides the mixed signal to normalize it. Works with Force Sensitivity."
+                                    SectionColor="{StaticResource SectionOutput}" />
+                                <controls:LabeledSlider Value="{Binding SteeringLockDegrees, Mode=TwoWay}" Minimum="180" Maximum="1080" TickFrequency="10"
+                                    Label="Steering Lock" StringFormat="{}{0}" IsLogarithmic="True" LabelWidth="140"
+                                    Description="Your wheel's total rotation in degrees."
+                                    SectionColor="{StaticResource SectionOutput}" />
+                                <controls:LabeledSlider Value="{Binding WheelMaxTorqueNm, Mode=TwoWay}" Minimum="1" Maximum="25" TickFrequency="0.5"
+                                    Label="Max Torque (Nm)" StringFormat="{}{0:F3}" LabelWidth="140"
+                                    Description="Wheelbase max torque — used for Nm display. 5.5 = Moza R5, 9 = R9, 15 = R15."
+                                    SectionColor="{StaticResource SectionOutput}" />
+
+                                <TextBlock Text="Response Curve" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
+                                <StackPanel Orientation="Horizontal" Margin="0,4">
+                                    <ComboBox SelectedIndex="{Binding SelectedLutPresetIndex}" Width="160" FontSize="15" Padding="6,4">
+                                        <ComboBoxItem Content="Linear" />
+                                        <ComboBoxItem Content="Soft Center" />
+                                        <ComboBoxItem Content="Progressive" />
+                                        <ComboBoxItem Content="Dead Zone" />
+                                    </ComboBox>
+                                    <Button Content="Apply" Command="{Binding ApplyLutPresetCommand}" Margin="12,0,0,0" Padding="20,6" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
