@@ -118,71 +118,8 @@ public sealed class WheelbaseFactory
 
     public static IFFBProvider CreateProvider(WheelbaseVendor vendor, FfbDeviceManager deviceManager)
     {
-        Log($"Creating provider for vendor: {vendor}");
-
-        IFFBProvider provider = vendor switch
-        {
-            WheelbaseVendor.Simucube => TryCreateSimucube(deviceManager),
-            WheelbaseVendor.Logitech => TryCreateLogitech(deviceManager),
-            _ => new GenericDirectInputProvider(deviceManager)
-        };
-
-        if (provider.IsAvailable)
-        {
-            Log($"Provider '{provider.ProviderName}' created and available");
-            return provider;
-        }
-
-        if (provider is not GenericDirectInputProvider)
-        {
-            Log($"Provider '{provider.ProviderName}' not available, falling back to DirectInput");
-            provider.Dispose();
-            return new GenericDirectInputProvider(deviceManager);
-        }
-
-        return provider;
-    }
-
-    private static IFFBProvider TryCreateSimucube(FfbDeviceManager deviceManager)
-    {
-        try
-        {
-            var provider = new SimucubeProvider();
-            if (provider.Initialize())
-            {
-                Log("Simucube provider initialized successfully");
-                return provider;
-            }
-
-            Log($"Simucube provider init failed: {provider.LastError}");
-            return provider;
-        }
-        catch (Exception ex)
-        {
-            Log($"Simucube provider creation failed: {ex.Message}, falling back to DirectInput");
-            return new GenericDirectInputProvider(deviceManager);
-        }
-    }
-
-    private static IFFBProvider TryCreateLogitech(FfbDeviceManager deviceManager)
-    {
-        try
-        {
-            var provider = new LogitechTrueForceProvider();
-            if (provider.Initialize())
-            {
-                Log($"Logitech provider initialized (TrueForce={provider.SupportsTrueForce})");
-                return provider;
-            }
-
-            Log($"Logitech provider init failed: {provider.LastError}");
-            return provider;
-        }
-        catch (Exception ex)
-        {
-            Log($"Logitech provider creation failed: {ex.Message}, falling back to DirectInput");
-            return new GenericDirectInputProvider(deviceManager);
-        }
+        Log($"Vendor: {vendor} — using DirectInput (vendor SDKs pending)");
+        return new GenericDirectInputProvider(deviceManager);
     }
 
     public static IFFBProvider CreateFromDeviceName(string productName, FfbDeviceManager deviceManager)

@@ -1008,13 +1008,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             RefreshSnapshotButtonNames();
             if (!_uiUpdateTimer.IsEnabled)
                 _uiUpdateTimer.Start();
+            _telemetryLoop.AutoDetectAndSetProvider();
+            string providerInfo = _telemetryLoop.ActiveProviderName != "DirectInput (Built-in)"
+                ? $" | Provider: {_telemetryLoop.ActiveProviderName}"
+                : "";
             string ledStatus = _deviceManager.IsLedControllerConnected
                 ? $" | LEDs: {_deviceManager.LedControllerVendor}"
                 : $" | LEDs: {_deviceManager.LedDiagnosticInfo.Split('\n').LastOrDefault() ?? "not found"}";
             string vibStatus = _deviceManager.SupportsPeriodicEffects
                 ? ""
                 : " | WARNING: wheel does not report periodic effect support — kerb/slip vibration may not work";
-            StatusText = (_deviceManager.LastError ?? $"Connected to {SelectedDevice.ProductName}") + ledStatus + vibStatus;
+            StatusText = (_deviceManager.LastError ?? $"Connected to {SelectedDevice.ProductName}") + providerInfo + ledStatus + vibStatus;
             UpdateLedCapabilities();
             PushLedConfig();
             _appSettings.LastConnectedDeviceInstanceId = SelectedDevice.DeviceInstance.InstanceGuid.ToString();
@@ -1029,6 +1033,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void DisconnectDevice()
     {
+        _telemetryLoop.SetFfbProvider(null);
         _deviceManager.DisconnectDevice();
         IsDeviceConnected = false;
         IsAutoSetupAvailable = false;
