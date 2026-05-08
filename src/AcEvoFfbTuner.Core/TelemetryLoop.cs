@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using AcEvoFfbTuner.Core.DirectInput;
 using AcEvoFfbTuner.Core.FfbProcessing;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
+using AcEvoFfbTuner.Core.FfbProviders;
 using AcEvoFfbTuner.Core.Profiles;
 using AcEvoFfbTuner.Core.SharedMemory;
 using AcEvoFfbTuner.Core.SharedMemory.Structs;
@@ -22,6 +23,8 @@ public sealed class TelemetryLoop : IDisposable
     private readonly SharedMemoryReader _reader;
     private readonly FfbPipeline _pipeline;
     private readonly FfbDeviceManager _deviceManager;
+    private IFFBProvider? _ffbProvider;
+    private readonly HapticData _reusableHapticData = new();
 
     public readonly TrackMapBuilder MapBuilder = new();
     public readonly TrackPositionDetector PositionDetector = new();
@@ -93,9 +96,26 @@ public sealed class TelemetryLoop : IDisposable
     public bool SuppressOutput { get => _suppressOutput; set => _suppressOutput = value; }
     public float LastLatencyMs => _lastLatencyMs;
     public float AvgLatencyMs => _avgLatencyMs;
+    public string ActiveProviderName => _ffbProvider?.ProviderName ?? "DirectInput (Built-in)";
 
     public string DetectedTrackName => _lastDetectedTrackName;
     public string DetectedCarModel => _lastDetectedCarModel;
+
+    public void SetFfbProvider(IFFBProvider? provider)
+    {
+        var old = _ffbProvider;
+        _ffbProvider = provider;
+        old?.Dispose();
+    }
+
+    public void AutoDetectAndSetProvider()
+    {
+        string? productName = _deviceManager.ConnectedDevice?.ProductName;
+        if (string.IsNullOrEmpty(productName)) return;
+
+        var provider = WheelbaseFactory.CreateFromDeviceName(productName, _deviceManager);
+        SetFfbProvider(provider);
+    }
 
     private static string DecodeString(byte[] data)
     {
@@ -159,6 +179,7 @@ public sealed class TelemetryLoop : IDisposable
         LiveServer.Stop();
         DataUpdated -= LiveServer.OnData;
 
+        _ffbProvider?.ZeroTorque();
         _deviceManager.ZeroForce();
 
         if (_timerResolutionSet)
@@ -284,13 +305,29 @@ public sealed class TelemetryLoop : IDisposable
                     {
                         if (raw.SpeedKmh < 0.5f)
                         {
-                            _deviceManager.SendConstantForce(0f);
-                            _deviceManager.SetTargetVibration(0f);
+                            if (_ffbProvider != null && _ffbProvider.IsInitialized)
+                            {
+                                _ffbProvider.ZeroTorque();
+                            }
+                            else
+                            {
+                                _deviceManager.SendConstantForce(0f);
+                                _deviceManager.SetTargetVibration(0f);
+                            }
                         }
                         else
                         {
-                            _deviceManager.SendConstantForce(processed.MainForce);
-                            _deviceManager.SetTargetVibration(processed.VibrationForce);
+                            if (_ffbProvider != null && _ffbProvider.IsInitialized)
+                            {
+                                _ffbProvider.UpdateTorque(processed.MainForce);
+                                _reusableHapticData.VibrationIntensity = processed.VibrationForce;
+                                _ffbProvider.SetHaptics(_reusableHapticData);
+                            }
+                            else
+                            {
+                                _deviceManager.SendConstantForce(processed.MainForce);
+                                _deviceManager.SetTargetVibration(processed.VibrationForce);
+                            }
                         }
 
                         _deviceManager.UpdateWheelLeds(raw.RpmPercent, raw.IsChangeUpRpm, raw.IsRpmLimiterOn, raw.Flag, raw.AbsVibrations > 0.001f);
@@ -359,6 +396,7 @@ public sealed class TelemetryLoop : IDisposable
 
                 if (_watchdog.ElapsedMilliseconds > WatchdogTimeoutMs)
                 {
+                    _ffbProvider?.ZeroTorque();
                     _deviceManager.ZeroForce();
                     StatusChanged?.Invoke("Watchdog timeout - zeroing FFB");
                     _watchdog.Restart();
@@ -808,6 +846,8 @@ public sealed class TelemetryLoop : IDisposable
         if (_disposed) return;
         _disposed = true;
         Stop();
+        _ffbProvider?.Dispose();
+        _ffbProvider = null;
     }
 
     private static void LogDiag(string msg)

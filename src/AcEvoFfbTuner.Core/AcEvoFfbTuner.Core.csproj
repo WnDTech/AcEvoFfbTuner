@@ -32,6 +32,21 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
+    <Content Include="..\..\lib\simucube\sc_api.dll" Link="sc_api.dll" Condition="Exists('..\..\lib\simucube\sc_api.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Include="..\..\lib\logitech\LogitechSteeringWheel.dll" Link="LogitechSteeringWheel.dll" Condition="Exists('..\..\lib\logitech\LogitechSteeringWheel.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Include="..\..\lib\logitech\LogitechSteeringWheel.lib" Link="LogitechSteeringWheel.lib" Condition="Exists('..\..\lib\logitech\LogitechSteeringWheel.lib')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
   </ItemGroup>
 
 </Project>
