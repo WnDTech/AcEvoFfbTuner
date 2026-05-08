@@ -67,8 +67,19 @@ public partial class App : Application
         ViewModel.LoadAppSettings();
 
         var mainWindow = new MainWindow();
+
+        if (Settings.StartMinimised)
+        {
+            mainWindow.WindowState = WindowState.Minimized;
+        }
+
         MainWindow = mainWindow;
         mainWindow.Show();
+
+        if (Settings.AutoConnect || Settings.AutoStart)
+        {
+            ViewModel.ApplyStartupActions();
+        }
 
         if (showWhatsNew)
             ShowWhatsNewIfNeeded();

@@ -22,11 +22,8 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Padding="16,12" BorderBrush="#FF30363D" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" x:Name="HeaderTitle">
-                <TextBlock Text="AC EVO" FontSize="18" FontWeight="Black" Foreground="#FFF0883E" VerticalAlignment="Center" />
-                <TextBlock Text=" FFB" FontSize="18" FontWeight="Light" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
-            </StackPanel>
+        <Border Grid.Row="0" Padding="16,8" BorderBrush="#FF30363D" BorderThickness="0,0,0,1">
+            <TextBlock x:Name="HeaderTitle" Text="NAVIGATION" FontSize="11" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" />
         </Border>
 
         <StackPanel Grid.Row="1" Margin="0,8">

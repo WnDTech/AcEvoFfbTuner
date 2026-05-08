@@ -1017,6 +1017,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             StatusText = (_deviceManager.LastError ?? $"Connected to {SelectedDevice.ProductName}") + ledStatus + vibStatus;
             UpdateLedCapabilities();
             PushLedConfig();
+            _appSettings.LastConnectedDeviceInstanceId = SelectedDevice.DeviceInstance.InstanceGuid.ToString();
+            _appSettings.Save();
         }
         else
         {
@@ -1032,6 +1034,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         IsAutoSetupAvailable = false;
         DeviceName = "No device";
         ResetLedCapabilities();
+        _appSettings.LastConnectedDeviceInstanceId = null;
+        _appSettings.Save();
     }
 
     partial void OnSelectedPanicDeviceChanged(FfbDeviceInfo? value)
@@ -1796,9 +1800,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.OutputGain = value;
         OnPropertyChanged(nameof(OutputGainNmText));
     }
+    partial void OnCurrentForceOutputChanged(float value) => OnPropertyChanged(nameof(ForceBarFillHeight));
+    partial void OnSpeedKmhChanged(float value) => OnPropertyChanged(nameof(SpeedNeedleAngle));
 
     public string MaxForceLimitNmText => $"{MaxForceLimit:F3} ({MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
     public string OutputGainNmText => $"{OutputGain:F3} (peak {MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
+
+    public double ForceBarFillHeight => Math.Min(160, Math.Max(0, Math.Abs(CurrentForceOutput)) * 160);
+    public double SpeedNeedleAngle => -90 + (Math.Min(360, Math.Max(0, SpeedKmh)) / 360.0) * 180;
 
     partial void OnLedBrightnessChanged(int value) => PushLedConfig();
     partial void OnLedFlashRateChanged(int value) => PushLedConfig();
@@ -2456,6 +2465,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _recordingStatus = "";
 
+    [ObservableProperty]
+    private bool _startMinimised;
+
+    [ObservableProperty]
+    private bool _autoConnect;
+
+    [ObservableProperty]
+    private bool _autoStart;
+
     private NAudio.Wave.WasapiLoopbackCapture? _loopbackCapture;
     private NAudio.Wave.WaveFileWriter? _waveWriter;
     private string? _recordingTempPath;
@@ -2480,11 +2498,53 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _appSettings.Save();
     }
 
+    partial void OnStartMinimisedChanged(bool value)
+    {
+        _appSettings.StartMinimised = value;
+        _appSettings.Save();
+    }
+
+    partial void OnAutoConnectChanged(bool value)
+    {
+        _appSettings.AutoConnect = value;
+        _appSettings.Save();
+    }
+
+    partial void OnAutoStartChanged(bool value)
+    {
+        _appSettings.AutoStart = value;
+        _appSettings.Save();
+    }
+
     public void LoadAppSettings()
     {
         SplashScreenEnabled = _appSettings.SplashScreenEnabled;
         CustomStartupSoundPath = _appSettings.CustomStartupSoundPath;
+        StartMinimised = _appSettings.StartMinimised;
+        AutoConnect = _appSettings.AutoConnect;
+        AutoStart = _appSettings.AutoStart;
         RefreshRecordingDevices();
+    }
+
+    public void ApplyStartupActions()
+    {
+        if (AutoConnect && !string.IsNullOrEmpty(_appSettings.LastConnectedDeviceInstanceId)
+            && Guid.TryParse(_appSettings.LastConnectedDeviceInstanceId, out var deviceGuid))
+        {
+            var match = AvailableDevices.FirstOrDefault(d =>
+                d.DeviceInstance != null && d.DeviceInstance.InstanceGuid == deviceGuid);
+            if (match != null)
+            {
+                SelectedDevice = match;
+                ConnectDevice();
+            }
+        }
+
+        if (AutoStart && IsDeviceConnected)
+        {
+            IsRunning = true;
+            ToggleTelemetry();
+        }
     }
 
     public void RestoreButtonSettings()

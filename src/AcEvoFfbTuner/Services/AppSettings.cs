@@ -12,6 +12,10 @@ public sealed class AppSettings
     public int PanicButtonComboIndex { get; set; }
     public string? PanicDeviceInstanceId { get; set; }
     public string? LastSeenVersion { get; set; }
+    public bool StartMinimised { get; set; }
+    public bool AutoConnect { get; set; }
+    public bool AutoStart { get; set; }
+    public string? LastConnectedDeviceInstanceId { get; set; }
 
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");

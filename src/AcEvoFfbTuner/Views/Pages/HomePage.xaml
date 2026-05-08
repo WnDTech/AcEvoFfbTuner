@@ -9,6 +9,81 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
         <StackPanel MaxWidth="920" HorizontalAlignment="Center">
 
+            <!-- QUICK START — Horizontal stepper, auto-hide when connected -->
+            <Border x:Name="QuickStartCard" Background="#FF1C2128" CornerRadius="8" Padding="24,18"
+                    BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,0,16">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,14">
+                        <TextBlock Text="QUICK START" FontSize="15" FontWeight="Bold" Foreground="#FFF0883E" VerticalAlignment="Center" />
+                        <Button DockPanel.Dock="Right" Content="Dismiss" Click="OnDismissQuickStart"
+                                Padding="8,4" FontSize="12" Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Cursor="Hand" />
+                    </DockPanel>
+
+                    <!-- Horizontal stepper: 1 → 2 → 3 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Step 1 -->
+                        <Border Grid.Column="0" Background="#FF21262D" CornerRadius="6" Padding="16,14">
+                            <StackPanel>
+                                <Border Background="#FFF0883E" CornerRadius="12" Width="24" Height="24" Margin="0,0,0,8" HorizontalAlignment="Left">
+                                    <TextBlock Text="1" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Close Other Apps" FontSize="14" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                                <TextBlock Text="Moza Pit House, Logitech G HUB, Fanatec driver, SimHub, vJoy" FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Arrow 1→2 -->
+                        <TextBlock Grid.Column="1" Text="&#x276F;" FontSize="18" Foreground="#FF30363D" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                        <!-- Step 2 -->
+                        <Border Grid.Column="2" Background="#FF21262D" CornerRadius="6" Padding="16,14">
+                            <StackPanel>
+                                <Border Background="#FFF0883E" CornerRadius="12" Width="24" Height="24" Margin="0,0,0,8" HorizontalAlignment="Left">
+                                    <TextBlock Text="2" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Set In-Game FFB = 0" FontSize="14" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                                <TextBlock Text="AC EVO Settings > Controls > FFB Gain = 0, restart game" FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Arrow 2→3 -->
+                        <TextBlock Grid.Column="3" Text="&#x276F;" FontSize="18" Foreground="#FF30363D" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                        <!-- Step 3 -->
+                        <Border Grid.Column="4" Background="#FF21262D" CornerRadius="6" Padding="16,14">
+                            <StackPanel>
+                                <Border Background="#FFF0883E" CornerRadius="12" Width="24" Height="24" Margin="0,0,0,8" HorizontalAlignment="Left">
+                                    <TextBlock Text="3" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Connect &amp; Start" FontSize="14" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                                <TextBlock Text="Select wheel, Connect, load a profile, then START" FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <TextBlock Text="Use the sidebar to navigate: FFB Tuning, Equalizer, Track Map, Telemetry, Devices, Profiles"
+                               FontSize="12" Foreground="#FF8B949E" Margin="0,12,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
             <!-- HERO STATUS BAR — Game + Device + Profile in one row -->
             <Border Background="#FF1C2128" CornerRadius="8" Padding="20,16" Margin="0,0,0,16"
                     BorderThickness="1" BorderBrush="#FF30363D">
@@ -152,10 +227,10 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <TextBlock FontSize="11" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,4,0,0">
+                        <TextBlock FontSize="11" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap" MaxWidth="160" TextAlignment="Center">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="Connect a device first" />
+                                    <Setter Property="Text" Value="Auto-configure all FFB settings for your wheelbase torque rating" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsAutoSetupAvailable}" Value="True">
                                             <Setter Property="Text" Value="{Binding AutoSetupStatus}" />
@@ -214,7 +289,8 @@
                         <Button Content="PANIC" Command="{Binding PanicStopCommand}"
                                 FontSize="14" FontWeight="Bold" Cursor="Hand" Padding="20,12"
                                 Style="{StaticResource PanicButton}" />
-                        <TextBlock Text="Zero all FFB immediately" FontSize="11" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                        <TextBlock FontSize="11" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap" MaxWidth="140" TextAlignment="Center"
+                                   Text="Zero all FFB · Assignable in Devices page" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -235,20 +311,11 @@
                         <Grid Width="50" Height="160" Margin="0,0,0,4">
                             <!-- Background track -->
                             <Border Background="#FF21262D" CornerRadius="4" />
-                            <!-- Limit marker (dashed line at MaxForceLimit position) -->
-                            <Border HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Height="1" Background="#FFFF7B72" Opacity="0.6">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Margin" Value="0,0,0,0" />
-                                    </Style>
-                                </Border.Style>
-                            </Border>
                             <!-- Force fill bar -->
-                            <Border VerticalAlignment="Bottom" CornerRadius="4">
+                            <Border VerticalAlignment="Bottom" CornerRadius="4" Height="{Binding ForceBarFillHeight, FallbackValue=0}">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Setter Property="Background" Value="#FFF0883E" />
-                                        <Setter Property="Height" Value="0" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsClipping}" Value="True">
                                                 <Setter Property="Background" Value="#FFFF7B72" />
@@ -275,42 +342,69 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="LIVE TELEMETRY" FontSize="11" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,12" />
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="LIVE TELEMETRY" FontSize="11" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,12" />
 
-                        <!-- Speed -->
-                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,8">
-                            <TextBlock Text="SPEED" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,4" />
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding SpeedKmh, StringFormat='{}{0:F0}'}" FontSize="28" FontWeight="Bold" Foreground="#FFE6EDF3" />
-                                <TextBlock Text=" km/h" FontSize="13" Foreground="#FF8B949E" VerticalAlignment="Bottom" Margin="2,0,0,4" />
+                        <!-- Speed Dial Gauge -->
+                        <StackPanel Grid.Row="1" Grid.Column="0" HorizontalAlignment="Center">
+                            <TextBlock Text="SPEED" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                            <Canvas Width="160" Height="95" HorizontalAlignment="Center">
+                                <!-- Background arc -->
+                                <Path Stroke="#FF21262D" StrokeThickness="6" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                    <Path.Data>
+                                        <PathGeometry>
+                                            <PathFigure StartPoint="15,85">
+                                                <ArcSegment Point="145,85" Size="65,65" IsLargeArc="False" SweepDirection="Clockwise" />
+                                            </PathFigure>
+                                        </PathGeometry>
+                                    </Path.Data>
+                                </Path>
+                                <!-- Tick marks at 0, 60, 120, 180, 240, 300, 360 km/h -->
+                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="-90" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
+                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="-60" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
+                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="-30" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
+                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="0" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
+                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="30" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
+                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="60" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
+                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="90" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
+                                <!-- Speed needle -->
+                                <Line X1="80" Y1="85" X2="80" Y2="22" Stroke="#FFF0883E" StrokeThickness="2.5" StrokeStartLineCap="Round">
+                                    <Line.RenderTransform>
+                                        <RotateTransform Angle="{Binding SpeedNeedleAngle}" CenterX="80" CenterY="85" />
+                                    </Line.RenderTransform>
+                                </Line>
+                                <!-- Center cap -->
+                                <Ellipse Canvas.Left="76" Canvas.Top="81" Width="8" Height="8" Fill="#FFF0883E" />
+                                <!-- Scale labels -->
+                                <TextBlock Canvas.Left="2" Canvas.Top="82" Text="0" FontSize="8" Foreground="#FF484F58" />
+                                <TextBlock Canvas.Left="72" Canvas.Top="2" Text="180" FontSize="8" Foreground="#FF484F58" />
+                                <TextBlock Canvas.Left="141" Canvas.Top="82" Text="360" FontSize="8" Foreground="#FF484F58" />
+                            </Canvas>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+                                <TextBlock Text="{Binding SpeedKmh, StringFormat='{}{0:F0}'}" FontSize="24" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                                <TextBlock Text=" km/h" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Bottom" Margin="2,0,0,4" />
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- Steering Angle (visual gauge) -->
-                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,8">
-                            <TextBlock Text="STEERING" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,4" />
-                            <TextBlock Text="{Binding SteerAngle, StringFormat='{}{0:F1}°'}" FontSize="22" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,6" />
-                            <!-- Steering position bar -->
-                            <Grid Height="8" Margin="0,0,0,2">
-                                <Border Background="#FF21262D" CornerRadius="4" />
-                                <Border Width="2" Background="#FFF0883E" CornerRadius="1" HorizontalAlignment="Center" />
-                            </Grid>
-                        </StackPanel>
-
-                        <!-- Force Output -->
-                        <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,8">
-                            <TextBlock Text="FORCE OUT" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,4" />
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding CurrentForceOutput, StringFormat='{}{0:F3}'}" FontSize="22" FontWeight="Bold" Foreground="#FFE6EDF3" />
-                            </StackPanel>
-                            <TextBlock Text="{Binding MaxForceLimitNmText, FallbackValue=''}" FontSize="11" Foreground="#FF8B949E" Margin="0,2,0,0" />
+                        <!-- Racing Wheel (rotates with steering input) -->
+                        <StackPanel Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center">
+                            <TextBlock Text="STEERING" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                            <Border Width="130" Height="130" ClipToBounds="False" HorizontalAlignment="Center">
+                                <Image Source="pack://application:,,,/Resources/wheel_nobg.png"
+                                       Width="90" Height="90" Stretch="Uniform"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       RenderTransformOrigin="0.5,0.5">
+                                    <Image.RenderTransform>
+                                        <RotateTransform Angle="{Binding SteerAngle}" />
+                                    </Image.RenderTransform>
+                                </Image>
+                            </Border>
+                            <TextBlock Text="{Binding SteerAngle, StringFormat='{}{0:F1}°'}" FontSize="16" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,4,0,0" />
                         </StackPanel>
 
                         <!-- Status row -->
-                        <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,4,0,0">
+                        <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,4,0,0">
                             <TextBlock Text="STATUS" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,10,0" VerticalAlignment="Center" />
                             <TextBlock FontWeight="Bold" FontSize="13" VerticalAlignment="Center">
                                 <TextBlock.Style>
@@ -340,81 +434,6 @@
                     BorderThickness="1" BorderBrush="#FF30363D"
                     Visibility="{Binding StatusText, Converter={StaticResource NotEmptyToVis}}">
                 <TextBlock Text="{Binding StatusText}" FontSize="14" Foreground="#FF8B949E" TextWrapping="Wrap" />
-            </Border>
-
-            <!-- QUICK START — Horizontal stepper, auto-hide when connected -->
-            <Border x:Name="QuickStartCard" Background="#FF1C2128" CornerRadius="8" Padding="24,18"
-                    BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,0,16">
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Setter Property="Visibility" Value="Visible" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <StackPanel>
-                    <DockPanel Margin="0,0,0,14">
-                        <TextBlock Text="QUICK START" FontSize="15" FontWeight="Bold" Foreground="#FFF0883E" VerticalAlignment="Center" />
-                        <Button DockPanel.Dock="Right" Content="Dismiss" Click="OnDismissQuickStart"
-                                Padding="8,4" FontSize="12" Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Cursor="Hand" />
-                    </DockPanel>
-
-                    <!-- Horizontal stepper: 1 → 2 → 3 -->
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="40" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="40" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Step 1 -->
-                        <Border Grid.Column="0" Background="#FF21262D" CornerRadius="6" Padding="16,14">
-                            <StackPanel>
-                                <Border Background="#FFF0883E" CornerRadius="12" Width="24" Height="24" Margin="0,0,0,8" HorizontalAlignment="Left">
-                                    <TextBlock Text="1" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <TextBlock Text="Close Other Apps" FontSize="14" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
-                                <TextBlock Text="Moza Pit House, Logitech G HUB, Fanatec driver, SimHub, vJoy" FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Arrow 1→2 -->
-                        <TextBlock Grid.Column="1" Text="&#x276F;" FontSize="18" Foreground="#FF30363D" HorizontalAlignment="Center" VerticalAlignment="Center" />
-
-                        <!-- Step 2 -->
-                        <Border Grid.Column="2" Background="#FF21262D" CornerRadius="6" Padding="16,14">
-                            <StackPanel>
-                                <Border Background="#FFF0883E" CornerRadius="12" Width="24" Height="24" Margin="0,0,0,8" HorizontalAlignment="Left">
-                                    <TextBlock Text="2" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <TextBlock Text="Set In-Game FFB = 0" FontSize="14" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
-                                <TextBlock Text="AC EVO Settings > Controls > FFB Gain = 0, restart game" FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Arrow 2→3 -->
-                        <TextBlock Grid.Column="3" Text="&#x276F;" FontSize="18" Foreground="#FF30363D" HorizontalAlignment="Center" VerticalAlignment="Center" />
-
-                        <!-- Step 3 -->
-                        <Border Grid.Column="4" Background="#FF21262D" CornerRadius="6" Padding="16,14">
-                            <StackPanel>
-                                <Border Background="#FFF0883E" CornerRadius="12" Width="24" Height="24" Margin="0,0,0,8" HorizontalAlignment="Left">
-                                    <TextBlock Text="3" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <TextBlock Text="Connect &amp; Start" FontSize="14" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
-                                <TextBlock Text="Select wheel, Connect, load a profile, then START" FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-
-                    <TextBlock Text="Use the sidebar to navigate: FFB Tuning, Equalizer, Track Map, Telemetry, Devices, Profiles"
-                               FontSize="12" Foreground="#FF8B949E" Margin="0,12,0,0" TextWrapping="Wrap" />
-                </StackPanel>
             </Border>
 
         </StackPanel>
