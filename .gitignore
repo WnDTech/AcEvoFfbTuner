@@ -34,3 +34,6 @@ Desktop.ini
 ## Publish & installer output
 publish-test/
 installer-output/
+
+## Website (deployed separately)
+website/

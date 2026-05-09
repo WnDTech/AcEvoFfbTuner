@@ -4,6 +4,8 @@
 [![Release](https://github.com/WnDTech/AcEvoFfbTuner/actions/workflows/release.yml/badge.svg)](https://github.com/WnDTech/AcEvoFfbTuner/actions/workflows/release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/WnDTech/AcEvoFfbTuner?label=latest)](https://github.com/WnDTech/AcEvoFfbTuner/releases/latest)
 
+**Website:** [ffbtuner.wndtech.tips](https://ffbtuner.wndtech.tips/)
+
 A Windows desktop application that intercepts, processes, and enhances Force Feedback signals from **Assetto Corsa EVO** before sending them to your DirectInput-compatible steering wheel.
 
 Instead of relying on the game's native FFB output, this tool reads raw physics telemetry from AC EVO's shared memory — tire forces, slip data, suspension travel, G-forces, vibrations — runs it through a fully configurable 15-stage DSP pipeline, and sends the processed result directly to the wheel via a 1 kHz interpolation thread for buttery-smooth force output.
