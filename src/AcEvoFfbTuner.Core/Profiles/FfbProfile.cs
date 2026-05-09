@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 14;
+    public const int CurrentVersion = 15;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -71,6 +71,7 @@ public sealed class FfbProfile
     public TyreFlexConfig TyreFlex { get; set; } = new();
     public LedEffectConfigDto LedEffects { get; set; } = new();
     public Hf8Config Hf8 { get; set; } = new();
+    public GripGuardConfig GripGuard { get; set; } = new();
     public TelemetrySnapshotDto? LastTelemetrySnapshot { get; set; }
 
     public void ApplyToPipeline(FfbPipeline pipeline)
@@ -184,6 +185,12 @@ public sealed class FfbProfile
             pipeline.Hf8SignalMapper.ZoneGains[i] = Hf8.GetZoneGain(i);
             pipeline.Hf8SignalMapper.ZoneEnabled[i] = Hf8.GetZoneEnabled(i);
         }
+
+        pipeline.GripGuard.Enabled = GripGuard.Enabled;
+        pipeline.GripGuard.PeakSlipAngle = GripGuard.PeakSlipAngle;
+        pipeline.GripGuard.AttenuationStrength = GripGuard.AttenuationStrength;
+        pipeline.GripGuard.MechanicalTrailGain = GripGuard.MechanicalTrailGain;
+        pipeline.GripGuard.MinSpeedKmh = GripGuard.MinSpeedKmh;
     }
 
     public static FfbProfile CreateFromPipeline(FfbPipeline pipeline, string name)
@@ -304,6 +311,14 @@ public sealed class FfbProfile
             ZoneGains = (float[])pipeline.Hf8SignalMapper.ZoneGains.Clone(),
             ZoneEnabled = (bool[])pipeline.Hf8SignalMapper.ZoneEnabled.Clone(),
             OutputRateHz = Hf8?.OutputRateHz ?? 75
+        };
+        GripGuard = new GripGuardConfig
+        {
+            Enabled = pipeline.GripGuard.Enabled,
+            PeakSlipAngle = pipeline.GripGuard.PeakSlipAngle,
+            AttenuationStrength = pipeline.GripGuard.AttenuationStrength,
+            MechanicalTrailGain = pipeline.GripGuard.MechanicalTrailGain,
+            MinSpeedKmh = pipeline.GripGuard.MinSpeedKmh
         };
     }
 
@@ -508,6 +523,7 @@ public sealed class FfbProfile
         Equalizer.SanitizeFloats();
         TyreFlex.SanitizeFloats();
         Hf8.SanitizeFloats();
+        GripGuard.SanitizeFloats();
     }
 
     private static float Sanitize(float v) =>
@@ -663,6 +679,11 @@ public sealed class FfbProfile
         if (Version < 14)
         {
             Hf8 ??= new Hf8Config();
+        }
+
+        if (Version < 15)
+        {
+            GripGuard ??= new GripGuardConfig();
         }
 
         Version = CurrentVersion;
@@ -980,4 +1001,16 @@ public sealed class Hf8Config
             for (int i = 0; i < ZoneGains.Length; i++)
                 ZoneGains[i] = S(ZoneGains[i]);
     }
+}
+
+public sealed class GripGuardConfig
+{
+    public bool Enabled { get; set; } = true;
+    public float PeakSlipAngle { get; set; } = 0.10f;
+    public float AttenuationStrength { get; set; } = 1.0f;
+    public float MechanicalTrailGain { get; set; } = 0.015f;
+    public float MinSpeedKmh { get; set; } = 10.0f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { PeakSlipAngle = S(PeakSlipAngle); AttenuationStrength = S(AttenuationStrength); MechanicalTrailGain = S(MechanicalTrailGain); MinSpeedKmh = S(MinSpeedKmh); }
 }

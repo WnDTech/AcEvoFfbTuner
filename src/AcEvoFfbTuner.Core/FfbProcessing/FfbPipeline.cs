@@ -16,6 +16,7 @@ public sealed class FfbPipeline
     public FfbEqualizer Equalizer { get; } = new();
     public FfbTyreFlex TyreFlex { get; } = new();
     public Hf8SignalMapper Hf8SignalMapper { get; } = new();
+    public FfbGripGuard GripGuard { get; } = new();
 
 
     public float ForceScale { get; set; } = 1.0f;
@@ -84,6 +85,11 @@ public sealed class FfbPipeline
 
         // Output gain
         float coreOutput = coreDamped * OutputGain;
+
+        // Grip guard: prevents dangerous pull-away forces when front tyres lose grip.
+        // Caps forces that pull wheel toward steer direction at post-peak slip angles.
+        // Adds mechanical trail centering (like real caster) that's always active.
+        coreOutput = GripGuard.Apply(coreOutput, raw);
 
         // Speed fade: zero below 0.5 km/h, ramp to full at 5 km/h
         if (raw.SpeedKmh < 0.5f)
@@ -222,6 +228,7 @@ public sealed class FfbPipeline
         Equalizer.Reset();
         TyreFlex.Reset();
         Hf8SignalMapper.Reset();
+        GripGuard.Reset();
 
 
         _prevDetailOutput = 0f;

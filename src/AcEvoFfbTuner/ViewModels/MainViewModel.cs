@@ -513,6 +513,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _hf8Connected;
 
     [ObservableProperty]
+    private bool _gripGuardEnabled = true;
+
+    [ObservableProperty]
+    private float _gripGuardPeakSlipAngle = 0.10f;
+
+    [ObservableProperty]
+    private float _gripGuardAttenuationStrength = 1.0f;
+
+    [ObservableProperty]
+    private float _gripGuardMechanicalTrailGain = 0.015f;
+
+    [ObservableProperty]
+    private float _gripGuardMinSpeedKmh = 10.0f;
+
+    [ObservableProperty]
     private int _snapshotButtonIndex = -1;
 
     [ObservableProperty]
@@ -2139,6 +2154,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnHf8ZoneEnabled6Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[6] = value;
     partial void OnHf8ZoneEnabled7Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[7] = value;
 
+    partial void OnGripGuardEnabledChanged(bool value) => _pipeline.GripGuard.Enabled = value;
+    partial void OnGripGuardPeakSlipAngleChanged(float value) => _pipeline.GripGuard.PeakSlipAngle = value;
+    partial void OnGripGuardAttenuationStrengthChanged(float value) => _pipeline.GripGuard.AttenuationStrength = value;
+    partial void OnGripGuardMechanicalTrailGainChanged(float value) => _pipeline.GripGuard.MechanicalTrailGain = value;
+    partial void OnGripGuardMinSpeedKmhChanged(float value) => _pipeline.GripGuard.MinSpeedKmh = value;
+
     partial void OnSelectedProfileChanged(FfbProfile? value)
     {
         if (value == null) return;
@@ -2488,6 +2509,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Hf8ZoneEnabled5 = profile.Hf8.GetZoneEnabled(5);
         Hf8ZoneEnabled6 = profile.Hf8.GetZoneEnabled(6);
         Hf8ZoneEnabled7 = profile.Hf8.GetZoneEnabled(7);
+
+        GripGuardEnabled = profile.GripGuard.Enabled;
+        GripGuardPeakSlipAngle = profile.GripGuard.PeakSlipAngle;
+        GripGuardAttenuationStrength = profile.GripGuard.AttenuationStrength;
+        GripGuardMechanicalTrailGain = profile.GripGuard.MechanicalTrailGain;
+        GripGuardMinSpeedKmh = profile.GripGuard.MinSpeedKmh;
     }
 
     private void PushValuesToPipeline()
@@ -2573,6 +2600,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.Equalizer.SetBandGain(7, EqBand7Gain);
         _pipeline.Equalizer.SetBandGain(8, EqBand8Gain);
         _pipeline.Equalizer.SetBandGain(9, EqBand9Gain);
+
+        _pipeline.GripGuard.Enabled = GripGuardEnabled;
+        _pipeline.GripGuard.PeakSlipAngle = GripGuardPeakSlipAngle;
+        _pipeline.GripGuard.AttenuationStrength = GripGuardAttenuationStrength;
+        _pipeline.GripGuard.MechanicalTrailGain = GripGuardMechanicalTrailGain;
+        _pipeline.GripGuard.MinSpeedKmh = GripGuardMinSpeedKmh;
+
         PushLedConfig();
     }
 
