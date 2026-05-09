@@ -1625,7 +1625,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var timestamp = DateTime.Now.ToString("HH:mm:ss");
         var formatted = $"[{timestamp}] {entry}";
         SystemLogEntries.Add(formatted);
-        while (SystemLogEntries.Count > 3)
+        while (SystemLogEntries.Count > 500)
             SystemLogEntries.RemoveAt(0);
     }
 
