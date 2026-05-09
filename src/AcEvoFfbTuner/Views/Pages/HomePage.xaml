@@ -6,22 +6,12 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <converters:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis" />
     </UserControl.Resources>
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
-        <StackPanel MaxWidth="920" HorizontalAlignment="Center">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24">
+        <StackPanel>
 
             <!-- QUICK START — Horizontal stepper, auto-hide when connected -->
             <Border x:Name="QuickStartCard" Background="#FF1C2128" CornerRadius="8" Padding="24,18"
                     BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,0,16">
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Setter Property="Visibility" Value="Visible" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
                 <StackPanel>
                     <DockPanel Margin="0,0,0,14">
                         <TextBlock Text="QUICK START" FontSize="15" FontWeight="Bold" Foreground="#FFF0883E" VerticalAlignment="Center" />
@@ -295,12 +285,14 @@
                 </Grid>
             </Border>
 
-            <!-- LIVE TELEMETRY — Force bar + visual gauges -->
+            <!-- LIVE TELEMETRY — Force bar + Signal Monitor + Steering + Hardware Insight -->
             <Grid Margin="0,0,0,16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="80" />
                     <ColumnDefinition Width="16" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="200" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Force Output Meter (wider, with peak marker) -->
@@ -330,7 +322,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Live Telemetry Gauges -->
+                <!-- Live Telemetry: Signal Monitor + Steering -->
                 <Border Grid.Column="2" Background="#FF1C2128" CornerRadius="8" Padding="20,16"
                         BorderThickness="1" BorderBrush="#FF30363D">
                     <Grid>
@@ -346,44 +338,24 @@
 
                         <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="LIVE TELEMETRY" FontSize="11" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,12" />
 
-                        <!-- Speed Dial Gauge -->
+                        <!-- Signal Monitor (replaces Speed Gauge) -->
                         <StackPanel Grid.Row="1" Grid.Column="0" HorizontalAlignment="Center">
-                            <TextBlock Text="SPEED" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                            <Canvas Width="160" Height="95" HorizontalAlignment="Center">
-                                <!-- Background arc -->
-                                <Path Stroke="#FF21262D" StrokeThickness="6" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
-                                    <Path.Data>
-                                        <PathGeometry>
-                                            <PathFigure StartPoint="15,85">
-                                                <ArcSegment Point="145,85" Size="65,65" IsLargeArc="False" SweepDirection="Clockwise" />
-                                            </PathFigure>
-                                        </PathGeometry>
-                                    </Path.Data>
-                                </Path>
-                                <!-- Tick marks at 0, 60, 120, 180, 240, 300, 360 km/h -->
-                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="-90" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
-                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="-60" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
-                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="-30" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
-                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="0" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
-                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="30" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
-                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="60" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
-                                <Line X1="80" Y1="20" X2="80" Y2="28" Stroke="#FF484F58" StrokeThickness="1.5"><Line.RenderTransform><RotateTransform Angle="90" CenterX="80" CenterY="85"/></Line.RenderTransform></Line>
-                                <!-- Speed needle -->
-                                <Line X1="80" Y1="85" X2="80" Y2="22" Stroke="#FFF0883E" StrokeThickness="2.5" StrokeStartLineCap="Round">
-                                    <Line.RenderTransform>
-                                        <RotateTransform Angle="{Binding SpeedNeedleAngle}" CenterX="80" CenterY="85" />
-                                    </Line.RenderTransform>
-                                </Line>
-                                <!-- Center cap -->
-                                <Ellipse Canvas.Left="76" Canvas.Top="81" Width="8" Height="8" Fill="#FFF0883E" />
-                                <!-- Scale labels -->
-                                <TextBlock Canvas.Left="2" Canvas.Top="82" Text="0" FontSize="8" Foreground="#FF484F58" />
-                                <TextBlock Canvas.Left="72" Canvas.Top="2" Text="180" FontSize="8" Foreground="#FF484F58" />
-                                <TextBlock Canvas.Left="141" Canvas.Top="82" Text="360" FontSize="8" Foreground="#FF484F58" />
-                            </Canvas>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
-                                <TextBlock Text="{Binding SpeedKmh, StringFormat='{}{0:F0}'}" FontSize="24" FontWeight="Bold" Foreground="#FFE6EDF3" />
-                                <TextBlock Text=" km/h" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Bottom" Margin="2,0,0,4" />
+                            <TextBlock Text="SIGNAL MONITOR" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                            <Border Background="#FF21262D" CornerRadius="4" Width="260" Height="80">
+                                <Canvas Width="260" Height="80" ClipToBounds="True">
+                                    <!-- Center line -->
+                                    <Line X1="0" Y1="40" X2="260" Y2="40" Stroke="#FF30363D" StrokeThickness="1" StrokeDashArray="4,4" />
+                                    <!-- Low-Freq Torque line -->
+                                    <Polyline Points="{Binding SignalMonitorLowFreq}" Stroke="#FFF0883E" StrokeThickness="1.5" Fill="Transparent" />
+                                    <!-- High-Freq Haptics line -->
+                                    <Polyline Points="{Binding SignalMonitorHighFreq}" Stroke="#FF79C0FF" StrokeThickness="1.5" Fill="Transparent" />
+                                </Canvas>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                                <Ellipse Width="8" Height="8" Fill="#FFF0883E" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <TextBlock Text="Low-Freq Torque" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                <Ellipse Width="8" Height="8" Fill="#FF79C0FF" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <TextBlock Text="High-Freq Haptics" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
                             </StackPanel>
                         </StackPanel>
 
@@ -426,6 +398,108 @@
                             </TextBlock>
                         </StackPanel>
                     </Grid>
+                </Border>
+
+                <!-- Hardware Insight Panel -->
+                <Border Grid.Column="4" Background="#FF1C2128" CornerRadius="8" Padding="16"
+                        BorderThickness="1" BorderBrush="#FF30363D">
+                    <StackPanel>
+                        <TextBlock Text="HARDWARE INSIGHT" FontSize="11" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,12" />
+
+                        <!-- Active Provider -->
+                        <TextBlock Text="Active Provider" FontSize="10" Foreground="#FF8B949E" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding HalProviderName}" FontSize="14" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,14" TextWrapping="Wrap" />
+
+                        <!-- SDK Connection LED -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="#FF484F58" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsHalSdkConnected}" Value="True">
+                                                <Setter Property="Fill" Value="#FF7EE787" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="SDK Connection" FontSize="12" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Haptic Engine LED -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="#FF484F58" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsHalHapticEngineActive}" Value="True">
+                                                <Setter Property="Fill" Value="#FF7EE787" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="Haptic Engine" FontSize="12" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Peripheral Sync LED -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="#FF484F58" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsHalPeripheralSynced}" Value="True">
+                                                <Setter Property="Fill" Value="#FF7EE787" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="Peripheral Sync" FontSize="12" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Test Buzz Button -->
+                        <Button Command="{Binding TestBuzzCommand}" Cursor="Hand" HorizontalAlignment="Stretch">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#1AF0883E" />
+                                    <Setter Property="Foreground" Value="#FFF0883E" />
+                                    <Setter Property="BorderBrush" Value="#FFF0883E" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Setter Property="FontSize" Value="13" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="BuzzBd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="12,8" SnapsToDevicePixels="True">
+                                                    <TextBlock x:Name="BuzzText" Text="Test Buzz" FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}" Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="BuzzBd" Property="Background" Value="#33F0883E" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter TargetName="BuzzBd" Property="Background" Value="#FF161B22" />
+                                                        <Setter TargetName="BuzzBd" Property="BorderBrush" Value="#FF21262D" />
+                                                        <Setter TargetName="BuzzText" Property="Foreground" Value="#FF484F58" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsTestBuzzRunning}" Value="True">
+                                            <Setter Property="Content" Value="Buzzing..." />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <TextBlock Text="500ms diagnostic vibration" FontSize="10" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap" TextAlignment="Center" />
+                    </StackPanel>
                 </Border>
             </Grid>
 

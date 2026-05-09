@@ -301,7 +301,7 @@
                     </Border>
                 </Popup>
 
-                <!-- Send Diagnostics + START / STOP + PANIC -->
+                <!-- Send Diagnostics + Recording Indicator + START / STOP + PANIC -->
                 <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Command="{Binding SendDiagnosticPackCommand}" Cursor="Hand"
                             Margin="0,0,8,0" VerticalAlignment="Center">
@@ -309,8 +309,24 @@
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="DiagBd" Background="#1AF0883E" BorderBrush="#FFF0883E"
                                         BorderThickness="1" CornerRadius="14" Padding="12,6" SnapsToDevicePixels="True">
-                                    <TextBlock x:Name="DiagText" Text="Send to Dev" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="#FFF0883E" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="DiagText" Text="Send to Dev" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="#FFF0883E" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <!-- Pulsing REC dot when telemetry is running -->
+                                        <Grid x:Name="RecDot" Width="10" Height="10" Margin="8,0,0,0" Visibility="Collapsed">
+                                            <Ellipse x:Name="RecDotOuter" Fill="#33E53935" />
+                                            <Ellipse x:Name="RecDotInner" Fill="#FFE53935" Margin="2" />
+                                            <Grid.Triggers>
+                                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                                    <BeginStoryboard x:Name="RecPulseStoryboard">
+                                                        <Storyboard RepeatBehavior="Forever">
+                                                            <DoubleAnimation Storyboard.TargetName="RecDotOuter" Storyboard.TargetProperty="Opacity" From="1" To="0.2" Duration="0:0:0.8" AutoReverse="True" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </EventTrigger>
+                                            </Grid.Triggers>
+                                        </Grid>
+                                    </StackPanel>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
@@ -321,6 +337,9 @@
                                         <Setter TargetName="DiagBd" Property="Background" Value="#1AFFD600" />
                                         <Setter TargetName="DiagBd" Property="BorderBrush" Value="#FFFFD600" />
                                         <Setter TargetName="DiagText" Property="Foreground" Value="#FFFFD600" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                        <Setter TargetName="RecDot" Property="Visibility" Value="Visible" />
                                     </DataTrigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -409,168 +428,123 @@
             </StackPanel>
         </Border>
 
-        <!-- ═══ STATUS BAR ═══ -->
+        <!-- ═══ STATUS BAR (System Log) ═══ -->
         <Border Grid.Row="2" Background="{StaticResource BgPanel}" Padding="12,4"
                 BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderBrush}">
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-                <!-- Row 0: Status indicators -->
-                <Grid Grid.Row="0" Margin="0,0,0,3">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                <!-- System Log Icon -->
+                <TextBlock Text="SYS LOG" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
 
-                    <!-- Game Status -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-                        <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
-                            <Ellipse.Style>
-                                <Style TargetType="Ellipse">
-                                    <Setter Property="Fill" Value="#FF555555" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
-                                            <Setter Property="Fill" Value="#FF7EE787" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Ellipse.Style>
-                        </Ellipse>
-                        <TextBlock FontSize="13" VerticalAlignment="Center">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="#FF555555" />
-                                    <Setter Property="Text" Value="Game: Off" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
-                                            <Setter Property="Foreground" Value="#FF7EE787" />
-                                            <Setter Property="Text" Value="Game: Connected" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
+                <!-- System Log Entries -->
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding SystemLogEntries}" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding StringFormat='{}{0}  ·'}" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-                    <!-- Separator -->
-                    <Border Grid.Column="1" Width="1" Background="{StaticResource BorderBrush}" Margin="0,2" />
+                <!-- Separator -->
+                <Border Grid.Column="2" Width="1" Background="{StaticResource BorderBrush}" Margin="0,2" />
 
-                    <!-- Packets/sec -->
-                    <TextBlock Grid.Column="2" Text="{Binding PacketsPerSecond, StringFormat='{}{0} pkt/s'}"
-                               FontSize="13" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="12,0" />
+                <!-- Game Status -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
+                    <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="#FF555555" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
+                                        <Setter Property="Fill" Value="#FF7EE787" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock FontSize="13" VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#FF555555" />
+                                <Setter Property="Text" Value="Game: Off" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
+                                        <Setter Property="Foreground" Value="#FF7EE787" />
+                                        <Setter Property="Text" Value="Game: Connected" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
 
-                    <!-- Force Output -->
-                    <TextBlock Grid.Column="3" Text="{Binding CurrentForceOutput, StringFormat='{}{0:F3} Nm'}"
-                               FontSize="13" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" FontWeight="Medium" Margin="0,0,12,0" />
+                <!-- Spacer -->
 
-                    <!-- Status Text -->
-                    <TextBlock Grid.Column="4" Text="{Binding StatusText}" FontSize="13"
-                               Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,12,0"
-                               Visibility="{Binding StatusText, Converter={StaticResource NotEmptyToVis}}" />
+                <!-- Packets/sec -->
+                <TextBlock Grid.Column="5" Text="{Binding PacketsPerSecond, StringFormat='{}{0} pkt/s'}"
+                           FontSize="13" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="12,0" />
 
-                    <!-- REC Indicator -->
-                    <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
-                        <Ellipse Width="8" Height="8" Margin="0,0,4,0" VerticalAlignment="Center">
-                            <Ellipse.Style>
-                                <Style TargetType="Ellipse">
-                                    <Setter Property="Fill" Value="Transparent" />
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsScreenRecording}" Value="True">
-                                            <Setter Property="Fill" Value="#FFE53935" />
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Ellipse.Style>
-                        </Ellipse>
-                        <TextBlock VerticalAlignment="Center" FontSize="13" FontWeight="Bold">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="Transparent" />
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsScreenRecording}" Value="True">
-                                            <Setter Property="Foreground" Value="#FFE53935" />
-                                            <Setter Property="Text" Value="REC" />
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
+                <!-- Force Output -->
+                <TextBlock Grid.Column="6" Text="{Binding CurrentForceOutput, StringFormat='{}{0:F3} Nm'}"
+                           FontSize="13" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" FontWeight="Medium" Margin="0,0,12,0" />
 
-                    <!-- Spacer -->
+                <!-- REC Indicator -->
+                <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                    <Ellipse Width="8" Height="8" Margin="0,0,4,0" VerticalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="Transparent" />
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsScreenRecording}" Value="True">
+                                        <Setter Property="Fill" Value="#FFE53935" />
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock VerticalAlignment="Center" FontSize="13" FontWeight="Bold">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="Transparent" />
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsScreenRecording}" Value="True">
+                                        <Setter Property="Foreground" Value="#FFE53935" />
+                                        <Setter Property="Text" Value="REC" />
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
 
-                    <!-- Update Status -->
-                    <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
-                        <TextBlock FontSize="13" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="{Binding UpdateStatusText}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsUpdateAvailable}" Value="True">
-                                            <Setter Property="Foreground" Value="#FFFFD600" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <Button Command="{Binding DownloadAndInstallUpdateCommand}" Cursor="Hand" VerticalAlignment="Center"
-                                Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BoolToVis}}">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border x:Name="UpdateBtnBorder" Background="#33FFD600" CornerRadius="4" Padding="10,3" SnapsToDevicePixels="True">
-                                        <TextBlock Text="{Binding LatestVersionText, StringFormat='Install {0}'}" FontSize="13" FontWeight="Bold" Foreground="#FFFFD600" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="UpdateBtnBorder" Property="Background" Value="#55FFD600" />
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-                    </StackPanel>
+                <!-- Separator -->
+                <Border Grid.Column="8" Width="1" Background="{StaticResource BorderBrush}" Margin="4,2" />
 
-                    <!-- Separator -->
-                    <Border Grid.Column="8" Width="1" Background="{StaticResource BorderBrush}" Margin="4,2" />
-
-                    <!-- Donate -->
-                    <Button Grid.Column="9" Click="OnDonateClick" Cursor="Hand" VerticalAlignment="Center">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border Background="Transparent" CornerRadius="4" Padding="10,3" SnapsToDevicePixels="True">
-                                    <TextBlock Text="&#x2764; Donate" FontSize="13" FontWeight="Bold" Foreground="#FFFFD600" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Foreground" Value="#FFF0883E" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
-                </Grid>
-
-                <!-- Row 1: Active Features + Haptic Test -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center"
-                            Visibility="{Binding IsDeviceConnected, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="Active:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
-                               VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <ItemsControl ItemsSource="{Binding ActiveFeatures}">
+                <!-- Active Features + Haptic Test -->
+                <StackPanel Grid.Column="9" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ItemsControl ItemsSource="{Binding ActiveFeatures}" Margin="0,0,8,0"
+                                  Visibility="{Binding IsDeviceConnected, Converter={StaticResource BoolToVis}}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal" />
@@ -586,11 +560,9 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <!-- Separator -->
-                    <Border Width="1" Background="{StaticResource BorderBrush}" Margin="8,0" Height="16" VerticalAlignment="Center" />
-
                     <!-- Haptic Test Button -->
-                    <Button Command="{Binding TestHapticsCommand}" Cursor="Hand" VerticalAlignment="Center">
+                    <Button Command="{Binding TestHapticsCommand}" Cursor="Hand" VerticalAlignment="Center"
+                            Visibility="{Binding IsDeviceConnected, Converter={StaticResource BoolToVis}}">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="HapticBtnBorder" Background="#1A79C0FF" CornerRadius="4" Padding="10,3" SnapsToDevicePixels="True">
@@ -606,6 +578,55 @@
                                         <Setter TargetName="HapticBtnBorder" Property="Background" Value="#33FFD600" />
                                         <Setter TargetName="HapticBtnText" Property="Foreground" Value="#FFFFD600" />
                                     </DataTrigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <Border Width="1" Background="{StaticResource BorderBrush}" Margin="8,0" Height="16" VerticalAlignment="Center" />
+
+                    <!-- Update Status -->
+                    <TextBlock FontSize="13" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="{Binding UpdateStatusText}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsUpdateAvailable}" Value="True">
+                                        <Setter Property="Foreground" Value="#FFFFD600" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Button Command="{Binding DownloadAndInstallUpdateCommand}" Cursor="Hand" VerticalAlignment="Center"
+                            Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BoolToVis}}">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="UpdateBtnBorder" Background="#33FFD600" CornerRadius="4" Padding="10,3" SnapsToDevicePixels="True">
+                                    <TextBlock Text="{Binding LatestVersionText, StringFormat='Install {0}'}" FontSize="13" FontWeight="Bold" Foreground="#FFFFD600" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="UpdateBtnBorder" Property="Background" Value="#55FFD600" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <Border Width="1" Background="{StaticResource BorderBrush}" Margin="8,0" Height="16" VerticalAlignment="Center" />
+
+                    <!-- Donate -->
+                    <Button Click="OnDonateClick" Cursor="Hand" VerticalAlignment="Center">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="Transparent" CornerRadius="4" Padding="10,3" SnapsToDevicePixels="True">
+                                    <TextBlock Text="&#x2764; Donate" FontSize="13" FontWeight="Bold" Foreground="#FFFFD600" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Foreground" Value="#FFF0883E" />
+                                    </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Button.Template>

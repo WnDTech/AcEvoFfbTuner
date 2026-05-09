@@ -43,9 +43,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(TestHapticsCommand))]
+    [NotifyCanExecuteChangedFor(nameof(TestBuzzCommand))]
     private bool _isDeviceConnected;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(TestBuzzCommand))]
     private bool _isRunning;
 
     [ObservableProperty]
@@ -738,9 +740,36 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<string> SnapshotButtonNames { get; } = new();
     public ObservableCollection<string> PanicButtonNames { get; } = new();
     public ObservableCollection<string> ActiveFeatures { get; } = new();
+    public ObservableCollection<string> SystemLogEntries { get; } = new();
 
     [ObservableProperty]
     private bool _isHapticTestRunning;
+
+    [ObservableProperty]
+    private string _halProviderName = "None";
+
+    [ObservableProperty]
+    private bool _isHalSdkConnected;
+
+    [ObservableProperty]
+    private bool _isHalHapticEngineActive;
+
+    [ObservableProperty]
+    private bool _isHalPeripheralSynced;
+
+    [ObservableProperty]
+    private bool _isTestBuzzRunning;
+
+    private readonly int _signalMonitorMaxPoints = 120;
+    private int _signalMonitorTickCounter;
+    private readonly List<float> _signalLowFreqBuffer = new();
+    private readonly List<float> _signalHighFreqBuffer = new();
+
+    [ObservableProperty]
+    private System.Windows.Media.PointCollection _signalMonitorLowFreq = new();
+
+    [ObservableProperty]
+    private System.Windows.Media.PointCollection _signalMonitorHighFreq = new();
 
     [ObservableProperty]
     private FfbDeviceInfo? _selectedDevice;
@@ -831,10 +860,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _telemetryLoop.GameConnectionChanged += () => Application.Current?.Dispatcher.Invoke(() =>
         {
             IsGameConnected = _telemetryLoop.IsGameConnected;
-            if (!IsGameConnected)
+            if (IsGameConnected)
+                AddSystemLog("Game connected (AC EVO shared memory)");
+            else
             {
                 _gameRecordingService.StopRecording();
                 IsScreenRecording = false;
+                AddSystemLog("Game disconnected");
             }
         });
         _gameRecordingService.RecordingStateChanged += (msg, isRec) => Application.Current?.Dispatcher.Invoke(() =>
@@ -914,6 +946,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         _uiUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
         _uiUpdateTimer.Tick += OnUiUpdate;
+
+        AddSystemLog("Application initialized");
     }
 
     public void Initialize()
@@ -1030,6 +1064,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             PushLedConfig();
             _appSettings.LastConnectedDeviceInstanceId = SelectedDevice.DeviceInstance.InstanceGuid.ToString();
             _appSettings.Save();
+            AddSystemLog($"Device connected: {SelectedDevice.ProductName}");
         }
         else
         {
@@ -1049,6 +1084,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         ResetLedCapabilities();
         _appSettings.LastConnectedDeviceInstanceId = null;
         _appSettings.Save();
+        AddSystemLog("Device disconnected");
     }
 
     partial void OnSelectedPanicDeviceChanged(FfbDeviceInfo? value)
@@ -1187,12 +1223,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             _telemetryLoop.Start();
             _uiUpdateTimer.Start();
             StatusText = "Running";
+            RefreshProviderFeatures();
+            AddSystemLog("Telemetry loop started");
+            _signalLowFreqBuffer.Clear();
+            _signalHighFreqBuffer.Clear();
+            SignalMonitorLowFreq = new System.Windows.Media.PointCollection();
+            SignalMonitorHighFreq = new System.Windows.Media.PointCollection();
         }
         else
         {
             _telemetryLoop.Stop();
             _uiUpdateTimer.Stop();
             StatusText = "Stopped";
+            AddSystemLog("Telemetry loop stopped");
         }
     }
 
@@ -1544,9 +1587,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var provider = _telemetryLoop.ActiveProvider;
 
         if (provider == null)
+        {
+            HalProviderName = "None";
+            IsHalSdkConnected = false;
+            IsHalHapticEngineActive = false;
+            IsHalPeripheralSynced = false;
             return;
+        }
 
         ActiveFeatures.Add(provider.ProviderName);
+        HalProviderName = provider.ProviderName;
+        IsHalSdkConnected = provider.IsInitialized;
+        IsHalHapticEngineActive = provider.IsInitialized && provider.IsAvailable;
+        IsHalPeripheralSynced = IsDeviceConnected && provider.IsInitialized;
 
         if (provider is FanatecProvider fp)
         {
@@ -1566,6 +1619,115 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             ActiveFeatures.Add("SDK Pending");
         }
     }
+
+    private void AddSystemLog(string entry)
+    {
+        var timestamp = DateTime.Now.ToString("HH:mm:ss");
+        var formatted = $"[{timestamp}] {entry}";
+        SystemLogEntries.Add(formatted);
+        while (SystemLogEntries.Count > 3)
+            SystemLogEntries.RemoveAt(0);
+    }
+
+    private void UpdateSignalMonitor(float lowFreqValue, float highFreqValue)
+    {
+        _signalMonitorTickCounter++;
+        if (_signalMonitorTickCounter % 3 != 0) return;
+
+        _signalLowFreqBuffer.Add(lowFreqValue);
+        _signalHighFreqBuffer.Add(highFreqValue);
+
+        while (_signalLowFreqBuffer.Count > _signalMonitorMaxPoints)
+            _signalLowFreqBuffer.RemoveAt(0);
+        while (_signalHighFreqBuffer.Count > _signalMonitorMaxPoints)
+            _signalHighFreqBuffer.RemoveAt(0);
+
+        double canvasWidth = 260;
+        double canvasHeight = 80;
+        double midY = canvasHeight / 2.0;
+        double stepX = canvasWidth / _signalMonitorMaxPoints;
+
+        var low = new System.Windows.Media.PointCollection(_signalLowFreqBuffer.Count);
+        for (int i = 0; i < _signalLowFreqBuffer.Count; i++)
+        {
+            double y = midY - Math.Clamp(_signalLowFreqBuffer[i], -1, 1) * midY;
+            low.Add(new System.Windows.Point(i * stepX, y));
+        }
+
+        var high = new System.Windows.Media.PointCollection(_signalHighFreqBuffer.Count);
+        for (int i = 0; i < _signalHighFreqBuffer.Count; i++)
+        {
+            double y = midY - Math.Clamp(_signalHighFreqBuffer[i], -1, 1) * midY;
+            high.Add(new System.Windows.Point(i * stepX, y));
+        }
+
+        SignalMonitorLowFreq = low;
+        SignalMonitorHighFreq = high;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanTestBuzz))]
+    private async Task TestBuzz()
+    {
+        if (IsTestBuzzRunning) return;
+        IsTestBuzzRunning = true;
+        TestBuzzCommand.NotifyCanExecuteChanged();
+
+        try
+        {
+            var provider = _telemetryLoop.ActiveProvider;
+            AddSystemLog("Test Buzz: 500ms diagnostic vibration...");
+
+            const int durationMs = 500;
+            const double frequencyHz = 60.0;
+            const double amplitude = 0.6;
+            int stepMs = 4;
+            int steps = durationMs / stepMs;
+
+            for (int i = 0; i < steps; i++)
+            {
+                double t = i * stepMs / 1000.0;
+                float signal = (float)(amplitude * Math.Sin(2.0 * Math.PI * frequencyHz * t));
+                float absSignal = (float)Math.Abs(signal);
+
+                if (provider != null && provider.IsInitialized)
+                {
+                    provider.UpdateTorque(signal);
+                    provider.SetHaptics(new HapticData { VibrationIntensity = absSignal });
+                }
+                else
+                {
+                    _deviceManager.SendConstantForce(signal);
+                    _deviceManager.SetTargetVibration(absSignal);
+                }
+
+                await Task.Delay(stepMs);
+            }
+
+            if (provider != null && provider.IsInitialized)
+            {
+                provider.UpdateTorque(0f);
+                provider.SetHaptics(new HapticData());
+            }
+            else
+            {
+                _deviceManager.SendConstantForce(0f);
+                _deviceManager.SetTargetVibration(0f);
+            }
+
+            AddSystemLog("Test Buzz: complete");
+        }
+        catch (Exception ex)
+        {
+            AddSystemLog($"Test Buzz: failed — {ex.Message}");
+        }
+        finally
+        {
+            IsTestBuzzRunning = false;
+            TestBuzzCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private bool CanTestBuzz => IsDeviceConnected && !IsTestBuzzRunning && !IsRunning;
 
     [RelayCommand]
     private void StartTrackMapRecording()
@@ -1998,6 +2160,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             IsClipping = processed.IsClipping;
             SpeedKmh = processed.SpeedKmh;
             ActiveLedCount = _deviceManager.ActiveLedCount;
+
+            float highFreqHaptics = processed.VibrationForce;
+            UpdateSignalMonitor(processed.MainForce, highFreqHaptics);
 
             _gameRecordingService.OnTelemetryTick(processed.SpeedKmh);
             IsScreenRecording = _gameRecordingService.IsRecording;
