@@ -301,8 +301,31 @@
                     </Border>
                 </Popup>
 
-                <!-- START / STOP + PANIC -->
+                <!-- Send Diagnostics + START / STOP + PANIC -->
                 <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding SendDiagnosticPackCommand}" Cursor="Hand"
+                            Margin="0,0,8,0" VerticalAlignment="Center">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="DiagBd" Background="#1AF0883E" BorderBrush="#FFF0883E"
+                                        BorderThickness="1" CornerRadius="14" Padding="12,6" SnapsToDevicePixels="True">
+                                    <TextBlock x:Name="DiagText" Text="Send to Dev" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="#FFF0883E" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="DiagBd" Property="Background" Value="#33F0883E" />
+                                    </Trigger>
+                                    <DataTrigger Binding="{Binding IsSendingDiagnosticPack}" Value="True">
+                                        <Setter TargetName="DiagText" Property="Text" Value="Sending..." />
+                                        <Setter TargetName="DiagBd" Property="Background" Value="#1AFFD600" />
+                                        <Setter TargetName="DiagBd" Property="BorderBrush" Value="#FFFFD600" />
+                                        <Setter TargetName="DiagText" Property="Foreground" Value="#FFFFD600" />
+                                    </DataTrigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                     <ToggleButton IsChecked="{Binding IsRunning}" Command="{Binding ToggleTelemetryCommand}"
                                   Margin="0,0,8,0" x:Name="StartStopToggle">
                         <ToggleButton.Style>
