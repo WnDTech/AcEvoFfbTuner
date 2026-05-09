@@ -21,7 +21,7 @@
             <Setter Property="Background" Value="#FF333355" />
             <Setter Property="Foreground" Value="#FFE6EDF3" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Padding" Value="10,5" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -45,11 +45,11 @@
     </Window.Resources>
 
     <Border x:Name="RootBorder" CornerRadius="8" Padding="1"
-            Background="#88E67E22"
+            Background="#55E67E22"
             MouseLeftButtonDown="OnDragMove"
             MouseWheel="OnMouseWheel">
 
-        <Border x:Name="ContentBorder" CornerRadius="7" Background="#8A0D0D0D">
+        <Border x:Name="ContentBorder" CornerRadius="7" Background="#DD0D0D0D">
 
             <Grid>
                 <Grid.RowDefinitions>
@@ -60,7 +60,7 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Background="#991A1A2E" CornerRadius="7,7,0,0" Padding="10,6"
+                <Border x:Name="HeaderBar" Grid.Row="0" Background="#FF161B22" CornerRadius="7,7,0,0" Padding="10,6"
                         MouseLeftButtonDown="OnDragMove">
                     <Grid>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -110,7 +110,7 @@
                         </StackPanel>
                         <StackPanel Grid.Column="2" Margin="0,0,4,0">
                             <TextBlock Text="Sector" FontSize="10" Foreground="#FF8B949E" />
-                            <TextBlock x:Name="OvSector" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FF00BCD4" />
+                            <TextBlock x:Name="OvSector" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FFF0883E" />
                         </StackPanel>
                         <StackPanel Grid.Column="3" Margin="0,0,4,0">
                             <TextBlock Text="Status" FontSize="10" Foreground="#FF8B949E" />
@@ -165,7 +165,7 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="4" Background="#991A1A2E" CornerRadius="0,0,7,7" Padding="8,3">
+                <Border x:Name="FooterBar" Grid.Row="4" Background="#FF161B22" CornerRadius="0,0,7,7" Padding="8,3">
                     <TextBlock Text="Drag to move | Scroll to resize | Rec/Save to create track map"
                                FontSize="11" Foreground="#FF666666" />
                 </Border>

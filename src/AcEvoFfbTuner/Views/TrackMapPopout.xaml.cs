@@ -11,6 +11,7 @@ namespace AcEvoFfbTuner.Views;
 public partial class TrackMapPopout : Window
 {
     private bool _isTransparent;
+    private bool _isCompact;
 
     private readonly SolidColorBrush _trackLineBrush = new(Color.FromRgb(0x00, 0xBC, 0xD4));
     private readonly SolidColorBrush _trackFillBrush = new(Color.FromArgb(0x18, 0x00, 0xBC, 0xD4));
@@ -735,25 +736,50 @@ public partial class TrackMapPopout : Window
     {
         if (e.ChangedButton == MouseButton.Left)
         {
+            if (e.ClickCount == 2)
+            {
+                OnToggleCompact();
+                return;
+            }
             try { DragMove(); } catch { }
         }
+    }
+
+    private void OnToggleCompact()
+    {
+        _isCompact = !_isCompact;
+
+        HeaderBar.Visibility = _isCompact ? Visibility.Collapsed : Visibility.Visible;
+        FooterBar.Visibility = _isCompact ? Visibility.Collapsed : Visibility.Visible;
+
+        ApplyBorderStyle();
     }
 
     private void ToggleTransparency(object sender, RoutedEventArgs e)
     {
         _isTransparent = !_isTransparent;
+        ApplyBorderStyle();
+    }
 
-        if (_isTransparent)
+    private void ApplyBorderStyle()
+    {
+        if (_isCompact)
         {
-            ContentBorder.Background = new SolidColorBrush(Color.FromArgb(0x30, 0x0D, 0x0D, 0x0D));
+            ContentBorder.Background = new SolidColorBrush(Color.FromArgb(0x99, 0x0D, 0x0D, 0x0D));
             RootBorder.Background = new SolidColorBrush(Color.FromArgb(0x22, 0xE6, 0x7E, 0x22));
-            TransparencyIcon.Text = "TRN";
+            if (TransparencyIcon != null) TransparencyIcon.Text = "MIN";
+        }
+        else if (_isTransparent)
+        {
+            ContentBorder.Background = new SolidColorBrush(Color.FromArgb(0x55, 0x0D, 0x0D, 0x0D));
+            RootBorder.Background = new SolidColorBrush(Color.FromArgb(0x22, 0xE6, 0x7E, 0x22));
+            if (TransparencyIcon != null) TransparencyIcon.Text = "TRN";
         }
         else
         {
-            ContentBorder.Background = new SolidColorBrush(Color.FromArgb(0x8A, 0x0D, 0x0D, 0x0D));
+            ContentBorder.Background = new SolidColorBrush(Color.FromArgb(0xDD, 0x0D, 0x0D, 0x0D));
             RootBorder.Background = new SolidColorBrush(Color.FromArgb(0x55, 0xE6, 0x7E, 0x22));
-            TransparencyIcon.Text = "OPQ";
+            if (TransparencyIcon != null) TransparencyIcon.Text = "OPQ";
         }
     }
 

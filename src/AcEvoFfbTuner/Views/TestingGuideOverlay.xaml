@@ -20,8 +20,8 @@
             <Setter Property="Background" Value="#FF333355" />
             <Setter Property="Foreground" Value="#FFE6EDF3" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="8,4" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="FontSize" Value="13" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -47,11 +47,11 @@
     </Window.Resources>
 
     <Border x:Name="RootBorder" CornerRadius="8" Padding="1"
-            Background="#DDE67E22"
+            Background="#55E67E22"
             MouseLeftButtonDown="OnDragMove"
             MouseWheel="OnMouseWheel">
 
-        <Border x:Name="ContentBorder" CornerRadius="7" Background="#EB0D0D0D">
+        <Border x:Name="ContentBorder" CornerRadius="7" Background="#DD0D0D0D">
 
             <Grid>
                 <Grid.RowDefinitions>
@@ -60,7 +60,7 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Background="#FF161B22" CornerRadius="7,7,0,0" Padding="12,8"
+                <Border x:Name="HeaderBar" Grid.Row="0" Background="#FF161B22" CornerRadius="7,7,0,0" Padding="12,8"
                         MouseLeftButtonDown="OnDragMove">
                     <Grid>
                         <TextBlock Text="FFB TUNER — QUICK GUIDE" FontSize="17" FontWeight="Black"
@@ -229,7 +229,7 @@
                 </ScrollViewer>
 
                 <!-- Footer -->
-                <Border Grid.Row="2" Background="#FF161B22" CornerRadius="0,0,7,7" Padding="10,6">
+                <Border x:Name="FooterBar" Grid.Row="2" Background="#FF161B22" CornerRadius="0,0,7,7" Padding="10,6">
                     <TextBlock FontSize="14" Foreground="#FF666666" VerticalAlignment="Center">
                         <Run Text="Drag to move  |  Scroll to resize  |  OPQ = toggle transparency" />
                     </TextBlock>
