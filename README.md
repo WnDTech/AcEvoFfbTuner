@@ -63,6 +63,24 @@ Real-time automatic FFB parameter correction while driving:
 - Lap-level corrections for sustained oscillations, straight-line snaps, and lap clipping
 - Cooldown system with correction logging
 
+### Hardware Abstraction Layer — Vendor SDK Integration
+
+The app uses an `IFFBProvider` abstraction layer that allows vendor-specific SDKs to sit between the DSP pipeline and the wheel, enabling features beyond what DirectInput alone can deliver:
+
+| Vendor | Provider | Status | SDK Features |
+|--------|----------|--------|--------------|
+| **Fanatec** | `FanatecProvider` | **Active** | FullForce 500Hz haptic samples, rim rumble motors, rev LED RGB control, gear digit display, torque safety capping via `FSWheelMaxTorqueGet`, Maurice (FWPnpService) detection |
+| **Moza** | DirectInput + Serial LED | Active | Native LED protocol via serial/HID |
+| **Simucube** | `SimucubeProvider` | Stub | Simucube Link API — awaiting SDK access from Granite Devices |
+| **Logitech** | `LogitechTrueForceProvider` | Stub | TrueForce audio-haptic SDK — awaiting SDK access from Logitech |
+| **Asetek** | `AsetekProvider` | Stub | RaceHub TIC Mode — awaiting SDK access from Asetek |
+| **VNM** | `VnmProvider` | Stub | Telemetry API — awaiting SDK access from VNM |
+| **Others** | `GenericDirectInputProvider` | Active | Standard DirectInput constant force + periodic vibration |
+
+All providers inherit from `IFFBProvider` and are auto-selected by `WheelbaseFactory` based on USB vendor ID and product name detection. The Fanatec provider loads `EndorFanatecSdk64_VS2019.dll` directly from the Fanatec driver installation directory — no DLLs bundled.
+
+**Status bar** shows active provider capabilities as live feature pills (e.g., *FullForce Active*, *Rim Rumble*, *Gear Display*, *Torque Capped 8Nm*, *Maurice*). A **Haptic Test** button sends a 500ms 50Hz sine wave through both torque and vibration paths to verify the SDK link without needing to be in-car.
+
 ### Auto Setup & Wheel Detection
 
 - **Auto Setup** generates a complete baseline profile tuned for the detected wheel type and torque
@@ -77,7 +95,7 @@ RPM shift lights, ABS flash, and race flag indicators with multi-vendor support:
 | Vendor | LEDs | RGB | Brightness | Flags | Protocol |
 |--------|------|-----|------------|-------|----------|
 | **Moza** | 10 | Yes | Yes | Yes | Serial / HID / Native SDK |
-| **Fanatec** | 9 | No | No | Yes | HID output report |
+| **Fanatec** | 9 | Yes (SDK) | Yes (SDK) | Yes | HID output report / EndorFanatecSdk64 |
 | **Logitech** | 5 | No | No | No | HID output report |
 | **Simucube** | 10 | Yes (RGBA) | No | Yes | HID output/feature report |
 
@@ -146,6 +164,7 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 | Telemetry | Windows Memory-Mapped Files |
 | Video Capture | FFmpeg (D3D11 ddagrab / gdigrab) |
 | Moza SDK | Native DLL interop |
+| Fanatec SDK | EndorFanatecSdk64 P/Invoke (120+ exports) |
 | Installer | Inno Setup |
 | CI/CD | GitHub Actions |
 | Testing | xUnit |
@@ -156,6 +175,7 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 src/AcEvoFfbTuner.Core/            Core library (no UI dependencies)
   DirectInput/                      FFB device management, 1 kHz interpolation, multi-vendor LED control
   FfbProcessing/                    15-stage FFB DSP pipeline, EQ, LFE, tyre flex, live auto-tuner
+  FfbProviders/                     Hardware Abstraction Layer — vendor SDK providers (Fanatec, Simucube, Logitech, Asetek, VNM) + GenericDirectInput + WheelbaseFactory
   Profiles/                         Profile model, CRUD, auto-detection, wheelbase auto-configurator
   SharedMemory/                     AC EVO telemetry reader (~333Hz) & struct definitions
   TrackMapping/                     Track map, heatmap, diagnostics, recommendations
@@ -204,6 +224,11 @@ AC EVO Shared Memory
       12. 10-Band Equalizer (parametric biquad filters)
       13. Vibration Mixer (curb/slip/road/ABS + tire scrub + rear slip warning)
       14. LFE/Rumble (suspension + RPM driven)
+    → IFFBProvider (Hardware Abstraction Layer):
+        WheelbaseFactory auto-detects vendor → selects provider:
+        ├─ FanatecProvider → EndorFanatecSdk64 (FullForce, LEDs, rumble, torque cap)
+        ├─ GenericDirectInputProvider → SharpDX DirectInput
+        └─ Stub providers (Simucube, Logitech, Asetek, VNM) → DirectInput fallback
     → FfbDeviceManager
       → 1kHz interpolation thread (time-based sliding lerp)
         → DirectInput ConstantForce → Wheel
