@@ -648,6 +648,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _appSettings.Save();
     }
 
+    partial void OnIsPerCarAutoLoadEnabledChanged(bool value)
+    {
+        _appSettings.PerCarAutoLoadEnabled = value;
+        _appSettings.Save();
+    }
+
     private bool[]? _prevSnapshotButtons;
     private bool[]? _prevPanicButtons;
 
@@ -1448,7 +1454,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (SelectedProfile != null)
         {
             SelectedProfile.CarMatch = DetectedCarModel;
-            StatusText = $"Car Match set to '{DetectedCarModel}' — this profile will auto-load for that car";
+            _profileManager.SaveProfile(SelectedProfile);
+            StatusText = $"Car Match set to '{DetectedCarModel}' — saved and will auto-load for that car";
         }
     }
 
@@ -2835,6 +2842,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         StartMinimised = _appSettings.StartMinimised;
         AutoConnect = _appSettings.AutoConnect;
         AutoStart = _appSettings.AutoStart;
+        IsPerCarAutoLoadEnabled = _appSettings.PerCarAutoLoadEnabled;
         RefreshRecordingDevices();
     }
 

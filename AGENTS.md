@@ -133,12 +133,15 @@ Damage (float 0.0–1.0): body, engine, gearbox, transmission, suspension, brake
 abs, tc, stabilityControl, idealLine, autoGear, autoClutch, autoBlip.
 
 8. SPageFileStaticEvo (Metadata)
-Strings: smVersion, acVersion, carModel, track, playerName, playerSurname, playerNick.
+Strings: smVersion, acVersion, track.
 
-Configuration: numberOfSessions, numCars, maxRpm, maxFuel.
+Session info: session, sessionName, eventId, sessionId, startingGrip, startingAmbientTemperatureC, startingGroundTemperatureC, isStaticWeather, isTimedRace, isOnline, numberOfSessions.
 
-Scaling Factors:
+Location: nation, longitude, latitude.
 
-steerRatio (Crucial for normalizing wheel degrees to rack movement).
+Track: track, trackConfiguration, trackLengthM.
 
-suspensionMaxTravel[4].
+NOTE: carModel, playerName, playerSurname, playerNick, maxRpm, maxFuel, steerRatio, suspensionMaxTravel are NOT in the static struct. carModel is in SPageFileGraphicEvo (graphics page) as car_model (char[33]).
+
+9. Car Detection
+car_model (char[33]) is available in SPageFileGraphicEvo (graphics struct), after driver_surname. Read from graphics data each frame for car detection and per-car profile auto-loading.

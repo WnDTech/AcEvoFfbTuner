@@ -24,33 +24,19 @@ public struct SPageFileStaticEvo
     [MarshalAs(UnmanagedType.U1)]
     public bool IsOnline;
     public int NumberOfSessions;
-    public int NumCars;
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 33)]
     public byte[] Nation;
     public float Longitude;
     public float Latitude;
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
-    public byte[] _paddingBeforeTrack;
+    public byte[] _padding1;
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 33)]
     public byte[] Track;
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 33)]
     public byte[] TrackConfiguration;
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)]
-    public byte[] _paddingBeforeTrackLen;
+    public byte[] _padding2;
     public float TrackLengthM;
-    public int MaxRpm;
-    public float MaxFuel;
-    public float SteerRatio;
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-    public float[] SuspensionMaxTravel;
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 33)]
-    public byte[] PlayerName;
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 33)]
-    public byte[] PlayerSurname;
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 33)]
-    public byte[] PlayerNick;
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 33)]
-    public byte[] CarModel;
 }
 
 public static class StaticFieldReader
@@ -60,17 +46,12 @@ public static class StaticFieldReader
     public static int GetSession(byte[] buf) => ReadI32(buf, 30);
     public static string GetSessionName(byte[] buf) => ReadStr(buf, 36, 33);
     public static int GetNumberOfSessions(byte[] buf) => ReadI32(buf, 84);
-    public static int GetNumCars(byte[] buf) => ReadI32(buf, 88);
     public static string GetNation(byte[] buf) => ReadStr(buf, 92, 33);
     public static float GetLongitude(byte[] buf) => ReadF32(buf, 125);
     public static float GetLatitude(byte[] buf) => ReadF32(buf, 129);
     public static string GetTrack(byte[] buf) => ReadStr(buf, 136, 33);
     public static string GetTrackConfiguration(byte[] buf) => ReadStr(buf, 169, 33);
     public static float GetTrackLengthM(byte[] buf) => ReadF32(buf, 204);
-    public static int GetMaxRpm(byte[] buf) => ReadI32(buf, 208);
-    public static float GetMaxFuel(byte[] buf) => ReadF32(buf, 212);
-    public static float GetSteerRatio(byte[] buf) => ReadF32(buf, 216);
-    public static string GetCarModel(byte[] buf) => ReadStr(buf, 335, 33);
 
     private static string ReadStr(byte[] buf, int offset, int maxLen)
     {

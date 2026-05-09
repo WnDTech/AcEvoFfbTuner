@@ -475,18 +475,6 @@ public sealed class SharedMemoryReader : IDisposable
             }
 
             staticData.TrackLengthM = StaticFieldReader.GetTrackLengthM(buffer);
-            staticData.MaxRpm = StaticFieldReader.GetMaxRpm(buffer);
-            staticData.MaxFuel = StaticFieldReader.GetMaxFuel(buffer);
-            staticData.SteerRatio = StaticFieldReader.GetSteerRatio(buffer);
-            staticData.NumCars = StaticFieldReader.GetNumCars(buffer);
-
-            string carModel = StaticFieldReader.GetCarModel(buffer);
-            if (!string.IsNullOrEmpty(carModel))
-            {
-                var carBytes = System.Text.Encoding.ASCII.GetBytes(carModel);
-                Array.Clear(staticData.CarModel, 0, staticData.CarModel.Length);
-                Array.Copy(carBytes, staticData.CarModel, Math.Min(carBytes.Length, staticData.CarModel.Length));
-            }
 
             DumpStaticBuffer(buffer, Marshal.SizeOf<SPageFileStaticEvo>());
 

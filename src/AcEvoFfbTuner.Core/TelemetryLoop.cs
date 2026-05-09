@@ -249,13 +249,6 @@ public sealed class TelemetryLoop : IDisposable
 
                             _latestStaticRaw = staticData;
 
-                            var carModel = DecodeString(staticData.CarModel);
-                            if (!string.IsNullOrEmpty(carModel) && carModel != _lastDetectedCarModel)
-                            {
-                                _lastDetectedCarModel = carModel;
-                                CarModelChanged?.Invoke(carModel);
-                            }
-
                             if (!string.IsNullOrEmpty(_lastDetectedCarModel))
                                 StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Car: '{_lastDetectedCarModel}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
                             else
@@ -301,6 +294,16 @@ public sealed class TelemetryLoop : IDisposable
                         _latestProcessed = processed;
                         _latestPhysicsRaw = physics;
                         _latestGraphicsRaw = graphics;
+                    }
+
+                    if (graphics.CarModel != null && _packetCount % 60 == 0)
+                    {
+                        var gfxCarModel = DecodeString(graphics.CarModel);
+                        if (!string.IsNullOrEmpty(gfxCarModel) && gfxCarModel != _lastDetectedCarModel)
+                        {
+                            _lastDetectedCarModel = gfxCarModel;
+                            CarModelChanged?.Invoke(gfxCarModel);
+                        }
                     }
 
                     _packetCount++;

@@ -557,15 +557,15 @@ public sealed class StaticSnapshotDto
             Track = DecodeBytes(s.Track),
             TrackConfiguration = DecodeBytes(s.TrackConfiguration),
             TrackLengthM = s.TrackLengthM,
-            NumCars = s.NumCars,
-            MaxRpm = s.MaxRpm,
-            MaxFuel = s.MaxFuel,
-            SteerRatio = s.SteerRatio,
-            SuspensionMaxTravel = s.SuspensionMaxTravel != null ? (float[])s.SuspensionMaxTravel.Clone() : [],
-            PlayerName = DecodeBytes(s.PlayerName),
-            PlayerSurname = DecodeBytes(s.PlayerSurname),
-            PlayerNick = DecodeBytes(s.PlayerNick),
-            CarModel = DecodeBytes(s.CarModel)
+            NumCars = 0,
+            MaxRpm = 0,
+            MaxFuel = 0,
+            SteerRatio = 0,
+            SuspensionMaxTravel = [],
+            PlayerName = "",
+            PlayerSurname = "",
+            PlayerNick = "",
+            CarModel = ""
         };
     }
 
