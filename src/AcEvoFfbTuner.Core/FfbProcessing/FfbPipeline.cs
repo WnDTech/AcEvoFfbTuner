@@ -47,6 +47,10 @@ public sealed class FfbPipeline
     public int HysteresisWatchdogFrames { get; set; } = 5;
     public float CenterKneePower { get; set; } = 1.0f;
 
+    public float ReverseAttenuation { get; set; } = 0.45f;
+    public float ReverseDetailPass { get; set; } = 0.50f;
+    public int ReverseGearValue { get; set; } = 0;
+
     private float _prevDetailOutput;
 
     public FfbProcessedData Process(FfbRawData raw)
@@ -90,6 +94,19 @@ public sealed class FfbPipeline
         // Caps forces that pull wheel toward steer direction at post-peak slip angles.
         // Adds mechanical trail centering (like real caster) that's always active.
         coreOutput = GripGuard.Apply(coreOutput, raw);
+
+        // Reverse gear: invert physics sign and attenuate.
+        // AC EVO's tire model produces forces with correct MAGNITUDE but
+        // inverted DIRECTION when reversing — the self-aligning torque pushes
+        // the wheel further into the turn instead of centering. Fix: simply
+        // flip the sign so the existing centering logic (LUT, damping,
+        // GripGuard, speed fade) all work naturally. Attenuate to ~45% since
+        // reverse forces feel stronger than they should at low speed.
+        bool isReversing = raw.Gear == ReverseGearValue && raw.SpeedKmh > 0.3f;
+        if (isReversing)
+        {
+            coreOutput = -coreOutput * ReverseAttenuation;
+        }
 
         // Speed fade: zero below 0.5 km/h, ramp to full at 5 km/h
         if (raw.SpeedKmh < 0.5f)
@@ -172,6 +189,10 @@ public sealed class FfbPipeline
                 detailForce = _prevDetailOutput + Math.Sign(slewDelta) * MaxSlewRate;
             }
         }
+
+        if (isReversing)
+            detailForce *= ReverseDetailPass;
+
         _prevDetailOutput = raw.SpeedKmh < 0.5f ? 0f : detailForce;
 
         // ═══════════════════════════════════════════════════════════════════════
