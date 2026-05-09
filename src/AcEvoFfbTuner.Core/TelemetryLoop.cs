@@ -97,6 +97,7 @@ public sealed class TelemetryLoop : IDisposable
     public float LastLatencyMs => _lastLatencyMs;
     public float AvgLatencyMs => _avgLatencyMs;
     public string ActiveProviderName => _ffbProvider?.ProviderName ?? "DirectInput (Built-in)";
+    public IFFBProvider? ActiveProvider => _ffbProvider;
 
     public string DetectedTrackName => _lastDetectedTrackName;
     public string DetectedCarModel => _lastDetectedCarModel;
@@ -106,6 +107,9 @@ public sealed class TelemetryLoop : IDisposable
         var old = _ffbProvider;
         _ffbProvider = provider;
         old?.Dispose();
+
+        if (provider != null)
+            provider.Initialize();
     }
 
     public void AutoDetectAndSetProvider()

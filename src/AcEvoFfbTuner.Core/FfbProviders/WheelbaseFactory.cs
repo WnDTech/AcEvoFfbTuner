@@ -12,6 +12,8 @@ public enum WheelbaseVendor
     Fanatec,
     Simagic,
     Thrustmaster,
+    Asetek,
+    VNM,
     GenericDirectInput
 }
 
@@ -27,6 +29,8 @@ public sealed class WheelbaseFactory
     private const string FanatecVendorId = "0EB7";
     private const string SimagicVendorId = "3235";
     private const string ThrustmasterVendorId = "044F";
+    private const string AsetekVendorId = "2433";
+    private const string VnmVendorId = "0483";
 
     private static readonly Dictionary<string, WheelbaseVendor> VendorIdMap = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -36,6 +40,12 @@ public sealed class WheelbaseFactory
         [FanatecVendorId] = WheelbaseVendor.Fanatec,
         [SimagicVendorId] = WheelbaseVendor.Simagic,
         [ThrustmasterVendorId] = WheelbaseVendor.Thrustmaster,
+        [AsetekVendorId] = WheelbaseVendor.Asetek,
+    };
+
+    private static readonly HashSet<string> AmbiguousStmVendorIds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        VnmVendorId,
     };
 
     public static WheelbaseVendor DetectVendorFromProductName(string productName)
@@ -49,6 +59,8 @@ public sealed class WheelbaseFactory
         if (n.Contains("FANATEC") || n.Contains("CLUBSPORT") || n.Contains("CSL ")) return WheelbaseVendor.Fanatec;
         if (n.Contains("SIMAGIC")) return WheelbaseVendor.Simagic;
         if (n.Contains("THRUSTMASTER") || n.Contains("T300") || n.Contains("T150") || n.Contains("TX ")) return WheelbaseVendor.Thrustmaster;
+        if (n.Contains("ASETEK") || n.Contains("FORTE") || n.Contains("INVICTA") || n.Contains("LA PRIMA")) return WheelbaseVendor.Asetek;
+        if (n.Contains("VNM")) return WheelbaseVendor.VNM;
 
         return WheelbaseVendor.Unknown;
     }
@@ -58,7 +70,7 @@ public sealed class WheelbaseFactory
         try
         {
             using var searcher = new ManagementObjectSearcher(
-                "SELECT DeviceID, HardwareID FROM Win32_PnPEntity WHERE HardwareID IS NOT NULL");
+                "SELECT DeviceID, HardwareID, Name FROM Win32_PnPEntity WHERE HardwareID IS NOT NULL");
 
             foreach (var obj in searcher.Get())
             {
@@ -73,7 +85,29 @@ public sealed class WheelbaseFactory
                     if (string.IsNullOrEmpty(hwId)) continue;
 
                     string vendorId = ExtractVendorId(hwId);
-                    if (!string.IsNullOrEmpty(vendorId) && VendorIdMap.TryGetValue(vendorId, out var vendor))
+                    if (string.IsNullOrEmpty(vendorId)) continue;
+
+                    if (AmbiguousStmVendorIds.Contains(vendorId))
+                    {
+                        string? deviceName = obj["Name"] as string ?? "";
+                        var nameUpper = deviceName.ToUpperInvariant();
+
+                        if (nameUpper.Contains("VNM"))
+                        {
+                            Log($"Ambiguous VID {vendorId} resolved to VNM from device name '{deviceName}'");
+                            return WheelbaseVendor.VNM;
+                        }
+                        if (nameUpper.Contains("SIMAGIC"))
+                        {
+                            Log($"Ambiguous VID {vendorId} resolved to Simagic from device name '{deviceName}'");
+                            return WheelbaseVendor.Simagic;
+                        }
+
+                        Log($"Ambiguous VID {vendorId} — device name '{deviceName}' matched neither VNM nor Simagic, skipping");
+                        continue;
+                    }
+
+                    if (VendorIdMap.TryGetValue(vendorId, out var vendor))
                         return vendor;
                 }
                 catch { }
@@ -118,8 +152,17 @@ public sealed class WheelbaseFactory
 
     public static IFFBProvider CreateProvider(WheelbaseVendor vendor, FfbDeviceManager deviceManager)
     {
-        Log($"Vendor: {vendor} — using DirectInput (vendor SDKs pending)");
-        return new GenericDirectInputProvider(deviceManager);
+        Log($"Vendor: {vendor}");
+
+        return vendor switch
+        {
+            WheelbaseVendor.Simucube => new SimucubeProvider(),
+            WheelbaseVendor.Logitech => new LogitechTrueForceProvider(),
+            WheelbaseVendor.Asetek => new AsetekProvider(),
+            WheelbaseVendor.Fanatec => new FanatecProvider(deviceManager),
+            WheelbaseVendor.VNM => new VnmProvider(),
+            _ => new GenericDirectInputProvider(deviceManager),
+        };
     }
 
     public static IFFBProvider CreateFromDeviceName(string productName, FfbDeviceManager deviceManager)

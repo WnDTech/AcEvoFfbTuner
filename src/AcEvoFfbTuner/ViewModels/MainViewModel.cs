@@ -9,6 +9,7 @@ using AcEvoFfbTuner.Core;
 using AcEvoFfbTuner.Core.DirectInput;
 using AcEvoFfbTuner.Core.FfbProcessing;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
+using AcEvoFfbTuner.Core.FfbProviders;
 using AcEvoFfbTuner.Core.Profiles;
 using AcEvoFfbTuner.Core.SharedMemory;
 using AcEvoFfbTuner.Core.TrackMapping;
@@ -41,6 +42,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _isGameConnected;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(TestHapticsCommand))]
     private bool _isDeviceConnected;
 
     [ObservableProperty]
@@ -735,6 +737,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<FfbProfile> Profiles { get; } = new();
     public ObservableCollection<string> SnapshotButtonNames { get; } = new();
     public ObservableCollection<string> PanicButtonNames { get; } = new();
+    public ObservableCollection<string> ActiveFeatures { get; } = new();
+
+    [ObservableProperty]
+    private bool _isHapticTestRunning;
 
     [ObservableProperty]
     private FfbDeviceInfo? _selectedDevice;
@@ -1009,6 +1015,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (!_uiUpdateTimer.IsEnabled)
                 _uiUpdateTimer.Start();
             _telemetryLoop.AutoDetectAndSetProvider();
+            RefreshProviderFeatures();
             string providerInfo = _telemetryLoop.ActiveProviderName != "DirectInput (Built-in)"
                 ? $" | Provider: {_telemetryLoop.ActiveProviderName}"
                 : "";
@@ -1034,6 +1041,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void DisconnectDevice()
     {
         _telemetryLoop.SetFfbProvider(null);
+        RefreshProviderFeatures();
         _deviceManager.DisconnectDevice();
         IsDeviceConnected = false;
         IsAutoSetupAvailable = false;
@@ -1457,6 +1465,106 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _uiUpdateTimer.Stop();
         _deviceManager.ZeroForce();
         StatusText = "PANIC STOP - Telemetry stopped, FFB zeroed";
+    }
+
+    [RelayCommand(CanExecute = nameof(CanTestHaptics))]
+    private async Task TestHaptics()
+    {
+        if (IsHapticTestRunning) return;
+        IsHapticTestRunning = true;
+        TestHapticsCommand.NotifyCanExecuteChanged();
+
+        try
+        {
+            var provider = _telemetryLoop.ActiveProvider;
+            const int durationMs = 500;
+            const double frequencyHz = 50.0;
+            const double amplitude = 0.5;
+            int stepMs = 2;
+            int steps = durationMs / stepMs;
+
+            StatusText = "Haptic test: 50Hz sine wave (500ms)...";
+
+            if (provider is FanatecProvider fanatec)
+                fanatec.TriggerAbsRumble(true);
+
+            for (int i = 0; i < steps; i++)
+            {
+                double t = i * stepMs / 1000.0;
+                float signal = (float)(amplitude * Math.Sin(2.0 * Math.PI * frequencyHz * t));
+                float absSignal = (float)Math.Abs(signal);
+
+                if (provider != null && provider.IsInitialized)
+                {
+                    provider.UpdateTorque(signal);
+                    var haptic = new HapticData { VibrationIntensity = absSignal };
+                    provider.SetHaptics(haptic);
+                }
+                else
+                {
+                    _deviceManager.SendConstantForce(signal);
+                    _deviceManager.SetTargetVibration(absSignal);
+                }
+
+                await Task.Delay(stepMs);
+            }
+
+            if (provider != null && provider.IsInitialized)
+            {
+                provider.UpdateTorque(0f);
+                provider.SetHaptics(new HapticData());
+            }
+            else
+            {
+                _deviceManager.SendConstantForce(0f);
+                _deviceManager.SetTargetVibration(0f);
+            }
+
+            if (provider is FanatecProvider fanatec2)
+                fanatec2.TriggerAbsRumble(false);
+
+            StatusText = "Haptic test complete";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Haptic test failed: {ex.Message}";
+        }
+        finally
+        {
+            IsHapticTestRunning = false;
+            TestHapticsCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private bool CanTestHaptics => IsDeviceConnected && !IsHapticTestRunning;
+
+    private void RefreshProviderFeatures()
+    {
+        ActiveFeatures.Clear();
+        var provider = _telemetryLoop.ActiveProvider;
+
+        if (provider == null)
+            return;
+
+        ActiveFeatures.Add(provider.ProviderName);
+
+        if (provider is FanatecProvider fp)
+        {
+            if (fp.IsFullForceAvailable) ActiveFeatures.Add("FullForce Active");
+            if (fp.HasRimRevLeds) ActiveFeatures.Add("Rev LEDs");
+            if (fp.HasRumbleMotors) ActiveFeatures.Add("Rim Rumble");
+            if (fp.HasRimLedDisplay) ActiveFeatures.Add("Gear Display");
+            if (fp.MaxTorqueNm > 0) ActiveFeatures.Add($"Torque Capped {fp.MaxTorqueNm}Nm");
+            if (fp.IsMauriceDetected) ActiveFeatures.Add("Maurice");
+        }
+        else if (provider is GenericDirectInputProvider)
+        {
+            ActiveFeatures.Add("DirectInput Only");
+        }
+        else
+        {
+            ActiveFeatures.Add("SDK Pending");
+        }
     }
 
     [RelayCommand]
