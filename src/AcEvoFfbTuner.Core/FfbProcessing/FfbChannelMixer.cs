@@ -260,3 +260,4 @@ public struct FfbChannelOutputs
     /// </summary>
     public float RawCoreForce;
 }
+

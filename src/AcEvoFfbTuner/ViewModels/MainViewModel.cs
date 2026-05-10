@@ -527,6 +527,40 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private float _gripGuardMinSpeedKmh = 10.0f;
 
+    // ── Stationary Friction (engine-off wheel scrub) ──────────────────
+    [ObservableProperty]
+    private float _staticFrictionGain = 1.0f;
+
+    [ObservableProperty]
+    private float _staticFrictionMaxElasticStretch = 0.01f;
+
+    [ObservableProperty]
+    private float _staticFrictionSpringStiffness = 15.0f;
+
+    [ObservableProperty]
+    private float _staticFrictionKineticFrictionBase = 0.20f;
+
+    [ObservableProperty]
+    private float _staticFrictionEngineOffDamping = 0.15f;
+
+    [ObservableProperty]
+    private float _staticFrictionEngineOnDamping = 0.02f;
+
+    [ObservableProperty]
+    private float _staticFrictionEngineOffScale = 1.0f;
+
+    [ObservableProperty]
+    private float _staticFrictionEngineOnScale = 0.3f;
+
+    [ObservableProperty]
+    private float _staticFrictionActiveDecay = 0.995f;
+
+    [ObservableProperty]
+    private float _staticFrictionReturnDecay = 0.85f;
+
+    [ObservableProperty]
+    private float _staticFrictionOutputSmoothAlpha = 0.35f;
+
     [ObservableProperty]
     private int _snapshotButtonIndex = -1;
 
@@ -959,6 +993,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             {
                 SelectedProfile = match;
                 match.ApplyToPipeline(_pipeline);
+                match.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
                 LoadProfileValues(match);
                 _profileManager.SetActiveProfile(match);
                 StatusText = $"Auto-loaded profile '{match.Name}' for {carModel}";
@@ -981,6 +1016,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (_profileManager.ActiveProfile != null)
         {
             _profileManager.ActiveProfile.ApplyToPipeline(_pipeline);
+            _profileManager.ActiveProfile.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
             LoadProfileValues(_profileManager.ActiveProfile);
             SelectedProfile = Profiles.FirstOrDefault(p => p.Name == _profileManager.ActiveProfile.Name);
         }
@@ -1302,6 +1338,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         SelectedProfile = profile;
         profile.ApplyToPipeline(_pipeline);
+        profile.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
         LoadProfileValues(profile);
         _profileManager.SetActiveProfile(profile);
 
@@ -1362,6 +1399,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             SelectedProfile.SteeringLockDegrees = SteeringLockDegrees;
             SelectedProfile.Hf8.OutputRateHz = Hf8OutputRateHz;
             SelectedProfile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
+            // Write static friction slider values back to profile before saving
+            SelectedProfile.StaticFriction.Gain = StaticFrictionGain;
+            SelectedProfile.StaticFriction.MaxElasticStretch = StaticFrictionMaxElasticStretch;
+            SelectedProfile.StaticFriction.SpringStiffness = StaticFrictionSpringStiffness;
+            SelectedProfile.StaticFriction.KineticFrictionBase = StaticFrictionKineticFrictionBase;
+            SelectedProfile.StaticFriction.EngineOffDamping = StaticFrictionEngineOffDamping;
+            SelectedProfile.StaticFriction.EngineOnDamping = StaticFrictionEngineOnDamping;
+            SelectedProfile.StaticFriction.EngineOffScale = StaticFrictionEngineOffScale;
+            SelectedProfile.StaticFriction.EngineOnScale = StaticFrictionEngineOnScale;
+            SelectedProfile.StaticFriction.ActiveDecay = StaticFrictionActiveDecay;
+            SelectedProfile.StaticFriction.ReturnDecay = StaticFrictionReturnDecay;
+            SelectedProfile.StaticFriction.OutputSmoothAlpha = StaticFrictionOutputSmoothAlpha;
             _profileManager.SaveProfile(SelectedProfile);
             _profileManager.SetActiveProfile(SelectedProfile);
         }
@@ -2167,11 +2216,25 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnGripGuardMechanicalTrailGainChanged(float value) => _pipeline.GripGuard.MechanicalTrailGain = value;
     partial void OnGripGuardMinSpeedKmhChanged(float value) => _pipeline.GripGuard.MinSpeedKmh = value;
 
+    // ── Stationary Friction handlers ──────────────────────────────────
+    partial void OnStaticFrictionGainChanged(float value) => _telemetryLoop.StaticFriction.Gain = value;
+    partial void OnStaticFrictionMaxElasticStretchChanged(float value) => _telemetryLoop.StaticFriction.MaxElasticStretch = value;
+    partial void OnStaticFrictionSpringStiffnessChanged(float value) => _telemetryLoop.StaticFriction.SpringStiffness = value;
+    partial void OnStaticFrictionKineticFrictionBaseChanged(float value) => _telemetryLoop.StaticFriction.KineticFrictionBase = value;
+    partial void OnStaticFrictionEngineOffDampingChanged(float value) => _telemetryLoop.StaticFriction.EngineOffDamping = value;
+    partial void OnStaticFrictionEngineOnDampingChanged(float value) => _telemetryLoop.StaticFriction.EngineOnDamping = value;
+    partial void OnStaticFrictionEngineOffScaleChanged(float value) => _telemetryLoop.StaticFriction.EngineOffScale = value;
+    partial void OnStaticFrictionEngineOnScaleChanged(float value) => _telemetryLoop.StaticFriction.EngineOnScale = value;
+    partial void OnStaticFrictionActiveDecayChanged(float value) => _telemetryLoop.StaticFriction.ActiveDecay = value;
+    partial void OnStaticFrictionReturnDecayChanged(float value) => _telemetryLoop.StaticFriction.ReturnDecay = value;
+    partial void OnStaticFrictionOutputSmoothAlphaChanged(float value) => _telemetryLoop.StaticFriction.OutputSmoothAlpha = value;
+
     partial void OnSelectedProfileChanged(FfbProfile? value)
     {
         if (value == null) return;
         _profileManager.SetActiveProfile(value);
         value.ApplyToPipeline(_pipeline);
+        value.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
         LoadProfileValues(value);
         OnPropertyChanged(nameof(IsBuiltInProfileSelected));
     }
@@ -2522,6 +2585,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         GripGuardAttenuationStrength = profile.GripGuard.AttenuationStrength;
         GripGuardMechanicalTrailGain = profile.GripGuard.MechanicalTrailGain;
         GripGuardMinSpeedKmh = profile.GripGuard.MinSpeedKmh;
+
+        StaticFrictionGain = profile.StaticFriction.Gain;
+        StaticFrictionMaxElasticStretch = profile.StaticFriction.MaxElasticStretch;
+        StaticFrictionSpringStiffness = profile.StaticFriction.SpringStiffness;
+        StaticFrictionKineticFrictionBase = profile.StaticFriction.KineticFrictionBase;
+        StaticFrictionEngineOffDamping = profile.StaticFriction.EngineOffDamping;
+        StaticFrictionEngineOnDamping = profile.StaticFriction.EngineOnDamping;
+        StaticFrictionEngineOffScale = profile.StaticFriction.EngineOffScale;
+        StaticFrictionEngineOnScale = profile.StaticFriction.EngineOnScale;
+        StaticFrictionActiveDecay = profile.StaticFriction.ActiveDecay;
+        StaticFrictionReturnDecay = profile.StaticFriction.ReturnDecay;
+        StaticFrictionOutputSmoothAlpha = profile.StaticFriction.OutputSmoothAlpha;
     }
 
     private void PushValuesToPipeline()
@@ -2613,6 +2688,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.GripGuard.AttenuationStrength = GripGuardAttenuationStrength;
         _pipeline.GripGuard.MechanicalTrailGain = GripGuardMechanicalTrailGain;
         _pipeline.GripGuard.MinSpeedKmh = GripGuardMinSpeedKmh;
+
+        _telemetryLoop.StaticFriction.Gain = StaticFrictionGain;
+        _telemetryLoop.StaticFriction.MaxElasticStretch = StaticFrictionMaxElasticStretch;
+        _telemetryLoop.StaticFriction.SpringStiffness = StaticFrictionSpringStiffness;
+        _telemetryLoop.StaticFriction.KineticFrictionBase = StaticFrictionKineticFrictionBase;
+        _telemetryLoop.StaticFriction.EngineOffDamping = StaticFrictionEngineOffDamping;
+        _telemetryLoop.StaticFriction.EngineOnDamping = StaticFrictionEngineOnDamping;
+        _telemetryLoop.StaticFriction.EngineOffScale = StaticFrictionEngineOffScale;
+        _telemetryLoop.StaticFriction.EngineOnScale = StaticFrictionEngineOnScale;
+        _telemetryLoop.StaticFriction.ActiveDecay = StaticFrictionActiveDecay;
+        _telemetryLoop.StaticFriction.ReturnDecay = StaticFrictionReturnDecay;
+        _telemetryLoop.StaticFriction.OutputSmoothAlpha = StaticFrictionOutputSmoothAlpha;
 
         PushLedConfig();
     }

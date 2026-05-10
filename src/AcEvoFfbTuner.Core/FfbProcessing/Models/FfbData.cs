@@ -1,3 +1,5 @@
+using AcEvoFfbTuner.Core.SharedMemory.Structs;
+
 namespace AcEvoFfbTuner.Core.FfbProcessing.Models;
 
 public enum FfbChannel
@@ -52,6 +54,10 @@ public sealed class FfbRawData
     public bool IsInPitLane { get; set; }
     public bool IsPitEntry { get; set; }
     public bool IsPitExit { get; set; }
+    public bool IsEngineRunning { get; set; }
+    public bool IsIgnitionOn { get; set; }
+    public AcEvoEngineType EngineType { get; set; }
+    public string TyreCompoundFront { get; set; } = "";
 }
 
 public sealed class FfbProcessedData

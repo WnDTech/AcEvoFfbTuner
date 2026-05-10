@@ -23,6 +23,7 @@ public sealed class TelemetryLoop : IDisposable
     private readonly SharedMemoryReader _reader;
     private readonly FfbPipeline _pipeline;
     private readonly FfbDeviceManager _deviceManager;
+    private readonly FfbStaticFriction _staticFriction = new();
     private IFFBProvider? _ffbProvider;
     private readonly HapticData _reusableHapticData = new();
 
@@ -98,6 +99,7 @@ public sealed class TelemetryLoop : IDisposable
     public float AvgLatencyMs => _avgLatencyMs;
     public string ActiveProviderName => _ffbProvider?.ProviderName ?? "DirectInput (Built-in)";
     public IFFBProvider? ActiveProvider => _ffbProvider;
+    public FfbStaticFriction StaticFriction => _staticFriction;
 
     public string DetectedTrackName => _lastDetectedTrackName;
     public string DetectedCarModel => _lastDetectedCarModel;
@@ -185,6 +187,7 @@ public sealed class TelemetryLoop : IDisposable
 
         _ffbProvider?.ZeroTorque();
         _deviceManager.ZeroForce();
+        _staticFriction.Reset();
 
         if (_timerResolutionSet)
         {
@@ -217,6 +220,7 @@ public sealed class TelemetryLoop : IDisposable
                         {
                             wasConnected = true;
                             _pipeline.Reset();
+                            _staticFriction.Reset();
                             _staticDataRead = false;
                             if (!MapBuilder.HasCompleteMap)
                             {
@@ -310,25 +314,36 @@ public sealed class TelemetryLoop : IDisposable
 
                     if (_deviceManager.IsDeviceAcquired && !_suppressOutput)
                     {
-                        if (raw.SpeedKmh < 0.5f)
+                        float stationaryForce = raw.SpeedKmh < 0.5f ? _staticFriction.Compute(raw) : 0f;
+                        bool hasStationaryForce = Math.Abs(stationaryForce) > 0.001f;
+
+                        if (_ffbProvider != null && _ffbProvider.IsInitialized)
                         {
-                            if (_ffbProvider != null && _ffbProvider.IsInitialized)
+                            if (hasStationaryForce)
+                            {
+                                _ffbProvider.UpdateTorque(stationaryForce);
+                            }
+                            else if (raw.SpeedKmh < 0.5f)
                             {
                                 _ffbProvider.ZeroTorque();
                             }
                             else
                             {
-                                _deviceManager.SendConstantForce(0f);
-                                _deviceManager.SetTargetVibration(0f);
+                                _ffbProvider.UpdateTorque(processed.MainForce);
+                                _reusableHapticData.VibrationIntensity = processed.VibrationForce;
+                                _ffbProvider.SetHaptics(_reusableHapticData);
                             }
                         }
                         else
                         {
-                            if (_ffbProvider != null && _ffbProvider.IsInitialized)
+                            if (hasStationaryForce)
                             {
-                                _ffbProvider.UpdateTorque(processed.MainForce);
-                                _reusableHapticData.VibrationIntensity = processed.VibrationForce;
-                                _ffbProvider.SetHaptics(_reusableHapticData);
+                                _deviceManager.SendConstantForce(stationaryForce);
+                            }
+                            else if (raw.SpeedKmh < 0.5f)
+                            {
+                                _deviceManager.SendConstantForce(0f);
+                                _deviceManager.SetTargetVibration(0f);
                             }
                             else
                             {
@@ -336,7 +351,10 @@ public sealed class TelemetryLoop : IDisposable
                                 _deviceManager.SetTargetVibration(processed.VibrationForce);
                             }
                         }
+                    }
 
+                    if (_deviceManager.IsDeviceAcquired && !_suppressOutput)
+                    {
                         _deviceManager.UpdateWheelLeds(raw.RpmPercent, raw.IsChangeUpRpm, raw.IsRpmLimiterOn, raw.Flag, raw.AbsVibrations > 0.001f);
 
                         if (_deviceManager.IsHf8Connected)
@@ -809,7 +827,11 @@ public sealed class TelemetryLoop : IDisposable
             CarLocationRaw = (int)graphics.CarLocation,
             IsInPitLane = graphics.CarLocation == AcEvoCarLocation.AcevoPitlane,
             IsPitEntry = false,
-            IsPitExit = false
+            IsPitExit = false,
+            IsEngineRunning = physics.IsEngineRunning != 0,
+            IsIgnitionOn = graphics.IsIgnitionOn,
+            EngineType = graphics.EngineType,
+            TyreCompoundFront = DecodeString(graphics.TyreLf.TyreCompoundFront)
         };
     }
 

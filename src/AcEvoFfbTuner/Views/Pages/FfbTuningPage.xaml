@@ -285,6 +285,73 @@
                         </controls:SectionCard.InnerContent>
                     </controls:SectionCard>
 
+                    <!-- STATIONARY FRICTION (engine-off wheel scrub) -->
+                    <controls:SectionCard Title="STATIONARY FRICTION"
+                                          SectionBrush="{StaticResource SectionDamping}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Gain: " /><Run Text="{Binding StaticFrictionGain, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
+                                <Run Text=" · " /><Run Text="Engine Off: " /><Run Text="{Binding StaticFrictionEngineOffScale, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
+                                <Run Text=" · " /><Run Text="Engine On: " /><Run Text="{Binding StaticFrictionEngineOnScale, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <TextBlock Text="Simulates stationary tyre scrub when the car is stopped. Uses elastic displacement model — no centering bias, no oscillation." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+                                <controls:LabeledSlider Value="{Binding StaticFrictionGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                    Label="Master Gain" StringFormat="{}{0:F2}"
+                                    Description="Overall intensity of stationary friction. 0 = disabled, 1 = normal, 2 = extra heavy."
+                                    SectionColor="{StaticResource SectionDamping}" />
+                                <controls:LabeledSlider Value="{Binding StaticFrictionEngineOffScale, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                    Label="Engine Off Scale" StringFormat="{}{0:F2}"
+                                    Description="Force multiplier when engine is off. Higher = heavier steering (no power assist)."
+                                    SectionColor="{StaticResource SectionDamping}" />
+                                <controls:LabeledSlider Value="{Binding StaticFrictionEngineOnScale, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Engine On Scale" StringFormat="{}{0:F2}"
+                                    Description="Force multiplier when engine is running. Lower = lighter steering (power assist)."
+                                    SectionColor="{StaticResource SectionDamping}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Elastic Friction Model">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding StaticFrictionMaxElasticStretch, Mode=TwoWay}" Minimum="0.001" Maximum="0.05" TickFrequency="0.001"
+                                            Label="Elastic Stretch" StringFormat="{}{0:F3}"
+                                            Description="Max elastic deformation before tyre breaks free. Smaller = sharper transition, larger = more rubbery feel. Default 0.01."
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                        <controls:LabeledSlider Value="{Binding StaticFrictionSpringStiffness, Mode=TwoWay}" Minimum="1" Maximum="50" TickFrequency="0.5"
+                                            Label="Spring Stiffness" StringFormat="{}{0:F1}"
+                                            Description="How quickly force ramps up in the elastic zone. Higher = stiffer initial resistance. Default 15."
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                        <controls:LabeledSlider Value="{Binding StaticFrictionKineticFrictionBase, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Kinetic Friction" StringFormat="{}{0:F2}"
+                                            Description="Sliding friction force level once tyre has broken free. Default 0.20."
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                        <controls:LabeledSlider Value="{Binding StaticFrictionEngineOffDamping, Mode=TwoWay}" Minimum="0" Maximum="0.5" TickFrequency="0.01"
+                                            Label="Engine Off Damping" StringFormat="{}{0:F2}"
+                                            Description="Viscous damping when engine is off. Absorbs motor inertia to prevent buzz. Default 0.15."
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                        <controls:LabeledSlider Value="{Binding StaticFrictionEngineOnDamping, Mode=TwoWay}" Minimum="0" Maximum="0.2" TickFrequency="0.005"
+                                            Label="Engine On Damping" StringFormat="{}{0:F3}"
+                                            Description="Viscous damping when engine is running. Much lower — power assist. Default 0.02."
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                        <controls:LabeledSlider Value="{Binding StaticFrictionActiveDecay, Mode=TwoWay}" Minimum="0.5" Maximum="1" TickFrequency="0.01"
+                                            Label="Active Decay" StringFormat="{}{0:F2}"
+                                            Description="Per-frame displacement decay while turning. Lower = faster decay = more stable. 0.92 default works for most wheels. Use 0.5-0.8 for very strong wheel bases."
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                        <controls:LabeledSlider Value="{Binding StaticFrictionReturnDecay, Mode=TwoWay}" Minimum="0.1" Maximum="0.99" TickFrequency="0.01"
+                                            Label="Return Decay" StringFormat="{}{0:F2}"
+                                            Description="Per-frame decay when spring pulls wheel back. Lower = faster oscillation kill. 0.65 default. Use 0.1-0.4 for very strong wheel bases."
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                        <controls:LabeledSlider Value="{Binding StaticFrictionOutputSmoothAlpha, Mode=TwoWay}" Minimum="0.05" Maximum="1" TickFrequency="0.01"
+                                            Label="Output Smoothing" StringFormat="{}{0:F2}"
+                                            Description="EMA alpha for smoothing force output. 0.35 = smooth but responsive, 1.0 = no smoothing. Reduces notchy feel from game's discrete steer steps."
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
                     <!-- ═══ GROUP B: MECHANICAL FEEDBACK ═══ -->
                     <TextBlock Text="M E C H A N I C A L   F E E D B A C K" FontSize="12" FontWeight="Bold"
                                Foreground="{StaticResource TextDimBrush}" Margin="0,20,0,12" />

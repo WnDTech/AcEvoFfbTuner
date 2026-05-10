@@ -212,6 +212,8 @@ public sealed class FfbPipeline
         if (Math.Abs(finalOutput) < effectiveNoiseFloor)
             finalOutput = 0f;
 
+
+
         return new FfbProcessedData
         {
             MainForce = finalOutput,
@@ -250,6 +252,7 @@ public sealed class FfbPipeline
         TyreFlex.Reset();
         Hf8SignalMapper.Reset();
         GripGuard.Reset();
+
 
 
         _prevDetailOutput = 0f;

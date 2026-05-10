@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 15;
+    public const int CurrentVersion = 16;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -72,6 +72,7 @@ public sealed class FfbProfile
     public LedEffectConfigDto LedEffects { get; set; } = new();
     public Hf8Config Hf8 { get; set; } = new();
     public GripGuardConfig GripGuard { get; set; } = new();
+    public StaticFrictionConfig StaticFriction { get; set; } = new();
     public TelemetrySnapshotDto? LastTelemetrySnapshot { get; set; }
 
     public void ApplyToPipeline(FfbPipeline pipeline)
@@ -191,6 +192,21 @@ public sealed class FfbProfile
         pipeline.GripGuard.AttenuationStrength = GripGuard.AttenuationStrength;
         pipeline.GripGuard.MechanicalTrailGain = GripGuard.MechanicalTrailGain;
         pipeline.GripGuard.MinSpeedKmh = GripGuard.MinSpeedKmh;
+    }
+
+    public void ApplyToStaticFriction(FfbStaticFriction sf)
+    {
+        sf.Gain = StaticFriction.Gain;
+        sf.MaxElasticStretch = StaticFriction.MaxElasticStretch;
+        sf.SpringStiffness = StaticFriction.SpringStiffness;
+        sf.KineticFrictionBase = StaticFriction.KineticFrictionBase;
+        sf.EngineOffDamping = StaticFriction.EngineOffDamping;
+        sf.EngineOnDamping = StaticFriction.EngineOnDamping;
+        sf.EngineOffScale = StaticFriction.EngineOffScale;
+        sf.EngineOnScale = StaticFriction.EngineOnScale;
+        sf.ActiveDecay = StaticFriction.ActiveDecay;
+        sf.ReturnDecay = StaticFriction.ReturnDecay;
+        sf.OutputSmoothAlpha = StaticFriction.OutputSmoothAlpha;
     }
 
     public static FfbProfile CreateFromPipeline(FfbPipeline pipeline, string name)
@@ -524,6 +540,7 @@ public sealed class FfbProfile
         TyreFlex.SanitizeFloats();
         Hf8.SanitizeFloats();
         GripGuard.SanitizeFloats();
+        StaticFriction.SanitizeFloats();
     }
 
     private static float Sanitize(float v) =>
@@ -684,6 +701,11 @@ public sealed class FfbProfile
         if (Version < 15)
         {
             GripGuard ??= new GripGuardConfig();
+        }
+
+        if (Version < 16)
+        {
+            StaticFriction ??= new StaticFrictionConfig();
         }
 
         Version = CurrentVersion;
@@ -1013,4 +1035,43 @@ public sealed class GripGuardConfig
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
     public void SanitizeFloats() { PeakSlipAngle = S(PeakSlipAngle); AttenuationStrength = S(AttenuationStrength); MechanicalTrailGain = S(MechanicalTrailGain); MinSpeedKmh = S(MinSpeedKmh); }
+}
+
+public sealed class StaticFrictionConfig
+{
+    /// <summary>Master gain. 0 = disabled, 1 = full stationary friction.</summary>
+    public float Gain { get; set; } = 1.0f;
+
+    /// <summary>Max elastic stretch before breakout (normalized steer units). Smaller = sharper, larger = more rubbery.</summary>
+    public float MaxElasticStretch { get; set; } = 0.01f;
+
+    /// <summary>Spring stiffness during elastic phase. Controls how quickly force ramps up.</summary>
+    public float SpringStiffness { get; set; } = 15.0f;
+
+    /// <summary>Kinetic (sliding) friction force level (normalized).</summary>
+    public float KineticFrictionBase { get; set; } = 0.20f;
+
+    /// <summary>Engine-off viscous damping. Opposes velocity to prevent buzz.</summary>
+    public float EngineOffDamping { get; set; } = 0.15f;
+
+    /// <summary>Engine-on viscous damping (lower — power assist).</summary>
+    public float EngineOnDamping { get; set; } = 0.02f;
+
+    /// <summary>Force multiplier when engine is off.</summary>
+    public float EngineOffScale { get; set; } = 1.0f;
+
+    /// <summary>Force multiplier when engine is running.</summary>
+    public float EngineOnScale { get; set; } = 0.3f;
+
+    /// <summary>Per-frame displacement decay during active turning. 0.92 = 8%/frame — stable yet natural.</summary>
+    public float ActiveDecay { get; set; } = 0.92f;
+
+    /// <summary>Per-frame displacement decay when spring returns wheel to center. 0.65 = 35%/frame — kills oscillation fast.</summary>
+    public float ReturnDecay { get; set; } = 0.65f;
+
+    /// <summary>Output EMA alpha for smoothing quantization artifacts. 0.35 = responsive but smooth. 1.0 = no smoothing.</summary>
+    public float OutputSmoothAlpha { get; set; } = 0.35f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { Gain = S(Gain); MaxElasticStretch = S(MaxElasticStretch); SpringStiffness = S(SpringStiffness); KineticFrictionBase = S(KineticFrictionBase); EngineOffDamping = S(EngineOffDamping); EngineOnDamping = S(EngineOnDamping); EngineOffScale = S(EngineOffScale); EngineOnScale = S(EngineOnScale); ActiveDecay = S(ActiveDecay); ReturnDecay = S(ReturnDecay); OutputSmoothAlpha = S(OutputSmoothAlpha); }
 }
