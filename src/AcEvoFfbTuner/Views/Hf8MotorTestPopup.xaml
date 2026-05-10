@@ -1,0 +1,167 @@
+<Window x:Class="AcEvoFfbTuner.Views.Hf8MotorTestPopup"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FFB Tuner — HF8 Motor Test"
+        Width="520" Height="680"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False">
+
+    <Window.Resources>
+        <Style x:Key="MotorBtn" TargetType="Button">
+            <Setter Property="Background" Value="#FF1E2235" />
+            <Setter Property="Foreground" Value="#FFE6EDF3" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="6" BorderThickness="2"
+                                BorderBrush="#44FFFFFF" Margin="3">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
+                                           FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"
+                                           Foreground="#FFE6EDF3" />
+                                <TextBlock Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"
+                                           FontSize="11" HorizontalAlignment="Center"
+                                           Foreground="#AAE6EDF3" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#AAFF9800" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#44FF9800" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="8" Padding="1" Background="#55FF9800"
+            MouseLeftButtonDown="OnDragMove">
+        <Border CornerRadius="7" Background="#EE0D0D0D">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0" Margin="16,12,16,8">
+                    <Button DockPanel.Dock="Right" Content="&#x2715;" FontSize="16" FontWeight="Bold"
+                            Background="Transparent" Foreground="#FF6666" BorderThickness="0"
+                            Padding="8,2" Cursor="Hand" Click="OnClose" />
+                    <StackPanel>
+                        <TextBlock Text="HF8 Motor Test" FontSize="18" FontWeight="Bold" Foreground="#FFFF9800" />
+                        <TextBlock Text="Click a zone to pulse that motor. Verify the vibration matches the label."
+                                   FontSize="12" Foreground="#AAE6EDF3" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    </StackPanel>
+                </DockPanel>
+
+                <Grid Grid.Row="1" Margin="16,4,16,12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="8" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- BACK OF SEAT (SDK indices 4-7) -->
+                    <Border Grid.Row="0" Background="#0D1B2A" CornerRadius="8" Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="BACK OF SEAT" FontSize="11" FontWeight="Bold"
+                                       Foreground="#FFF0883E" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="4" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="4" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <!-- Back Upper: SDK[6]=Left, SDK[7]=Right -->
+                                <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource MotorBtn}"
+                                        Tag="Motor 1" Content="Back Upper Right" MinHeight="56"
+                                        Click="OnMotorClick" />
+                                <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource MotorBtn}"
+                                        Tag="Motor 2" Content="Back Upper Left" MinHeight="56"
+                                        Click="OnMotorClick" />
+                                <!-- Back Lower: SDK[4]=Right, SDK[5]=Left -->
+                                <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource MotorBtn}"
+                                        Tag="Motor 3" Content="Back Lower Right" MinHeight="56"
+                                        Click="OnMotorClick" />
+                                <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource MotorBtn}"
+                                        Tag="Motor 4" Content="Back Lower Left" MinHeight="56"
+                                        Click="OnMotorClick" />
+                            </Grid>
+                            <TextBlock Text="Viewed from behind the seat" FontSize="9" Foreground="#66E6EDF3"
+                                       HorizontalAlignment="Center" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- SEAT BOTTOM (SDK indices 0-3) -->
+                    <Border Grid.Row="2" Background="#0D1B2A" CornerRadius="8" Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="SEAT BOTTOM" FontSize="11" FontWeight="Bold"
+                                       Foreground="#FFE3B341" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="4" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="4" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <!-- Seat Rear: SDK[2]=Right, SDK[3]=Left -->
+                                <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource MotorBtn}"
+                                        Tag="Motor 5" Content="Seat Rear Right" MinHeight="56"
+                                        Click="OnMotorClick" />
+                                <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource MotorBtn}"
+                                        Tag="Motor 6" Content="Seat Rear Left" MinHeight="56"
+                                        Click="OnMotorClick" />
+                                <!-- Seat Front: SDK[0]=Right, SDK[1]=Left -->
+                                <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource MotorBtn}"
+                                        Tag="Motor 7" Content="Seat Front Right" MinHeight="56"
+                                        Click="OnMotorClick" />
+                                <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource MotorBtn}"
+                                        Tag="Motor 8" Content="Seat Front Left" MinHeight="56"
+                                        Click="OnMotorClick" />
+                            </Grid>
+                            <TextBlock Text="Front of seat (toward pedals) | Viewed from above" FontSize="9"
+                                       Foreground="#66E6EDF3" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- BOTTOM BAR -->
+                <Border Grid.Row="2" Background="#0D1B2A" CornerRadius="0,0,7,7" Padding="16,10">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Left" Content="Test All Sequential"
+                                Background="#FF333355" Foreground="#FFE6EDF3" BorderThickness="0"
+                                Padding="14,8" FontSize="13" FontWeight="SemiBold" Cursor="Hand"
+                                Click="OnTestAll" x:Name="TestAllBtn" />
+                        <Button DockPanel.Dock="Left" Content="All Off"
+                                Background="#FF442222" Foreground="#FFE6EDF3" BorderThickness="0"
+                                Padding="14,8" FontSize="13" Cursor="Hand"
+                                Click="OnAllOff" Margin="10,0,0,0" />
+                        <TextBlock x:Name="StatusText" Text="Click a motor to test"
+                                   Foreground="#AAE6EDF3" FontSize="13"
+                                   VerticalAlignment="Center" HorizontalAlignment="Right" Margin="12,0,0,0" />
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+</Window>

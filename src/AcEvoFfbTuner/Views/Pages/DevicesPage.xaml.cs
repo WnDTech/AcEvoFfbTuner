@@ -5,12 +5,15 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using AcEvoFfbTuner.ViewModels;
+using AcEvoFfbTuner.Views;
 
 namespace AcEvoFfbTuner.Views.Pages;
 
 public partial class DevicesPage : UserControl
 {
     private MainViewModel? _vm;
+
+    public event EventHandler? Hf8MotorTestRequested;
 
     public DevicesPage()
     {
@@ -112,5 +115,10 @@ public partial class DevicesPage : UserControl
             };
             LedPreviewBar.Children.Add(ellipse);
         }
+    }
+
+    private void OnOpenMotorTest(object sender, RoutedEventArgs e)
+    {
+        Hf8MotorTestRequested?.Invoke(this, EventArgs.Empty);
     }
 }

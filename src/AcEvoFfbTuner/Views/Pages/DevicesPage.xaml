@@ -300,85 +300,107 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <!-- QUADRANT TOP-LEFT: FRONT TIRES -->
+                        <!-- QUADRANT TOP-LEFT: SEAT FRONT -->
                         <Border Grid.Row="0" Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
                                 BorderThickness="1" BorderBrush="#3379C0FF">
                             <StackPanel>
-                                <TextBlock Text="FRONT TIRES" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,10" />
-                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain0, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="FL Tire" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Front-left: suspension + slip ratio + kerbs"
-                                    SectionColor="#FF79C0FF" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled0}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
-
+                                <TextBlock Text="SEAT FRONT" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,10" />
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain1, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="FR Tire" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Front-right: suspension + slip ratio + kerbs"
+                                    Label="M8 Seat FL" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Motor 8: Seat Front Left (driver) — FL susp + slip + kerb"
                                     SectionColor="#FF79C0FF" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled1}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled1}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain0, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="M7 Seat FR" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Motor 7: Seat Front Right (driver) — FR susp + slip + kerb"
+                                    SectionColor="#FF79C0FF" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled0}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
                             </StackPanel>
                         </Border>
 
-                        <!-- QUADRANT TOP-RIGHT: REAR TIRES -->
+                        <!-- QUADRANT TOP-RIGHT: SEAT REAR -->
                         <Border Grid.Row="0" Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
                                 BorderThickness="1" BorderBrush="#3356D4A0">
                             <StackPanel>
-                                <TextBlock Text="REAR TIRES" FontSize="12" FontWeight="Bold" Foreground="#FF56D4A0" Margin="0,0,0,10" />
-                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain2, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="RL Tire" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Rear-left: suspension + slip ratio"
-                                    SectionColor="#FF56D4A0" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled2}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
-
+                                <TextBlock Text="SEAT REAR" FontSize="12" FontWeight="Bold" Foreground="#FF56D4A0" Margin="0,0,0,10" />
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain3, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="RR Tire" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Rear-right: suspension + slip ratio"
+                                    Label="M6 Seat RL" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Motor 6: Seat Rear Left (driver) — RL susp + slip"
                                     SectionColor="#FF56D4A0" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled3}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled3}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain2, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="M5 Seat RR" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Motor 5: Seat Rear Right (driver) — RR susp + slip"
+                                    SectionColor="#FF56D4A0" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled2}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
                             </StackPanel>
                         </Border>
 
-                        <!-- QUADRANT BOTTOM-LEFT: SEAT ZONES -->
+                        <!-- QUADRANT BOTTOM-LEFT: BACK LOWER -->
                         <Border Grid.Row="2" Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
-                                BorderThickness="1" BorderBrush="#33E3B341">
+                                BorderThickness="1" BorderBrush="#33E08040">
                             <StackPanel>
-                                <TextBlock Text="SEAT ZONES" FontSize="12" FontWeight="Bold" Foreground="#FFE3B341" Margin="0,0,0,10" />
-                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain4, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="Seat Left" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="LFE + lateral G + slip vibration"
-                                    SectionColor="#FFE3B341" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled4}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
-
+                                <TextBlock Text="BACK LOWER" FontSize="12" FontWeight="Bold" Foreground="#FFE08040" Margin="0,0,0,10" />
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain5, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="Seat Right" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="LFE + lateral G + slip vibration"
-                                    SectionColor="#FFE3B341" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled5}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                                    Label="M4 Back LL" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Motor 4: Back Lower Left (driver) — road + ABS + rear slip"
+                                    SectionColor="#FFE08040" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled5}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain4, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="M3 Back LR" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Motor 3: Back Lower Right (driver) — road + ABS + rear slip"
+                                    SectionColor="#FFE08040" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled4}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
                             </StackPanel>
                         </Border>
 
-                        <!-- QUADRANT BOTTOM-RIGHT: BACK ZONES -->
+                        <!-- QUADRANT BOTTOM-RIGHT: BACK UPPER -->
                         <Border Grid.Row="2" Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
                                 BorderThickness="1" BorderBrush="#33F0883E">
                             <StackPanel>
-                                <TextBlock Text="BACK ZONES" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,10" />
-                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain6, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="Back Upper" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="RPM envelope + rear slip + scrub"
-                                    SectionColor="#FFF0883E" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled6}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
-
+                                <TextBlock Text="BACK UPPER" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,10" />
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain7, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="Back Lower" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Road vibration + ABS + LFE"
+                                    Label="M2 Back UL" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Motor 2: Back Upper Left (driver) — LFE + RPM + lat G + scrub"
                                     SectionColor="#FFF0883E" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled7}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled7}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain6, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="M1 Back UR" StringFormat="{}{0:F2}" ValueWidth="52"
+                                    Description="Motor 1: Back Upper Right (driver) — LFE + RPM + lat G + scrub"
+                                    SectionColor="#FFF0883E" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled6}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
                             </StackPanel>
                         </Border>
                     </Grid>
 
+                    <!-- MOTOR TEST BUTTON -->
+                    <Button Content="&#x2699; Test Motors"
+                            Click="OnOpenMotorTest"
+                            Background="#FF333355" Foreground="#FFFF9800" BorderThickness="0"
+                            Padding="16,10" FontSize="14" FontWeight="SemiBold" Cursor="Hand"
+                            HorizontalAlignment="Left" Margin="0,0,0,16">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                        CornerRadius="6" Padding="{TemplateBinding Padding}"
+                                        BorderThickness="1" BorderBrush="#44FF9800">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#44FF9800" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
                     <!-- CONNECTION INFO PANEL -->
-                    <Border Background="#FF1A1A2E" CornerRadius="6" Padding="14,10" Margin="0,16,0,0"
+                    <Border Background="#FF1A1A2E" CornerRadius="6" Padding="14,10" Margin="0,0,0,0"
                             BorderThickness="1" BorderBrush="#333355">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="USB" FontSize="11" FontWeight="Bold" Foreground="#FF6666AA" VerticalAlignment="Center" Margin="0,0,10,0" />

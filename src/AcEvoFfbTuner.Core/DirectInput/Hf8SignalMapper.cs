@@ -9,22 +9,24 @@ public sealed class Hf8SignalMapper
 
     public enum Hf8Zone
     {
-        FrontLeft = 0,
-        FrontRight = 1,
-        RearLeft = 2,
-        RearRight = 3,
-        SeatLeft = 4,
-        SeatRight = 5,
-        BackUpper = 6,
-        BackLower = 7
+        SeatFrontRight = 0,
+        SeatFrontLeft = 1,
+        SeatRearRight = 2,
+        SeatRearLeft = 3,
+        BackLowerRight = 4,
+        BackLowerLeft = 5,
+        BackUpperRight = 6,
+        BackUpperLeft = 7
     }
+
+    public static readonly int[] PhysicalMotorToSdkIndex = [6, 7, 4, 5, 2, 3, 0, 1];
 
     public float MasterGain { get; set; } = 0.7f;
     public bool Enabled { get; set; } = true;
 
     public float[] ZoneGains { get; set; } = new float[ZoneCount]
     {
-        0.8f, 0.8f, 0.8f, 0.8f, 0.6f, 0.6f, 0.5f, 0.7f
+        0.8f, 0.8f, 0.8f, 0.8f, 0.7f, 0.7f, 0.5f, 0.5f
     };
 
     public bool[] ZoneEnabled { get; set; } = new bool[ZoneCount]
@@ -34,7 +36,6 @@ public sealed class Hf8SignalMapper
 
     private float[] _prevSuspTravel = new float[4];
     private float[] _suspDelta = new float[4];
-    private const float TickSeconds = 1f / 333f;
 
     public float[] Map(
         FfbRawData raw,
@@ -53,56 +54,65 @@ public sealed class Hf8SignalMapper
 
         float[] suspDelta = ComputeSuspensionDelta(raw);
         float[] wheelSlip = ComputeWheelSlip(raw);
-        float lateralG = raw.AccG.Length > 1 ? MathF.Abs(raw.AccG[1]) : 0f;
+        float signedLateralG = raw.AccG.Length > 1 ? raw.AccG[1] : 0f;
         float rpmNorm = Math.Clamp(raw.RpmPercent / 100f, 0f, 1f);
         float absActive = raw.AbsVibrations > 0.001f || raw.AbsInAction != 0 ? 1f : 0f;
         float kerbVib = raw.KerbVibration;
-        float slipVib = raw.SlipVibrations;
-        float roadVib = raw.RoadVibrations;
         float lfeOut = MathF.Abs(lfeGenerator.LfeOutput);
         float absMod = MathF.Abs(vibrationMixer.AbsForceModulation);
         float roadMod = MathF.Abs(vibrationMixer.RoadForceModulation);
         float scrubMod = MathF.Abs(vibrationMixer.ScrubModulation);
         float rearSlipMod = MathF.Abs(vibrationMixer.RearSlipModulation);
+        float slipVib = raw.SlipVibrations;
 
-        float frontSlipAngle = (MathF.Abs(raw.SlipAngle[0]) + MathF.Abs(raw.SlipAngle[1])) * 0.5f;
-        float rearSlipAngle = (MathF.Abs(raw.SlipAngle[2]) + MathF.Abs(raw.SlipAngle[3])) * 0.5f;
-
-        // Zone 0: Front Left — FL suspension delta + FL slip ratio + kerb impacts
         float flSusp = Math.Clamp(suspDelta[0] * 80f, 0f, 0.6f);
         float flSlip = Math.Clamp(wheelSlip[0] * 5f, 0f, 0.4f);
-        intensities[(int)Hf8Zone.FrontLeft] = (flSusp + flSlip + kerbVib * 0.3f) * 0.8f;
-
-        // Zone 1: Front Right — FR suspension delta + FR slip ratio + kerb impacts
         float frSusp = Math.Clamp(suspDelta[1] * 80f, 0f, 0.6f);
         float frSlip = Math.Clamp(wheelSlip[1] * 5f, 0f, 0.4f);
-        intensities[(int)Hf8Zone.FrontRight] = (frSusp + frSlip + kerbVib * 0.3f) * 0.8f;
-
-        // Zone 2: Rear Left — RL suspension delta + RL slip ratio
         float rlSusp = Math.Clamp(suspDelta[2] * 80f, 0f, 0.6f);
         float rlSlip = Math.Clamp(wheelSlip[2] * 5f, 0f, 0.4f);
-        intensities[(int)Hf8Zone.RearLeft] = (rlSusp + rlSlip) * 0.8f;
-
-        // Zone 3: Rear Right — RR suspension delta + RR slip ratio
         float rrSusp = Math.Clamp(suspDelta[3] * 80f, 0f, 0.6f);
         float rrSlip = Math.Clamp(wheelSlip[3] * 5f, 0f, 0.4f);
-        intensities[(int)Hf8Zone.RearRight] = (rrSusp + rrSlip) * 0.8f;
 
-        // Zone 4: Seat Left — LFE + lateral G (left-biased)
-        float lateralBiasL = lateralG > 0.3f ? (lateralG - 0.3f) * 0.5f : 0f;
-        intensities[(int)Hf8Zone.SeatLeft] = (lfeOut * 1.5f + lateralBiasL + slipVib * 0.2f) * 0.6f;
-
-        // Zone 5: Seat Right — LFE + lateral G (right-biased)
-        float lateralBiasR = lateralG > 0.3f ? (lateralG - 0.3f) * 0.5f : 0f;
-        intensities[(int)Hf8Zone.SeatRight] = (lfeOut * 1.5f + lateralBiasR + slipVib * 0.2f) * 0.6f;
-
-        // Zone 6: Back Upper — RPM envelope + rear slip warning + scrub
         float rpmVib = rpmNorm * 0.2f;
         float rpmLimiter = raw.IsRpmLimiterOn ? 0.6f : 0f;
-        intensities[(int)Hf8Zone.BackUpper] = (rpmVib + rpmLimiter + rearSlipMod * 2f + scrubMod * 1.5f) * 0.5f;
 
-        // Zone 7: Back Lower — Road vibration + ABS + LFE
-        intensities[(int)Hf8Zone.BackLower] = (roadMod * 3f + absMod * 2f + lfeOut + roadVib * 0.3f + absActive * 0.3f) * 0.7f;
+        float leftSusp = flSusp + rlSusp;
+        float rightSusp = frSusp + rrSusp;
+        float totalSusp = leftSusp + rightSusp + 0.001f;
+        float leftSuspRatio = leftSusp / totalSusp;
+        float rightSuspRatio = rightSusp / totalSusp;
+
+        float kerbLeft = kerbVib * leftSuspRatio;
+        float kerbRight = kerbVib * rightSuspRatio;
+
+        // AccG[1] > 0 = turn left = pushed RIGHT | AccG[1] < 0 = turn right = pushed LEFT
+        float pushedRight = signedLateralG > 0.3f ? (signedLateralG - 0.3f) * 0.5f : 0f;
+        float pushedLeft = signedLateralG < -0.3f ? (-signedLateralG - 0.3f) * 0.5f : 0f;
+
+        // SDK[1] Seat Front Left (driver's left thigh) — FL primary + RL cross + kerb left + pushed left
+        intensities[(int)Hf8Zone.SeatFrontLeft] = (flSusp * 1.2f + rlSusp * 0.4f + flSlip + kerbLeft * 0.3f + pushedLeft * 0.3f) * 0.8f;
+
+        // SDK[0] Seat Front Right (driver's right thigh) — FR primary + RR cross + kerb right + pushed right
+        intensities[(int)Hf8Zone.SeatFrontRight] = (frSusp * 1.2f + rrSusp * 0.4f + frSlip + kerbRight * 0.3f + pushedRight * 0.3f) * 0.8f;
+
+        // SDK[3] Seat Rear Left (driver's left rear) — RL primary + FL cross + kerb left + pushed left
+        intensities[(int)Hf8Zone.SeatRearLeft] = (rlSusp * 1.2f + flSusp * 0.4f + rlSlip + kerbLeft * 0.3f + pushedLeft * 0.3f) * 0.8f;
+
+        // SDK[2] Seat Rear Right (driver's right rear) — RR primary + FR cross + kerb right + pushed right
+        intensities[(int)Hf8Zone.SeatRearRight] = (rrSusp * 1.2f + frSusp * 0.4f + rrSlip + kerbRight * 0.3f + pushedRight * 0.3f) * 0.8f;
+
+        // SDK[5] Back Lower Left (driver's left lower back) — road + ABS biased left
+        intensities[(int)Hf8Zone.BackLowerLeft] = (roadMod * 2f * leftSuspRatio + absMod * 2f + rearSlipMod * 2f + absActive * 0.3f + slipVib * 0.2f) * 0.7f;
+
+        // SDK[4] Back Lower Right (driver's right lower back) — road + ABS biased right
+        intensities[(int)Hf8Zone.BackLowerRight] = (roadMod * 2f * rightSuspRatio + absMod * 2f + rearSlipMod * 2f + absActive * 0.3f + slipVib * 0.2f) * 0.7f;
+
+        // SDK[7] Back Upper Left (driver's left upper back) — LFE + RPM + pushed left + scrub
+        intensities[(int)Hf8Zone.BackUpperLeft] = (lfeOut * 1.5f + rpmVib + rpmLimiter + pushedLeft + scrubMod) * 0.5f;
+
+        // SDK[6] Back Upper Right (driver's right upper back) — LFE + RPM + pushed right + scrub
+        intensities[(int)Hf8Zone.BackUpperRight] = (lfeOut * 1.5f + rpmVib + rpmLimiter + pushedRight + scrubMod) * 0.5f;
 
         for (int i = 0; i < ZoneCount; i++)
         {

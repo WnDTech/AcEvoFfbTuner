@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private ProfilerOverlay? _profilerOverlay;
     private TrackMapPopout? _trackMapPopout;
     private CalibrationWizardOverlay? _calibrationWizard;
+    private Hf8MotorTestPopup? _hf8MotorTest;
 
     public MainWindow()
     {
@@ -33,6 +34,7 @@ public partial class MainWindow : Window
         TrackMapPageCtrl.TrackMapPopoutRequested += OnTrackMapPopoutRequested;
         SettingsPageCtrl.TestingGuideRequested += OnTestingGuideRequested;
         SettingsPageCtrl.CalibrationWizardRequested += OnCalibrationWizardRequested;
+        DevicesPageCtrl.Hf8MotorTestRequested += OnHf8MotorTestRequested;
 
         ((MainViewModel)DataContext).PropertyChanged += (s, e) =>
         {
@@ -207,6 +209,24 @@ public partial class MainWindow : Window
         _calibrationWizard.InitializeSlidersFromPipeline();
         _calibrationWizard.Closed += (_, _) => _calibrationWizard = null;
         _calibrationWizard.Show();
+    }
+
+    private void OnHf8MotorTestRequested(object? sender, EventArgs e)
+    {
+        if (_hf8MotorTest != null)
+        {
+            _hf8MotorTest.Activate();
+            return;
+        }
+
+        if (DataContext is not ViewModels.MainViewModel vm) return;
+
+        var controller = vm.DeviceManager.Hf8Controller;
+        if (controller == null || !controller.IsConnected) return;
+
+        _hf8MotorTest = new Hf8MotorTestPopup(controller);
+        _hf8MotorTest.Closed += (_, _) => _hf8MotorTest = null;
+        _hf8MotorTest.Show();
     }
 
     private void CopyDebugToClipboard(object sender, RoutedEventArgs e)

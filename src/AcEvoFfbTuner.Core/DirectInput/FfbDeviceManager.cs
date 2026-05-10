@@ -864,8 +864,10 @@ public sealed class FfbDeviceManager : IDisposable
     public bool LedSupportsBrightness => _ledController.SupportsBrightnessControl;
     public bool LedSupportsFlags => _ledController.SupportsFlagIndicators;
     public string LedVendorDisplayName => _ledController.VendorDisplayName;
-
     public bool IsHf8Connected => _hf8Controller.IsConnected;
+
+    public Hf8HapticController Hf8Controller => _hf8Controller;
+
     public string Hf8DiagnosticInfo => _hf8Controller.DiagnosticSummary;
     public string Hf8DeviceInfo => _hf8Controller.IsConnected
         ? _hf8Controller.DeviceInfo
