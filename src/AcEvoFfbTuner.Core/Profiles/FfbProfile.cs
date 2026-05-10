@@ -148,6 +148,7 @@ public sealed class FfbProfile
         pipeline.VibrationMixer.SuspensionRoadGain = Vibrations.SuspensionRoadGain;
         pipeline.VibrationMixer.ScrubGain = Vibrations.ScrubGain;
         pipeline.VibrationMixer.RearSlipGain = Vibrations.RearSlipGain;
+        pipeline.VibrationMixer.AbsPulseAmplitude = Vibrations.AbsPulseAmplitude;
 
         pipeline.MaxSlewRate = Advanced.MaxSlewRate;
         pipeline.CenterSuppressionDegrees = Advanced.CenterSuppressionDegrees;
@@ -280,7 +281,8 @@ public sealed class FfbProfile
             MasterGain = pipeline.VibrationMixer.MasterGain,
             SuspensionRoadGain = pipeline.VibrationMixer.SuspensionRoadGain,
             ScrubGain = pipeline.VibrationMixer.ScrubGain,
-            RearSlipGain = pipeline.VibrationMixer.RearSlipGain
+            RearSlipGain = pipeline.VibrationMixer.RearSlipGain,
+            AbsPulseAmplitude = pipeline.VibrationMixer.AbsPulseAmplitude
         };
         Advanced = new AdvancedConfig
         {
@@ -843,9 +845,10 @@ public sealed class VibrationConfig
     // ── Tire scrub / limit-feel vibration ──
     public float ScrubGain { get; set; } = 0.50f;
     public float RearSlipGain { get; set; } = 0.60f;
+    public float AbsPulseAmplitude { get; set; } = 0.08f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { KerbGain = S(KerbGain); SlipGain = S(SlipGain); RoadGain = S(RoadGain); AbsGain = S(AbsGain); MasterGain = S(MasterGain); SuspensionRoadGain = S(SuspensionRoadGain);  ScrubGain = S(ScrubGain); RearSlipGain = S(RearSlipGain); }
+    public void SanitizeFloats() { KerbGain = S(KerbGain); SlipGain = S(SlipGain); RoadGain = S(RoadGain); AbsGain = S(AbsGain); MasterGain = S(MasterGain); SuspensionRoadGain = S(SuspensionRoadGain);  ScrubGain = S(ScrubGain); RearSlipGain = S(RearSlipGain); AbsPulseAmplitude = S(AbsPulseAmplitude); }
 }
 
 public sealed class AdvancedConfig

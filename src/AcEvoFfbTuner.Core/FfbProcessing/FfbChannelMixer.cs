@@ -72,6 +72,9 @@ public sealed class FfbChannelMixer
     private readonly bool[] _medianBufReady = new bool[6];
     private int _medianBufIdx;
 
+    private float _smCoreFxFront;
+    private float _smCoreFxRear;
+
     public float Mix(FfbRawData raw, out FfbChannelOutputs channels)
     {
         float rawMzFront, rawFxFront, rawFyFront;
@@ -128,13 +131,49 @@ public sealed class FfbChannelMixer
         float fyBlend = bt * bt * (3f - 2f * bt);
 
         // ═══════════════════════════════════════════════════════════════
-        // CORE PATH: unfiltered normalized channels (zero-latency)
-        // Median-filtered for spike rejection, but NO EMA smoothing.
+        // CORE PATH: zero-latency with ABS-aware Fx smoothing
+        //
+        // Mz and Fy go through unfiltered (zero-latency) — these carry
+        // the essential self-aligning torque and lateral forces.
+        //
+        // Fx gets smoothed during ABS/braking to prevent harsh jolts:
+        // Real ABS modulates brake pressure ~12-25Hz, causing Fx to oscillate.
+        // In a real car, the steering column filters this via rubber bushings,
+        // hydraulic assist, and tire carcass compliance. Our median filter alone
+        // isn't enough — we need an EMA on Fx specifically during ABS.
         // ═══════════════════════════════════════════════════════════════
+        bool isBrakingHard = raw.BrakeInput > 0.3f;
+        bool absActive = raw.AbsInAction != 0;
+
+        float coreFxFront, coreFxRear;
+        if (isBrakingHard && FxFrontEnabled)
+        {
+            float fxAlpha = absActive ? 0.08f : 0.15f;
+            _smCoreFxFront = _smCoreFxFront * (1f - fxAlpha) + fxFront * fxAlpha;
+            coreFxFront = _smCoreFxFront;
+        }
+        else
+        {
+            coreFxFront = fxFront;
+            _smCoreFxFront = fxFront;
+        }
+
+        if (isBrakingHard && FxRearEnabled)
+        {
+            float fxAlpha = absActive ? 0.08f : 0.15f;
+            _smCoreFxRear = _smCoreFxRear * (1f - fxAlpha) + fxRear * fxAlpha;
+            coreFxRear = _smCoreFxRear;
+        }
+        else
+        {
+            coreFxRear = fxRear;
+            _smCoreFxRear = fxRear;
+        }
+
         float coreBlendedFyFront = fyFront * fyBlend;
         float coreBlendedFyRear = fyRear * fyBlend;
-        float rawCoreForce = mzFront + fxFront + coreBlendedFyFront
-                           + mzRear + fxRear + coreBlendedFyRear;
+        float rawCoreForce = mzFront + coreFxFront + coreBlendedFyFront
+                           + mzRear + coreFxRear + coreBlendedFyRear;
 
         // ═══════════════════════════════════════════════════════════════
         // DETAIL PATH: EMA-smoothed channels (for diagnostics & detail extraction)
@@ -226,6 +265,8 @@ public sealed class FfbChannelMixer
     {
         _smMzFront = _smFxFront = _smFyFront = 0f;
         _smMzRear = _smFxRear = _smFyRear = 0f;
+        _smCoreFxFront = 0f;
+        _smCoreFxRear = 0f;
         Array.Clear(_medianBufReady);
         Array.Clear(_medianPos);
         Array.Clear(_medMzFront);

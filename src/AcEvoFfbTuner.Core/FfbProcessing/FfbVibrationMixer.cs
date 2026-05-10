@@ -21,6 +21,15 @@ public sealed class FfbVibrationMixer
 
     public float AbsForceModulation { get; private set; }
 
+    /// <summary>
+    /// Controls how the ABS modulation feels. Real ABS modulates brake pressure
+    /// in a smooth sinusoidal pattern — you feel a pulsing resistance through the
+    /// steering column, not a sharp kick. This gain scales the modulation amplitude.
+    /// </summary>
+    public float AbsPulseAmplitude { get; set; } = 0.08f;
+
+    private float _smAbsModulation;
+
     private float[] _prevSuspTravel = new float[4];
     private float _smSuspCurb;
     private float _smSuspRoad;
@@ -151,14 +160,28 @@ public sealed class FfbVibrationMixer
         {
             _absPhase += AbsPulseHz * TickSeconds;
             if (_absPhase > 1f) _absPhase -= 1f;
+
+            float frontSlipRatio = (Math.Abs(raw.SlipRatio[0]) + Math.Abs(raw.SlipRatio[1])) * 0.5f;
+            float slipIntensity = Math.Clamp(frontSlipRatio / 0.08f, 0.3f, 1.5f);
+
+            float speedFactor = Math.Clamp(raw.SpeedKmh / 200f, 0.2f, 1.0f);
+            float brakeIntensity = Math.Clamp(raw.BrakeInput, 0.3f, 1.0f);
+
+            float absAmp = AbsPulseAmplitude * AbsGain * brakeIntensity * speedFactor * slipIntensity;
+
             float pulse = MathF.Sin(_absPhase * MathF.PI * 2f);
-            float absAmp = (0.6f + 0.4f * raw.BrakeInput) * AbsGain;
-            AbsForceModulation = absAmp * Math.Max(pulse, 0f);
-            abs = Math.Max(abs, AbsForceModulation);
+            float targetMod = absAmp * pulse;
+
+            _smAbsModulation = _smAbsModulation * 0.75f + targetMod * 0.25f;
+
+            AbsForceModulation = _smAbsModulation;
+
+            abs = Math.Max(abs, Math.Abs(AbsForceModulation));
         }
         else
         {
             AbsForceModulation = 0f;
+            _smAbsModulation *= 0.8f;
         }
 
         float combined = kerb + slip + road + abs;
@@ -362,6 +385,7 @@ public sealed class FfbVibrationMixer
     {
         _absPhase = 0f;
         AbsForceModulation = 0f;
+        _smAbsModulation = 0f;
         RoadForceModulation = 0f;
         _smSuspCurb = 0f;
         _smSuspRoad = 0f;
