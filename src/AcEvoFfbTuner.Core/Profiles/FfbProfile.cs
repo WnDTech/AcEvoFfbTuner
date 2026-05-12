@@ -845,7 +845,7 @@ public sealed class VibrationConfig
     // ── Tire scrub / limit-feel vibration ──
     public float ScrubGain { get; set; } = 0.50f;
     public float RearSlipGain { get; set; } = 0.60f;
-    public float AbsPulseAmplitude { get; set; } = 0.08f;
+    public float AbsPulseAmplitude { get; set; } = 0.25f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
     public void SanitizeFloats() { KerbGain = S(KerbGain); SlipGain = S(SlipGain); RoadGain = S(RoadGain); AbsGain = S(AbsGain); MasterGain = S(MasterGain); SuspensionRoadGain = S(SuspensionRoadGain);  ScrubGain = S(ScrubGain); RearSlipGain = S(RearSlipGain); AbsPulseAmplitude = S(AbsPulseAmplitude); }

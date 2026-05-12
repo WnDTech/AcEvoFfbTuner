@@ -149,7 +149,7 @@ public sealed class FfbPipeline
 
         // ABS force modulation (directional — follows core force sign)
         float absMod = VibrationMixer.AbsForceModulation;
-        if (absMod > 0.001f)
+        if (Math.Abs(absMod) > 0.001f)
         {
             float sign = coreOutput >= 0f ? 1f : -1f;
             if (Math.Abs(coreOutput) < 0.01f)

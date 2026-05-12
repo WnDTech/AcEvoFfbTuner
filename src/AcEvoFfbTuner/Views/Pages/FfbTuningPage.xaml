@@ -365,6 +365,7 @@
                                 <Run Text="Master: " /><Run Text="{Binding VibrationMasterGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
                                 <Run Text=" · " /><Run Text="Curb: " /><Run Text="{Binding CurbGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
                                 <Run Text=" · " /><Run Text="Slip: " /><Run Text="{Binding SlipGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
+                                <Run Text=" · " /><Run Text="ABS: " /><Run Text="{Binding AbsGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
                             </TextBlock>
                         </controls:SectionCard.SummaryContent>
                         <controls:SectionCard.InnerContent>
@@ -389,8 +390,12 @@
                                             Description="Road surface vibration intensity. Also scales suspension-derived road texture in the main force."
                                             SectionColor="{StaticResource SectionVibration}" />
                                         <controls:LabeledSlider Value="{Binding AbsGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                            Label="ABS" StringFormat="{}{0:F3}"
+                                            Label="ABS Intensity" StringFormat="{}{0:F3}"
                                             Description="ABS pulse vibration intensity. Also adds pulses to the main steering force when ABS activates."
+                                            SectionColor="{StaticResource SectionVibration}" />
+                                        <controls:LabeledSlider Value="{Binding AbsPulseAmplitude, Mode=TwoWay}" Minimum="0" Maximum="1.0" TickFrequency="0.01"
+                                            Label="ABS Pulse Strength" StringFormat="{}{0:F3}"
+                                            Description="How punchy each ABS pulse feels. Per-car tuning: gentle cars ~0.10, aggressive ~0.25-0.50."
                                             SectionColor="{StaticResource SectionVibration}" />
                                         <controls:LabeledSlider Value="{Binding SuspensionRoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.01"
                                             Label="Suspension Road" StringFormat="{}{0:F3}"

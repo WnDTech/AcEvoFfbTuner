@@ -794,7 +794,7 @@ public sealed class TelemetryLoop : IDisposable
             SlipVibrations = physics.SlipVibrations,
             RoadVibrations = physics.RoadVibrations,
             AbsVibrations = physics.AbsVibrations,
-            AbsInAction = graphics.AbsActive ? 1 : 0,
+            AbsInAction = physics.AbsInAction,
             AbsLevel = physics.Abs,
             AbsActiveGfx = graphics.AbsActive,
             BrakeInput = physics.Brake,

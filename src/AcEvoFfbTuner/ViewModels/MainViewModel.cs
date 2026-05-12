@@ -248,6 +248,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _absGain = 1.0f;
 
     [ObservableProperty]
+    private float _absPulseAmplitude = 0.25f;
+
+    [ObservableProperty]
     private float _vibrationMasterGain = 0.7f;
 
     [ObservableProperty]
@@ -2095,6 +2098,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnSlipGainChanged(float value) => _pipeline.VibrationMixer.SlipGain = value;
     partial void OnRoadGainChanged(float value) => _pipeline.VibrationMixer.RoadGain = value;
     partial void OnAbsGainChanged(float value) => _pipeline.VibrationMixer.AbsGain = value;
+
+    partial void OnAbsPulseAmplitudeChanged(float value) => _pipeline.VibrationMixer.AbsPulseAmplitude = value;
     partial void OnVibrationMasterGainChanged(float value) => _pipeline.VibrationMixer.MasterGain = value;
     partial void OnSuspensionRoadGainChanged(float value) => _pipeline.VibrationMixer.SuspensionRoadGain = value;
     partial void OnScrubGainChanged(float value) => _pipeline.VibrationMixer.ScrubGain = value;
@@ -2522,6 +2527,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         SlipGain = profile.Vibrations.SlipGain;
         RoadGain = profile.Vibrations.RoadGain;
         AbsGain = profile.Vibrations.AbsGain;
+        AbsPulseAmplitude = profile.Vibrations.AbsPulseAmplitude;
         VibrationMasterGain = profile.Vibrations.MasterGain;
         SuspensionRoadGain = profile.Vibrations.SuspensionRoadGain;
         ScrubGain = profile.Vibrations.ScrubGain;
@@ -2648,6 +2654,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.VibrationMixer.SlipGain = SlipGain;
         _pipeline.VibrationMixer.RoadGain = RoadGain;
         _pipeline.VibrationMixer.AbsGain = AbsGain;
+        _pipeline.VibrationMixer.AbsPulseAmplitude = AbsPulseAmplitude;
         _pipeline.VibrationMixer.MasterGain = VibrationMasterGain;
         _pipeline.VibrationMixer.SuspensionRoadGain = SuspensionRoadGain;
         _pipeline.VibrationMixer.ScrubGain = ScrubGain;

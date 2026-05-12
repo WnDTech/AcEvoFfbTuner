@@ -22,11 +22,12 @@ public sealed class FfbVibrationMixer
     public float AbsForceModulation { get; private set; }
 
     /// <summary>
-    /// Controls how the ABS modulation feels. Real ABS modulates brake pressure
-    /// in a smooth sinusoidal pattern — you feel a pulsing resistance through the
-    /// steering column, not a sharp kick. This gain scales the modulation amplitude.
+    /// Controls how punchy each individual ABS pulse feels.
+    /// Per-car tuning: some cars have gentle ABS (0.05-0.10), others aggressive (0.15-0.25).
+    /// Multiplied by AbsGain (intensity slider) and speed/brake/slip factors.
+    /// Default 0.15 — moderate pulse that's clearly felt at AbsGain ~1.0.
     /// </summary>
-    public float AbsPulseAmplitude { get; set; } = 0.08f;
+    public float AbsPulseAmplitude { get; set; } = 0.25f;
 
     private float _smAbsModulation;
 
@@ -172,7 +173,7 @@ public sealed class FfbVibrationMixer
             float pulse = MathF.Sin(_absPhase * MathF.PI * 2f);
             float targetMod = absAmp * pulse;
 
-            _smAbsModulation = _smAbsModulation * 0.75f + targetMod * 0.25f;
+            _smAbsModulation = _smAbsModulation * 0.50f + targetMod * 0.50f;
 
             AbsForceModulation = _smAbsModulation;
 
