@@ -17,6 +17,7 @@ public sealed class FfbPipeline
     public FfbTyreFlex TyreFlex { get; } = new();
     public Hf8SignalMapper Hf8SignalMapper { get; } = new();
     public FfbGripGuard GripGuard { get; } = new();
+    public FfbCrashDetector CrashDetector { get; } = new();
 
 
     public float ForceScale { get; set; } = 1.0f;
@@ -94,6 +95,12 @@ public sealed class FfbPipeline
         // Caps forces that pull wheel toward steer direction at post-peak slip angles.
         // Adds mechanical trail centering (like real caster) that's always active.
         coreOutput = GripGuard.Apply(coreOutput, raw);
+
+        // Crash detection: generates impact kick forces for wall/car collisions.
+        // Uses G-force spikes and speed deltas to detect crashes, then applies
+        // a directional force pulse that decays exponentially.
+        // Safety-clamped to prevent dangerous torque levels.
+        coreOutput = CrashDetector.Apply(coreOutput, raw);
 
         // Reverse gear: invert physics sign and attenuate.
         // AC EVO's tire model produces forces with correct MAGNITUDE but
@@ -252,6 +259,7 @@ public sealed class FfbPipeline
         TyreFlex.Reset();
         Hf8SignalMapper.Reset();
         GripGuard.Reset();
+        CrashDetector.Reset();
 
 
 

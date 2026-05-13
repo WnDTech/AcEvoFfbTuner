@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 16;
+    public const int CurrentVersion = 17;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -73,6 +73,7 @@ public sealed class FfbProfile
     public Hf8Config Hf8 { get; set; } = new();
     public GripGuardConfig GripGuard { get; set; } = new();
     public StaticFrictionConfig StaticFriction { get; set; } = new();
+    public CrashConfig Crash { get; set; } = new();
     public TelemetrySnapshotDto? LastTelemetrySnapshot { get; set; }
 
     public void ApplyToPipeline(FfbPipeline pipeline)
@@ -149,6 +150,9 @@ public sealed class FfbProfile
         pipeline.VibrationMixer.ScrubGain = Vibrations.ScrubGain;
         pipeline.VibrationMixer.RearSlipGain = Vibrations.RearSlipGain;
         pipeline.VibrationMixer.AbsPulseAmplitude = Vibrations.AbsPulseAmplitude;
+        pipeline.VibrationMixer.CurbSeverityScale = Vibrations.CurbSeverityScale;
+        pipeline.VibrationMixer.ScrubForceScale = Vibrations.ScrubForceScale;
+        pipeline.VibrationMixer.RearSlipForceScale = Vibrations.RearSlipForceScale;
 
         pipeline.MaxSlewRate = Advanced.MaxSlewRate;
         pipeline.CenterSuppressionDegrees = Advanced.CenterSuppressionDegrees;
@@ -179,6 +183,7 @@ public sealed class FfbProfile
         pipeline.TyreFlex.FlexSmoothing = TyreFlex.FlexSmoothing;
         pipeline.TyreFlex.ContactPatchWeight = TyreFlex.ContactPatchWeight;
         pipeline.TyreFlex.LoadFlexGain = TyreFlex.LoadFlexGain;
+        pipeline.TyreFlex.ContactPatchSensitivity = TyreFlex.ContactPatchSensitivity;
 
         pipeline.Hf8SignalMapper.Enabled = Hf8.Enabled;
         pipeline.Hf8SignalMapper.MasterGain = Hf8.MasterGain;
@@ -193,6 +198,14 @@ public sealed class FfbProfile
         pipeline.GripGuard.AttenuationStrength = GripGuard.AttenuationStrength;
         pipeline.GripGuard.MechanicalTrailGain = GripGuard.MechanicalTrailGain;
         pipeline.GripGuard.MinSpeedKmh = GripGuard.MinSpeedKmh;
+
+        pipeline.CrashDetector.Enabled = Crash.Enabled;
+        pipeline.CrashDetector.ImpactGain = Crash.ImpactGain;
+        pipeline.CrashDetector.SafetyClamp = Crash.SafetyClamp;
+        pipeline.CrashDetector.DecayRate = Crash.DecayRate;
+        pipeline.CrashDetector.TriggerThresholdG = Crash.TriggerThresholdG;
+        pipeline.CrashDetector.MinSpeedKmh = Crash.MinSpeedKmh;
+        pipeline.CrashDetector.SafetyOverride = Crash.SafetyOverride;
     }
 
     public void ApplyToStaticFriction(FfbStaticFriction sf)
@@ -282,7 +295,10 @@ public sealed class FfbProfile
             SuspensionRoadGain = pipeline.VibrationMixer.SuspensionRoadGain,
             ScrubGain = pipeline.VibrationMixer.ScrubGain,
             RearSlipGain = pipeline.VibrationMixer.RearSlipGain,
-            AbsPulseAmplitude = pipeline.VibrationMixer.AbsPulseAmplitude
+            AbsPulseAmplitude = pipeline.VibrationMixer.AbsPulseAmplitude,
+            CurbSeverityScale = pipeline.VibrationMixer.CurbSeverityScale,
+            ScrubForceScale = pipeline.VibrationMixer.ScrubForceScale,
+            RearSlipForceScale = pipeline.VibrationMixer.RearSlipForceScale
         };
         Advanced = new AdvancedConfig
         {
@@ -320,7 +336,8 @@ public sealed class FfbProfile
             CarcassStiffness = pipeline.TyreFlex.CarcassStiffness,
             FlexSmoothing = pipeline.TyreFlex.FlexSmoothing,
             ContactPatchWeight = pipeline.TyreFlex.ContactPatchWeight,
-            LoadFlexGain = pipeline.TyreFlex.LoadFlexGain
+            LoadFlexGain = pipeline.TyreFlex.LoadFlexGain,
+            ContactPatchSensitivity = pipeline.TyreFlex.ContactPatchSensitivity
         };
         Hf8 = new Hf8Config
         {
@@ -337,6 +354,16 @@ public sealed class FfbProfile
             AttenuationStrength = pipeline.GripGuard.AttenuationStrength,
             MechanicalTrailGain = pipeline.GripGuard.MechanicalTrailGain,
             MinSpeedKmh = pipeline.GripGuard.MinSpeedKmh
+        };
+        Crash = new CrashConfig
+        {
+            Enabled = pipeline.CrashDetector.Enabled,
+            ImpactGain = pipeline.CrashDetector.ImpactGain,
+            SafetyClamp = pipeline.CrashDetector.SafetyClamp,
+            DecayRate = pipeline.CrashDetector.DecayRate,
+            TriggerThresholdG = pipeline.CrashDetector.TriggerThresholdG,
+            MinSpeedKmh = pipeline.CrashDetector.MinSpeedKmh,
+            SafetyOverride = pipeline.CrashDetector.SafetyOverride
         };
     }
 
@@ -543,6 +570,7 @@ public sealed class FfbProfile
         Hf8.SanitizeFloats();
         GripGuard.SanitizeFloats();
         StaticFriction.SanitizeFloats();
+        Crash.SanitizeFloats();
     }
 
     private static float Sanitize(float v) =>
@@ -710,6 +738,11 @@ public sealed class FfbProfile
             StaticFriction ??= new StaticFrictionConfig();
         }
 
+        if (Version < 17)
+        {
+            Crash ??= new CrashConfig();
+        }
+
         Version = CurrentVersion;
     }
 }
@@ -846,9 +879,12 @@ public sealed class VibrationConfig
     public float ScrubGain { get; set; } = 0.50f;
     public float RearSlipGain { get; set; } = 0.60f;
     public float AbsPulseAmplitude { get; set; } = 0.25f;
+    public float CurbSeverityScale { get; set; } = 10.0f;
+    public float ScrubForceScale { get; set; } = 0.0005f;
+    public float RearSlipForceScale { get; set; } = 0.0005f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { KerbGain = S(KerbGain); SlipGain = S(SlipGain); RoadGain = S(RoadGain); AbsGain = S(AbsGain); MasterGain = S(MasterGain); SuspensionRoadGain = S(SuspensionRoadGain);  ScrubGain = S(ScrubGain); RearSlipGain = S(RearSlipGain); AbsPulseAmplitude = S(AbsPulseAmplitude); }
+    public void SanitizeFloats() { KerbGain = S(KerbGain); SlipGain = S(SlipGain); RoadGain = S(RoadGain); AbsGain = S(AbsGain); MasterGain = S(MasterGain); SuspensionRoadGain = S(SuspensionRoadGain); ScrubGain = S(ScrubGain); RearSlipGain = S(RearSlipGain); AbsPulseAmplitude = S(AbsPulseAmplitude); CurbSeverityScale = S(CurbSeverityScale); ScrubForceScale = S(ScrubForceScale); RearSlipForceScale = S(RearSlipForceScale); }
 }
 
 public sealed class AdvancedConfig
@@ -922,9 +958,10 @@ public sealed class TyreFlexConfig
     public float FlexSmoothing { get; set; } = 0.70f;
     public float ContactPatchWeight { get; set; } = 0.5f;
     public float LoadFlexGain { get; set; } = 0.3f;
+    public float ContactPatchSensitivity { get; set; } = 1.0f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { FlexGain = S(FlexGain); CarcassStiffness = S(CarcassStiffness); FlexSmoothing = S(FlexSmoothing); ContactPatchWeight = S(ContactPatchWeight); LoadFlexGain = S(LoadFlexGain); }
+    public void SanitizeFloats() { FlexGain = S(FlexGain); CarcassStiffness = S(CarcassStiffness); FlexSmoothing = S(FlexSmoothing); ContactPatchWeight = S(ContactPatchWeight); LoadFlexGain = S(LoadFlexGain); ContactPatchSensitivity = S(ContactPatchSensitivity); }
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
@@ -1077,4 +1114,24 @@ public sealed class StaticFrictionConfig
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
     public void SanitizeFloats() { Gain = S(Gain); MaxElasticStretch = S(MaxElasticStretch); SpringStiffness = S(SpringStiffness); KineticFrictionBase = S(KineticFrictionBase); EngineOffDamping = S(EngineOffDamping); EngineOnDamping = S(EngineOnDamping); EngineOffScale = S(EngineOffScale); EngineOnScale = S(EngineOnScale); ActiveDecay = S(ActiveDecay); ReturnDecay = S(ReturnDecay); OutputSmoothAlpha = S(OutputSmoothAlpha); }
+}
+
+public sealed class CrashConfig
+{
+    public bool Enabled { get; set; } = true;
+
+    public float ImpactGain { get; set; } = 0.60f;
+
+    public float SafetyClamp { get; set; } = 0.50f;
+
+    public float DecayRate { get; set; } = 0.88f;
+
+    public float TriggerThresholdG { get; set; } = 3.0f;
+
+    public float MinSpeedKmh { get; set; } = 5.0f;
+
+    public bool SafetyOverride { get; set; } = false;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { ImpactGain = S(ImpactGain); SafetyClamp = S(SafetyClamp); DecayRate = S(DecayRate); TriggerThresholdG = S(TriggerThresholdG); MinSpeedKmh = S(MinSpeedKmh); }
 }

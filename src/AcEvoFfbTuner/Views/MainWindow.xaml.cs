@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using AcEvoFfbTuner.Core.FfbProcessing.Models;
 using AcEvoFfbTuner.Core.TrackMapping;
 using AcEvoFfbTuner.ViewModels;
 using AcEvoFfbTuner.Views.Pages;
@@ -90,12 +91,12 @@ public partial class MainWindow : Window
     public void UpdateProfiler(float speed, float steerAngle, float forceOut, float rawFF,
         float compress, float slip, float damping, float dynEff,
         float mzFront, float fxFront, float fyFront, float lut, bool clipping,
-        float gasInput, float brakeInput)
+        float gasInput, float brakeInput, FfbRawData? rawPhysics = null)
     {
         TelemetryPageCtrl.UpdateProfiler(speed, steerAngle, forceOut, rawFF,
             compress, slip, damping, dynEff,
             mzFront, fxFront, fyFront, lut, clipping,
-            gasInput, brakeInput);
+            gasInput, brakeInput, rawPhysics);
     }
 
     public void UpdateTrackMapDisplay(float carX, float carZ, float heading, float speedKmh,

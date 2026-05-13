@@ -12,34 +12,52 @@ public sealed class FfbVibrationMixer
 
     public float SuspensionRoadGain { get; set; } = 1.5f;
 
+    /// <summary>
+    /// Amplification of curb force based on TyreContactNormal deviation severity.
+    /// Higher = more punchy curb feel. Default 10.0.
+    /// </summary>
+    public float CurbSeverityScale { get; set; } = 10.0f;
+
+    /// <summary>
+    /// Normalization factor for Mz force derivative in scrub modulation.
+    /// Converts Mz/second into ~[-1,1] FFB range. AC EVO Mz is typically 0–500 Nm.
+    /// At 333Hz a 1 Nm/frame change = 333 Nm/s * 0.0005 = 0.167 normalized.
+    /// Default 0.0005. Increase if scrub feels too subtle.
+    /// </summary>
+    public float ScrubForceScale { get; set; } = 0.0005f;
+
+    /// <summary>
+    /// Normalization factor for rear Mz/Fy force derivatives in rear slip warning.
+    /// Same scale reasoning as ScrubForceScale. Default 0.0005.
+    /// </summary>
+    public float RearSlipForceScale { get; set; } = 0.0005f;
+
     public float RoadForceModulation { get; private set; }
 
     private float _absPhase;
     private const float AbsPulseHz = 15f;
     private const float TickSeconds = 1f / 333f;
-    private const float CurbDeltaThreshold = 0.002f;
 
     public float AbsForceModulation { get; private set; }
 
-    /// <summary>
-    /// Controls how punchy each individual ABS pulse feels.
-    /// Per-car tuning: some cars have gentle ABS (0.05-0.10), others aggressive (0.15-0.25).
-    /// Multiplied by AbsGain (intensity slider) and speed/brake/slip factors.
-    /// Default 0.15 — moderate pulse that's clearly felt at AbsGain ~1.0.
-    /// </summary>
     public float AbsPulseAmplitude { get; set; } = 0.25f;
 
     private float _smAbsModulation;
 
     private float[] _prevSuspTravel = new float[4];
+    private float[] _prevWheelLoad = new float[4];
     private float _smSuspCurb;
     private float _smSuspRoad;
 
+    private int _contactNormalZeroFrames;
+    private bool _contactNormalFallback;
+    private const int FallbackCheckFrames = 60;
+    private const float CurbSuspDeltaThreshold = 0.002f;
+
     // ── Front Tire Scrub Modulation ──
-    // High-frequency "grainy" vibration (30-50Hz) injected into the main force
-    // when front tire slip angles approach the Mz peak. Simulates rubber tearing/
-    // micro-skidding at the contact patch — the texture you feel through a real
-    // steering wheel just before the front tires let go.
+    // Data-driven: uses real Mz force rate-of-change (derivative) gated by slip angle.
+    // When front tyres slide, Mz naturally oscillates — this IS the scrub signal.
+    // No synthetic sine waves.
 
     public float ScrubGain { get; set; } = 0.50f;
     public float ScrubOnsetAngle { get; set; } = 0.05f;
@@ -47,81 +65,35 @@ public sealed class FfbVibrationMixer
     public float ScrubMaxAmplitude { get; set; } = 0.15f;
     public float ScrubModulation { get; private set; }
 
-    private float _scrubPhase1;
-    private float _scrubPhase2;
-    private float _scrubPhase3;
-    private const float ScrubFreq1 = 35f;
-    private const float ScrubFreq2 = 47f;
-    private const float ScrubFreq3 = 23f;
+    private float _prevFrontMz;
     private float _smScrubIntensity;
 
     // ── Rear Slip Warning Modulation ──
-    // When rear tires lose grip (oversteer onset), the driver needs to feel it
-    // through the steering wheel immediately. In a real car this manifests as:
-    //   1. A sudden force reduction (steering goes light as front slip angle drops)
-    //   2. A distinct low-frequency rumble/shudder (15-25Hz) — different from the
-    //      front scrub's high-frequency grain. Feels like the car oscillating beneath you.
-    //   3. A yaw-rate-driven force pulse that pushes the wheel in the countersteer direction.
-    //
-    // We detect rear slip via:
-    //   - Rear slip angles exceeding a threshold (rear tires sliding)
-    //   - Yaw rate acceleration (car rotating faster than steering input commands)
-    //   - Lateral G sustained at high levels (cornering at the limit)
+    // Data-driven: uses real rear Mz/Fy force derivatives + yaw acceleration.
+    // Rear tyres losing grip causes force oscillations — captured from real data.
 
-    /// <summary>
-    /// Gain for the rear-end slip warning effect. 0 = disabled, 1.0 = full.
-    /// Default 0.25 — slightly stronger than front scrub because rear slip is more
-    /// critical to detect (you need to catch oversteer early).
-    /// </summary>
     public float RearSlipGain { get; set; } = 0.60f;
-
-    /// <summary>
-    /// Rear slip angle threshold (radians) where the warning starts.
-    /// Rear tires typically generate their peak lateral force at slightly higher slip
-    /// angles than fronts. Default 0.07 rad (~4.0 degrees).
-    /// </summary>
     public float RearSlipOnsetAngle { get; set; } = 0.07f;
-
-    /// <summary>
-    /// Rear slip angle (radians) where the warning reaches full intensity.
-    /// Default 0.10 rad (~5.7 degrees) — beyond peak, clearly sliding.
-    /// </summary>
     public float RearSlipPeakAngle { get; set; } = 0.10f;
-
-    /// <summary>
-    /// Maximum amplitude of the rear slip rumble (fraction of main force).
-    /// Default 0.12 (12%) — more noticeable than front scrub because rear slip is dangerous.
-    /// </summary>
     public float RearSlipMaxAmplitude { get; set; } = 0.20f;
-
-    /// <summary>
-    /// How much the yaw rate acceleration amplifies the rear slip warning.
-    /// A car snapping into oversteer has rapid yaw acceleration. Default 1.5x.
-    /// </summary>
     public float YawAccelMultiplier { get; set; } = 1.5f;
-
-    /// <summary>
-    /// Reference yaw acceleration (rad/s^2) for normalization.
-    /// Typical oversteer onset: 1-3 rad/s^2. Default 2.0.
-    /// </summary>
     public float YawAccelReference { get; set; } = 2.0f;
-
-    /// <summary>
-    /// Current rear slip modulation signal. Added to main force by FfbPipeline.
-    /// Uses LOWER frequencies (15-25Hz) than front scrub (30-50Hz) so the driver
-    /// can distinguish "rear is sliding" from "front is at the limit".
-    /// </summary>
     public float RearSlipModulation { get; private set; }
 
-    private float _rearPhase1;  // ~18 Hz primary rumble
-    private float _rearPhase2;  // ~25 Hz secondary
-    private float _rearPhase3;  // ~12 Hz sub-harmonic (weight)
-    private const float RearFreq1 = 18f;
-    private const float RearFreq2 = 25f;
-    private const float RearFreq3 = 12f;
+    private float _prevRearMz;
+    private float _prevRearFy;
     private float _smRearSlipIntensity;
     private float _prevYawRate;
     private bool _yawInitialized;
+
+    // ── TyreContactNormal-based curb detection ──
+    // When on flat ground, TyreContactNormal ≈ (0, 1, 0).
+    // On a curb/angled surface, the normal tilts — magnitude of X+Z deviation
+    // directly measures surface angle. Combined with WheelLoad rate-of-change
+    // for actual compression force.
+    // Falls back to old suspension-delta method if contact normal data is all zeros.
+    private const float CurbNormalThreshold = 0.15f;
+    private const float LoadReference = 5000f;
 
     public float Mix(FfbRawData raw)
     {
@@ -191,39 +163,87 @@ public sealed class FfbVibrationMixer
             ? (raw.SpeedKmh - 2.0f) / 8.0f
             : 1.0f;
 
-        float curbDelta = 0f;
-        float roadDelta = 0f;
-        for (int i = 0; i < 4; i++)
+        // ── Data-driven curb/road detection ──
+        // Check if TyreContactNormal data is populated (non-zero).
+        // If all zeros for FallbackCheckFrames, fall back to suspension-delta method.
+        if (!_contactNormalFallback && _contactNormalZeroFrames < FallbackCheckFrames)
         {
-            float delta = raw.SuspensionTravel[i] - _prevSuspTravel[i];
-            _prevSuspTravel[i] = raw.SuspensionTravel[i];
-            float weight = i < 2 ? 1.5f : 0.75f;
-            if (MathF.Abs(delta) > CurbDeltaThreshold)
-                curbDelta += delta * weight;
+            bool anyNonZero = false;
+            for (int i = 0; i < 4; i++)
+            {
+                if (raw.TyreContactNormalX[i] != 0f || raw.TyreContactNormalZ[i] != 0f)
+                {
+                    anyNonZero = true;
+                    break;
+                }
+            }
+            if (anyNonZero)
+            {
+                _contactNormalZeroFrames = FallbackCheckFrames;
+            }
             else
-                roadDelta += delta * weight;
+            {
+                _contactNormalZeroFrames++;
+                if (_contactNormalZeroFrames >= FallbackCheckFrames)
+                    _contactNormalFallback = true;
+            }
         }
 
-        _smSuspCurb = _smSuspCurb * 0.3f + curbDelta * 0.7f;
-        _smSuspRoad = _smSuspRoad * 0.3f + roadDelta * 0.7f;
+        float curbAccum = 0f;
+        float roadAccum = 0f;
+        for (int i = 0; i < 4; i++)
+        {
+            float weight = i < 2 ? 1.5f : 0.75f;
+
+            float loadDelta = raw.WheelLoad[i] - _prevWheelLoad[i];
+            float suspDelta = raw.SuspensionTravel[i] - _prevSuspTravel[i];
+            _prevWheelLoad[i] = raw.WheelLoad[i];
+            _prevSuspTravel[i] = raw.SuspensionTravel[i];
+
+            if (!_contactNormalFallback)
+            {
+                float normalDeviation = MathF.Sqrt(
+                    raw.TyreContactNormalX[i] * raw.TyreContactNormalX[i] +
+                    raw.TyreContactNormalZ[i] * raw.TyreContactNormalZ[i]);
+
+                if (normalDeviation > CurbNormalThreshold)
+                {
+                    float excessDeviation = normalDeviation - CurbNormalThreshold;
+                    curbAccum += (loadDelta / LoadReference) * (1.0f + excessDeviation * CurbSeverityScale) * weight;
+                }
+                else
+                {
+                    roadAccum += suspDelta * MathF.Max(MathF.Abs(loadDelta) * 0.001f, 0.1f) * weight;
+                }
+            }
+            else
+            {
+                if (MathF.Abs(suspDelta) > CurbSuspDeltaThreshold)
+                    curbAccum += suspDelta * weight;
+                else
+                    roadAccum += suspDelta * weight;
+            }
+        }
+
+        _smSuspCurb = _smSuspCurb * 0.3f + curbAccum * 0.7f;
+        _smSuspRoad = _smSuspRoad * 0.3f + roadAccum * 0.7f;
 
         float suspSpeedScale = Math.Clamp(raw.SpeedKmh / 100f, 0f, 2f);
-        float curbForce = _smSuspCurb * 75f * MathF.Max(KerbGain, 0.1f) * suspSpeedScale;
+        float curbForce = _smSuspCurb * 2.0f * MathF.Max(KerbGain, 0.1f) * suspSpeedScale;
         float roadForce = _smSuspRoad * 150f * MathF.Max(RoadGain, 0.1f) * suspSpeedScale;
         float rawVib = (curbForce + roadForce) * SuspensionRoadGain;
         RoadForceModulation = Math.Clamp(rawVib, -0.15f, 0.15f);
 
-        // ── Front tire scrub modulation ──
         GenerateScrubModulation(raw);
-
-        // ── Rear slip warning modulation ──
         GenerateRearSlipModulation(raw);
 
         return Math.Clamp(combined * MasterGain * speedFade, 0f, 1f);
     }
 
     /// <summary>
-    /// Front scrub: high-frequency grain (30-50Hz) as front slip angle approaches Mz peak.
+    /// Data-driven scrub: uses real Mz force derivative (rate-of-change) gated by slip angle.
+    /// When front tyres approach the limit, Mz naturally oscillates — this IS the
+    /// contact patch scrub signal from the tyre model. No synthetic sine waves.
     /// </summary>
     private void GenerateScrubModulation(FfbRawData raw)
     {
@@ -234,62 +254,39 @@ public sealed class FfbVibrationMixer
             return;
         }
 
-        // Average absolute front slip angle
         float absSlipAngle = (Math.Abs(raw.SlipAngle[0]) + Math.Abs(raw.SlipAngle[1])) * 0.5f;
 
-        // Compute scrub intensity: ramps from 0 at onset to 1 at peak
         float scrubIntensity = 0f;
         if (absSlipAngle > ScrubOnsetAngle)
         {
             float range = Math.Max(ScrubPeakAngle - ScrubOnsetAngle, 0.01f);
             float t = Math.Clamp((absSlipAngle - ScrubOnsetAngle) / range, 0f, 1f);
-            // Smooth ramp (ease-in) so the scrub builds gradually
             scrubIntensity = t * t;
-
-            // Fade out beyond peak (post-peak scrub is not realistic —
-            // the Mz dropoff handles the warning, scrub would just be noise)
-            // if (absSlipAngle > ScrubPeakAngle)
-            {
-                // float fadeRange = ScrubPeakAngle * 0.5f;
-                // float fadeOut = 1f - Math.Clamp((absSlipAngle - ScrubPeakAngle) / fadeRange, 0f, 1f);
-            // scrubIntensity *= fadeOut;  // REMOVED: keep scrub active at and past peak
-            }
         }
 
-        // Smooth the intensity to prevent flicker
         _smScrubIntensity = _smScrubIntensity * 0.65f + scrubIntensity * 0.35f;
 
         if (_smScrubIntensity < 0.001f)
         {
             ScrubModulation = 0f;
+            _prevFrontMz = (raw.Mz[0] + raw.Mz[1]) * 0.5f;
             return;
         }
 
-        // Advance phase accumulators (333Hz tick rate)
-        _scrubPhase1 += ScrubFreq1 * TickSeconds;
-        _scrubPhase2 += ScrubFreq2 * TickSeconds;
-        _scrubPhase3 += ScrubFreq3 * TickSeconds;
-        if (_scrubPhase1 > 1f) _scrubPhase1 -= 1f;
-        if (_scrubPhase2 > 1f) _scrubPhase2 -= 1f;
-        if (_scrubPhase3 > 1f) _scrubPhase3 -= 1f;
+        float frontMz = (raw.Mz[0] + raw.Mz[1]) * 0.5f;
+        float mzDerivative = (frontMz - _prevFrontMz) / TickSeconds;
+        _prevFrontMz = frontMz;
 
-        // Mix 3 incommensurate sine waves for noise-like texture
-        // Primary (35Hz) is loudest, secondary (47Hz) adds grain, sub-harmonic (23Hz) adds weight
-        float scrubSignal =
-            0.50f * MathF.Sin(_scrubPhase1 * MathF.PI * 2f) +
-            0.30f * MathF.Sin(_scrubPhase2 * MathF.PI * 2f) +
-            0.20f * MathF.Sin(_scrubPhase3 * MathF.PI * 2f);
+        float normalizedDerivative = Math.Clamp(mzDerivative * ScrubForceScale, -1f, 1f);
 
-        // Apply gain and intensity
         float amplitude = ScrubMaxAmplitude * ScrubGain * _smScrubIntensity;
-        ScrubModulation = Math.Clamp(scrubSignal * amplitude, -ScrubMaxAmplitude, ScrubMaxAmplitude);
+        ScrubModulation = Math.Clamp(normalizedDerivative * amplitude, -ScrubMaxAmplitude, ScrubMaxAmplitude);
     }
 
     /// <summary>
-    /// Rear slip warning: low-frequency rumble (12-25Hz) when rear tires lose grip.
-    /// Also detects rapid yaw acceleration (car snapping into oversteer).
-    /// Uses LOWER frequencies than front scrub so the driver can distinguish
-    /// "the rear is sliding" from "the front is at the limit".
+    /// Data-driven rear slip warning: uses real rear Mz/Fy force derivatives + yaw acceleration.
+    /// Rear tyres losing grip causes real force oscillations captured directly from the tyre model.
+    /// No synthetic sine waves.
     /// </summary>
     private void GenerateRearSlipModulation(FfbRawData raw)
     {
@@ -299,10 +296,11 @@ public sealed class FfbVibrationMixer
             _smRearSlipIntensity = 0f;
             _prevYawRate = 0f;
             _yawInitialized = false;
+            _prevRearMz = (raw.Mz[2] + raw.Mz[3]) * 0.5f;
+            _prevRearFy = (raw.Fy[2] + raw.Fy[3]) * 0.5f;
             return;
         }
 
-        // ── Signal 1: Rear slip angle magnitude ──
         float rearSlipAngle = (Math.Abs(raw.SlipAngle[2]) + Math.Abs(raw.SlipAngle[3])) * 0.5f;
 
         float slipIntensity = 0f;
@@ -310,16 +308,9 @@ public sealed class FfbVibrationMixer
         {
             float range = Math.Max(RearSlipPeakAngle - RearSlipOnsetAngle, 0.01f);
             float t = Math.Clamp((rearSlipAngle - RearSlipOnsetAngle) / range, 0f, 1f);
-            // Steeper ramp than front scrub — rear slip is more urgent
             slipIntensity = t * t * t;
-
-            // Unlike front scrub, DON'T fade out beyond peak — if the rear is fully
-            // sliding the driver needs continuous warning until they correct it.
-            // Instead, cap at 1.0.
         }
 
-        // ── Signal 2: Yaw rate acceleration ──
-        // Oversteer onset causes rapid yaw acceleration. This detects the "snap".
         float yawRate = raw.LocalAngularVel.Length > 1 ? raw.LocalAngularVel[1] : 0f;
         float yawAccel = 0f;
         if (_yawInitialized)
@@ -332,54 +323,42 @@ public sealed class FfbVibrationMixer
         float yawIntensity = 0f;
         if (Math.Abs(yawAccel) > YawAccelReference * 0.3f)
         {
-            // Normalize yaw acceleration — rapid oversteer onset can hit 3-5 rad/s^2
             float normalizedYawAccel = Math.Clamp(Math.Abs(yawAccel) / YawAccelReference, 0f, 3f);
             yawIntensity = Math.Min(normalizedYawAccel, 1f);
         }
 
-        // ── Combine: slip angle is the base, yaw acceleration amplifies it ──
-        // If yaw is accelerating but slip angle is still low, still trigger a warning
-        // (the rear is starting to step out even if the absolute angle is small).
         float combinedIntensity = Math.Max(
             slipIntensity,
-            yawIntensity * 0.6f  // Yaw-only trigger at reduced intensity
+            yawIntensity * 0.6f
         );
 
-        // Yaw acceleration boost on top of slip detection
         if (slipIntensity > 0.1f && yawIntensity > 0.1f)
         {
             combinedIntensity = Math.Min(combinedIntensity * YawAccelMultiplier, 1.5f);
         }
 
-        // Smooth to prevent flicker, but faster response than front scrub
-        // (rear slip needs quicker detection — the driver has less time to react)
         _smRearSlipIntensity = _smRearSlipIntensity * 0.80f + combinedIntensity * 0.20f;
 
         if (_smRearSlipIntensity < 0.001f)
         {
             RearSlipModulation = 0f;
+            _prevRearMz = (raw.Mz[2] + raw.Mz[3]) * 0.5f;
+            _prevRearFy = (raw.Fy[2] + raw.Fy[3]) * 0.5f;
             return;
         }
 
-        // Advance phase accumulators
-        _rearPhase1 += RearFreq1 * TickSeconds;
-        _rearPhase2 += RearFreq2 * TickSeconds;
-        _rearPhase3 += RearFreq3 * TickSeconds;
-        if (_rearPhase1 > 1f) _rearPhase1 -= 1f;
-        if (_rearPhase2 > 1f) _rearPhase2 -= 1f;
-        if (_rearPhase3 > 1f) _rearPhase3 -= 1f;
+        float rearMz = (raw.Mz[2] + raw.Mz[3]) * 0.5f;
+        float rearFy = (raw.Fy[2] + raw.Fy[3]) * 0.5f;
+        float mzDerivative = (rearMz - _prevRearMz) / TickSeconds;
+        float fyDerivative = (rearFy - _prevRearFy) / TickSeconds;
+        _prevRearMz = rearMz;
+        _prevRearFy = rearFy;
 
-        // Mix 3 LOW frequencies for a distinct rumble (different character from front scrub)
-        // Primary (18Hz) is the main rumble, secondary (25Hz) adds urgency,
-        // sub-harmonic (12Hz) adds weight/oscillation feel
-        float rearSignal =
-            0.45f * MathF.Sin(_rearPhase1 * MathF.PI * 2f) +
-            0.35f * MathF.Sin(_rearPhase2 * MathF.PI * 2f) +
-            0.20f * MathF.Sin(_rearPhase3 * MathF.PI * 2f);
+        float forceOscillation = Math.Clamp(
+            (mzDerivative + fyDerivative * 0.5f) * RearSlipForceScale, -1f, 1f);
 
-        // Apply gain and intensity
         float amplitude = RearSlipMaxAmplitude * RearSlipGain * Math.Min(_smRearSlipIntensity, 1f);
-        RearSlipModulation = Math.Clamp(rearSignal * amplitude, -RearSlipMaxAmplitude, RearSlipMaxAmplitude);
+        RearSlipModulation = Math.Clamp(forceOscillation * amplitude, -RearSlipMaxAmplitude, RearSlipMaxAmplitude);
     }
 
     public void Reset()
@@ -390,21 +369,21 @@ public sealed class FfbVibrationMixer
         RoadForceModulation = 0f;
         _smSuspCurb = 0f;
         _smSuspRoad = 0f;
+        _contactNormalZeroFrames = 0;
+        _contactNormalFallback = false;
 
         ScrubModulation = 0f;
         _smScrubIntensity = 0f;
-        _scrubPhase1 = 0f;
-        _scrubPhase2 = 0f;
-        _scrubPhase3 = 0f;
+        _prevFrontMz = 0f;
 
         RearSlipModulation = 0f;
         _smRearSlipIntensity = 0f;
-        _rearPhase1 = 0f;
-        _rearPhase2 = 0f;
-        _rearPhase3 = 0f;
+        _prevRearMz = 0f;
+        _prevRearFy = 0f;
         _prevYawRate = 0f;
         _yawInitialized = false;
 
         Array.Clear(_prevSuspTravel);
+        Array.Clear(_prevWheelLoad);
     }
 }

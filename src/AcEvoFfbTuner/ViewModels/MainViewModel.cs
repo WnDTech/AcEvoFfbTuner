@@ -530,6 +530,30 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private float _gripGuardMinSpeedKmh = 10.0f;
 
+    [ObservableProperty]
+    private bool _crashEnabled = true;
+
+    [ObservableProperty]
+    private float _crashImpactGain = 0.60f;
+
+    [ObservableProperty]
+    private float _crashSafetyClamp = 0.50f;
+
+    [ObservableProperty]
+    private float _crashDecayRate = 0.88f;
+
+    [ObservableProperty]
+    private float _crashTriggerThresholdG = 3.0f;
+
+    [ObservableProperty]
+    private float _crashMinSpeedKmh = 5.0f;
+
+    [ObservableProperty]
+    private bool _crashSafetyOverride;
+
+    [ObservableProperty]
+    private bool _showCrashSafetyWarning;
+
     // ── Stationary Friction (engine-off wheel scrub) ──────────────────
     [ObservableProperty]
     private float _staticFrictionGain = 1.0f;
@@ -2156,6 +2180,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public string MaxForceLimitNmText => $"{MaxForceLimit:F3} ({MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
     public string OutputGainNmText => $"{OutputGain:F3} (peak {MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
+    public string CrashSafetyClampPercentText => $"{CrashSafetyClamp * 100:F0}% ({CrashSafetyClamp * MaxForceLimit * WheelMaxTorqueNm:F2} Nm max)";
 
     public double ForceBarFillHeight => Math.Min(160, Math.Max(0, Math.Abs(CurrentForceOutput)) * 160);
     public double SpeedNeedleAngle => -90 + (Math.Min(360, Math.Max(0, SpeedKmh)) / 360.0) * 180;
@@ -2220,6 +2245,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnGripGuardAttenuationStrengthChanged(float value) => _pipeline.GripGuard.AttenuationStrength = value;
     partial void OnGripGuardMechanicalTrailGainChanged(float value) => _pipeline.GripGuard.MechanicalTrailGain = value;
     partial void OnGripGuardMinSpeedKmhChanged(float value) => _pipeline.GripGuard.MinSpeedKmh = value;
+
+    partial void OnCrashEnabledChanged(bool value) => _pipeline.CrashDetector.Enabled = value;
+    partial void OnCrashImpactGainChanged(float value) => _pipeline.CrashDetector.ImpactGain = value;
+    partial void OnCrashSafetyClampChanged(float value) => _pipeline.CrashDetector.SafetyClamp = value;
+    partial void OnCrashDecayRateChanged(float value) => _pipeline.CrashDetector.DecayRate = value;
+    partial void OnCrashTriggerThresholdGChanged(float value) => _pipeline.CrashDetector.TriggerThresholdG = value;
+    partial void OnCrashMinSpeedKmhChanged(float value) => _pipeline.CrashDetector.MinSpeedKmh = value;
+    partial void OnCrashSafetyOverrideChanged(bool value)
+    {
+        _pipeline.CrashDetector.SafetyOverride = value;
+        ShowCrashSafetyWarning = value;
+    }
 
     // ── Stationary Friction handlers ──────────────────────────────────
     partial void OnStaticFrictionGainChanged(float value) => _telemetryLoop.StaticFriction.Gain = value;
@@ -2343,7 +2380,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     processed.PostDampingForce, processed.PostDynamicForce,
                     processed.ChannelMzFront, processed.ChannelFxFront, processed.ChannelFyFront,
                     processed.PostLutForce, processed.IsClipping,
-                    raw.GasInput, raw.BrakeInput);
+                    raw.GasInput, raw.BrakeInput, raw);
 
                 mw.UpdateCalibrationWizard(raw.SpeedKmh, processed.MainForce, processed.IsClipping);
             }
@@ -2592,6 +2629,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         GripGuardMechanicalTrailGain = profile.GripGuard.MechanicalTrailGain;
         GripGuardMinSpeedKmh = profile.GripGuard.MinSpeedKmh;
 
+        CrashEnabled = profile.Crash.Enabled;
+        CrashImpactGain = profile.Crash.ImpactGain;
+        CrashSafetyClamp = profile.Crash.SafetyClamp;
+        CrashDecayRate = profile.Crash.DecayRate;
+        CrashTriggerThresholdG = profile.Crash.TriggerThresholdG;
+        CrashMinSpeedKmh = profile.Crash.MinSpeedKmh;
+        CrashSafetyOverride = profile.Crash.SafetyOverride;
+        ShowCrashSafetyWarning = profile.Crash.SafetyOverride;
+
         StaticFrictionGain = profile.StaticFriction.Gain;
         StaticFrictionMaxElasticStretch = profile.StaticFriction.MaxElasticStretch;
         StaticFrictionSpringStiffness = profile.StaticFriction.SpringStiffness;
@@ -2695,6 +2741,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.GripGuard.AttenuationStrength = GripGuardAttenuationStrength;
         _pipeline.GripGuard.MechanicalTrailGain = GripGuardMechanicalTrailGain;
         _pipeline.GripGuard.MinSpeedKmh = GripGuardMinSpeedKmh;
+
+        _pipeline.CrashDetector.Enabled = CrashEnabled;
+        _pipeline.CrashDetector.ImpactGain = CrashImpactGain;
+        _pipeline.CrashDetector.SafetyClamp = CrashSafetyClamp;
+        _pipeline.CrashDetector.DecayRate = CrashDecayRate;
+        _pipeline.CrashDetector.TriggerThresholdG = CrashTriggerThresholdG;
+        _pipeline.CrashDetector.MinSpeedKmh = CrashMinSpeedKmh;
+        _pipeline.CrashDetector.SafetyOverride = CrashSafetyOverride;
 
         _telemetryLoop.StaticFriction.Gain = StaticFrictionGain;
         _telemetryLoop.StaticFriction.MaxElasticStretch = StaticFrictionMaxElasticStretch;

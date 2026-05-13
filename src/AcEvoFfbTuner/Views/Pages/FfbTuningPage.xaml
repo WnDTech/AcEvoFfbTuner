@@ -4,6 +4,7 @@
              xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls"
              xmlns:converters="clr-namespace:AcEvoFfbTuner.Converters">
     <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <converters:EnumToBoolConverter x:Key="EnumToBoolConverter" />
         <converters:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis" />
     </UserControl.Resources>
@@ -346,6 +347,71 @@
                                             Label="Output Smoothing" StringFormat="{}{0:F2}"
                                             Description="EMA alpha for smoothing force output. 0.35 = smooth but responsive, 1.0 = no smoothing. Reduces notchy feel from game's discrete steer steps."
                                             SectionColor="{StaticResource SectionDamping}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- CRASH IMPACT -->
+                    <controls:SectionCard Title="CRASH IMPACT"
+                                          SectionBrush="{StaticResource SectionCrash}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                    <Run Text="Gain: " /><Run Text="{Binding CrashImpactGain, StringFormat='{}{0:F2}'}" Foreground="#FFFF4444" />
+                                    <Run Text=" · " /><Run Text="Clamp: " /><Run Text="{Binding CrashSafetyClamp, StringFormat='{}{0:F0}%'}" Foreground="#FFFF4444" />
+                                </TextBlock>
+                                <Border Background="#33FF4444" CornerRadius="3" Padding="6,1" Margin="8,0,0,0"
+                                        Visibility="{Binding ShowCrashSafetyWarning, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="SAFETY OVERRIDE ACTIVE" FontSize="10" FontWeight="Bold" Foreground="#FFFF4444" />
+                                </Border>
+                            </StackPanel>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <TextBlock Text="Detects wall and car collisions from G-force spikes and generates a directional impact kick. Safety-clamped by default to prevent dangerous torque levels." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+                                <DockPanel Margin="0,6">
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                        <TextBlock Text="Enable Crash Forces" Width="160" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
+                                        <CheckBox IsChecked="{Binding CrashEnabled}" Margin="0,0,12,0" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <controls:LabeledSlider Value="{Binding CrashImpactGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Impact Gain" StringFormat="{}{0:F2}"
+                                    Description="How strong the crash kick feels. 0.3 = subtle nudge, 0.6 = noticeable kick, 1.0 = full force."
+                                    SectionColor="{StaticResource SectionCrash}" />
+                                <controls:LabeledSlider Value="{Binding CrashSafetyClamp, Mode=TwoWay}" Minimum="0.1" Maximum="1.0" TickFrequency="0.01"
+                                    Label="Safety Clamp" StringFormat="{}{0:F0}%" DisplayText="{Binding CrashSafetyClampPercentText}"
+                                    Description="Maximum crash force as a fraction of total output. Prevents wall impacts from generating dangerous torque. 50% default is safe for all wheels."
+                                    SectionColor="{StaticResource SectionCrash}" />
+                                <controls:LabeledSlider Value="{Binding CrashTriggerThresholdG, Mode=TwoWay}" Minimum="1.0" Maximum="10.0" TickFrequency="0.1"
+                                    Label="Trigger Threshold (G)" StringFormat="{}{0:F1}"
+                                    Description="Minimum G-force spike to trigger crash detection. 3G = typical racing collision, 5G = heavy impact, 8G+ = extreme."
+                                    SectionColor="{StaticResource SectionCrash}" />
+                                <controls:LabeledSlider Value="{Binding CrashDecayRate, Mode=TwoWay}" Minimum="0.5" Maximum="0.98" TickFrequency="0.01"
+                                    Label="Decay Rate" StringFormat="{}{0:F2}"
+                                    Description="How fast the impact force fades. 0.88 = quick punch (~100ms), 0.95 = longer shake (~250ms), 0.98 = sustained rumble."
+                                    SectionColor="{StaticResource SectionCrash}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Safety Override (Hazard Mode)">
+                                    <StackPanel>
+                                        <Border Background="#33FF4444" CornerRadius="6" Padding="12,10" Margin="0,4,0,8">
+                                            <StackPanel>
+                                                <TextBlock Text="⚠ HAZARD WARNING" FontSize="14" FontWeight="Bold" Foreground="#FFFF4444" Margin="0,0,0,4" />
+                                                <TextBlock Text="Disabling the safety clamp allows crash forces up to 100% of wheel output. This can generate sudden, powerful torque spikes that may cause injury or damage equipment. Only enable if you understand the risks and want maximum realism." FontSize="13" Foreground="#FFB0B0B0" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Border>
+                                        <DockPanel Margin="0,6">
+                                            <TextBlock Text="Remove Safety Clamp" FontSize="14" FontWeight="Bold" Foreground="#FFFF4444" VerticalAlignment="Center" DockPanel.Dock="Left" />
+                                            <CheckBox IsChecked="{Binding CrashSafetyOverride}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                        <TextBlock Text="When enabled, crash forces are limited only by your Output Gain and Max Force Limit settings." FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                        <controls:LabeledSlider Value="{Binding CrashMinSpeedKmh, Mode=TwoWay}" Minimum="0" Maximum="50" TickFrequency="1"
+                                            Label="Min Speed (km/h)" StringFormat="{}{0:F0}"
+                                            Description="Minimum speed for crash detection. Below this, no crash forces are generated. Prevents false triggers in the pit lane."
+                                            SectionColor="{StaticResource SectionCrash}" />
                                     </StackPanel>
                                 </Expander>
                             </StackPanel>
