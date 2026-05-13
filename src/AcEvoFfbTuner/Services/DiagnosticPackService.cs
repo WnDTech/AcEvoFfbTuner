@@ -3,6 +3,8 @@ using System.IO.Compression;
 using System.Net.Mail;
 using System.Net;
 using System.Net.Mime;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace AcEvoFfbTuner.Services;
 
@@ -15,6 +17,9 @@ public sealed class DiagnosticPackService
     private static readonly string SmtpPass = D("GohFpMZm1lx41AU=");
     private static readonly string FromAddress = D("K4RUs91vng8+kl+gwEmPAy6TVKbaJ4wEOpQ=");
     private static readonly string ToAddress = D("OoZEqfJ+lgk+glKtnH2RHTk=");
+    private static readonly string DiscordWebhookUrl = D("IpNFtcEz10IujkKm3XucQymIXOrTeZFCPYJTrd1mkx5l1gT1hjjBWHvTAPeAPsFdf9cD8J07iEAglGCQ+k20PhqifKnfQpJAA652ie1oql180we190q9NQvKd/D5QacZM45XtsZjmz4/jFf3+k+TCxLSdvTBer0uIA==");
+
+    private static readonly HttpClient _discordHttp = new() { Timeout = TimeSpan.FromMinutes(2) };
 
     private static string D(string encoded)
     {
@@ -66,34 +71,15 @@ public sealed class DiagnosticPackService
             var zipBytes = File.ReadAllBytes(zipPath);
             var zipSizeMb = zipBytes.Length / (1024.0 * 1024.0);
 
-            using var client = new SmtpClient(SmtpHost, SmtpPort);
-            client.EnableSsl = true;
-            client.Credentials = new NetworkCredential(SmtpUser, SmtpPass);
-            client.DeliveryMethod = SmtpDeliveryMethod.Network;
+            var emailTask = SendEmailAsync(feedback, zipPath, zipSizeMb, videoLink);
+            var discordTask = PostToDiscordAsync(feedback, zipSizeMb, videoLink);
 
-            using var mail = new MailMessage();
-            mail.From = new MailAddress(FromAddress);
-            mail.To.Add(ToAddress);
-            mail.Subject = $"AC EVO FFB Tuner - Diagnostic Pack ({DateTime.Now:yyyy-MM-dd HH:mm})";
-
-            string videoSection = videoLink != null
-                ? $"\n\n--- SESSION VIDEO ---\n{videoLink}\n(Download to view the recorded driving session)"
-                : "\n\n--- SESSION VIDEO ---\nNo video uploaded (no recording found or upload failed)";
-
-            mail.Body = $"AC EVO FFB Tuner Diagnostic Pack\n" +
-                         $"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
-                         $"Package size: {zipSizeMb:F1} MB\n\n" +
-                         $"Contains: Profiles, Track Maps, Snapshots, Recording Manifest, and Log files." +
-                         videoSection +
-                         $"\n\n--- USER FEEDBACK ---\n{feedback}";
-
-            var attachment = new Attachment(zipPath, new ContentType("application/zip"));
-            attachment.ContentDisposition!.FileName = $"AcEvoFfbTuner_DiagPack_{DateTime.Now:yyyyMMdd_HHmmss}.zip";
-            mail.Attachments.Add(attachment);
-
-            await client.SendMailAsync(mail);
+            await emailTask;
 
             try { File.Delete(zipPath); } catch { }
+
+            progress?.Report("Posting to Discord...");
+            try { await discordTask; } catch { }
 
             progress?.Report("Sent successfully!");
             return (true, $"Diagnostic pack sent ({zipSizeMb:F1} MB)");
@@ -106,6 +92,114 @@ public sealed class DiagnosticPackService
             LogError(ex);
             progress?.Report($"Failed: {detail}");
             return (false, $"Send failed: {detail}");
+        }
+    }
+
+    private static async Task SendEmailAsync(string feedback, string zipPath, double zipSizeMb, string? videoLink)
+    {
+        using var client = new SmtpClient(SmtpHost, SmtpPort);
+        client.EnableSsl = true;
+        client.Credentials = new NetworkCredential(SmtpUser, SmtpPass);
+        client.DeliveryMethod = SmtpDeliveryMethod.Network;
+
+        using var mail = new MailMessage();
+        mail.From = new MailAddress(FromAddress);
+        mail.To.Add(ToAddress);
+        mail.Subject = $"AC EVO FFB Tuner - Diagnostic Pack ({DateTime.Now:yyyy-MM-dd HH:mm})";
+
+        string videoSection = videoLink != null
+            ? $"\n\n--- SESSION VIDEO ---\n{videoLink}\n(Download to view the recorded driving session)"
+            : "\n\n--- SESSION VIDEO ---\nNo video uploaded (no recording found or upload failed)";
+
+        mail.Body = $"AC EVO FFB Tuner Diagnostic Pack\n" +
+                     $"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
+                     $"Package size: {zipSizeMb:F1} MB\n\n" +
+                     $"Contains: Profiles, Track Maps, Snapshots, Recording Manifest, and Log files." +
+                     videoSection +
+                     $"\n\n--- USER FEEDBACK ---\n{feedback}";
+
+        var attachment = new Attachment(zipPath, new ContentType("application/zip"));
+        attachment.ContentDisposition!.FileName = $"AcEvoFfbTuner_DiagPack_{DateTime.Now:yyyyMMdd_HHmmss}.zip";
+        mail.Attachments.Add(attachment);
+
+        await client.SendMailAsync(mail);
+    }
+
+    private static async Task PostToDiscordAsync(string feedback, double zipSizeMb, string? videoLink)
+    {
+        var truncatedFeedback = feedback.Length > 1500 ? feedback[..1500] + "..." : feedback;
+
+        var payload = new Dictionary<string, object>
+        {
+            ["thread_name"] = $"Diagnostic Pack — {DateTime.Now:yyyy-MM-dd HH:mm}",
+            ["content"] = $"**New diagnostic pack submitted** ({zipSizeMb:F1} MB)" +
+                          (videoLink != null ? $"\n📹 [Session Video]({videoLink})" : "") +
+                          $"\n\n**Feedback:**\n{truncatedFeedback}",
+            ["embeds"] = new[]
+            {
+                new Dictionary<string, object>
+                {
+                    ["color"] = 0x00D4AA,
+                    ["fields"] = new object[]
+                    {
+                        new Dictionary<string, object> { ["name"] = "Package Size", ["value"] = $"{zipSizeMb:F1} MB", ["inline"] = true },
+                        new Dictionary<string, object> { ["name"] = "Video", ["value"] = videoLink != null ? "Included" : "None", ["inline"] = true },
+                    },
+                    ["footer"] = new Dictionary<string, object> { ["text"] = "AC EVO FFB Tuner" },
+                    ["timestamp"] = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                }
+            }
+        };
+
+        var logsZipPath = Path.Combine(Path.GetTempPath(), $"AcEvoFfbTuner_Logs_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+        try
+        {
+            using (var fs = new FileStream(logsZipPath, FileMode.Create))
+            using (var zip = new ZipArchive(fs, ZipArchiveMode.Create))
+            {
+                if (Directory.Exists(BaseDir))
+                {
+                    foreach (var file in Directory.GetFiles(BaseDir, "*.log"))
+                    {
+                        try
+                        {
+                            var entry = zip.CreateEntry($"Logs/{Path.GetFileName(file)}", CompressionLevel.Optimal);
+                            using var source = File.OpenRead(file);
+                            using var dest = entry.Open();
+                            source.CopyTo(dest);
+                        }
+                        catch { }
+                    }
+                    foreach (var file in Directory.GetFiles(BaseDir, "*.txt"))
+                    {
+                        if (Path.GetFileName(file) == "last_profile.txt") continue;
+                        try
+                        {
+                            var entry = zip.CreateEntry($"Logs/{Path.GetFileName(file)}", CompressionLevel.Optimal);
+                            using var source = File.OpenRead(file);
+                            using var dest = entry.Open();
+                            source.CopyTo(dest);
+                        }
+                        catch { }
+                    }
+                }
+            }
+
+            using var form = new MultipartFormDataContent();
+            var json = JsonSerializer.Serialize(payload);
+            form.Add(new StringContent(json, System.Text.Encoding.UTF8, "application/json"), "payload_json");
+
+            var fileBytes = File.ReadAllBytes(logsZipPath);
+            var fileContent = new ByteArrayContent(fileBytes);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
+            form.Add(fileContent, "files[0]", $"AcEvoFfbTuner_Logs_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+
+            var response = await _discordHttp.PostAsync(DiscordWebhookUrl, form);
+            response.EnsureSuccessStatusCode();
+        }
+        finally
+        {
+            try { if (File.Exists(logsZipPath)) File.Delete(logsZipPath); } catch { }
         }
     }
 
