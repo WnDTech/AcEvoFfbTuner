@@ -18,6 +18,7 @@ public sealed class FfbPipeline
     public Hf8SignalMapper Hf8SignalMapper { get; } = new();
     public FfbGripGuard GripGuard { get; } = new();
     public FfbCrashDetector CrashDetector { get; } = new();
+    public FfbTyreCondition TyreCondition { get; } = new();
 
 
     public float ForceScale { get; set; } = 1.0f;
@@ -101,6 +102,10 @@ public sealed class FfbPipeline
         // a directional force pulse that decays exponentially.
         // Safety-clamped to prevent dangerous torque levels.
         coreOutput = CrashDetector.Apply(coreOutput, raw);
+
+        // Tyre condition: blowout vibration, pressure loss feel, suspension damage asymmetry.
+        // Modifies force based on real-time tyre pressure and damage data.
+        coreOutput = TyreCondition.Apply(coreOutput, raw);
 
         // Reverse gear: invert physics sign and attenuate.
         // AC EVO's tire model produces forces with correct MAGNITUDE but
@@ -260,6 +265,7 @@ public sealed class FfbPipeline
         Hf8SignalMapper.Reset();
         GripGuard.Reset();
         CrashDetector.Reset();
+        TyreCondition.Reset();
 
 
 

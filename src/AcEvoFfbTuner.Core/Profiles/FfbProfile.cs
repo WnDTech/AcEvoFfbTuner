@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 17;
+    public const int CurrentVersion = 18;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -74,6 +74,7 @@ public sealed class FfbProfile
     public GripGuardConfig GripGuard { get; set; } = new();
     public StaticFrictionConfig StaticFriction { get; set; } = new();
     public CrashConfig Crash { get; set; } = new();
+    public TyreConditionConfig TyreCondition { get; set; } = new();
     public TelemetrySnapshotDto? LastTelemetrySnapshot { get; set; }
 
     public void ApplyToPipeline(FfbPipeline pipeline)
@@ -206,6 +207,13 @@ public sealed class FfbProfile
         pipeline.CrashDetector.TriggerThresholdG = Crash.TriggerThresholdG;
         pipeline.CrashDetector.MinSpeedKmh = Crash.MinSpeedKmh;
         pipeline.CrashDetector.SafetyOverride = Crash.SafetyOverride;
+
+        pipeline.TyreCondition.Enabled = TyreCondition.Enabled;
+        pipeline.TyreCondition.BlowoutVibrationGain = TyreCondition.BlowoutVibrationGain;
+        pipeline.TyreCondition.PressureLossGain = TyreCondition.PressureLossGain;
+        pipeline.TyreCondition.DamageAsymmetryGain = TyreCondition.DamageAsymmetryGain;
+        pipeline.TyreCondition.BlowoutPressureThreshold = TyreCondition.BlowoutPressureThreshold;
+        pipeline.TyreCondition.MaxBlowoutAmplitude = TyreCondition.MaxBlowoutAmplitude;
     }
 
     public void ApplyToStaticFriction(FfbStaticFriction sf)
@@ -364,6 +372,15 @@ public sealed class FfbProfile
             TriggerThresholdG = pipeline.CrashDetector.TriggerThresholdG,
             MinSpeedKmh = pipeline.CrashDetector.MinSpeedKmh,
             SafetyOverride = pipeline.CrashDetector.SafetyOverride
+        };
+        TyreCondition = new TyreConditionConfig
+        {
+            Enabled = pipeline.TyreCondition.Enabled,
+            BlowoutVibrationGain = pipeline.TyreCondition.BlowoutVibrationGain,
+            PressureLossGain = pipeline.TyreCondition.PressureLossGain,
+            DamageAsymmetryGain = pipeline.TyreCondition.DamageAsymmetryGain,
+            BlowoutPressureThreshold = pipeline.TyreCondition.BlowoutPressureThreshold,
+            MaxBlowoutAmplitude = pipeline.TyreCondition.MaxBlowoutAmplitude
         };
     }
 
@@ -571,6 +588,7 @@ public sealed class FfbProfile
         GripGuard.SanitizeFloats();
         StaticFriction.SanitizeFloats();
         Crash.SanitizeFloats();
+        TyreCondition.SanitizeFloats();
     }
 
     private static float Sanitize(float v) =>
@@ -741,6 +759,11 @@ public sealed class FfbProfile
         if (Version < 17)
         {
             Crash ??= new CrashConfig();
+        }
+
+        if (Version < 18)
+        {
+            TyreCondition ??= new TyreConditionConfig();
         }
 
         Version = CurrentVersion;
@@ -1134,4 +1157,22 @@ public sealed class CrashConfig
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
     public void SanitizeFloats() { ImpactGain = S(ImpactGain); SafetyClamp = S(SafetyClamp); DecayRate = S(DecayRate); TriggerThresholdG = S(TriggerThresholdG); MinSpeedKmh = S(MinSpeedKmh); }
+}
+
+public sealed class TyreConditionConfig
+{
+    public bool Enabled { get; set; } = true;
+
+    public float BlowoutVibrationGain { get; set; } = 0.40f;
+
+    public float PressureLossGain { get; set; } = 0.20f;
+
+    public float DamageAsymmetryGain { get; set; } = 0.15f;
+
+    public float BlowoutPressureThreshold { get; set; } = 0.40f;
+
+    public float MaxBlowoutAmplitude { get; set; } = 0.25f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { BlowoutVibrationGain = S(BlowoutVibrationGain); PressureLossGain = S(PressureLossGain); DamageAsymmetryGain = S(DamageAsymmetryGain); BlowoutPressureThreshold = S(BlowoutPressureThreshold); MaxBlowoutAmplitude = S(MaxBlowoutAmplitude); }
 }

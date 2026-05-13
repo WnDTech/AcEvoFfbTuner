@@ -554,6 +554,24 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _showCrashSafetyWarning;
 
+    [ObservableProperty]
+    private bool _tyreConditionEnabled = true;
+
+    [ObservableProperty]
+    private float _tyreConditionBlowoutGain = 0.40f;
+
+    [ObservableProperty]
+    private float _tyreConditionPressureLossGain = 0.20f;
+
+    [ObservableProperty]
+    private float _tyreConditionDamageAsymmetryGain = 0.15f;
+
+    [ObservableProperty]
+    private float _tyreConditionBlowoutThreshold = 0.40f;
+
+    [ObservableProperty]
+    private float _tyreConditionMaxBlowoutAmplitude = 0.25f;
+
     // ── Stationary Friction (engine-off wheel scrub) ──────────────────
     [ObservableProperty]
     private float _staticFrictionGain = 1.0f;
@@ -2258,6 +2276,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         ShowCrashSafetyWarning = value;
     }
 
+    partial void OnTyreConditionEnabledChanged(bool value) => _pipeline.TyreCondition.Enabled = value;
+    partial void OnTyreConditionBlowoutGainChanged(float value) => _pipeline.TyreCondition.BlowoutVibrationGain = value;
+    partial void OnTyreConditionPressureLossGainChanged(float value) => _pipeline.TyreCondition.PressureLossGain = value;
+    partial void OnTyreConditionDamageAsymmetryGainChanged(float value) => _pipeline.TyreCondition.DamageAsymmetryGain = value;
+    partial void OnTyreConditionBlowoutThresholdChanged(float value) => _pipeline.TyreCondition.BlowoutPressureThreshold = value;
+    partial void OnTyreConditionMaxBlowoutAmplitudeChanged(float value) => _pipeline.TyreCondition.MaxBlowoutAmplitude = value;
+
     // ── Stationary Friction handlers ──────────────────────────────────
     partial void OnStaticFrictionGainChanged(float value) => _telemetryLoop.StaticFriction.Gain = value;
     partial void OnStaticFrictionMaxElasticStretchChanged(float value) => _telemetryLoop.StaticFriction.MaxElasticStretch = value;
@@ -2638,6 +2663,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         CrashSafetyOverride = profile.Crash.SafetyOverride;
         ShowCrashSafetyWarning = profile.Crash.SafetyOverride;
 
+        TyreConditionEnabled = profile.TyreCondition.Enabled;
+        TyreConditionBlowoutGain = profile.TyreCondition.BlowoutVibrationGain;
+        TyreConditionPressureLossGain = profile.TyreCondition.PressureLossGain;
+        TyreConditionDamageAsymmetryGain = profile.TyreCondition.DamageAsymmetryGain;
+        TyreConditionBlowoutThreshold = profile.TyreCondition.BlowoutPressureThreshold;
+        TyreConditionMaxBlowoutAmplitude = profile.TyreCondition.MaxBlowoutAmplitude;
+
         StaticFrictionGain = profile.StaticFriction.Gain;
         StaticFrictionMaxElasticStretch = profile.StaticFriction.MaxElasticStretch;
         StaticFrictionSpringStiffness = profile.StaticFriction.SpringStiffness;
@@ -2749,6 +2781,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.CrashDetector.TriggerThresholdG = CrashTriggerThresholdG;
         _pipeline.CrashDetector.MinSpeedKmh = CrashMinSpeedKmh;
         _pipeline.CrashDetector.SafetyOverride = CrashSafetyOverride;
+
+        _pipeline.TyreCondition.Enabled = TyreConditionEnabled;
+        _pipeline.TyreCondition.BlowoutVibrationGain = TyreConditionBlowoutGain;
+        _pipeline.TyreCondition.PressureLossGain = TyreConditionPressureLossGain;
+        _pipeline.TyreCondition.DamageAsymmetryGain = TyreConditionDamageAsymmetryGain;
+        _pipeline.TyreCondition.BlowoutPressureThreshold = TyreConditionBlowoutThreshold;
+        _pipeline.TyreCondition.MaxBlowoutAmplitude = TyreConditionMaxBlowoutAmplitude;
 
         _telemetryLoop.StaticFriction.Gain = StaticFrictionGain;
         _telemetryLoop.StaticFriction.MaxElasticStretch = StaticFrictionMaxElasticStretch;

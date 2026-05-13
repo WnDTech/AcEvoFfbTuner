@@ -61,6 +61,8 @@ public sealed class FfbRawData
     public bool IsIgnitionOn { get; set; }
     public AcEvoEngineType EngineType { get; set; }
     public string TyreCompoundFront { get; set; } = "";
+    public float[] WheelsPressure { get; set; } = new float[4];
+    public float[] SuspensionDamage { get; set; } = new float[4];
 }
 
 public sealed class FfbProcessedData
