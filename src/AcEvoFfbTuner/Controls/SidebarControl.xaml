@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:AcEvoFfbTuner.ViewModels"
              x:Name="Root"
-             Width="240" MinWidth="60">
+             Width="200" MinWidth="60">
 
     <UserControl.Resources>
         <vm:NavPage x:Key="NavHome">Home</vm:NavPage>
@@ -22,26 +22,22 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Padding="16,8" BorderBrush="#FF30363D" BorderThickness="0,0,0,1">
-            <TextBlock x:Name="HeaderTitle" Text="NAVIGATION" FontSize="11" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" />
-        </Border>
+        <StackPanel Grid.Row="0" Grid.RowSpan="2" Margin="0,0">
 
-        <StackPanel Grid.Row="1" Margin="0,8">
-
-            <RadioButton x:Name="NavHomeBtn" GroupName="SidebarNav" Content="Home" Margin="4,1"
+            <RadioButton x:Name="NavHomeBtn" GroupName="SidebarNav" Content="Home" Margin="4,0,4,1"
                          Tag="{x:Static vm:NavPage.Home}" Click="OnNavClick" Cursor="Hand">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,9,12,8" Margin="0,0">
                             <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="20" Height="20" Margin="0,0,12,0">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
                                         <Path Data="M4,12 L12,4 L20,12 M6,10.5 V19 H18 V10.5"
                                               Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                               StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                                     </Canvas>
                                 </Viewbox>
-                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="14"
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -74,14 +70,14 @@
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="20" Height="20" Margin="0,0,12,0">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
                                         <Path Data="M12,4 A8,8,0,1,1,11.99,4 Z M12,12 V6 M7.5,16 L12,12 L16.5,16"
                                               Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                               StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                                     </Canvas>
                                 </Viewbox>
-                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="14"
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -114,7 +110,7 @@
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="20" Height="20" Margin="0,0,12,0">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
                                         <Rectangle Canvas.Left="2" Canvas.Top="10" Width="3" Height="8" RadiusX="1" RadiusY="1"
                                                    Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
@@ -128,7 +124,7 @@
                                                    Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
                                     </Canvas>
                                 </Viewbox>
-                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="14"
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -161,14 +157,14 @@
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="20" Height="20" Margin="0,0,12,0">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
                                         <Path Data="M5,18 C5,8 10,4 14,4 C18,4 20,8 20,12 C20,16 16,20 12,20 C8,20 5,18 5,14"
                                               Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                               StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                                     </Canvas>
                                 </Viewbox>
-                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="14"
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -201,14 +197,14 @@
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="20" Height="20" Margin="0,0,12,0">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
                                         <Path Data="M4,18 V4 M4,18 H20 M6,14 L9,8 L12,12 L16,6 L20,10"
                                               Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                               StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                                     </Canvas>
                                 </Viewbox>
-                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="14"
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -241,14 +237,14 @@
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="20" Height="20" Margin="0,0,12,0">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
                                         <Path Data="M6,9 C6,9 7,14 6,17 C5,20 4,20 3,18 C2,16 3,13 5,10 M18,9 C18,9 17,14 18,17 C19,20 20,20 21,18 C22,16 21,13 19,10 M5,10 C5,10 8,7 12,7 C16,7 19,10 19,10"
                                               Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                               StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                                     </Canvas>
                                 </Viewbox>
-                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="14"
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -281,14 +277,14 @@
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="20" Height="20" Margin="0,0,12,0">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
                                         <Path Data="M4,20 V4 H20 V20 Z M12,10 C13.5,10 14.5,8.5 14.5,7.5 C14.5,6.5 13.5,6 12,6 C10.5,6 9.5,6.5 9.5,7.5 C9.5,8.5 10.5,10 12,10 Z M8,16 C8,13 10,12 12,12 C14,12 16,13 16,16"
                                               Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                               StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                                     </Canvas>
                                 </Viewbox>
-                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="14"
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -319,12 +315,12 @@
         <StackPanel Grid.Row="2" Margin="0,0,0,8">
             <Border Background="#FF30363D" Height="1" Margin="12,4" />
             <Button x:Name="SettingsBtn" Content="Settings" Click="OnSettingsClick" Cursor="Hand" HorizontalAlignment="Stretch"
-                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="13" Margin="4,1">
+                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
                             <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="16" Height="16" Margin="0,0,12,0">
+                                <Viewbox Width="20" Height="20" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
                                         <Path Data="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"
                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
@@ -344,12 +340,12 @@
                 </Button.Template>
             </Button>
             <Button x:Name="CollapseBtn" Click="OnToggleCollapse" Cursor="Hand" HorizontalAlignment="Stretch"
-                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="13" Margin="4,1">
+                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
                             <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="16" Height="16" Margin="0,0,12,0">
+                                <Viewbox Width="20" Height="20" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
                                         <Path Data="M15,19 L8,12 L15,5" x:Name="CollapseArrow"
                                               Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"

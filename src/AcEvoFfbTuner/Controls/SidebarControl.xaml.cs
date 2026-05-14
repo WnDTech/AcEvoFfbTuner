@@ -44,7 +44,6 @@ public partial class SidebarControl : UserControl
         if (_isCollapsed)
         {
             Root.Width = 60;
-            HeaderTitle.Visibility = Visibility.Collapsed;
 
             SetTemplateLabelVisibility(SettingsBtn, "SettingsLabel", Visibility.Collapsed);
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Collapsed);
@@ -58,8 +57,7 @@ public partial class SidebarControl : UserControl
         }
         else
         {
-            Root.Width = 240;
-            HeaderTitle.Visibility = Visibility.Visible;
+            Root.Width = 200;
 
             SetTemplateLabelVisibility(SettingsBtn, "SettingsLabel", Visibility.Visible);
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Visible);
