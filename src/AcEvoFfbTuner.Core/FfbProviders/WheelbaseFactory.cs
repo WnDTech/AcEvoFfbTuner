@@ -54,7 +54,7 @@ public sealed class WheelbaseFactory
         var n = productName.ToUpperInvariant();
 
         if (n.Contains("SIMUCUBE")) return WheelbaseVendor.Simucube;
-        if (n.Contains("LOGITECH") || n.Contains("G29") || n.Contains("G920") || n.Contains("G923")) return WheelbaseVendor.Logitech;
+        if (n.Contains("LOGITECH") || n.Contains("G27") || n.Contains("G29") || n.Contains("G920") || n.Contains("G923")) return WheelbaseVendor.Logitech;
         if (n.Contains("MOZA")) return WheelbaseVendor.Moza;
         if (n.Contains("FANATEC") || n.Contains("CLUBSPORT") || n.Contains("CSL ")) return WheelbaseVendor.Fanatec;
         if (n.Contains("SIMAGIC")) return WheelbaseVendor.Simagic;

@@ -427,9 +427,15 @@ public sealed class FfbProfile
                 viscousDamping: 0.15f, speedDamping: 0.50f, friction: 0.15f, inertia: 0.10f,
                 vibrationMaster: 0.50f),
 
-            // ──── Logitech G29/G920 (2.5Nm) ────
-            "Default - Logitech G29/G920" => CreateDefaultWheelbaseProfile("Default - Logitech G29/G920",
-                maxTorqueNm: 2.5f, outputGain: 1.20f, normalizationScale: 1000f,
+            // ──── Logitech G27 (2.5Nm) — gear-driven, same VID as G29 ────
+            "Default - Logitech G27" => CreateGearDrivenProfile("Default - Logitech G27",
+                maxTorqueNm: 2.5f, outputGain: 1.5f, normalizationScale: 1000f,
+                viscousDamping: 0.12f, speedDamping: 0.38f, friction: 0.14f, inertia: 0.09f,
+                vibrationMaster: 0.50f),
+
+            // ──── Logitech G29/G920 (2.1Nm) — gear-driven ────
+            "Default - Logitech G29/G920" => CreateGearDrivenProfile("Default - Logitech G29/G920",
+                maxTorqueNm: 2.1f, outputGain: 1.5f, normalizationScale: 1000f,
                 viscousDamping: 0.10f, speedDamping: 0.35f, friction: 0.12f, inertia: 0.08f,
                 vibrationMaster: 0.55f),
 
@@ -540,9 +546,62 @@ public sealed class FfbProfile
             TyreFlex = new TyreFlexConfig { FlexGain = 0.12f }
         };
     }
+
+    private static FfbProfile CreateGearDrivenProfile(
+        string name, float maxTorqueNm, float outputGain, float normalizationScale,
+        float viscousDamping, float speedDamping, float friction, float inertia, float vibrationMaster)
+    {
+        var lutValues = new float[33];
+        for (int i = 0; i < 33; i++)
+        {
+            float t = (float)i / 32f;
+            lutValues[i] = MathF.Sqrt(t);
+        }
+
+        return new FfbProfile
+        {
+            Name = name,
+            OutputGain = outputGain,
+            NormalizationScale = normalizationScale,
+            ForceScale = 1.0f,
+            SoftClipThreshold = 0.75f,
+            CompressionPower = 1.0f,
+            SignCorrectionEnabled = true,
+            ForceInvertEnabled = false,
+            WheelMaxTorqueNm = maxTorqueNm,
+            MzFront = new ChannelConfig { Gain = 0.42f, Enabled = true },
+            FxFront = new ChannelConfig { Gain = 0.18f, Enabled = true },
+            FyFront = new ChannelConfig { Gain = 0.25f, Enabled = true },
+            MzRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
+            FxRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
+            FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
+            FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
+            WheelLoadWeighting = 0.0f,
+            MzScale = 30f,
+            FxScale = 4000f,
+            FyScale = 5000f,
+            LutCurve = new LutCurveDto { OutputValues = lutValues },
+            SteeringLockDegrees = 900,
+            Damping = new DampingConfig
+            {
+                ViscousDamping = viscousDamping,
+                SpeedDamping = speedDamping,
+                Friction = friction,
+                Inertia = inertia,
+                MaxSpeedReference = 200f
+            },
+            Slip = new SlipConfig { SlipRatioGain = 0.10f, SlipAngleGain = 0.20f, SlipThreshold = 0.10f, UseFrontOnly = true },
+            Dynamic = new DynamicConfig { LateralGGain = 0f, LongitudinalGGain = 0f, SuspensionGain = 0.40f, YawRateGain = 0f },
+            AutoGain = new AutoGainConfig { Enabled = false, Scale = 1.0f },
+            Vibrations = new VibrationConfig { KerbGain = 1.0f, SlipGain = 0.8f, RoadGain = 0f, AbsGain = 1.0f, MasterGain = vibrationMaster, ScrubGain = 0.5f, RearSlipGain = 0.6f },
+            Advanced = new AdvancedConfig { MaxSlewRate = 0.85f, NoiseFloor = 0.003f, CenterBlendDegrees = 1.0f },
+            TyreFlex = new TyreFlexConfig { FlexGain = 0.12f }
+        };
+    }
     public static string[] AllDefaultNames => new[]
     {
         "Default", "Heavy", "Light", "Moza R5 - Final Stable Baseline",
+        "Default - Logitech G27",
         "Default - Logitech G29/G920",
         "Default - Thrustmaster T300/TX",
         "Default - Fanatec CSL DD 5Nm",

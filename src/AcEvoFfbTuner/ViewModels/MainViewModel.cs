@@ -1312,6 +1312,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (n.Contains("T818")) return 10f;
         if (n.Contains("T300")) return 2f;
         if (n.Contains("T150")) return 1.5f;
+        if (n.Contains("G27")) return 2.5f;
         if (n.Contains("G29") || n.Contains("G920")) return 2.1f;
 
         return 0f;

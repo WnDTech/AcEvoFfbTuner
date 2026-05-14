@@ -11,7 +11,8 @@ public static class WheelbaseAutoConfigurator
 {
     private static readonly (string ProfileName, float TorqueNm)[] BuiltInProfilesByTorque =
     {
-        ("Default - Logitech G29/G920", 2.5f),
+        ("Default - Logitech G27", 2.5f),
+        ("Default - Logitech G29/G920", 2.1f),
         ("Default - Thrustmaster T300/TX", 4.5f),
         ("Default - Fanatec CSL DD 5Nm", 5.0f),
         ("Moza R5 - Final Stable Baseline", 5.5f),
