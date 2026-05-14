@@ -697,22 +697,22 @@
                                    Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" />
 
                         <controls:LabeledSlider Value="{Binding OutputGain, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.001"
-                            Label="Output Gain" DisplayText="{Binding OutputGainNmText}" ValueWidth="100" LabelWidth="120"
+                            Label="Output Gain" DisplayText="{Binding OutputGainNmText}" ValueWidth="100" LabelAbove="True"
                             Description="Master output strength — the final multiplier before the force limiter."
                             SectionColor="{StaticResource SectionOutput}" />
 
                         <controls:LabeledSlider Value="{Binding MaxForceLimit, Mode=TwoWay}" Minimum="0.1" Maximum="1.0" TickFrequency="0.01"
-                            Label="Max Force Limit" DisplayText="{Binding MaxForceLimitNmText}" ValueWidth="100" LabelWidth="120"
+                            Label="Max Force Limit" DisplayText="{Binding MaxForceLimitNmText}" ValueWidth="100" LabelAbove="True"
                             Description="Soft limiter — forces above this are gently rounded off."
                             SectionColor="{StaticResource SectionOutput}" />
 
                         <controls:LabeledSlider Value="{Binding ForceSensitivity, Mode=TwoWay}" Minimum="1" Maximum="1000" TickFrequency="1"
-                            Label="Sensitivity" StringFormat="{}{0:F0}" IsLogarithmic="True" LabelWidth="120"
+                            Label="Sensitivity" StringFormat="{}{0:F0}" IsLogarithmic="True" LabelAbove="True"
                             Description="Inverse sensitivity — higher = weaker forces. First gain stage."
                             SectionColor="{StaticResource SectionOutput}" />
 
                         <controls:LabeledSlider Value="{Binding MaxSlewRate, Mode=TwoWay}" Minimum="0.03" Maximum="0.50" TickFrequency="0.001"
-                            Label="Max Slew Rate" StringFormat="{}{0:F4}" LabelWidth="120"
+                            Label="Max Slew Rate" StringFormat="{}{0:F4}" LabelAbove="True"
                             Description="Max force change per frame. Lower = smoother, higher = snappier."
                             SectionColor="{StaticResource SectionOutput}" />
 
@@ -751,15 +751,15 @@
                                 </StackPanel>
 
                                 <controls:LabeledSlider Value="{Binding ForceScale, Mode=TwoWay}" Minimum="0.01" Maximum="20" TickFrequency="0.01"
-                                    Label="Force Scale" StringFormat="{}{0:F3}" IsLogarithmic="True" LabelWidth="140"
+                                    Label="Force Scale" StringFormat="{}{0:F3}" IsLogarithmic="True" LabelAbove="True"
                                     Description="Divides the mixed signal to normalize it. Works with Force Sensitivity."
                                     SectionColor="{StaticResource SectionOutput}" />
                                 <controls:LabeledSlider Value="{Binding SteeringLockDegrees, Mode=TwoWay}" Minimum="180" Maximum="1080" TickFrequency="10"
-                                    Label="Steering Lock" StringFormat="{}{0}" IsLogarithmic="True" LabelWidth="140"
+                                    Label="Steering Lock" StringFormat="{}{0}" IsLogarithmic="True" LabelAbove="True"
                                     Description="Your wheel's total rotation in degrees."
                                     SectionColor="{StaticResource SectionOutput}" />
                                 <controls:LabeledSlider Value="{Binding WheelMaxTorqueNm, Mode=TwoWay}" Minimum="1" Maximum="25" TickFrequency="0.5"
-                                    Label="Max Torque (Nm)" StringFormat="{}{0:F3}" LabelWidth="140"
+                                    Label="Max Torque (Nm)" StringFormat="{}{0:F3}" LabelAbove="True"
                                     Description="Wheelbase max torque — used for Nm display. 5.5 = Moza R5, 9 = R9, 15 = R15."
                                     SectionColor="{StaticResource SectionOutput}" />
 

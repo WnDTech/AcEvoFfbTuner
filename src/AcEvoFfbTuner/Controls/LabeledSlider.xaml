@@ -6,6 +6,11 @@
     <Border x:Name="GlowBorder" CornerRadius="4" Padding="0,0" Margin="0,0"
             BorderThickness="0" BorderBrush="Transparent">
         <StackPanel x:Name="RootPanel" PreviewMouseWheel="OnPreviewMouseWheel">
+            <TextBlock x:Name="PART_LabelAbove"
+                       FontSize="15"
+                       Text=""
+                       Visibility="Collapsed"
+                       Margin="0,2,0,0" />
             <DockPanel x:Name="SliderRow" Margin="0,6,0,0">
                 <CheckBox x:Name="PART_CheckBox"
                           DockPanel.Dock="Left"
@@ -48,20 +53,31 @@
                          FontSize="14"
                          TextAlignment="Right"
                          Margin="8,0,0,0"
-                         Padding="2,0"
+                         Padding="4,2"
                          IsReadOnly="False"
                          GotFocus="OnTextBoxGotFocus"
                          LostFocus="OnTextBoxLostFocus"
                          KeyDown="OnTextBoxKeyDown">
                     <TextBox.Style>
                         <Style TargetType="TextBox">
-                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Background" Value="#FF21262D" />
                             <Setter Property="Foreground" Value="#FFE6EDF3" />
-                            <Setter Property="BorderThickness" Value="0" />
-                            <Setter Property="BorderBrush" Value="Transparent" />
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="BorderBrush" Value="#FF3D444D" />
                             <Setter Property="CaretBrush" Value="#FFF0883E" />
-                            <Setter Property="Padding" Value="2,0" />
+                            <Setter Property="Padding" Value="4,2" />
                             <Setter Property="FontSize" Value="14" />
+                            <Setter Property="ToolTip" Value="Click to type a value" />
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="BorderBrush" Value="#FF555D66" />
+                                    <Setter Property="Background" Value="#FF282E38" />
+                                </Trigger>
+                                <Trigger Property="IsFocused" Value="True">
+                                    <Setter Property="Background" Value="#FF2A2A45" />
+                                    <Setter Property="BorderBrush" Value="#FFF0883E" />
+                                </Trigger>
+                            </Style.Triggers>
                         </Style>
                     </TextBox.Style>
                 </TextBox>

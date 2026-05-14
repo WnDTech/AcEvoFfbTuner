@@ -110,6 +110,12 @@ namespace AcEvoFfbTuner.Controls
         public string DisplayText { get => (string)GetValue(DisplayTextProperty); set => SetValue(DisplayTextProperty, value); }
         public double ValueWidth { get => (double)GetValue(ValueWidthProperty); set => SetValue(ValueWidthProperty, value); }
 
+        public static readonly DependencyProperty LabelAboveProperty =
+            DependencyProperty.Register(nameof(LabelAbove), typeof(bool), typeof(LabeledSlider),
+                new PropertyMetadata(false, OnLabelAboveChanged));
+
+        public bool LabelAbove { get => (bool)GetValue(LabelAboveProperty); set => SetValue(LabelAboveProperty, value); }
+
         public static readonly DependencyProperty RecentlyChangedProperty =
             DependencyProperty.Register(nameof(RecentlyChanged), typeof(bool), typeof(LabeledSlider),
                 new PropertyMetadata(false, OnRecentlyChanged));
@@ -283,6 +289,12 @@ namespace AcEvoFfbTuner.Controls
             ((LabeledSlider)d).ApplyValueWidth();
         }
 
+        private static void OnLabelAboveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            ((LabeledSlider)d).ApplyLabel();
+            ((LabeledSlider)d).ApplyDescription();
+        }
+
         #endregion
 
         #region Position <-> Value Mapping
@@ -425,19 +437,14 @@ namespace AcEvoFfbTuner.Controls
         {
             _isEditing = true;
             _valueBeforeEdit = Value;
-            PART_ValueTextBox.Text = Value.ToString("G");
+            try { PART_ValueTextBox.Text = string.Format(StringFormat, Value); }
+            catch { PART_ValueTextBox.Text = Value.ToString("G"); }
             PART_ValueTextBox.SelectAll();
-            PART_ValueTextBox.Background = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x45));
-            PART_ValueTextBox.BorderThickness = new Thickness(1);
-            PART_ValueTextBox.BorderBrush = new SolidColorBrush(Color.FromRgb(0xE6, 0x7E, 0x22));
         }
 
         private void OnTextBoxLostFocus(object sender, RoutedEventArgs e)
         {
             CommitTextBox();
-            PART_ValueTextBox.Background = Brushes.Transparent;
-            PART_ValueTextBox.BorderThickness = new Thickness(0);
-            PART_ValueTextBox.BorderBrush = Brushes.Transparent;
         }
 
         private void OnTextBoxKeyDown(object sender, KeyEventArgs e)
@@ -456,9 +463,6 @@ namespace AcEvoFfbTuner.Controls
                 _isUpdatingValue = false;
                 SyncSliderFromValue();
                 SyncTextBoxFromValue();
-                PART_ValueTextBox.Background = Brushes.Transparent;
-                PART_ValueTextBox.BorderThickness = new Thickness(0);
-                PART_ValueTextBox.BorderBrush = Brushes.Transparent;
                 Keyboard.ClearFocus();
                 e.Handled = true;
             }
@@ -494,7 +498,14 @@ namespace AcEvoFfbTuner.Controls
         private void ApplyLabel()
         {
             if (PART_Label == null) return;
-            PART_Label.Text = Label ?? string.Empty;
+            string text = Label ?? string.Empty;
+            PART_Label.Text = text;
+            if (PART_LabelAbove != null)
+            {
+                PART_LabelAbove.Text = text;
+                PART_LabelAbove.Visibility = LabelAbove ? Visibility.Visible : Visibility.Collapsed;
+            }
+            PART_Label.Visibility = LabelAbove ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private void ApplyDescription()
@@ -507,7 +518,9 @@ namespace AcEvoFfbTuner.Controls
             }
             PART_Description.Text = Description;
             PART_Description.Visibility = Visibility.Visible;
-            double left = LabelWidth + (ShowCheckBox ? 30 : 0) + 12;
+            double left = LabelAbove
+                ? (ShowCheckBox ? 32 : 0)
+                : LabelWidth + (ShowCheckBox ? 30 : 0) + 12;
             PART_Description.Margin = new Thickness(left, 2, 30, 2);
         }
 
