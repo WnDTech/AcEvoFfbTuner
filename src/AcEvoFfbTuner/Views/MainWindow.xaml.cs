@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private TrackMapPopout? _trackMapPopout;
     private CalibrationWizardOverlay? _calibrationWizard;
     private Hf8MotorTestPopup? _hf8MotorTest;
+    private CompactTunerWindow? _compactTuner;
 
     public MainWindow()
     {
@@ -80,6 +81,7 @@ public partial class MainWindow : Window
         _trackMapPopout?.Close();
         _calibrationWizard?.Close();
         _iconPreview?.Close();
+        _compactTuner?.Close();
         Application.Current.Shutdown();
     }
 
@@ -323,5 +325,18 @@ public partial class MainWindow : Window
     private void OnDonateClick(object sender, RoutedEventArgs e)
     {
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://paypal.me/willndad") { UseShellExecute = true });
+    }
+
+    private void OnCompactViewClick(object sender, RoutedEventArgs e)
+    {
+        if (_compactTuner != null)
+        {
+            _compactTuner.Activate();
+            return;
+        }
+
+        _compactTuner = new CompactTunerWindow();
+        _compactTuner.Closed += (_, _) => _compactTuner = null;
+        _compactTuner.Show();
     }
 }
