@@ -2265,7 +2265,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnEqBand9GainChanged(float value) => _pipeline.Equalizer.SetBandGain(9, value);
     partial void OnSteeringLockDegreesChanged(int value) { }
     partial void OnCompressionPowerChanged(float value) => _pipeline.CompressionPower = value;
-    partial void OnSignCorrectionEnabledChanged(bool value) => _pipeline.SignCorrectionEnabled = value;
+    partial void OnSignCorrectionEnabledChanged(bool value)
+    {
+        _pipeline.SignCorrectionEnabled = value;
+        _deviceManager.ForceInvert = !value;
+        ForceInvertEnabled = !value;
+    }
     partial void OnMaxSlewRateChanged(float value) => _pipeline.MaxSlewRate = value;
     partial void OnCenterSuppressionDegreesChanged(float value) => _pipeline.CenterSuppressionDegrees = value;
     partial void OnCenterKneePowerChanged(float value) => _pipeline.CenterKneePower = value;
@@ -2276,7 +2281,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnSteerVelocityReferenceChanged(float value) => _pipeline.Damping.SteerVelocityReference = value;
     partial void OnVelocityDeadzoneChanged(float value) => _pipeline.Damping.VelocityDeadzone = value;
     partial void OnLowSpeedSmoothKmhChanged(float value) => _pipeline.ChannelMixer.LowSpeedSmoothKmh = value;
-    partial void OnForceInvertEnabledChanged(bool value) => _deviceManager.ForceInvert = value;
+    partial void OnForceInvertEnabledChanged(bool value)
+    {
+        _deviceManager.ForceInvert = value;
+        _pipeline.SignCorrectionEnabled = !value;
+        SignCorrectionEnabled = !value;
+    }
     partial void OnMaxForceLimitChanged(float value)
     {
         _pipeline.OutputClipper.SoftClipThreshold = value;

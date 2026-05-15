@@ -81,6 +81,14 @@ public sealed class FfbPipeline
         float mixedForce = ChannelMixer.Mix(raw, out var channels);
         float rawCoreForce = channels.RawCoreForce;
 
+        // AC EVO's Mz aligning torque has the same sign as the steer angle.
+        // Without correction, the force pushes the wheel further into the turn
+        // instead of back to center (self-aligning torque). Negate the core force
+        // when sign correction is enabled AND the device doesn't already invert.
+        // Devices with hardware inversion (Simagic, Cammus) set SignCorrectionEnabled=false.
+        if (SignCorrectionEnabled)
+            rawCoreForce = -rawCoreForce;
+
         // ═══════════════════════════════════════════════════════════════════════
         // CORE PATH — Zero-Latency Steering Forces
         //
