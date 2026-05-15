@@ -445,6 +445,29 @@
             </StackPanel>
         </Border>
 
+        <!-- Conflicting FFB Apps Warning Banner -->
+        <Border Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Center"
+                Background="#CC8B0000" BorderBrush="#FFFF1744" BorderThickness="1"
+                CornerRadius="6" Padding="20,12" Margin="0,12,0,0"
+                Visibility="{Binding ShowConflictingAppsWarning, Converter={StaticResource BoolToVis}}"
+                Panel.ZIndex="101">
+            <StackPanel>
+                <TextBlock Text="CONFLICTING FFB APPS DETECTED" FontSize="18" FontWeight="Black" Foreground="#FFFF1744" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding ConflictingAppsNames, StringFormat='Running: {0}'}"
+                           FontSize="14" FontWeight="SemiBold" Foreground="#FFFF8A80" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                <TextBlock TextWrapping="Wrap" FontSize="14" Foreground="#FFE6EDF3" MaxWidth="700" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,8">
+                    <Run Text="These apps send competing force commands to your wheel through DirectInput. " /><Run FontWeight="Bold" Text="When multiple apps control FFB simultaneously, forces 叠加 or conflict" /><Run Text=", causing erratic behavior, oscillation, or complete loss of the tuned feel this app provides." />
+                </TextBlock>
+                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FFffab00" MaxWidth="700" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,4">
+                    <Run Text="Close the apps listed above for accurate FFB. This app replaces all of them — it reads raw tyre physics from AC EVO shared memory and generates its own DirectInput forces. Other FFB apps cannot coexist with this pipeline." />
+                </TextBlock>
+                <TextBlock Text="{Binding ConflictingAppsDetail}"
+                           TextWrapping="Wrap" FontSize="12" Foreground="#FFCF6679" MaxWidth="700" HorizontalAlignment="Center" TextAlignment="Left" Margin="0,0,0,8" />
+                <Button Content="DISMISS" Command="{Binding DismissConflictingAppsWarningCommand}"
+                        HorizontalAlignment="Center" Padding="24,6" FontSize="14" FontWeight="Bold" />
+            </StackPanel>
+        </Border>
+
         <!-- ═══ STATUS BAR (System Log) ═══ -->
         <Border Grid.Row="2" Background="{StaticResource BgPanel}" Padding="12,4"
                 BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderBrush}">

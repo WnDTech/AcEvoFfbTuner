@@ -90,6 +90,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _showGameFfbWarning;
 
     [ObservableProperty]
+    private bool _showConflictingAppsWarning;
+
+    [ObservableProperty]
+    private string _conflictingAppsNames = "";
+
+    [ObservableProperty]
+    private string _conflictingAppsDetail = "";
+
+    [ObservableProperty]
     private string _latestVersionText = "";
 
     [ObservableProperty]
@@ -1617,6 +1626,46 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _ffbWarningDismissed = true;
     }
 
+    private bool _conflictingAppsWarningDismissed;
+
+    [RelayCommand]
+    private void DismissConflictingAppsWarning()
+    {
+        ShowConflictingAppsWarning = false;
+        _conflictingAppsWarningDismissed = true;
+    }
+
+    private int _conflictingAppsCheckCounter;
+
+    private void CheckConflictingApps()
+    {
+        _conflictingAppsCheckCounter++;
+        if (_conflictingAppsCheckCounter % 30 != 0 && !ShowConflictingAppsWarning) return;
+
+        var result = Services.ConflictingAppDetector.Detect();
+        if (result.HasConflicts)
+        {
+            ConflictingAppsNames = string.Join(", ", result.DetectedApps.Select(a => a.DisplayName));
+            var sb = new System.Text.StringBuilder();
+            foreach (var app in result.DetectedApps)
+                sb.AppendLine($"  • {app.DisplayName} — {app.Reason}");
+            ConflictingAppsDetail = sb.ToString();
+
+            if (!_conflictingAppsWarningDismissed)
+            {
+                ShowConflictingAppsWarning = true;
+                AddSystemLog($"Conflicting FFB apps detected: {ConflictingAppsNames}");
+            }
+        }
+        else
+        {
+            ShowConflictingAppsWarning = false;
+            ConflictingAppsNames = "";
+            ConflictingAppsDetail = "";
+            _conflictingAppsWarningDismissed = false;
+        }
+    }
+
     [RelayCommand]
     private void PanicStop()
     {
@@ -2531,6 +2580,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         if (IsDeviceConnected || IsAssigningSnapshotButton || IsAssigningPanicButton)
             PollSnapshotButton();
+
+        CheckConflictingApps();
 
         PacketsPerSecond = _telemetryLoop.PacketsPerSecond;
         IsGameConnected = _telemetryLoop.IsGameConnected;
