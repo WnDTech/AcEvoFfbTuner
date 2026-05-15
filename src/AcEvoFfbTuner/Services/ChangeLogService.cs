@@ -1,7 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace AcEvoFfbTuner.Services;
 
@@ -11,13 +16,37 @@ public sealed class ChangeLogEntry
     public DateTime Date { get; init; }
     public string Title { get; init; } = "";
     public List<string> Features { get; init; } = [];
-    public List<string> Fixes { get; init; } = [];
     public List<string> Improvements { get; init; } = [];
+    public List<string> Fixes { get; init; } = [];
+    public bool FromGitHub { get; init; }
 }
 
 public static class ChangeLogService
 {
-    public static readonly List<ChangeLogEntry> Entries =
+    private const string Owner = "WnDTech";
+    private const string Repo = "AcEvoFfbTuner";
+    private const string ReleasesUrl = $"https://api.github.com/repos/{Owner}/{Repo}/releases?per_page=15";
+
+    private static readonly string CacheDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "AcEvoFfbTuner");
+    private static readonly string CachePath = Path.Combine(CacheDir, "release_cache.json");
+
+    private static readonly HttpClient _http = new()
+    {
+        Timeout = TimeSpan.FromSeconds(5)
+    };
+
+    private static List<ChangeLogEntry>? _gitHubEntries;
+    private static bool _initialized;
+    private static readonly SemaphoreSlim _initLock = new(1, 1);
+
+    static ChangeLogService()
+    {
+        _http.DefaultRequestHeaders.Add("User-Agent", "AcEvoFfbTuner-Changelog");
+    }
+
+    public static readonly List<ChangeLogEntry> HardcodedEntries =
     [
         new ChangeLogEntry
         {
@@ -43,7 +72,7 @@ public static class ChangeLogService
                 "Fixed inertia to use angular acceleration instead of velocity",
                 "Removed: tanh compression, sign correction override, center suppression expansion, safety slew rate, direction-change suppression, hysteresis, oscillation detection, gear shift smoothing, low-speed damping boost",
                 "Raised slew rate to 0.40/tick for faster transients on kerb strikes and snap oversteer",
-                "Reduced center suppression to 1.5° for better on-center feel",
+                "Reduced center suppression to 1.5\u00b0 for better on-center feel",
                 "Context menu restyled: dark background, light text, hover highlights",
                 "Auto-updater: installer now closes the running app instead of unreliable self-shutdown"
             ],
@@ -119,15 +148,94 @@ public static class ChangeLogService
         }
     ];
 
+    [Obsolete("Use GetEntriesSinceAsync or AllEntries instead.")]
+    public static List<ChangeLogEntry> Entries => HardcodedEntries;
+
     public static string CurrentVersion =>
         Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.0.0";
 
+    public static async Task InitializeAsync()
+    {
+        if (_initialized) return;
+
+        await _initLock.WaitAsync();
+        try
+        {
+            if (_initialized) return;
+
+            try
+            {
+                var response = await _http.GetAsync(ReleasesUrl);
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var releases = JsonSerializer.Deserialize<List<GitHubRelease>>(json, _jsonOpts);
+                    if (releases?.Count > 0)
+                    {
+                        _gitHubEntries = releases
+                            .Select(ParseRelease)
+                            .Where(e => e != null)
+                            .ToList()!;
+                        SaveCache(_gitHubEntries);
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            _gitHubEntries ??= LoadCache();
+            _initialized = true;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+    }
+
+    public static List<ChangeLogEntry> AllEntries
+    {
+        get
+        {
+            if (_gitHubEntries?.Count > 0)
+            {
+                var gitHubVersions = _gitHubEntries.Select(e => e.Version).ToHashSet();
+                var merged = new List<ChangeLogEntry>(_gitHubEntries);
+                foreach (var entry in HardcodedEntries)
+                {
+                    if (!gitHubVersions.Contains(entry.Version))
+                        merged.Add(entry);
+                }
+                merged.Sort((a, b) => CompareVersions(b.Version, a.Version));
+                return merged;
+            }
+
+            _gitHubEntries ??= LoadCache();
+            if (_gitHubEntries?.Count > 0)
+            {
+                var cachedVersions = _gitHubEntries.Select(e => e.Version).ToHashSet();
+                var merged = new List<ChangeLogEntry>(_gitHubEntries);
+                foreach (var entry in HardcodedEntries)
+                {
+                    if (!cachedVersions.Contains(entry.Version))
+                        merged.Add(entry);
+                }
+                merged.Sort((a, b) => CompareVersions(b.Version, a.Version));
+                return merged;
+            }
+
+            return HardcodedEntries;
+        }
+    }
+
     public static List<ChangeLogEntry> GetEntriesSince(string? lastSeenVersion)
     {
-        if (string.IsNullOrWhiteSpace(lastSeenVersion))
-            return Entries;
+        var all = AllEntries;
 
-        return Entries.Where(e => IsVersionNewer(e.Version, lastSeenVersion)).ToList();
+        if (string.IsNullOrWhiteSpace(lastSeenVersion))
+            return all;
+
+        return all.Where(e => IsVersionNewer(e.Version, lastSeenVersion)).ToList();
     }
 
     public static bool IsVersionNewer(string version, string thanVersion)
@@ -135,10 +243,15 @@ public static class ChangeLogService
         return CompareVersions(version, thanVersion) > 0;
     }
 
+    private static int ParseVersionPart(string part)
+    {
+        return int.TryParse(part, out var val) ? val : 0;
+    }
+
     private static int CompareVersions(string a, string b)
     {
-        var partsA = a.Split('.').Select(int.Parse).ToArray();
-        var partsB = b.Split('.').Select(int.Parse).ToArray();
+        var partsA = a.Split('.').Select(ParseVersionPart).ToArray();
+        var partsB = b.Split('.').Select(ParseVersionPart).ToArray();
         var maxLen = Math.Max(partsA.Length, partsB.Length);
 
         for (var i = 0; i < maxLen; i++)
@@ -149,5 +262,160 @@ public static class ChangeLogService
         }
 
         return 0;
+    }
+
+    private static ChangeLogEntry? ParseRelease(GitHubRelease release)
+    {
+        var version = release.TagName?.TrimStart('v', 'V') ?? "";
+        if (string.IsNullOrEmpty(version)) return null;
+
+        var title = release.Name ?? "";
+        title = Regex.Replace(title, @"^AC\s+Evo\s+FFB\s+Tuner\s+", "", RegexOptions.IgnoreCase).Trim();
+        title = Regex.Replace(title, @"^v\d+(\.\d+)+\s*", "").Trim();
+        if (string.IsNullOrWhiteSpace(title))
+            title = "";
+
+        var entry = new ChangeLogEntry
+        {
+            Version = version,
+            Date = release.PublishedAt ?? DateTime.MinValue,
+            Title = title,
+            Features = [],
+            Improvements = [],
+            Fixes = [],
+            FromGitHub = true
+        };
+
+        ParseMarkdownBody(release.Body ?? "", entry);
+        return entry;
+    }
+
+    private static void ParseMarkdownBody(string body, ChangeLogEntry entry)
+    {
+        var lines = body.Split('\n');
+        var currentCategory = "Features";
+        var currentItems = new List<string>();
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.TrimEnd('\r');
+
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            if (line.StartsWith("## What's New", StringComparison.OrdinalIgnoreCase) ||
+                line.StartsWith("## What's Changed", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (line == "---" || line == "***")
+                continue;
+
+            if (line.StartsWith("**Full Changelog**", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (line.StartsWith("### "))
+            {
+                FlushItems(entry, currentCategory, currentItems);
+                currentItems.Clear();
+                currentCategory = ClassifySection(line);
+                continue;
+            }
+
+            if (line.StartsWith("- "))
+            {
+                var text = StripMarkdown(line.Substring(2).Trim());
+                if (!string.IsNullOrWhiteSpace(text))
+                    currentItems.Add(text);
+                continue;
+            }
+
+            if (line.StartsWith("## ") && !line.StartsWith("## What's", StringComparison.OrdinalIgnoreCase))
+            {
+                FlushItems(entry, currentCategory, currentItems);
+                currentItems.Clear();
+                currentCategory = ClassifySection(line);
+                continue;
+            }
+        }
+
+        FlushItems(entry, currentCategory, currentItems);
+    }
+
+    private static string ClassifySection(string heading)
+    {
+        var lower = heading.ToLowerInvariant();
+
+        if (lower.Contains("fix") || lower.Contains("bug"))
+            return "Fixes";
+        if (lower.Contains("improvement") || lower.Contains("enhancement") || lower.Contains("polish"))
+            return "Improvements";
+
+        return "Features";
+    }
+
+    private static void FlushItems(ChangeLogEntry entry, string category, List<string> items)
+    {
+        if (items.Count == 0) return;
+        switch (category)
+        {
+            case "Fixes":
+                entry.Fixes.AddRange(items);
+                break;
+            case "Improvements":
+                entry.Improvements.AddRange(items);
+                break;
+            default:
+                entry.Features.AddRange(items);
+                break;
+        }
+    }
+
+    private static string StripMarkdown(string text)
+    {
+        text = Regex.Replace(text, @"\*\*(.+?)\*\*", "$1");
+        text = Regex.Replace(text, @"\*(.+?)\*", "$1");
+        text = Regex.Replace(text, @"`(.+?)`", "$1");
+        text = Regex.Replace(text, @"\[(.+?)\]\(.+?\)", "$1");
+        return text.Trim();
+    }
+
+    private static void SaveCache(List<ChangeLogEntry> entries)
+    {
+        try
+        {
+            Directory.CreateDirectory(CacheDir);
+            var json = JsonSerializer.Serialize(entries, _jsonOpts);
+            File.WriteAllText(CachePath, json);
+        }
+        catch
+        {
+        }
+    }
+
+    private static List<ChangeLogEntry>? LoadCache()
+    {
+        try
+        {
+            if (!File.Exists(CachePath)) return null;
+            var json = File.ReadAllText(CachePath);
+            return JsonSerializer.Deserialize<List<ChangeLogEntry>>(json, _jsonOpts);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static readonly JsonSerializerOptions _jsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true
+    };
+
+    private sealed class GitHubRelease
+    {
+        [JsonPropertyName("tag_name")] public string? TagName { get; set; }
+        [JsonPropertyName("name")] public string? Name { get; set; }
+        [JsonPropertyName("body")] public string? Body { get; set; }
+        [JsonPropertyName("published_at")] public DateTime? PublishedAt { get; set; }
     }
 }

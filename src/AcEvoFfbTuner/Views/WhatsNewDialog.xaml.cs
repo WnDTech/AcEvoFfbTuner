@@ -17,7 +17,7 @@ public partial class WhatsNewDialog : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         var entries = ShowAllEntries
-            ? ChangeLogService.Entries
+            ? ChangeLogService.AllEntries
             : ChangeLogService.GetEntriesSince(App.Settings.LastSeenVersion);
 
         if (entries.Count == 0)

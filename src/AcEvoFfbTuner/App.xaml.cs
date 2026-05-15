@@ -87,25 +87,38 @@ public partial class App : Application
 
     private void ShowWhatsNewIfNeeded()
     {
-        var currentVersion = Services.ChangeLogService.CurrentVersion;
-        var lastSeen = Settings.LastSeenVersion;
+        _ = ShowWhatsNewIfNeededAsync();
+    }
 
-        if (lastSeen == currentVersion)
-            return;
-
-        var entries = Services.ChangeLogService.GetEntriesSince(lastSeen);
-        if (entries.Count == 0)
+    private async Task ShowWhatsNewIfNeededAsync()
+    {
+        try
         {
+            await Services.ChangeLogService.InitializeAsync();
+
+            var currentVersion = Services.ChangeLogService.CurrentVersion;
+            var lastSeen = Settings.LastSeenVersion;
+
+            if (lastSeen == currentVersion)
+                return;
+
+            var entries = Services.ChangeLogService.GetEntriesSince(lastSeen);
+            if (entries.Count == 0)
+            {
+                Settings.LastSeenVersion = currentVersion;
+                Settings.Save();
+                return;
+            }
+
+            var dialog = new Views.WhatsNewDialog { Owner = MainWindow };
+            dialog.ShowDialog();
+
             Settings.LastSeenVersion = currentVersion;
             Settings.Save();
-            return;
         }
-
-        var dialog = new Views.WhatsNewDialog { Owner = MainWindow };
-        dialog.ShowDialog();
-
-        Settings.LastSeenVersion = currentVersion;
-        Settings.Save();
+        catch
+        {
+        }
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
