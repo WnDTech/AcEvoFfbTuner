@@ -27,6 +27,7 @@
             <SolidColorBrush x:Key="SectionLfe" Color="#FFFF7B72" />
             <SolidColorBrush x:Key="SectionSignal" Color="#FF79C0FF" />
             <SolidColorBrush x:Key="SectionCrash" Color="#FFFF4444" />
+            <SolidColorBrush x:Key="SectionWetWeather" Color="#FF4FC3F7" />
 
             <Style TargetType="Window">
                 <Setter Property="Background" Value="{StaticResource BgDark}" />

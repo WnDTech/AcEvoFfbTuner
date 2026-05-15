@@ -80,6 +80,8 @@ public sealed class FfbVibrationMixer
     public float YawAccelReference { get; set; } = 2.0f;
     public float RearSlipModulation { get; private set; }
 
+    public float WetCurbScale { get; set; } = 1.0f;
+
     private float _prevRearMz;
     private float _prevRearFy;
     private float _smRearSlipIntensity;
@@ -229,7 +231,7 @@ public sealed class FfbVibrationMixer
         _smSuspRoad = _smSuspRoad * 0.3f + roadAccum * 0.7f;
 
         float suspSpeedScale = Math.Clamp(raw.SpeedKmh / 100f, 0f, 2f);
-        float curbForce = _smSuspCurb * 2.0f * MathF.Max(KerbGain, 0.1f) * suspSpeedScale;
+        float curbForce = _smSuspCurb * 2.0f * MathF.Max(KerbGain, 0.1f) * suspSpeedScale * WetCurbScale;
         float roadForce = _smSuspRoad * 150f * MathF.Max(RoadGain, 0.1f) * suspSpeedScale;
         float rawVib = (curbForce + roadForce) * SuspensionRoadGain;
         RoadForceModulation = Math.Clamp(rawVib, -0.15f, 0.15f);
@@ -371,6 +373,7 @@ public sealed class FfbVibrationMixer
         _smSuspRoad = 0f;
         _contactNormalZeroFrames = 0;
         _contactNormalFallback = false;
+        WetCurbScale = 1.0f;
 
         ScrubModulation = 0f;
         _smScrubIntensity = 0f;

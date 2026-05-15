@@ -581,6 +581,56 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private float _tyreConditionMaxBlowoutAmplitude = 0.25f;
 
+    // ── Wet Weather ──────────────────────────────────────────────────
+    [ObservableProperty]
+    private bool _wetWeatherEnabled;
+
+    [ObservableProperty]
+    private bool _wetWeatherAutoDetect = true;
+
+    [ObservableProperty]
+    private float _wetWeatherManualIntensity = 1.0f;
+
+    [ObservableProperty]
+    private float _wetWeatherRoadVibSuppression = 0.70f;
+
+    [ObservableProperty]
+    private float _wetWeatherCurbSuppression = 0.40f;
+
+    [ObservableProperty]
+    private float _wetWeatherScrubSuppression = 0.25f;
+
+    [ObservableProperty]
+    private float _wetWeatherPeakSlipAngleMultiplier = 1.60f;
+
+    [ObservableProperty]
+    private float _wetWeatherDampingReduction = 0.30f;
+
+    [ObservableProperty]
+    private float _wetWeatherNoiseFloorSuppression = 0.50f;
+
+    [ObservableProperty]
+    private bool _wetWeatherHydroplaningEnabled = true;
+
+    [ObservableProperty]
+    private float _wetWeatherHydroplaningSpeedThreshold = 120f;
+
+    [ObservableProperty]
+    private float _wetWeatherHydroplaningMaxAttenuation = 0.30f;
+
+    [ObservableProperty]
+    private float _wetWeatherCurrentFactor;
+
+    // ── Tyre Compound ─────────────────────────────────────────────────
+    [ObservableProperty]
+    private string _currentTyreCompoundFront = "";
+
+    [ObservableProperty]
+    private string _currentTyreCompoundRear = "";
+
+    [ObservableProperty]
+    private string _currentTyreCategoryName = "Unknown";
+
     // ── Stationary Friction (engine-off wheel scrub) ──────────────────
     [ObservableProperty]
     private float _staticFrictionGain = 1.0f;
@@ -2333,6 +2383,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnTyreConditionBlowoutThresholdChanged(float value) => _pipeline.TyreCondition.BlowoutPressureThreshold = value;
     partial void OnTyreConditionMaxBlowoutAmplitudeChanged(float value) => _pipeline.TyreCondition.MaxBlowoutAmplitude = value;
 
+    partial void OnWetWeatherEnabledChanged(bool value) => _pipeline.WetWeather.Enabled = value;
+    partial void OnWetWeatherAutoDetectChanged(bool value) => _pipeline.WetWeather.AutoDetect = value;
+    partial void OnWetWeatherManualIntensityChanged(float value) => _pipeline.WetWeather.ManualIntensity = value;
+    partial void OnWetWeatherRoadVibSuppressionChanged(float value) => _pipeline.WetWeather.RoadVibSuppression = value;
+    partial void OnWetWeatherCurbSuppressionChanged(float value) => _pipeline.WetWeather.CurbSuppression = value;
+    partial void OnWetWeatherScrubSuppressionChanged(float value) => _pipeline.WetWeather.ScrubSuppression = value;
+    partial void OnWetWeatherPeakSlipAngleMultiplierChanged(float value) => _pipeline.WetWeather.PeakSlipAngleMultiplier = value;
+    partial void OnWetWeatherDampingReductionChanged(float value) => _pipeline.WetWeather.DampingReduction = value;
+    partial void OnWetWeatherNoiseFloorSuppressionChanged(float value) => _pipeline.WetWeather.NoiseFloorSuppression = value;
+    partial void OnWetWeatherHydroplaningEnabledChanged(bool value) => _pipeline.WetWeather.HydroplaningEnabled = value;
+    partial void OnWetWeatherHydroplaningSpeedThresholdChanged(float value) => _pipeline.WetWeather.HydroplaningSpeedThreshold = value;
+    partial void OnWetWeatherHydroplaningMaxAttenuationChanged(float value) => _pipeline.WetWeather.HydroplaningMaxAttenuation = value;
+
     // ── Stationary Friction handlers ──────────────────────────────────
     partial void OnStaticFrictionGainChanged(float value) => _telemetryLoop.StaticFriction.Gain = value;
     partial void OnStaticFrictionMaxElasticStretchChanged(float value) => _telemetryLoop.StaticFriction.MaxElasticStretch = value;
@@ -2455,10 +2518,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     processed.PostDampingForce, processed.PostDynamicForce,
                     processed.ChannelMzFront, processed.ChannelFxFront, processed.ChannelFyFront,
                     processed.PostLutForce, processed.IsClipping,
-                    raw.GasInput, raw.BrakeInput, raw);
+                    raw.GasInput, raw.BrakeInput, raw, processed.WetnessFactor);
 
                 mw.UpdateCalibrationWizard(raw.SpeedKmh, processed.MainForce, processed.IsClipping);
             }
+
+            WetWeatherCurrentFactor = processed.WetnessFactor;
+            CurrentTyreCompoundFront = processed.TyreCompoundFrontName;
+            CurrentTyreCompoundRear = processed.TyreCompoundRearName;
+            CurrentTyreCategoryName = processed.TyreCategory.ToString();
 
             CarPosX = raw.CarX;
             CarPosZ = raw.CarZ;
@@ -2722,6 +2790,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         TyreConditionBlowoutThreshold = profile.TyreCondition.BlowoutPressureThreshold;
         TyreConditionMaxBlowoutAmplitude = profile.TyreCondition.MaxBlowoutAmplitude;
 
+        WetWeatherEnabled = profile.WetWeather.Enabled;
+        WetWeatherAutoDetect = profile.WetWeather.AutoDetect;
+        WetWeatherManualIntensity = profile.WetWeather.ManualIntensity;
+        WetWeatherRoadVibSuppression = profile.WetWeather.RoadVibSuppression;
+        WetWeatherCurbSuppression = profile.WetWeather.CurbSuppression;
+        WetWeatherScrubSuppression = profile.WetWeather.ScrubSuppression;
+        WetWeatherPeakSlipAngleMultiplier = profile.WetWeather.PeakSlipAngleMultiplier;
+        WetWeatherDampingReduction = profile.WetWeather.DampingReduction;
+        WetWeatherNoiseFloorSuppression = profile.WetWeather.NoiseFloorSuppression;
+        WetWeatherHydroplaningEnabled = profile.WetWeather.HydroplaningEnabled;
+        WetWeatherHydroplaningSpeedThreshold = profile.WetWeather.HydroplaningSpeedThreshold;
+        WetWeatherHydroplaningMaxAttenuation = profile.WetWeather.HydroplaningMaxAttenuation;
+
         StaticFrictionGain = profile.StaticFriction.Gain;
         StaticFrictionMaxElasticStretch = profile.StaticFriction.MaxElasticStretch;
         StaticFrictionSpringStiffness = profile.StaticFriction.SpringStiffness;
@@ -2840,6 +2921,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.TyreCondition.DamageAsymmetryGain = TyreConditionDamageAsymmetryGain;
         _pipeline.TyreCondition.BlowoutPressureThreshold = TyreConditionBlowoutThreshold;
         _pipeline.TyreCondition.MaxBlowoutAmplitude = TyreConditionMaxBlowoutAmplitude;
+
+        _pipeline.WetWeather.Enabled = WetWeatherEnabled;
+        _pipeline.WetWeather.AutoDetect = WetWeatherAutoDetect;
+        _pipeline.WetWeather.ManualIntensity = WetWeatherManualIntensity;
+        _pipeline.WetWeather.RoadVibSuppression = WetWeatherRoadVibSuppression;
+        _pipeline.WetWeather.CurbSuppression = WetWeatherCurbSuppression;
+        _pipeline.WetWeather.ScrubSuppression = WetWeatherScrubSuppression;
+        _pipeline.WetWeather.PeakSlipAngleMultiplier = WetWeatherPeakSlipAngleMultiplier;
+        _pipeline.WetWeather.DampingReduction = WetWeatherDampingReduction;
+        _pipeline.WetWeather.NoiseFloorSuppression = WetWeatherNoiseFloorSuppression;
+        _pipeline.WetWeather.HydroplaningEnabled = WetWeatherHydroplaningEnabled;
+        _pipeline.WetWeather.HydroplaningSpeedThreshold = WetWeatherHydroplaningSpeedThreshold;
+        _pipeline.WetWeather.HydroplaningMaxAttenuation = WetWeatherHydroplaningMaxAttenuation;
 
         _telemetryLoop.StaticFriction.Gain = StaticFrictionGain;
         _telemetryLoop.StaticFriction.MaxElasticStretch = StaticFrictionMaxElasticStretch;

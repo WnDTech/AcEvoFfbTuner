@@ -650,10 +650,10 @@
                         </controls:SectionCard.InnerContent>
                     </controls:SectionCard>
 
-                    <!-- AUTO-GAIN -->
-                    <controls:SectionCard Title="AUTO-GAIN"
-                                          SectionBrush="{StaticResource SectionOutput}"
-                                          IsExpanded="False">
+                     <!-- AUTO-GAIN -->
+                     <controls:SectionCard Title="AUTO-GAIN"
+                                           SectionBrush="{StaticResource SectionOutput}"
+                                           IsExpanded="False">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="13" Foreground="#FF8B949E">
                                 <Run Text="Scale: " /><Run Text="{Binding AutoGainScale, StringFormat='{}{0:F2}'}" Foreground="#FFF0883E" />
@@ -671,6 +671,97 @@
                                     Label="Auto-Gain Scale" StringFormat="{}{0:F3}"
                                     Description="Target level when Auto-Gain is active. Higher = stronger auto-compensation so different cars feel similar."
                                     SectionColor="{StaticResource SectionOutput}" />
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- ═══ GROUP C: CONDITIONS ═══ -->
+                    <TextBlock Text="C O N D I T I O N S" FontSize="12" FontWeight="Bold"
+                               Foreground="{StaticResource TextDimBrush}" Margin="0,20,0,12" />
+
+                    <!-- WET WEATHER -->
+                    <controls:SectionCard Title="WET WEATHER"
+                                          SectionBrush="{StaticResource SectionWetWeather}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Factor: " /><Run Text="{Binding WetWeatherCurrentFactor, StringFormat='{}{0:F2}'}" Foreground="#FF4FC3F7" />
+                                <Run Text=" · " /><Run Text="Road: " /><Run Text="{Binding WetWeatherRoadVibSuppression, StringFormat='{}{0:F2}'}" Foreground="#FF4FC3F7" />
+                                <Run Text=" · " /><Run Text="Curb: " /><Run Text="{Binding WetWeatherCurbSuppression, StringFormat='{}{0:F2}'}" Foreground="#FF4FC3F7" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <TextBlock Text="Adjusts FFB for wet track conditions. Suppresses vibration detail, widens slip curves, increases noise floor, and optionally simulates hydroplaning. Enable before driving in rain." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+                                <DockPanel Margin="0,6">
+                                    <TextBlock Text="Enable Wet Weather" Width="200" VerticalAlignment="Center" FontWeight="Bold" FontSize="15" DockPanel.Dock="Left" />
+                                    <CheckBox IsChecked="{Binding WetWeatherEnabled}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                                </DockPanel>
+                                <DockPanel Margin="0,6">
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                        <CheckBox IsChecked="{Binding WetWeatherAutoDetect}" Margin="0,0,12,0" />
+                                        <TextBlock Text="Auto-Detect Wet Conditions" FontSize="15" />
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <TextBlock Text="Current Wetness Factor (read-only)" Style="{StaticResource SubSectionHeader}" Margin="0,8,0,2" />
+                                <TextBlock FontSize="13" Foreground="#FF4FC3F7" Margin="0,0,0,8">
+                                    <Run Text="Wetness: " /><Run Text="{Binding WetWeatherCurrentFactor, StringFormat='{}{0:F3}'}" FontSize="16" FontWeight="Bold" />
+                                </TextBlock>
+
+                                <TextBlock Text="Vibration Suppression" Style="{StaticResource SubSectionHeader}" Margin="0,4,0,2" />
+                                <controls:LabeledSlider Value="{Binding WetWeatherRoadVibSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Road Vibration" StringFormat="{}{0:F3}"
+                                    Description="How much road surface vibration is suppressed in wet conditions. 0 = full road feel, 0.7 = dampened, 1.0 = road feel removed."
+                                    SectionColor="{StaticResource SectionWetWeather}" />
+                                <controls:LabeledSlider Value="{Binding WetWeatherCurbSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Curb Vibration" StringFormat="{}{0:F3}"
+                                    Description="How much curb/kerb vibration is suppressed in wet conditions. Kerbs are less pronounced on wet tracks."
+                                    SectionColor="{StaticResource SectionWetWeather}" />
+                                <controls:LabeledSlider Value="{Binding WetWeatherScrubSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Tire Scrub" StringFormat="{}{0:F3}"
+                                    Description="How much tire scrub texture is suppressed in wet conditions. Less grip = less scrub grain."
+                                    SectionColor="{StaticResource SectionWetWeather}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Wet Weather Settings">
+                                    <StackPanel>
+                                        <TextBlock Text="Manual Control" Style="{StaticResource SubSectionHeader}" Margin="0,4,0,2" />
+                                        <controls:LabeledSlider Value="{Binding WetWeatherManualIntensity, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Manual Intensity" StringFormat="{}{0:F3}"
+                                            Description="When auto-detect is off, this controls wetness intensity directly. 0 = dry, 1 = heavy rain."
+                                            SectionColor="{StaticResource SectionWetWeather}" />
+
+                                        <TextBlock Text="Physics Adjustments" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
+                                        <controls:LabeledSlider Value="{Binding WetWeatherPeakSlipAngleMultiplier, Mode=TwoWay}" Minimum="1.0" Maximum="3.0" TickFrequency="0.05"
+                                            Label="Peak Slip Angle Mult" StringFormat="{}{0:F2}"
+                                            Description="Multiplies the effective peak slip angle. 1.0 = dry curve, 1.6 = wider wet curve (peak grip at larger slip angles)."
+                                            SectionColor="{StaticResource SectionWetWeather}" />
+                                        <controls:LabeledSlider Value="{Binding WetWeatherDampingReduction, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Damping Reduction" StringFormat="{}{0:F3}"
+                                            Description="How much speed damping is reduced in wet conditions. Wet tyres have less mechanical grip = less steering resistance."
+                                            SectionColor="{StaticResource SectionWetWeather}" />
+                                        <controls:LabeledSlider Value="{Binding WetWeatherNoiseFloorSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Noise Floor Boost" StringFormat="{}{0:F3}"
+                                            Description="How much the noise floor is raised in wet conditions. Masks fine detail that would be lost on a wet track surface."
+                                            SectionColor="{StaticResource SectionWetWeather}" />
+
+                                        <TextBlock Text="Hydroplaning" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
+                                        <DockPanel Margin="0,4">
+                                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                                <CheckBox IsChecked="{Binding WetWeatherHydroplaningEnabled}" Margin="0,0,12,0" />
+                                                <TextBlock Text="Enable Hydroplaning Feel" FontSize="15" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <controls:LabeledSlider Value="{Binding WetWeatherHydroplaningSpeedThreshold, Mode=TwoWay}" Minimum="60" Maximum="250" TickFrequency="5"
+                                            Label="Speed Threshold (km/h)" StringFormat="{}{0:F0}"
+                                            Description="Speed above which hydroplaning risk increases. Lower = earlier onset (standing water), higher = only at very high speed."
+                                            SectionColor="{StaticResource SectionWetWeather}" />
+                                        <controls:LabeledSlider Value="{Binding WetWeatherHydroplaningMaxAttenuation, Mode=TwoWay}" Minimum="0" Maximum="0.8" TickFrequency="0.01"
+                                            Label="Max Attenuation" StringFormat="{}{0:F3}"
+                                            Description="Maximum force reduction during hydroplaning. 0.3 = subtle lightness, 0.6 = noticeable force loss, 0.8 = severe aquaplaning."
+                                            SectionColor="{StaticResource SectionWetWeather}" />
+                                    </StackPanel>
+                                </Expander>
                             </StackPanel>
                         </controls:SectionCard.InnerContent>
                     </controls:SectionCard>

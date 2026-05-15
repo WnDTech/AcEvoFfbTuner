@@ -97,7 +97,7 @@ public partial class TelemetryPage : UserControl
     public void UpdateProfiler(float speed, float steerAngle, float forceOut, float rawFF,
         float compress, float slip, float damping, float dynEff,
         float mzFront, float fxFront, float fyFront, float lut, bool clipping,
-        float gasInput, float brakeInput, FfbRawData? rawPhysics = null)
+        float gasInput, float brakeInput, FfbRawData? rawPhysics = null, float wetness = 0f)
     {
         ProfPush(_pOut, forceOut);
         ProfPush(_pRaw, rawFF);
@@ -146,11 +146,11 @@ public partial class TelemetryPage : UserControl
 
         if (rawPhysics != null)
         {
-            _pCsv.Add($"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{slip:F6},{damping:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3},{rawPhysics.SuspensionTravel[0]:F6},{rawPhysics.SuspensionTravel[1]:F6},{rawPhysics.SuspensionTravel[2]:F6},{rawPhysics.SuspensionTravel[3]:F6},{rawPhysics.WheelLoad[0]:F2},{rawPhysics.WheelLoad[1]:F2},{rawPhysics.WheelLoad[2]:F2},{rawPhysics.WheelLoad[3]:F2},{rawPhysics.SlipAngle[0]:F6},{rawPhysics.SlipAngle[1]:F6},{rawPhysics.SlipAngle[2]:F6},{rawPhysics.SlipAngle[3]:F6},{rawPhysics.TyreContactNormalX[0]:F6},{rawPhysics.TyreContactNormalX[1]:F6},{rawPhysics.TyreContactNormalX[2]:F6},{rawPhysics.TyreContactNormalX[3]:F6},{rawPhysics.TyreContactNormalZ[0]:F6},{rawPhysics.TyreContactNormalZ[1]:F6},{rawPhysics.TyreContactNormalZ[2]:F6},{rawPhysics.TyreContactNormalZ[3]:F6},{rawPhysics.TyreContactPointY[0]:F6},{rawPhysics.TyreContactPointY[1]:F6},{rawPhysics.KerbVibration:F6},{rawPhysics.RoadVibrations:F6}");
+            _pCsv.Add($"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{slip:F6},{damping:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3},{rawPhysics.SuspensionTravel[0]:F6},{rawPhysics.SuspensionTravel[1]:F6},{rawPhysics.SuspensionTravel[2]:F6},{rawPhysics.SuspensionTravel[3]:F6},{rawPhysics.WheelLoad[0]:F2},{rawPhysics.WheelLoad[1]:F2},{rawPhysics.WheelLoad[2]:F2},{rawPhysics.WheelLoad[3]:F2},{rawPhysics.SlipAngle[0]:F6},{rawPhysics.SlipAngle[1]:F6},{rawPhysics.SlipAngle[2]:F6},{rawPhysics.SlipAngle[3]:F6},{rawPhysics.TyreContactNormalX[0]:F6},{rawPhysics.TyreContactNormalX[1]:F6},{rawPhysics.TyreContactNormalX[2]:F6},{rawPhysics.TyreContactNormalX[3]:F6},{rawPhysics.TyreContactNormalZ[0]:F6},{rawPhysics.TyreContactNormalZ[1]:F6},{rawPhysics.TyreContactNormalZ[2]:F6},{rawPhysics.TyreContactNormalZ[3]:F6},{rawPhysics.TyreContactPointY[0]:F6},{rawPhysics.TyreContactPointY[1]:F6},{rawPhysics.KerbVibration:F6},{rawPhysics.RoadVibrations:F6},{wetness:F4}");
         }
         else
         {
-            _pCsv.Add($"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{slip:F6},{damping:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0");
+            _pCsv.Add($"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{slip:F6},{damping:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,{wetness:F4}");
         }
     }
 
@@ -369,6 +369,9 @@ public partial class TelemetryPage : UserControl
 
         sb.AppendLine($"=== FFB FULL ANALYSIS @ {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===");
         sb.AppendLine($"Profile: {prof?.Name ?? "None"}");
+        sb.AppendLine($"TyreCompoundFront: {vm?.CurrentTyreCompoundFront ?? ""}  Category: {vm?.CurrentTyreCategoryName ?? "Unknown"}");
+        sb.AppendLine($"TyreCompoundRear:  {vm?.CurrentTyreCompoundRear ?? ""}");
+        sb.AppendLine($"WetnessFactor:     {vm?.WetWeatherCurrentFactor ?? 0f:F3}");
         sb.AppendLine();
 
         sb.AppendLine($"=== PROFILER STATISTICS (last ~{count} frames, global peak across {_pStatFrames}) ===");
@@ -452,7 +455,7 @@ public partial class TelemetryPage : UserControl
         if (_pCsv.Count > 0)
         {
             sb.AppendLine($"=== TIME SERIES DATA ({_pCsv.Count} rows) ===");
-            sb.AppendLine("Time,SpeedKmh,SteerAngle,ForceOut,RawFF,Compress,LUT,Slip,Damping,Dynamic,MzFront,FxFront,FyFront,Clipping,Gas,Brake,SuspFL,SuspFR,SuspRL,SuspRR,LoadFL,LoadFR,LoadRL,LoadRR,SlipAFL,SlipAFR,SlipARL,SlipARR,NormalXFL,NormalXFR,NormalXRL,NormalXRR,NormalZFL,NormalZFR,NormalZRL,NormalZRR,CpYFL,CpYFR,KerbVib,RoadVib");
+            sb.AppendLine("Time,SpeedKmh,SteerAngle,ForceOut,RawFF,Compress,LUT,Slip,Damping,Dynamic,MzFront,FxFront,FyFront,Clipping,Gas,Brake,SuspFL,SuspFR,SuspRL,SuspRR,LoadFL,LoadFR,LoadRL,LoadRR,SlipAFL,SlipAFR,SlipARL,SlipARR,NormalXFL,NormalXFR,NormalXRL,NormalXRR,NormalZFL,NormalZFR,NormalZRL,NormalZRR,CpYFL,CpYFR,KerbVib,RoadVib,Wetness");
             foreach (var line in _pCsv)
                 sb.AppendLine(line);
         }
@@ -487,7 +490,7 @@ public partial class TelemetryPage : UserControl
         if (dlg.ShowDialog() != true) return;
 
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Time,SpeedKmh,SteerAngle,ForceOut,RawFF,Compress,LUT,Slip,Damping,Dynamic,MzFront,FxFront,FyFront,Clipping,Gas,Brake,SuspFL,SuspFR,SuspRL,SuspRR,LoadFL,LoadFR,LoadRL,LoadRR,SlipAFL,SlipAFR,SlipARL,SlipARR,NormalXFL,NormalXFR,NormalXRL,NormalXRR,NormalZFL,NormalZFR,NormalZRL,NormalZRR,CpYFL,CpYFR,KerbVib,RoadVib");
+        sb.AppendLine("Time,SpeedKmh,SteerAngle,ForceOut,RawFF,Compress,LUT,Slip,Damping,Dynamic,MzFront,FxFront,FyFront,Clipping,Gas,Brake,SuspFL,SuspFR,SuspRL,SuspRR,LoadFL,LoadFR,LoadRL,LoadRR,SlipAFL,SlipAFR,SlipARL,SlipARR,NormalXFL,NormalXFR,NormalXRL,NormalXRR,NormalZFL,NormalZFR,NormalZRL,NormalZRR,CpYFL,CpYFR,KerbVib,RoadVib,Wetness");
         foreach (var line in _pCsv)
             sb.AppendLine(line);
         File.WriteAllText(dlg.FileName, sb.ToString());

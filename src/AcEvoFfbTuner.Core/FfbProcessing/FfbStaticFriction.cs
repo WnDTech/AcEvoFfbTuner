@@ -291,10 +291,14 @@ public sealed class FfbStaticFriction
     {
         if (string.IsNullOrEmpty(compound))
             return 1.0f;
-        if (compound.Contains("Slick", StringComparison.OrdinalIgnoreCase)
-            || compound.Contains("Racing", StringComparison.OrdinalIgnoreCase))
-            return SlickCompoundBoost;
-        return 1.0f;
+        var cat = TyreCompoundClassifier.Classify(compound);
+        return cat switch
+        {
+            TyreCompoundCategory.DrySlickSoft => SlickCompoundBoost,
+            TyreCompoundCategory.DrySlickMedium => SlickCompoundBoost,
+            TyreCompoundCategory.DrySlickHard => SlickCompoundBoost,
+            _ => 1.0f
+        };
     }
 
     public void Reset()

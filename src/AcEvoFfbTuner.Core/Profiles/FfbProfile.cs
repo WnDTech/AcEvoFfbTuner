@@ -6,7 +6,7 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 18;
+    public const int CurrentVersion = 19;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -75,6 +75,7 @@ public sealed class FfbProfile
     public StaticFrictionConfig StaticFriction { get; set; } = new();
     public CrashConfig Crash { get; set; } = new();
     public TyreConditionConfig TyreCondition { get; set; } = new();
+    public WetWeatherConfig WetWeather { get; set; } = new();
     public TelemetrySnapshotDto? LastTelemetrySnapshot { get; set; }
 
     public void ApplyToPipeline(FfbPipeline pipeline)
@@ -214,6 +215,19 @@ public sealed class FfbProfile
         pipeline.TyreCondition.DamageAsymmetryGain = TyreCondition.DamageAsymmetryGain;
         pipeline.TyreCondition.BlowoutPressureThreshold = TyreCondition.BlowoutPressureThreshold;
         pipeline.TyreCondition.MaxBlowoutAmplitude = TyreCondition.MaxBlowoutAmplitude;
+
+        pipeline.WetWeather.Enabled = WetWeather.Enabled;
+        pipeline.WetWeather.AutoDetect = WetWeather.AutoDetect;
+        pipeline.WetWeather.ManualIntensity = WetWeather.ManualIntensity;
+        pipeline.WetWeather.RoadVibSuppression = WetWeather.RoadVibSuppression;
+        pipeline.WetWeather.CurbSuppression = WetWeather.CurbSuppression;
+        pipeline.WetWeather.ScrubSuppression = WetWeather.ScrubSuppression;
+        pipeline.WetWeather.PeakSlipAngleMultiplier = WetWeather.PeakSlipAngleMultiplier;
+        pipeline.WetWeather.DampingReduction = WetWeather.DampingReduction;
+        pipeline.WetWeather.NoiseFloorSuppression = WetWeather.NoiseFloorSuppression;
+        pipeline.WetWeather.HydroplaningEnabled = WetWeather.HydroplaningEnabled;
+        pipeline.WetWeather.HydroplaningSpeedThreshold = WetWeather.HydroplaningSpeedThreshold;
+        pipeline.WetWeather.HydroplaningMaxAttenuation = WetWeather.HydroplaningMaxAttenuation;
     }
 
     public void ApplyToStaticFriction(FfbStaticFriction sf)
@@ -381,6 +395,21 @@ public sealed class FfbProfile
             DamageAsymmetryGain = pipeline.TyreCondition.DamageAsymmetryGain,
             BlowoutPressureThreshold = pipeline.TyreCondition.BlowoutPressureThreshold,
             MaxBlowoutAmplitude = pipeline.TyreCondition.MaxBlowoutAmplitude
+        };
+        WetWeather = new WetWeatherConfig
+        {
+            Enabled = pipeline.WetWeather.Enabled,
+            AutoDetect = pipeline.WetWeather.AutoDetect,
+            ManualIntensity = pipeline.WetWeather.ManualIntensity,
+            RoadVibSuppression = pipeline.WetWeather.RoadVibSuppression,
+            CurbSuppression = pipeline.WetWeather.CurbSuppression,
+            ScrubSuppression = pipeline.WetWeather.ScrubSuppression,
+            PeakSlipAngleMultiplier = pipeline.WetWeather.PeakSlipAngleMultiplier,
+            DampingReduction = pipeline.WetWeather.DampingReduction,
+            NoiseFloorSuppression = pipeline.WetWeather.NoiseFloorSuppression,
+            HydroplaningEnabled = pipeline.WetWeather.HydroplaningEnabled,
+            HydroplaningSpeedThreshold = pipeline.WetWeather.HydroplaningSpeedThreshold,
+            HydroplaningMaxAttenuation = pipeline.WetWeather.HydroplaningMaxAttenuation
         };
     }
 
@@ -648,6 +677,7 @@ public sealed class FfbProfile
         StaticFriction.SanitizeFloats();
         Crash.SanitizeFloats();
         TyreCondition.SanitizeFloats();
+        WetWeather.SanitizeFloats();
     }
 
     private static float Sanitize(float v) =>
@@ -823,6 +853,11 @@ public sealed class FfbProfile
         if (Version < 18)
         {
             TyreCondition ??= new TyreConditionConfig();
+        }
+
+        if (Version < 19)
+        {
+            WetWeather ??= new WetWeatherConfig();
         }
 
         Version = CurrentVersion;
@@ -1234,4 +1269,34 @@ public sealed class TyreConditionConfig
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
     public void SanitizeFloats() { BlowoutVibrationGain = S(BlowoutVibrationGain); PressureLossGain = S(PressureLossGain); DamageAsymmetryGain = S(DamageAsymmetryGain); BlowoutPressureThreshold = S(BlowoutPressureThreshold); MaxBlowoutAmplitude = S(MaxBlowoutAmplitude); }
+}
+
+public sealed class WetWeatherConfig
+{
+    public bool Enabled { get; set; } = false;
+
+    public bool AutoDetect { get; set; } = true;
+
+    public float ManualIntensity { get; set; } = 1.0f;
+
+    public float RoadVibSuppression { get; set; } = 0.70f;
+
+    public float CurbSuppression { get; set; } = 0.40f;
+
+    public float ScrubSuppression { get; set; } = 0.25f;
+
+    public float PeakSlipAngleMultiplier { get; set; } = 1.60f;
+
+    public float DampingReduction { get; set; } = 0.30f;
+
+    public float NoiseFloorSuppression { get; set; } = 0.50f;
+
+    public bool HydroplaningEnabled { get; set; } = true;
+
+    public float HydroplaningSpeedThreshold { get; set; } = 120f;
+
+    public float HydroplaningMaxAttenuation { get; set; } = 0.30f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { ManualIntensity = S(ManualIntensity); RoadVibSuppression = S(RoadVibSuppression); CurbSuppression = S(CurbSuppression); ScrubSuppression = S(ScrubSuppression); PeakSlipAngleMultiplier = S(PeakSlipAngleMultiplier); DampingReduction = S(DampingReduction); NoiseFloorSuppression = S(NoiseFloorSuppression); HydroplaningSpeedThreshold = S(HydroplaningSpeedThreshold); HydroplaningMaxAttenuation = S(HydroplaningMaxAttenuation); }
 }

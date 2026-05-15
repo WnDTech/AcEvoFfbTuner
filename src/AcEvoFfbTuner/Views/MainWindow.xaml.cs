@@ -93,12 +93,12 @@ public partial class MainWindow : Window
     public void UpdateProfiler(float speed, float steerAngle, float forceOut, float rawFF,
         float compress, float slip, float damping, float dynEff,
         float mzFront, float fxFront, float fyFront, float lut, bool clipping,
-        float gasInput, float brakeInput, FfbRawData? rawPhysics = null)
+        float gasInput, float brakeInput, FfbRawData? rawPhysics = null, float wetness = 0f)
     {
         TelemetryPageCtrl.UpdateProfiler(speed, steerAngle, forceOut, rawFF,
             compress, slip, damping, dynEff,
             mzFront, fxFront, fyFront, lut, clipping,
-            gasInput, brakeInput, rawPhysics);
+            gasInput, brakeInput, rawPhysics, wetness);
     }
 
     public void UpdateTrackMapDisplay(float carX, float carZ, float heading, float speedKmh,

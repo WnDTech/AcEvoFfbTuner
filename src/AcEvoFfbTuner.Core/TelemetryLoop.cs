@@ -835,8 +835,13 @@ public sealed class TelemetryLoop : IDisposable
             IsIgnitionOn = graphics.IsIgnitionOn,
             EngineType = graphics.EngineType,
             TyreCompoundFront = DecodeString(graphics.TyreLf.TyreCompoundFront),
+            TyreCompoundRear = DecodeString(graphics.TyreLr.TyreCompoundRear),
+            UseSingleCompound = graphics.UseSingleCompound,
             WheelsPressure = new float[] { physics.WheelsPressure[0], physics.WheelsPressure[1], physics.WheelsPressure[2], physics.WheelsPressure[3] },
-            SuspensionDamage = new float[] { physics.SuspensionDamage[0], physics.SuspensionDamage[1], physics.SuspensionDamage[2], physics.SuspensionDamage[3] }
+            SuspensionDamage = new float[] { physics.SuspensionDamage[0], physics.SuspensionDamage[1], physics.SuspensionDamage[2], physics.SuspensionDamage[3] },
+            AirTemp = physics.AirTemp,
+            RoadTemp = physics.RoadTemp,
+            TyreDirtyLevel = new float[] { physics.TyreDirtyLevel[0], physics.TyreDirtyLevel[1], physics.TyreDirtyLevel[2], physics.TyreDirtyLevel[3] }
         };
     }
 

@@ -61,8 +61,13 @@ public sealed class FfbRawData
     public bool IsIgnitionOn { get; set; }
     public AcEvoEngineType EngineType { get; set; }
     public string TyreCompoundFront { get; set; } = "";
+    public string TyreCompoundRear { get; set; } = "";
+    public bool UseSingleCompound { get; set; }
     public float[] WheelsPressure { get; set; } = new float[4];
     public float[] SuspensionDamage { get; set; } = new float[4];
+    public float AirTemp { get; set; }
+    public float RoadTemp { get; set; }
+    public float[] TyreDirtyLevel { get; set; } = new float[4];
 }
 
 public sealed class FfbProcessedData
@@ -99,4 +104,13 @@ public sealed class FfbProcessedData
     /// vibrations, scrub, LFE — all routed through EQ biquads.
     /// </summary>
     public float DetailForce { get; set; }
+
+    /// <summary>
+    /// Wet weather factor: 0 = dry, 1 = full wet. Computed by FfbWetWeather.
+    /// </summary>
+    public float WetnessFactor { get; set; }
+
+    public TyreCompoundCategory TyreCategory { get; set; }
+    public string TyreCompoundFrontName { get; set; } = "";
+    public string TyreCompoundRearName { get; set; } = "";
 }

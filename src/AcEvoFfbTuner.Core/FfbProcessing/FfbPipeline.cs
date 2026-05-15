@@ -19,6 +19,11 @@ public sealed class FfbPipeline
     public FfbGripGuard GripGuard { get; } = new();
     public FfbCrashDetector CrashDetector { get; } = new();
     public FfbTyreCondition TyreCondition { get; } = new();
+    public FfbWetWeather WetWeather { get; } = new();
+
+    public TyreCompoundCategory CurrentTyreCategory { get; private set; } = TyreCompoundCategory.Unknown;
+    public string CurrentTyreCompoundFront { get; private set; } = "";
+    public string CurrentTyreCompoundRear { get; private set; } = "";
 
 
     public float ForceScale { get; set; } = 1.0f;
@@ -63,6 +68,15 @@ public sealed class FfbPipeline
             autoGain = AutoGainScale / raw.CarFfbMultiplier;
         }
 
+        // Wet weather: compute wetness factor before any processing.
+        // The WetnessFactor (0=dry, 1=full wet) modulates vibration suppression,
+        // damping, slip curve shape, and hydroplaning feel.
+        WetWeather.Update(raw);
+
+        CurrentTyreCategory = TyreCompoundClassifier.Classify(raw.TyreCompoundFront);
+        CurrentTyreCompoundFront = raw.TyreCompoundFront;
+        CurrentTyreCompoundRear = raw.TyreCompoundRear;
+
         // Get both raw core force (zero-latency) and smoothed detail from mixer
         float mixedForce = ChannelMixer.Mix(raw, out var channels);
         float rawCoreForce = channels.RawCoreForce;
@@ -83,7 +97,21 @@ public sealed class FfbPipeline
         // Damping: uses RAW steer angle (not smoothed) for maximum responsiveness.
         // Pure viscous + Coulomb are ALWAYS ACTIVE (not speed-dependent).
         // Gyroscopic + inertia are speed-scaled.
+        // Wet weather: reduce damping to match lighter self-aligning torque feel.
+        float savedViscous = Damping.ViscousCoefficient;
+        float savedSpeedDamp = Damping.SpeedDampingCoefficient;
+        float savedFriction = Damping.FrictionLevel;
+        if (WetWeather.WetnessFactor > 0.01f)
+        {
+            float ds = WetWeather.DampingScale;
+            Damping.ViscousCoefficient *= ds;
+            Damping.SpeedDampingCoefficient *= ds;
+            Damping.FrictionLevel *= ds;
+        }
         float coreDamped = Damping.Apply(corePostLut, raw.SpeedKmh, raw.SteerAngle);
+        Damping.ViscousCoefficient = savedViscous;
+        Damping.SpeedDampingCoefficient = savedSpeedDamp;
+        Damping.FrictionLevel = savedFriction;
 
         // Center knee power (optional non-linear shaping of core force)
         if (CenterKneePower > 1.001f && Math.Abs(coreDamped) > 0f)
@@ -106,6 +134,10 @@ public sealed class FfbPipeline
         // Tyre condition: blowout vibration, pressure loss feel, suspension damage asymmetry.
         // Modifies force based on real-time tyre pressure and damage data.
         coreOutput = TyreCondition.Apply(coreOutput, raw);
+
+        // Wet weather hydroplaning: high speed + wet + load variation causes
+        // momentary force drop and subtle steering wobble through standing water.
+        coreOutput = WetWeather.ApplyHydroplaning(coreOutput, raw);
 
         // Reverse gear: invert physics sign and attenuate.
         // AC EVO's tire model produces forces with correct MAGNITUDE but
@@ -144,8 +176,13 @@ public sealed class FfbPipeline
 
         float detailForce = 0f;
 
-        // Slip enhancer contribution (force-relative scaling)
+        // Slip enhancer: widen peak slip angle in wet conditions.
+        // Wet tires have a broader Mz curve — peak occurs at higher slip angles.
+        float savedPeakSlipAngle = SlipEnhancer.PeakSlipAngle;
+        if (WetWeather.WetnessFactor > 0.01f)
+            SlipEnhancer.PeakSlipAngle *= WetWeather.CurrentPeakSlipAngleScale;
         float postSlip = SlipEnhancer.Apply(corePostLut, raw);
+        SlipEnhancer.PeakSlipAngle = savedPeakSlipAngle;
         detailForce += (postSlip - corePostLut);
 
         // Dynamic effects contribution (independent of force magnitude)
@@ -157,6 +194,8 @@ public sealed class FfbPipeline
         detailForce += flexContrib;
 
         // Vibration signals (suspension-based road/curb, scrub, rear slip)
+        // Wet weather: suppress curb feel (water layer absorbs curb impacts)
+        VibrationMixer.WetCurbScale = WetWeather.CurbScale;
         float vibration = VibrationMixer.Mix(raw);
 
         // ABS force modulation (directional — follows core force sign)
@@ -169,14 +208,15 @@ public sealed class FfbPipeline
             detailForce += absMod * sign;
         }
 
+        // Wet weather: suppress road vibration (water film damps surface texture)
         float roadMod = VibrationMixer.RoadForceModulation;
         if (Math.Abs(roadMod) > 0.001f)
-            detailForce += roadMod;
+            detailForce += roadMod * WetWeather.RoadVibScale;
 
-        // Front tire scrub texture (30-50Hz grain at the limit)
+        // Wet weather: suppress scrub texture (water lubricates contact patch)
         float scrubMod = VibrationMixer.ScrubModulation;
         if (Math.Abs(scrubMod) > 0.001f)
-            detailForce += scrubMod;
+            detailForce += scrubMod * WetWeather.ScrubScale;
 
         // Rear slip warning (12-25Hz rumble when rear loses grip)
         float rearMod = VibrationMixer.RearSlipModulation;
@@ -217,10 +257,11 @@ public sealed class FfbPipeline
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
 
         // Noise floor gate (amplified at low speed for physics jitter suppression)
+        // Wet weather: raise noise floor (water film masks tiny surface details)
         float speedNoiseScale = raw.SpeedKmh < 10.0f
             ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 2.0f
             : 1.0f;
-        float effectiveNoiseFloor = NoiseFloor * speedNoiseScale;
+        float effectiveNoiseFloor = NoiseFloor * speedNoiseScale * WetWeather.NoiseFloorScale;
         if (Math.Abs(finalOutput) < effectiveNoiseFloor)
             finalOutput = 0f;
 
@@ -249,7 +290,11 @@ public sealed class FfbPipeline
             SteerAngle = raw.SteerAngle,
             PacketId = raw.PacketId,
             CoreForce = coreOutput,
-            DetailForce = detailForce
+            DetailForce = detailForce,
+            WetnessFactor = WetWeather.WetnessFactor,
+            TyreCategory = TyreCompoundClassifier.Classify(raw.TyreCompoundFront),
+            TyreCompoundFrontName = raw.TyreCompoundFront,
+            TyreCompoundRearName = raw.TyreCompoundRear
         };
     }
 
@@ -266,6 +311,7 @@ public sealed class FfbPipeline
         GripGuard.Reset();
         CrashDetector.Reset();
         TyreCondition.Reset();
+        WetWeather.Reset();
 
 
 
