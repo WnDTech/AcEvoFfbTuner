@@ -459,60 +459,108 @@
                     <TextBlock Text="M E C H A N I C A L   F E E D B A C K" FontSize="12" FontWeight="Bold"
                                Foreground="{StaticResource TextDimBrush}" Margin="0,20,0,12" />
 
-                    <!-- VIBRATION -->
-                    <controls:SectionCard Title="VIBRATION"
+                    <!-- CURB & RUMBLE -->
+                    <controls:SectionCard Title="CURB &amp; RUMBLE"
+                                          SectionBrush="{StaticResource SectionCurb}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Curb: " /><Run Text="{Binding CurbGain, StringFormat='{}{0:F1}'}" Foreground="#FFB388FF" />
+                                <Run Text=" · " /><Run Text="Master: " /><Run Text="{Binding VibrationMasterGain, StringFormat='{}{0:F1}'}" Foreground="#FFB388FF" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <TextBlock Text="Kerb strike and rumble strip vibration. Uses TyreContactNormal deviation to detect angled surfaces and combines with suspension compression for realistic curb impacts." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+                                <controls:LabeledSlider Value="{Binding CurbGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Curb Gain" StringFormat="{}{0:F3}"
+                                    Description="Kerb strike vibration intensity. Also scales suspension-derived kerb bumps in the main force."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.KerbGain}"
+                                    SectionColor="{StaticResource SectionCurb}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Curb Settings">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding VibrationMasterGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                            Label="Vibration Master" StringFormat="{}{0:F3}"
+                                            Description="Master volume for all vibration effects. Scales Curb, Slip, Road, and ABS together."
+                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.MasterGain}"
+                                            SectionColor="{StaticResource SectionCurb}" />
+                                        <controls:LabeledSlider Value="{Binding SuspensionRoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.01"
+                                            Label="Suspension Road" StringFormat="{}{0:F3}"
+                                            Description="Suspension-derived road texture gain for the main force channel. Works with Road and Curb vibration gains."
+                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.SuspensionRoadGain}"
+                                            SectionColor="{StaticResource SectionCurb}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- SURFACE VIBRATION -->
+                    <controls:SectionCard Title="SURFACE VIBRATION"
                                           SectionBrush="{StaticResource SectionVibration}"
                                           IsExpanded="False">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="13" Foreground="#FF8B949E">
-                                <Run Text="Master: " /><Run Text="{Binding VibrationMasterGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
-                                <Run Text=" · " /><Run Text="Curb: " /><Run Text="{Binding CurbGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
-                                <Run Text=" · " /><Run Text="Slip: " /><Run Text="{Binding SlipGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
+                                <Run Text="Slip: " /><Run Text="{Binding SlipGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
+                                <Run Text=" · " /><Run Text="Road: " /><Run Text="{Binding RoadGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
                                 <Run Text=" · " /><Run Text="ABS: " /><Run Text="{Binding AbsGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
                             </TextBlock>
                         </controls:SectionCard.SummaryContent>
                         <controls:SectionCard.InnerContent>
                             <StackPanel>
-                                <controls:LabeledSlider Value="{Binding VibrationMasterGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                    Label="Master" StringFormat="{}{0:F3}"
-                                    Description="Master volume for all vibration effects. Scales Curb, Slip, Road, and ABS together."
-                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.MasterGain}"
-                                    SectionColor="{StaticResource SectionVibration}" />
-                                <controls:LabeledSlider Value="{Binding CurbGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                    Label="Curb" StringFormat="{}{0:F3}"
-                                    Description="Kerb strike vibration intensity. Also scales suspension-derived kerb bumps in the main force."
-                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.KerbGain}"
-                                    SectionColor="{StaticResource SectionVibration}" />
                                 <controls:LabeledSlider Value="{Binding SlipGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                                     Label="Slip" StringFormat="{}{0:F3}"
                                     Description="Tire slip vibration intensity. Scaled by Master."
                                     DefaultValue="{Binding BuiltInDefaults.Vibrations.SlipGain}"
                                     SectionColor="{StaticResource SectionVibration}" />
+                                <controls:LabeledSlider Value="{Binding RoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Road" StringFormat="{}{0:F3}"
+                                    Description="Road surface vibration intensity. Also scales suspension-derived road texture in the main force."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.RoadGain}"
+                                    SectionColor="{StaticResource SectionVibration}" />
+                                <controls:LabeledSlider Value="{Binding AbsGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="ABS Intensity" StringFormat="{}{0:F3}"
+                                    Description="ABS pulse vibration intensity. Also adds pulses to the main steering force when ABS activates."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.AbsGain}"
+                                    SectionColor="{StaticResource SectionVibration}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed Vibration Settings">
                                     <StackPanel>
-                                        <controls:LabeledSlider Value="{Binding RoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                            Label="Road" StringFormat="{}{0:F3}"
-                                            Description="Road surface vibration intensity. Also scales suspension-derived road texture in the main force."
-                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.RoadGain}"
-                                            SectionColor="{StaticResource SectionVibration}" />
-                                        <controls:LabeledSlider Value="{Binding AbsGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                            Label="ABS Intensity" StringFormat="{}{0:F3}"
-                                            Description="ABS pulse vibration intensity. Also adds pulses to the main steering force when ABS activates."
-                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.AbsGain}"
-                                            SectionColor="{StaticResource SectionVibration}" />
                                         <controls:LabeledSlider Value="{Binding AbsPulseAmplitude, Mode=TwoWay}" Minimum="0" Maximum="1.0" TickFrequency="0.01"
                                             Label="ABS Pulse Strength" StringFormat="{}{0:F3}"
                                             Description="How punchy each ABS pulse feels. Per-car tuning: gentle cars ~0.10, aggressive ~0.25-0.50."
                                             DefaultValue="{Binding BuiltInDefaults.Vibrations.AbsPulseAmplitude}"
                                             SectionColor="{StaticResource SectionVibration}" />
-                                        <controls:LabeledSlider Value="{Binding SuspensionRoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.01"
-                                            Label="Suspension Road" StringFormat="{}{0:F3}"
-                                            Description="Suspension-derived road texture gain for the main force channel. Works with Road and Curb vibration gains."
-                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.SuspensionRoadGain}"
-                                            SectionColor="{StaticResource SectionVibration}" />
                                     </StackPanel>
                                 </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- OFFTRACK EFFECTS -->
+                    <controls:SectionCard Title="OFFTRACK EFFECTS"
+                                          SectionBrush="{StaticResource SectionOfftrack}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Gain: " /><Run Text="{Binding OfftrackGain, StringFormat='{}{0:F2}'}" Foreground="#FFCE9178" />
+                                <Run Text=" · " /><Run Text="Severity: " /><Run Text="{Binding OfftrackSeverityScale, StringFormat='{}{0:F1}'}" Foreground="#FFCE9178" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <TextBlock Text="Vibration feedback when the car leaves the racing surface. Detects off-track state and generates surface rumble from suspension movement combined with synthetic noise for grass, gravel, and dirt textures." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+                                <controls:LabeledSlider Value="{Binding OfftrackGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                    Label="Offtrack Gain" StringFormat="{}{0:F3}"
+                                    Description="Overall intensity of off-track vibration. 0 = no off-track feedback, 0.5 = subtle, 1.0 = strong rumble."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.OfftrackGain}"
+                                    SectionColor="{StaticResource SectionOfftrack}" />
+                                <controls:LabeledSlider Value="{Binding OfftrackSeverityScale, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Severity Scale" StringFormat="{}{0:F3}"
+                                    Description="How aggressively suspension deltas are amplified for off-track surface texture. Higher = more violent rumble on rough terrain."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.OfftrackSeverityScale}"
+                                    SectionColor="{StaticResource SectionOfftrack}" />
                             </StackPanel>
                         </controls:SectionCard.InnerContent>
                     </controls:SectionCard>

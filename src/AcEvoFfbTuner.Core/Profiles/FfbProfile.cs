@@ -155,6 +155,8 @@ public sealed class FfbProfile
         pipeline.VibrationMixer.CurbSeverityScale = Vibrations.CurbSeverityScale;
         pipeline.VibrationMixer.ScrubForceScale = Vibrations.ScrubForceScale;
         pipeline.VibrationMixer.RearSlipForceScale = Vibrations.RearSlipForceScale;
+        pipeline.VibrationMixer.OfftrackGain = Vibrations.OfftrackGain;
+        pipeline.VibrationMixer.OfftrackSeverityScale = Vibrations.OfftrackSeverityScale;
 
         pipeline.MaxSlewRate = Advanced.MaxSlewRate;
         pipeline.CenterSuppressionDegrees = Advanced.CenterSuppressionDegrees;
@@ -320,7 +322,9 @@ public sealed class FfbProfile
             AbsPulseAmplitude = pipeline.VibrationMixer.AbsPulseAmplitude,
             CurbSeverityScale = pipeline.VibrationMixer.CurbSeverityScale,
             ScrubForceScale = pipeline.VibrationMixer.ScrubForceScale,
-            RearSlipForceScale = pipeline.VibrationMixer.RearSlipForceScale
+            RearSlipForceScale = pipeline.VibrationMixer.RearSlipForceScale,
+            OfftrackGain = pipeline.VibrationMixer.OfftrackGain,
+            OfftrackSeverityScale = pipeline.VibrationMixer.OfftrackSeverityScale
         };
         Advanced = new AdvancedConfig
         {
@@ -1000,8 +1004,11 @@ public sealed class VibrationConfig
     public float ScrubForceScale { get; set; } = 0.0005f;
     public float RearSlipForceScale { get; set; } = 0.0005f;
 
+    public float OfftrackGain { get; set; } = 0.5f;
+    public float OfftrackSeverityScale { get; set; } = 3.0f;
+
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { KerbGain = S(KerbGain); SlipGain = S(SlipGain); RoadGain = S(RoadGain); AbsGain = S(AbsGain); MasterGain = S(MasterGain); SuspensionRoadGain = S(SuspensionRoadGain); ScrubGain = S(ScrubGain); RearSlipGain = S(RearSlipGain); AbsPulseAmplitude = S(AbsPulseAmplitude); CurbSeverityScale = S(CurbSeverityScale); ScrubForceScale = S(ScrubForceScale); RearSlipForceScale = S(RearSlipForceScale); }
+    public void SanitizeFloats() { KerbGain = S(KerbGain); SlipGain = S(SlipGain); RoadGain = S(RoadGain); AbsGain = S(AbsGain); MasterGain = S(MasterGain); SuspensionRoadGain = S(SuspensionRoadGain); ScrubGain = S(ScrubGain); RearSlipGain = S(RearSlipGain); AbsPulseAmplitude = S(AbsPulseAmplitude); CurbSeverityScale = S(CurbSeverityScale); ScrubForceScale = S(ScrubForceScale); RearSlipForceScale = S(RearSlipForceScale); OfftrackGain = S(OfftrackGain); OfftrackSeverityScale = S(OfftrackSeverityScale); }
 }
 
 public sealed class AdvancedConfig

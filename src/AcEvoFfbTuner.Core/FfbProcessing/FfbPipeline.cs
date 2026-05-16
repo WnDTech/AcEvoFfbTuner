@@ -223,6 +223,11 @@ public sealed class FfbPipeline
         if (Math.Abs(rearMod) > 0.001f)
             detailForce += rearMod;
 
+        // Offtrack surface rumble (when all 4 wheels leave the racing surface)
+        float offtrackMod = VibrationMixer.OfftrackModulation;
+        if (Math.Abs(offtrackMod) > 0.001f)
+            detailForce += offtrackMod;
+
         // LFE (engine RPM / suspension-driven low-frequency effects)
         float lfe = LfeGenerator.Generate(raw);
         if (Math.Abs(lfe) > 0.001f)

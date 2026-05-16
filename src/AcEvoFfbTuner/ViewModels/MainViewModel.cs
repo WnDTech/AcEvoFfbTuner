@@ -272,6 +272,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _rearSlipGain = 0.60f;
 
     [ObservableProperty]
+    private float _offtrackGain = 0.5f;
+
+    [ObservableProperty]
+    private float _offtrackSeverityScale = 3.0f;
+
+    [ObservableProperty]
     private bool _lfeEnabled;
 
     [ObservableProperty]
@@ -2249,6 +2255,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnSuspensionRoadGainChanged(float value) => _pipeline.VibrationMixer.SuspensionRoadGain = value;
     partial void OnScrubGainChanged(float value) => _pipeline.VibrationMixer.ScrubGain = value;
     partial void OnRearSlipGainChanged(float value) => _pipeline.VibrationMixer.RearSlipGain = value;
+    partial void OnOfftrackGainChanged(float value) => _pipeline.VibrationMixer.OfftrackGain = value;
+    partial void OnOfftrackSeverityScaleChanged(float value) => _pipeline.VibrationMixer.OfftrackSeverityScale = value;
     partial void OnLfeEnabledChanged(bool value) => _pipeline.LfeGenerator.Enabled = value;
     partial void OnLfeGainChanged(float value) => _pipeline.LfeGenerator.Gain = value;
     partial void OnLfeFrequencyChanged(float value) => _pipeline.LfeGenerator.Frequency = value;
@@ -2718,6 +2726,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         SuspensionRoadGain = profile.Vibrations.SuspensionRoadGain;
         ScrubGain = profile.Vibrations.ScrubGain;
         RearSlipGain = profile.Vibrations.RearSlipGain;
+        OfftrackGain = profile.Vibrations.OfftrackGain;
+        OfftrackSeverityScale = profile.Vibrations.OfftrackSeverityScale;
         LfeEnabled = profile.Lfe.Enabled;
         LfeGain = profile.Lfe.Gain;
         LfeFrequency = profile.Lfe.Frequency;

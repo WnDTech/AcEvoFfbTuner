@@ -82,6 +82,13 @@ public sealed class FfbVibrationMixer
 
     public float WetCurbScale { get; set; } = 1.0f;
 
+    public float OfftrackGain { get; set; } = 0.5f;
+    public float OfftrackSeverityScale { get; set; } = 3.0f;
+    public float OfftrackModulation { get; private set; }
+
+    private float _smOfftrackIntensity;
+    private float[] _prevOfftrackSuspTravel = new float[4];
+
     private float _prevRearMz;
     private float _prevRearFy;
     private float _smRearSlipIntensity;
@@ -238,6 +245,7 @@ public sealed class FfbVibrationMixer
 
         GenerateScrubModulation(raw);
         GenerateRearSlipModulation(raw);
+        GenerateOfftrackModulation(raw);
 
         return Math.Clamp(combined * MasterGain * speedFade, 0f, 1f);
     }
@@ -363,6 +371,36 @@ public sealed class FfbVibrationMixer
         RearSlipModulation = Math.Clamp(forceOscillation * amplitude, -RearSlipMaxAmplitude, RearSlipMaxAmplitude);
     }
 
+    private void GenerateOfftrackModulation(FfbRawData raw)
+    {
+        if (OfftrackGain < 0.001f || raw.SpeedKmh < 5f || raw.IsOnTrack)
+        {
+            OfftrackModulation = 0f;
+            _smOfftrackIntensity = 0f;
+            return;
+        }
+
+        float suspDeltaSum = 0f;
+        for (int i = 0; i < 4; i++)
+        {
+            float suspDelta = raw.SuspensionTravel[i] - _prevOfftrackSuspTravel[i];
+            _prevOfftrackSuspTravel[i] = raw.SuspensionTravel[i];
+            suspDeltaSum += MathF.Abs(suspDelta);
+        }
+        suspDeltaSum /= 4f;
+
+        float speedFactor = Math.Clamp(raw.SpeedKmh / 80f, 0.1f, 2.0f);
+        float intensity = Math.Clamp(suspDeltaSum * OfftrackSeverityScale * speedFactor, 0f, 1f);
+
+        _smOfftrackIntensity = _smOfftrackIntensity * 0.70f + intensity * 0.30f;
+
+        float roadVibContribution = raw.RoadVibrations * 0.3f;
+        float offtrackNoise = (Random.Shared.NextSingle() * 2f - 1f) * 0.4f;
+
+        float amplitude = OfftrackGain * _smOfftrackIntensity * speedFactor;
+        OfftrackModulation = Math.Clamp((roadVibContribution + offtrackNoise) * amplitude, -0.20f, 0.20f);
+    }
+
     public void Reset()
     {
         _absPhase = 0f;
@@ -386,7 +424,11 @@ public sealed class FfbVibrationMixer
         _prevYawRate = 0f;
         _yawInitialized = false;
 
+        OfftrackModulation = 0f;
+        _smOfftrackIntensity = 0f;
+
         Array.Clear(_prevSuspTravel);
         Array.Clear(_prevWheelLoad);
+        Array.Clear(_prevOfftrackSuspTravel);
     }
 }

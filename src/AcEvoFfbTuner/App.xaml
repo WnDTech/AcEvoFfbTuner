@@ -24,6 +24,8 @@
             <SolidColorBrush x:Key="SectionTyreFlex" Color="#FF58A6FF" />
             <SolidColorBrush x:Key="SectionOutput" Color="#FFF0883E" />
             <SolidColorBrush x:Key="SectionVibration" Color="#FFD2A8FF" />
+            <SolidColorBrush x:Key="SectionCurb" Color="#FFB388FF" />
+            <SolidColorBrush x:Key="SectionOfftrack" Color="#FFCE9178" />
             <SolidColorBrush x:Key="SectionLfe" Color="#FFFF7B72" />
             <SolidColorBrush x:Key="SectionSignal" Color="#FF79C0FF" />
             <SolidColorBrush x:Key="SectionCrash" Color="#FFFF4444" />
