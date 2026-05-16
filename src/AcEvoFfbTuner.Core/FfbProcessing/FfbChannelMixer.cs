@@ -305,6 +305,37 @@ public sealed class FfbChannelMixer
         return (a + b + c) - max - min;
     }
 
+    public AutoNormDiagnostics GetAutoNormDiagnostics()
+    {
+        float effectiveMzScale = MzScale;
+        bool mzAuto = _mzPeak > ChannelAutoMinPeak;
+        if (mzAuto) effectiveMzScale = Math.Max(effectiveMzScale, _mzPeak / ChannelAutoTarget);
+
+        float effectiveFxScale = FxScale;
+        bool fxAuto = _fxPeak > ChannelAutoMinPeak;
+        if (fxAuto) effectiveFxScale = Math.Max(effectiveFxScale, _fxPeak / ChannelAutoTarget);
+
+        float effectiveFyScale = FyScale;
+        bool fyAuto = _fyPeak > ChannelAutoMinPeak;
+        if (fyAuto) effectiveFyScale = Math.Max(effectiveFyScale, _fyPeak / ChannelAutoTarget);
+
+        return new AutoNormDiagnostics
+        {
+            MzPeak = _mzPeak,
+            FxPeak = _fxPeak,
+            FyPeak = _fyPeak,
+            EffectiveMzScale = effectiveMzScale,
+            EffectiveFxScale = effectiveFxScale,
+            EffectiveFyScale = effectiveFyScale,
+            ManualMzScale = MzScale,
+            ManualFxScale = FxScale,
+            ManualFyScale = FyScale,
+            MzAutoActive = mzAuto,
+            FxAutoActive = fxAuto,
+            FyAutoActive = fyAuto
+        };
+    }
+
     public void Reset()
     {
         _smMzFront = _smFxFront = _smFyFront = 0f;
@@ -345,5 +376,21 @@ public struct FfbChannelOutputs
     /// Sum of normalized Mz + Fx + Fy with center blend applied.
     /// </summary>
     public float RawCoreForce;
+}
+
+public struct AutoNormDiagnostics
+{
+    public float MzPeak;
+    public float FxPeak;
+    public float FyPeak;
+    public float EffectiveMzScale;
+    public float EffectiveFxScale;
+    public float EffectiveFyScale;
+    public float ManualMzScale;
+    public float ManualFxScale;
+    public float ManualFyScale;
+    public bool MzAutoActive;
+    public bool FxAutoActive;
+    public bool FyAutoActive;
 }
 

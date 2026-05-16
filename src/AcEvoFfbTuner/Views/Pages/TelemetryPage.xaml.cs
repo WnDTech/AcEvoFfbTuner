@@ -418,6 +418,13 @@ public partial class TelemetryPage : UserControl
             sb.AppendLine($"Inertia:            {p.Damping.InertiaWeight:F2}");
             sb.AppendLine($"MaxSpeedRef:        {p.Damping.MaxSpeedReference:F0}");
             sb.AppendLine();
+            sb.AppendLine($"--- AUTO-NORMALIZATION (adaptive channel scaling) ---");
+            var autoNorm = p.ChannelMixer.GetAutoNormDiagnostics();
+            sb.AppendLine($"MzPeak:             {autoNorm.MzPeak:F2}  (auto: {autoNorm.MzAutoActive})  manual={autoNorm.ManualMzScale:F0}  effective={autoNorm.EffectiveMzScale:F1}");
+            sb.AppendLine($"FxPeak:             {autoNorm.FxPeak:F2}  (auto: {autoNorm.FxAutoActive})  manual={autoNorm.ManualFxScale:F0}  effective={autoNorm.EffectiveFxScale:F1}");
+            sb.AppendLine($"FyPeak:             {autoNorm.FyPeak:F2}  (auto: {autoNorm.FyAutoActive})  manual={autoNorm.ManualFyScale:F0}  effective={autoNorm.EffectiveFyScale:F1}");
+            sb.AppendLine($"DampingFloors:      Viscous={Math.Max(p.Damping.ViscousCoefficient, 0.04f):F3}  Friction={Math.Max(p.Damping.FrictionLevel, 0.02f):F3}");
+            sb.AppendLine();
             sb.AppendLine($"--- SLIP ENHANCER ---");
             sb.AppendLine($"SlipRatioGain:      {p.SlipEnhancer.SlipRatioGain:F2}");
             sb.AppendLine($"SlipAngleGain:      {p.SlipEnhancer.SlipAngleGain:F2}");
