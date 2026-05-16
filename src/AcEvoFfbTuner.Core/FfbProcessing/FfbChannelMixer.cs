@@ -72,6 +72,15 @@ public sealed class FfbChannelMixer
     private readonly bool[] _medianBufReady = new bool[6];
     private int _medianBufIdx;
 
+    // Adaptive auto-normalization: tracks per-channel rolling peaks
+    // to prevent massive raw telemetry values from overwhelming output.
+    // When a channel's raw peak exceeds (MzScale * AutoTarget), the
+    // effective scale is bumped up so the output stays in range.
+    private float _mzPeak, _fxPeak, _fyPeak;
+    private const float ChannelPeakDecay = 0.997f;
+    private const float ChannelAutoTarget = 1.0f;
+    private const float ChannelAutoMinPeak = 1.0f;
+
     private float _smCoreFxFront;
     private float _smCoreFxRear;
 
@@ -115,14 +124,40 @@ public sealed class FfbChannelMixer
         rawFyRear = MedianFilter(rawFyRear, _medFyRear);
 
         // ═══════════════════════════════════════════════════════════════
-        // Normalize (post-median, pre-EMA) — used for both core & detail
+        // Adaptive auto-normalization (post-median, pre-EMA)
+        //
+        // AC EVO's raw Mz can range from ~0.005 (parked) to ~1441 (high-speed
+        // cornering) — a 288000x dynamic range. A static Scale cannot handle
+        // both extremes. We track rolling peaks and auto-adjust the effective
+        // scale so the channel output never exceeds AutoTarget * Gain.
+        // When the raw peak is below AutoMinPeak, the manual Scale is used
+        // unchanged (avoiding amplification of noise at standstill).
         // ═══════════════════════════════════════════════════════════════
-        float mzFront = MzFrontEnabled ? Normalize(rawMzFront, MzScale) * MzFrontGain : 0f;
-        float fxFront = FxFrontEnabled ? Normalize(rawFxFront, FxScale) * FxFrontGain : 0f;
-        float fyFront = FyFrontEnabled ? Normalize(rawFyFront, FyScale) * FyFrontGain : 0f;
-        float mzRear = MzRearEnabled ? Normalize(rawMzRear, MzScale) * MzRearGain : 0f;
-        float fxRear = FxRearEnabled ? Normalize(rawFxRear, FxScale) * FxRearGain : 0f;
-        float fyRear = FyRearEnabled ? Normalize(rawFyRear, FyScale) * FyRearGain : 0f;
+        float absRawMz = Math.Max(Math.Abs(rawMzFront), Math.Abs(rawMzRear));
+        _mzPeak = Math.Max(_mzPeak * ChannelPeakDecay, absRawMz);
+        float absRawFx = Math.Max(Math.Abs(rawFxFront), Math.Abs(rawFxRear));
+        _fxPeak = Math.Max(_fxPeak * ChannelPeakDecay, absRawFx);
+        float absRawFy = Math.Max(Math.Abs(rawFyFront), Math.Abs(rawFyRear));
+        _fyPeak = Math.Max(_fyPeak * ChannelPeakDecay, absRawFy);
+
+        float effectiveMzScale = MzScale;
+        if (_mzPeak > ChannelAutoMinPeak)
+            effectiveMzScale = Math.Max(effectiveMzScale, _mzPeak / ChannelAutoTarget);
+
+        float effectiveFxScale = FxScale;
+        if (_fxPeak > ChannelAutoMinPeak)
+            effectiveFxScale = Math.Max(effectiveFxScale, _fxPeak / ChannelAutoTarget);
+
+        float effectiveFyScale = FyScale;
+        if (_fyPeak > ChannelAutoMinPeak)
+            effectiveFyScale = Math.Max(effectiveFyScale, _fyPeak / ChannelAutoTarget);
+
+        float mzFront = MzFrontEnabled ? SoftClamp(Normalize(rawMzFront, effectiveMzScale) * MzFrontGain) : 0f;
+        float fxFront = FxFrontEnabled ? SoftClamp(Normalize(rawFxFront, effectiveFxScale) * FxFrontGain) : 0f;
+        float fyFront = FyFrontEnabled ? SoftClamp(Normalize(rawFyFront, effectiveFyScale) * FyFrontGain) : 0f;
+        float mzRear = MzRearEnabled ? SoftClamp(Normalize(rawMzRear, effectiveMzScale) * MzRearGain) : 0f;
+        float fxRear = FxRearEnabled ? SoftClamp(Normalize(rawFxRear, effectiveFxScale) * FxRearGain) : 0f;
+        float fyRear = FyRearEnabled ? SoftClamp(Normalize(rawFyRear, effectiveFyScale) * FyRearGain) : 0f;
 
         // Center blend zone (uses raw steer angle — no latency)
         float maxDeg = 450f;
@@ -228,6 +263,15 @@ public sealed class FfbChannelMixer
         return rawValue / scale;
     }
 
+    private static float SoftClamp(float v, float limit = 1.0f)
+    {
+        float abs = Math.Abs(v);
+        if (abs <= limit) return v;
+        float sign = Math.Sign(v);
+        float excess = abs - limit;
+        return sign * (limit + (1f - limit) * MathF.Tanh(excess * 2f));
+    }
+
     private float WeightedChannel(float[] forces, float[] loads, int idxA, int idxB)
     {
         float totalLoad = Math.Max(loads[0] + loads[1] + loads[2] + loads[3], 0.001f);
@@ -275,6 +319,7 @@ public sealed class FfbChannelMixer
         Array.Clear(_medMzRear);
         Array.Clear(_medFxRear);
         Array.Clear(_medFyRear);
+        _mzPeak = _fxPeak = _fyPeak = 0f;
     }
 }
 

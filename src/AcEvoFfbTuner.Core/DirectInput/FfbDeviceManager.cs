@@ -114,24 +114,19 @@ public sealed class FfbDeviceManager : IDisposable
     public bool AutoDetectForceDirection()
     {
         string productName = ConnectedDevice?.ProductName ?? "";
-
-        bool? knownResult = DetectForceInversionKnown(productName);
-        if (knownResult.HasValue)
-        {
-            ConnLog($"AutoDetect: known device '{productName}' → invert={knownResult.Value} (static database)");
-            return knownResult.Value;
-        }
+        bool? staticFallback = DetectForceInversionKnown(productName);
 
         if (_device == null || !_isAcquired || _ffAxes == null || _ffAxes.Length == 0)
         {
-            ConnLog("AutoDetect: skipped — device not ready");
-            return DetectForceInversion(productName);
+            bool fallback = staticFallback ?? false;
+            ConnLog($"AutoDetect: device not ready for dynamic test — using static database '{productName}' → invert={fallback}");
+            return fallback;
         }
 
         try
         {
             _invertForce = false;
-            ConnLog("AutoDetect: unknown device, running dynamic axis test");
+            ConnLog($"AutoDetect: running dynamic axis test for '{productName}' (static DB={staticFallback?.ToString() ?? "unknown"})");
 
             SendConstantForceDirect(0f);
             Thread.Sleep(300);
@@ -139,8 +134,9 @@ public sealed class FfbDeviceManager : IDisposable
             float baseline = AverageAxisX(8, 8);
             if (float.IsNaN(baseline))
             {
-                ConnLog("AutoDetect: could not read baseline — falling back to product name");
-                return DetectForceInversion(productName);
+                bool fallback = staticFallback ?? false;
+                ConnLog($"AutoDetect: could not read baseline — falling back to static database → invert={fallback}");
+                return fallback;
             }
 
             ConnLog($"AutoDetect: baseline axis={baseline:F0}");
@@ -153,9 +149,10 @@ public sealed class FfbDeviceManager : IDisposable
 
             if (float.IsNaN(duringPulse))
             {
-                ConnLog("AutoDetect: could not read during pulse — falling back to product name");
+                bool fallback = staticFallback ?? false;
+                ConnLog($"AutoDetect: could not read during pulse — falling back to static database → invert={fallback}");
                 Thread.Sleep(200);
-                return DetectForceInversion(productName);
+                return fallback;
             }
 
             Thread.Sleep(200);
@@ -167,8 +164,9 @@ public sealed class FfbDeviceManager : IDisposable
 
             if (Math.Abs(delta) < minDelta)
             {
-                ConnLog($"AutoDetect: delta {delta:F0} below threshold {minDelta} — falling back to product name");
-                return DetectForceInversion(productName);
+                bool fallback = staticFallback ?? false;
+                ConnLog($"AutoDetect: delta {delta:F0} below threshold {minDelta} — falling back to static database → invert={fallback}");
+                return fallback;
             }
 
             bool needsInversion = delta > 0;
@@ -177,8 +175,9 @@ public sealed class FfbDeviceManager : IDisposable
         }
         catch (Exception ex)
         {
-            ConnLog($"AutoDetect: failed — {ex.Message}");
-            return DetectForceInversion(productName);
+            bool fallback = staticFallback ?? false;
+            ConnLog($"AutoDetect: dynamic test failed — {ex.Message} — falling back to static database → invert={fallback}");
+            return fallback;
         }
     }
 

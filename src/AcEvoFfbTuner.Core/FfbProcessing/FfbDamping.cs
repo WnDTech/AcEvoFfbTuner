@@ -44,6 +44,11 @@ public sealed class FfbDamping
     /// </summary>
     public float VelocityDeadzone { get; set; } = 0.02f;
 
+    // Minimum damping floors: prevent completely undamped wheel regardless of profile settings.
+    // These represent the irreducible physical friction of a real steering column.
+    private const float MinViscousCoefficient = 0.04f;
+    private const float MinFrictionLevel = 0.02f;
+
     // No-ops kept for profile JSON backward compat.
     public float LowSpeedDampingBoost { get; set; } = 1.0f;
     public float LowSpeedThreshold { get; set; } = 20f;
@@ -89,13 +94,17 @@ public sealed class FfbDamping
         // ALWAYS ACTIVE — represents steering column friction (thick hydraulic fluid,
         // heavy grease in the column). This is the PRIMARY oscillation defense.
         // Real steering rack friction exists regardless of how fast the car is driving.
-        float pureViscousForce = -normalizedSteerVel * ViscousCoefficient;
+        // Floor ensures minimum damping even when profile sets coefficient to 0.
+        float effectiveViscous = Math.Max(ViscousCoefficient, MinViscousCoefficient);
+        float pureViscousForce = -normalizedSteerVel * effectiveViscous;
 
         // ── Coulomb friction: constant magnitude, opposes motion direction ──
         // Real steering rack friction is approximately constant (dry/Coulomb friction).
         // Smooth tanh transition avoids hard sign flip at zero velocity.
         // ALWAYS ACTIVE — independent of vehicle speed.
-        float frictionForce = -MathF.Tanh(normalizedSteerVel * 10f) * FrictionLevel;
+        // Floor prevents completely frictionless center feel.
+        float effectiveFriction = Math.Max(FrictionLevel, MinFrictionLevel);
+        float frictionForce = -MathF.Tanh(normalizedSteerVel * 10f) * effectiveFriction;
 
         // ── Gyroscopic damping: proportional to velocity × car speed ──
         // Represents tire contact patch drag that increases with vehicle speed.
