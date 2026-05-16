@@ -111,13 +111,17 @@ public partial class MainWindow : Window
         bool showHeatmap = false,
         bool showTrackEdges = false,
         WaypointDiagnosticSample[]? diagnosticHeatmap = null,
-        bool showDiagnostics = false)
+        bool showDiagnostics = false,
+        float trackLatitude = 0f,
+        float trackLongitude = 0f,
+        float trackRotation = 0f)
     {
         TrackMapPageCtrl.UpdateTrackMapDisplay(carX, carZ, heading, speedKmh,
             isOnTrack, trackProgress, distanceFromCenter,
             trackLengthM, waypointCount, isRecording, hasMap,
             currentMap, forceHeatmap, showHeatmap,
-            showTrackEdges, diagnosticHeatmap, showDiagnostics);
+            showTrackEdges, diagnosticHeatmap, showDiagnostics,
+            trackLatitude, trackLongitude, trackRotation);
     }
 
     public string AutoSaveSnapshot()

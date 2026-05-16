@@ -28,6 +28,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly TelemetryLoop _telemetryLoop;
     private readonly ProfileManager _profileManager;
     private readonly Services.GameRecordingService _gameRecordingService = new();
+    private volatile bool _autoAlignInProgress;
 
     public string AppVersion { get; } =
         System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
@@ -780,6 +781,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _trackMapStatus = "";
 
+    [ObservableProperty]
+    private float _trackLatitude;
+
+    [ObservableProperty]
+    private float _trackLongitude;
+
+    [ObservableProperty]
+    private float _trackRotation;
+
+    [ObservableProperty]
+    private bool _showSatelliteMap;
+
+    [ObservableProperty]
+    private bool _satelliteMapReady;
+
     public TrackMap? CurrentTrackMap => _telemetryLoop.MapBuilder.CurrentMap;
 
     partial void OnSnapshotButtonComboIndexChanged(int value)
@@ -1058,9 +1074,39 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             IsPitDetected = map.PitLane.IsDetected;
             TrackMapStatus = $"{map.Waypoints.Count} pts | {map.TrackLengthM:F0}m | {map.Corners.Count} corners | {map.Sectors.Count} sectors";
         });
-        _telemetryLoop.StaticDataReceived += (trackName, config, lengthM) => Application.Current?.Dispatcher.Invoke(() =>
+        _telemetryLoop.StaticDataReceived += (trackName, config, lengthM, latitude, longitude) => Application.Current?.Dispatcher.Invoke(() =>
         {
             DetectedTrackName = trackName;
+
+            var calibration = SatelliteMapService.LoadCalibration(trackName);
+            if (calibration != null)
+            {
+                TrackLatitude = calibration.Value.lat;
+                TrackLongitude = calibration.Value.lon;
+                TrackRotation = calibration.Value.rotationDeg;
+            }
+            else if (latitude != 0 || longitude != 0)
+            {
+                TrackLatitude = latitude;
+                TrackLongitude = longitude;
+                TrackRotation = 0f;
+            }
+            else
+            {
+                var lookup = SatelliteMapService.LookupTrackLocation(trackName);
+                if (lookup != null)
+                {
+                    TrackLatitude = lookup.Value.lat;
+                    TrackLongitude = lookup.Value.lon;
+                }
+
+                var rotation = SatelliteMapService.LookupTrackRotation(trackName);
+                TrackRotation = rotation ?? 0f;
+
+                if (!_autoAlignInProgress && SatelliteMapService.LoadCalibration(trackName) == null)
+                    _ = AutoAlignTrackAsync(trackName);
+            }
+
             if (!string.IsNullOrEmpty(trackName))
                 StatusText = $"Connected — Track: {trackName} ({config}) {lengthM:F0}m";
 
@@ -1116,7 +1162,39 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _uiUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
         _uiUpdateTimer.Tick += OnUiUpdate;
 
-        AddSystemLog("Application initialized");
+         AddSystemLog("Application initialized");
+     }
+
+    private async Task AutoAlignTrackAsync(string trackName)
+    {
+        _autoAlignInProgress = true;
+        try
+        {
+            await Task.Delay(2000);
+
+            var map = _telemetryLoop.MapBuilder.CurrentMap ?? TrackMap.Load(trackName);
+            if (map == null || map.Waypoints.Count < 10) return;
+
+            if (SatelliteMapService.LoadCalibration(trackName) != null) return;
+
+            var alignment = await TrackAlignmentService.ComputeAlignmentAsync(trackName, map.Waypoints);
+            if (alignment == null) return;
+
+            SatelliteMapService.SaveCalibration(trackName,
+                (float)alignment.CenterLat, (float)alignment.CenterLon, (float)alignment.RotationDeg);
+
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                TrackLatitude = (float)alignment.CenterLat;
+                TrackLongitude = (float)alignment.CenterLon;
+                TrackRotation = (float)alignment.RotationDeg;
+            });
+        }
+        catch { }
+        finally
+        {
+            _autoAlignInProgress = false;
+        }
     }
 
     public void Initialize()
@@ -2653,7 +2731,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     ShowForceHeatmap,
                     ShowTrackEdges,
                     _telemetryLoop.DiagnosticHeatmap.GetSnapshot(),
-                    ShowDiagnostics);
+                    ShowDiagnostics,
+                    TrackLatitude,
+                    TrackLongitude,
+                    TrackRotation);
             }
         }
 

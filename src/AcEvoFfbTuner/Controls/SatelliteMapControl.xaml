@@ -1,0 +1,70 @@
+<UserControl x:Class="AcEvoFfbTuner.Controls.SatelliteMapControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#FF1a1a2e"
+             UseLayoutRounding="True"
+             Focusable="True">
+    <Grid>
+        <Canvas x:Name="MapCanvas" ClipToBounds="True" />
+        <Canvas x:Name="OverlayCanvas" ClipToBounds="True" />
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8">
+            <Border Background="#CC000000" CornerRadius="4" Padding="6,3">
+                <TextBlock x:Name="ZoomLabel" Text="Zoom: 16" FontSize="11"
+                           Foreground="#FF8B949E" FontFamily="Consolas" />
+            </Border>
+        </StackPanel>
+        <Border x:Name="LoadingOverlay" Background="#CC1a1a2e" Visibility="Collapsed"
+                CornerRadius="4" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Padding="16,8">
+            <TextBlock Text="Loading satellite imagery..." FontSize="14"
+                       Foreground="#FFE6EDF3" HorizontalAlignment="Center" />
+        </Border>
+        <Border x:Name="NoGeoOverlay" Background="#CC1a1a2e"
+                CornerRadius="4" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Padding="20,12" Visibility="Collapsed">
+            <StackPanel HorizontalAlignment="Center">
+                <TextBlock Text="SATELLITE VIEW" FontSize="16" FontWeight="Bold"
+                           Foreground="#FF79C0FF" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                <TextBlock Text="Waiting for track location data..." FontSize="13"
+                           Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#FF666666"
+                           HorizontalAlignment="Center" MaxWidth="350" TextAlignment="Center">
+                    <Run Text="Connect to AC EVO and load a track. The satellite view requires" />
+                    <Run Text=" geographic coordinates from the game's shared memory." />
+                </TextBlock>
+            </StackPanel>
+        </Border>
+        <Border x:Name="CalibrationOverlay" Background="#E0000000"
+                CornerRadius="6" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Padding="12,8" Margin="8" Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock Text="CALIBRATING" FontSize="13" FontWeight="Bold"
+                           Foreground="#FFF0883E" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#FF8B949E"
+                           MaxWidth="220" TextAlignment="Left" LineHeight="15">
+                    <Run Text="Arrow keys" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                    <Run Text=" — shift track outline" /><LineBreak />
+                    <Run Text="+ / −" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                    <Run Text=" — rotate track outline" /><LineBreak />
+                    <Run Text="Shift + arrows" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                    <Run Text=" — larger steps" />
+                </TextBlock>
+                <Border Background="#FF333355" Height="1" Margin="0,6" />
+                <TextBlock x:Name="CalibLatLabel" Text="Lat: --" FontSize="11"
+                           Foreground="#FF79C0FF" FontFamily="Consolas" Margin="0,0,0,2" />
+                <TextBlock x:Name="CalibLonLabel" Text="Lon: --" FontSize="11"
+                           Foreground="#FF79C0FF" FontFamily="Consolas" Margin="0,0,0,2" />
+                <TextBlock x:Name="CalibRotLabel" Text="Rot: --°" FontSize="11"
+                           Foreground="#FF79C0FF" FontFamily="Consolas" Margin="0,0,0,6" />
+                <Button x:Name="CalibSaveBtn" Content="Save Calibration" Padding="8,4"
+                        FontSize="12" FontWeight="Bold" Background="#FF2E7D32"
+                        Foreground="#FFE6EDF3" BorderThickness="0" Margin="0,0,0,4"
+                        Click="OnCalibSave" />
+                <Button x:Name="CalibResetBtn" Content="Reset" Padding="8,3"
+                        FontSize="11" Background="#FF444444"
+                        Foreground="#FFE6EDF3" BorderThickness="0"
+                        Click="OnCalibReset" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

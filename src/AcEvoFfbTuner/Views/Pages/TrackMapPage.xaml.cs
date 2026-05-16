@@ -33,6 +33,12 @@ public partial class TrackMapPage : UserControl
 
     private readonly List<Point> _recordingWorldPts = new();
 
+    private SatelliteMapService? _satelliteService;
+    private bool _satelliteInitialized;
+    private float _lastKnownLat;
+    private float _lastKnownLon;
+    private float _lastKnownRotation;
+
     public event EventHandler? TrackMapPopoutRequested;
 
     public TrackMapPage()
@@ -52,6 +58,99 @@ public partial class TrackMapPage : UserControl
         TrackMapCanvas.Children.Add(_startDot);
         TrackMapCanvas.Children.Add(_headingLine);
         TrackMapCanvas.Children.Add(_carDot);
+
+        Loaded += OnLoaded;
+        DataContextChanged += OnDataContextChanged;
+        Unloaded += OnUnloaded;
+
+        SatelliteMapCtrl.CalibrationSaved += OnCalibrationSaved;
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        SatelliteMapCtrl.Reset();
+        _satelliteService?.Dispose();
+        _satelliteService = null;
+        _satelliteInitialized = false;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        EnsureSatelliteState();
+    }
+
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        EnsureSatelliteState();
+    }
+
+    private bool _lastSatelliteState;
+
+    private void EnsureSatelliteState()
+    {
+        bool wantSatellite = DataContext is MainViewModel vm && vm.ShowSatelliteMap;
+        if (wantSatellite != _lastSatelliteState)
+        {
+            _lastSatelliteState = wantSatellite;
+            UpdateSatelliteVisibility(wantSatellite);
+        }
+    }
+
+    private void UpdateSatelliteVisibility(bool showSatellite)
+    {
+        if (showSatellite)
+        {
+            VectorMapBorder.Visibility = Visibility.Collapsed;
+            SatelliteMapCtrl.Visibility = Visibility.Visible;
+
+            if (!_satelliteInitialized)
+            {
+                _satelliteService = new SatelliteMapService();
+                SatelliteMapCtrl.Initialize(_satelliteService);
+                _satelliteInitialized = true;
+            }
+
+            bool hasGeo = _lastKnownLat != 0 || _lastKnownLon != 0;
+            if (!hasGeo && DataContext is MainViewModel vm)
+            {
+                _lastKnownLat = vm.TrackLatitude;
+                _lastKnownLon = vm.TrackLongitude;
+                hasGeo = _lastKnownLat != 0 || _lastKnownLon != 0;
+            }
+
+            if (hasGeo)
+            {
+                _satelliteService!.SetGeoReference(_lastKnownLat, _lastKnownLon, _lastKnownRotation);
+                SatelliteMapCtrl.SetGeoCenter(_lastKnownLat, _lastKnownLon);
+            }
+            else
+            {
+                SatelliteMapCtrl.ShowNoGeoMessage();
+            }
+
+            if (_displayedMap != null)
+            {
+                SatelliteMapCtrl.SetTrackMap(_displayedMap);
+            }
+        }
+        else
+        {
+            VectorMapBorder.Visibility = Visibility.Visible;
+            SatelliteMapCtrl.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    public void SetGeoData(float latitude, float longitude, float rotation = 0f)
+    {
+        _lastKnownLat = latitude;
+        _lastKnownLon = longitude;
+        _lastKnownRotation = rotation;
+
+        if (_satelliteService != null && _satelliteInitialized)
+        {
+            _satelliteService.SetGeoReference(latitude, longitude, rotation);
+            SatelliteMapCtrl.SetGeoCenter(latitude, longitude);
+        }
     }
 
     public void UpdateTrackMapDisplay(float carX, float carZ, float heading, float speedKmh,
@@ -62,8 +161,44 @@ public partial class TrackMapPage : UserControl
         bool showHeatmap = false,
         bool showTrackEdges = false,
         WaypointDiagnosticSample[]? diagnosticHeatmap = null,
-        bool showDiagnostics = false)
+        bool showDiagnostics = false,
+        float trackLatitude = 0f,
+        float trackLongitude = 0f,
+        float trackRotation = 0f)
     {
+        if (trackLatitude != 0 || trackLongitude != 0)
+        {
+            if (_lastKnownLat != trackLatitude || _lastKnownLon != trackLongitude || _lastKnownRotation != trackRotation)
+                SetGeoData(trackLatitude, trackLongitude, trackRotation);
+        }
+
+        EnsureSatelliteState();
+
+        bool isSatelliteMode = SatelliteMapCtrl.Visibility == Visibility.Visible;
+
+        if (isSatelliteMode && hasMap && currentMap != null)
+        {
+            if (currentMap != _displayedMap)
+            {
+                _displayedMap = currentMap;
+                SatelliteMapCtrl.SetTrackMap(currentMap);
+            }
+            SatelliteMapCtrl.UpdateCarPosition(carX, carZ, heading, isOnTrack);
+
+            TrackMapCarX.Text = carX.ToString("F1");
+            TrackMapCarZ.Text = carZ.ToString("F1");
+            TrackMapWaypoints.Text = waypointCount > 0 ? waypointCount.ToString() : "--";
+            TrackMapProgress.Text = hasMap ? $"{trackProgress * 100f:F1}%" : "--";
+            TrackMapDistance.Text = hasMap ? $"{distanceFromCenter:F1} m" : "-- m";
+
+            if (DataContext is MainViewModel vmSatellite)
+            {
+                TrackMapCorner.Text = vmSatellite.CurrentCornerName;
+                TrackMapSector.Text = vmSatellite.CurrentSectorNumber > 0 ? $"S{vmSatellite.CurrentSectorNumber}" : "--";
+                TrackMapSectorStats.Text = vmSatellite.SectorStats;
+            }
+            return;
+        }
         double w = TrackMapCanvas.ActualWidth;
         double h = TrackMapCanvas.ActualHeight;
         if (w <= 0 || h <= 0) return;
@@ -571,5 +706,42 @@ public partial class TrackMapPage : UserControl
     private void OpenTrackMapPopout(object sender, RoutedEventArgs e)
     {
         TrackMapPopoutRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ToggleCalibration(object sender, RoutedEventArgs e)
+    {
+        if (SatelliteMapCtrl.IsCalibrating)
+        {
+            SatelliteMapCtrl.ExitCalibrationMode();
+            CalibrateBtn.Content = "Calibrate";
+            return;
+        }
+
+        if (SatelliteMapCtrl.Visibility != Visibility.Visible) return;
+
+        var trackName = (DataContext as MainViewModel)?.DetectedTrackName;
+        if (!string.IsNullOrWhiteSpace(trackName))
+            SatelliteMapCtrl.SetTrackName(trackName);
+
+        SatelliteMapCtrl.EnterCalibrationMode();
+        CalibrateBtn.Content = "Done";
+    }
+
+    private void OnCalibrationSaved(object? sender, EventArgs e)
+    {
+        CalibrateBtn.Content = "Calibrate";
+        if (_satelliteService != null)
+        {
+            _lastKnownLat = _satelliteService.TrackCenterLatitude;
+            _lastKnownLon = _satelliteService.TrackCenterLongitude;
+            _lastKnownRotation = (float)_satelliteService.GetRotationDeg();
+        }
+
+        if (DataContext is MainViewModel vm)
+        {
+            vm.TrackLatitude = _lastKnownLat;
+            vm.TrackLongitude = _lastKnownLon;
+            vm.TrackRotation = _lastKnownRotation;
+        }
     }
 }

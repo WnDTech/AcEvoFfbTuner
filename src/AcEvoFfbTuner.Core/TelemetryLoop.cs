@@ -154,7 +154,7 @@ public sealed class TelemetryLoop : IDisposable
     public event Action? GameConnectionChanged;
     public event Action<string>? StatusChanged;
     public event Action<TrackMap>? TrackMapCompleted;
-    public event Action<string, string, float>? StaticDataReceived;
+    public event Action<string, string, float, float, float>? StaticDataReceived;
     public event Action<string>? CarModelChanged;
 
     public void Start()
@@ -257,7 +257,8 @@ public sealed class TelemetryLoop : IDisposable
                                 StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Car: '{_lastDetectedCarModel}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
                             else
                                 StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
-                            StaticDataReceived?.Invoke(_lastDetectedTrackName, trackConfig, officialLength);
+                            StaticDataReceived?.Invoke(_lastDetectedTrackName, trackConfig, officialLength,
+                                staticData.Latitude, staticData.Longitude);
                         }
                     }
                     else
