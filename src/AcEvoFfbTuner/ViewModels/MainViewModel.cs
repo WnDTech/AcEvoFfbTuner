@@ -386,6 +386,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private FfbProfile? _selectedProfile;
 
+    [ObservableProperty]
+    private FfbProfile _builtInDefaults = new();
+
     public bool IsBuiltInProfileSelected => SelectedProfile?.IsBuiltIn ?? false;
 
     [ObservableProperty]
@@ -2657,6 +2660,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private void LoadProfileValues(FfbProfile profile)
     {
+        BuiltInDefaults = FfbProfile.GetDefaultProfile(profile.Name);
         ProfileCarMatch = profile.CarMatch;
         SelectedMixMode = profile.MixMode switch
         {

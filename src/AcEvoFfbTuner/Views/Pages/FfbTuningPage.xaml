@@ -119,30 +119,36 @@
                                     Label="Mz (Self-Align)" StringFormat="{}{0:F3}"
                                     Description="Main steering feel — the force that pulls the wheel back to center. Higher = stronger self-centering. Scaled by Mz Scale below."
                                     ShowCheckBox="True" IsChecked="{Binding MzFrontEnabled}"
+                                    DefaultValue="{Binding BuiltInDefaults.MzFront.Gain}"
                                     SectionColor="{StaticResource SectionTyreForces}" />
                                 <controls:LabeledSlider Value="{Binding FxFrontGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
                                     Label="Fx (Longitudinal)" StringFormat="{}{0:F3}"
                                     Description="Braking and acceleration forces through the wheel. Scaled by Fx Scale below."
                                     ShowCheckBox="True" IsChecked="{Binding FxFrontEnabled}"
+                                    DefaultValue="{Binding BuiltInDefaults.FxFront.Gain}"
                                     SectionColor="{StaticResource SectionTyreForces}" />
                                 <controls:LabeledSlider Value="{Binding FyFrontGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
                                     Label="Fy (Lateral)" StringFormat="{}{0:F3}"
                                     Description="Cornering loads — adds weight feel during turns. Suppressed near center (see Center Blend in Signal Processing). Scaled by Fy Scale below."
                                     ShowCheckBox="True" IsChecked="{Binding FyFrontEnabled}"
+                                    DefaultValue="{Binding BuiltInDefaults.FyFront.Gain}"
                                     SectionColor="{StaticResource SectionTyreForces}" />
 
                                 <TextBlock Text="Normalization Scales" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
                                 <controls:LabeledSlider Value="{Binding MzScale, Mode=TwoWay}" Minimum="1" Maximum="500" TickFrequency="0.5"
                                     Label="Mz Scale (Aligning)" StringFormat="{}{0:F3}" IsLogarithmic="True"
                                     Description="Divides raw Mz values to normalize them. Lower = stronger Mz feel. If steering feels weak, try lowering this. Affects both front and rear Mz."
+                                    DefaultValue="{Binding BuiltInDefaults.MzScale}"
                                     SectionColor="{StaticResource SectionTyreForces}" />
                                 <controls:LabeledSlider Value="{Binding FxScale, Mode=TwoWay}" Minimum="100" Maximum="20000" TickFrequency="100"
                                     Label="Fx Scale (Longitudinal)" StringFormat="{}{0:F0}" IsLogarithmic="True"
                                     Description="Divides raw Fx values to normalize them. Lower = stronger braking/acceleration feel. Affects both front and rear Fx."
+                                    DefaultValue="{Binding BuiltInDefaults.FxScale}"
                                     SectionColor="{StaticResource SectionTyreForces}" />
                                 <controls:LabeledSlider Value="{Binding FyScale, Mode=TwoWay}" Minimum="100" Maximum="20000" TickFrequency="100"
                                     Label="Fy Scale (Lateral)" StringFormat="{}{0:F0}" IsLogarithmic="True"
                                     Description="Divides raw Fy values to normalize them. Lower = stronger cornering feel. Affects both front and rear Fy."
+                                    DefaultValue="{Binding BuiltInDefaults.FyScale}"
                                     SectionColor="{StaticResource SectionTyreForces}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Rear Axle &amp; Other">
@@ -152,16 +158,19 @@
                                             Label="Mz Rear" StringFormat="{}{0:F3}"
                                             Description="Rear self-aligning torque — usually left off. Can add subtle rear-end feel but may increase noise."
                                             ShowCheckBox="True" IsChecked="{Binding MzRearEnabled}"
+                                            DefaultValue="{Binding BuiltInDefaults.MzRear.Gain}"
                                             SectionColor="{StaticResource SectionTyreForces}" />
                                         <controls:LabeledSlider Value="{Binding FxRearGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
                                             Label="Fx Rear" StringFormat="{}{0:F3}"
                                             Description="Rear braking/acceleration feel."
                                             ShowCheckBox="True" IsChecked="{Binding FxRearEnabled}"
+                                            DefaultValue="{Binding BuiltInDefaults.FxRear.Gain}"
                                             SectionColor="{StaticResource SectionTyreForces}" />
                                         <controls:LabeledSlider Value="{Binding FyRearGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
                                             Label="Fy Rear" StringFormat="{}{0:F3}"
                                             Description="Rear cornering force. Also affected by Center Blend."
                                             ShowCheckBox="True" IsChecked="{Binding FyRearEnabled}"
+                                            DefaultValue="{Binding BuiltInDefaults.FyRear.Gain}"
                                             SectionColor="{StaticResource SectionTyreForces}" />
 
                                         <TextBlock Text="Other" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
@@ -169,10 +178,12 @@
                                             Label="Game FFB Output" StringFormat="{}{0:F3}"
                                             Description="The game's built-in FFB signal. In Replace mode it's added on top; in Overlay mode it's the base."
                                             ShowCheckBox="True" IsChecked="{Binding FinalFfEnabled}"
+                                            DefaultValue="{Binding BuiltInDefaults.FinalFf.Gain}"
                                             SectionColor="{StaticResource SectionTyreForces}" />
                                         <controls:LabeledSlider Value="{Binding WheelLoadWeighting, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                             Label="Wheel Load Weighting" StringFormat="{}{0:F3}"
                                             Description="How much actual tire load affects force mixing. 0 = simple average, 1 = load-proportional."
+                                            DefaultValue="{Binding BuiltInDefaults.WheelLoadWeighting}"
                                             SectionColor="{StaticResource SectionTyreForces}" />
                                     </StackPanel>
                                 </Expander>
@@ -196,10 +207,12 @@
                                 <controls:LabeledSlider Value="{Binding SlipRatioGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
                                     Label="Slip Ratio Gain" StringFormat="{}{0:F3}"
                                     Description="Adds extra force during wheelspin or wheel lock-up. Needs Slip Threshold set correctly."
+                                    DefaultValue="{Binding BuiltInDefaults.Slip.SlipRatioGain}"
                                     SectionColor="{StaticResource SectionTyreSlip}" />
                                 <controls:LabeledSlider Value="{Binding SlipAngleGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
                                     Label="Slip Angle Gain" StringFormat="{}{0:F3}"
                                     Description="Adds extra force when tires slide sideways (oversteer). Needs Slip Threshold set correctly."
+                                    DefaultValue="{Binding BuiltInDefaults.Slip.SlipAngleGain}"
                                     SectionColor="{StaticResource SectionTyreSlip}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed Slip Settings">
@@ -207,6 +220,7 @@
                                         <controls:LabeledSlider Value="{Binding SlipThreshold, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                             Label="Slip Threshold" StringFormat="{}{0:F3}"
                                             Description="Minimum slip level before the slip enhancer activates. Lower = more sensitive."
+                                            DefaultValue="{Binding BuiltInDefaults.Slip.SlipThreshold}"
                                             SectionColor="{StaticResource SectionTyreSlip}" />
                                         <DockPanel Margin="0,6">
                                             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
@@ -236,10 +250,12 @@
                                 <controls:LabeledSlider Value="{Binding ScrubGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Front Tire Scrub" StringFormat="{}{0:F3}"
                                     Description="High-frequency grain (30-50Hz) as front tires approach grip limit. Simulates rubber tearing at the contact patch before the Mz torque drops. 0 = off, 0.15 = subtle, 0.5 = strong."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.ScrubGain}"
                                     SectionColor="{StaticResource SectionGripFeel}" />
                                 <controls:LabeledSlider Value="{Binding RearSlipGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Rear Slip Warning" StringFormat="{}{0:F3}"
                                     Description="Low-frequency rumble (12-25Hz) when rear tires lose grip. Detects rear slip angle and yaw acceleration for early oversteer warning. 0 = off, 0.25 = default, 0.5 = strong."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.RearSlipGain}"
                                     SectionColor="{StaticResource SectionGripFeel}" />
                             </StackPanel>
                         </controls:SectionCard.InnerContent>
@@ -260,10 +276,12 @@
                                 <controls:LabeledSlider Value="{Binding TyreFlexGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
                                     Label="Carcass Flex Gain" StringFormat="{}{0:F3}"
                                     Description="Simulates tyre sidewall flex from load transfer. Adds subtle force from rapid weight shifts — braking, cornering entry, and kerb strikes."
+                                    DefaultValue="{Binding BuiltInDefaults.TyreFlex.FlexGain}"
                                     SectionColor="{StaticResource SectionTyreFlex}" />
                                 <controls:LabeledSlider Value="{Binding LoadFlexGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
                                     Label="Contact Patch Gain" StringFormat="{}{0:F3}"
                                     Description="Simulates contact patch length changes under load and slip. Adds feel for how the tyre's grip footprint is changing."
+                                    DefaultValue="{Binding BuiltInDefaults.TyreFlex.LoadFlexGain}"
                                     SectionColor="{StaticResource SectionTyreFlex}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed Tyre Flex Settings">
@@ -271,14 +289,17 @@
                                         <controls:LabeledSlider Value="{Binding CarcassStiffness, Mode=TwoWay}" Minimum="0.1" Maximum="5" TickFrequency="0.01"
                                             Label="Carcass Stiffness" StringFormat="{}{0:F3}"
                                             Description="Controls how stiff the tyre carcass is. Lower = more flex feel (softer tyres), higher = less flex (stiffer tyres). Default 1.0."
+                                            DefaultValue="{Binding BuiltInDefaults.TyreFlex.CarcassStiffness}"
                                             SectionColor="{StaticResource SectionTyreFlex}" />
                                         <controls:LabeledSlider Value="{Binding FlexSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.95" TickFrequency="0.01"
                                             Label="Flex Smoothing" StringFormat="{}{0:F3}"
                                             Description="EMA smoothing for flex forces. Higher = smoother but more lag. Lower = more responsive but noisier. Default 0.70."
+                                            DefaultValue="{Binding BuiltInDefaults.TyreFlex.FlexSmoothing}"
                                             SectionColor="{StaticResource SectionTyreFlex}" />
                                         <controls:LabeledSlider Value="{Binding ContactPatchWeight, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                             Label="Contact Patch Weight" StringFormat="{}{0:F3}"
                                             Description="How much lateral G-force affects contact patch variation. Higher = more feel from weight transfer direction changes. Default 0.5."
+                                            DefaultValue="{Binding BuiltInDefaults.TyreFlex.ContactPatchWeight}"
                                             SectionColor="{StaticResource SectionTyreFlex}" />
                                     </StackPanel>
                                 </Expander>
@@ -303,14 +324,17 @@
                                 <controls:LabeledSlider Value="{Binding StaticFrictionGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                     Label="Master Gain" StringFormat="{}{0:F2}"
                                     Description="Overall intensity of stationary friction. 0 = disabled, 1 = normal, 2 = extra heavy."
+                                    DefaultValue="{Binding BuiltInDefaults.StaticFriction.Gain}"
                                     SectionColor="{StaticResource SectionDamping}" />
                                 <controls:LabeledSlider Value="{Binding StaticFrictionEngineOffScale, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                     Label="Engine Off Scale" StringFormat="{}{0:F2}"
                                     Description="Force multiplier when engine is off. Higher = heavier steering (no power assist)."
+                                    DefaultValue="{Binding BuiltInDefaults.StaticFriction.EngineOffScale}"
                                     SectionColor="{StaticResource SectionDamping}" />
                                 <controls:LabeledSlider Value="{Binding StaticFrictionEngineOnScale, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Engine On Scale" StringFormat="{}{0:F2}"
                                     Description="Force multiplier when engine is running. Lower = lighter steering (power assist)."
+                                    DefaultValue="{Binding BuiltInDefaults.StaticFriction.EngineOnScale}"
                                     SectionColor="{StaticResource SectionDamping}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Elastic Friction Model">
@@ -318,34 +342,42 @@
                                         <controls:LabeledSlider Value="{Binding StaticFrictionMaxElasticStretch, Mode=TwoWay}" Minimum="0.001" Maximum="0.05" TickFrequency="0.001"
                                             Label="Elastic Stretch" StringFormat="{}{0:F3}"
                                             Description="Max elastic deformation before tyre breaks free. Smaller = sharper transition, larger = more rubbery feel. Default 0.01."
+                                            DefaultValue="{Binding BuiltInDefaults.StaticFriction.MaxElasticStretch}"
                                             SectionColor="{StaticResource SectionDamping}" />
                                         <controls:LabeledSlider Value="{Binding StaticFrictionSpringStiffness, Mode=TwoWay}" Minimum="1" Maximum="50" TickFrequency="0.5"
                                             Label="Spring Stiffness" StringFormat="{}{0:F1}"
                                             Description="How quickly force ramps up in the elastic zone. Higher = stiffer initial resistance. Default 15."
+                                            DefaultValue="{Binding BuiltInDefaults.StaticFriction.SpringStiffness}"
                                             SectionColor="{StaticResource SectionDamping}" />
                                         <controls:LabeledSlider Value="{Binding StaticFrictionKineticFrictionBase, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                             Label="Kinetic Friction" StringFormat="{}{0:F2}"
                                             Description="Sliding friction force level once tyre has broken free. Default 0.20."
+                                            DefaultValue="{Binding BuiltInDefaults.StaticFriction.KineticFrictionBase}"
                                             SectionColor="{StaticResource SectionDamping}" />
                                         <controls:LabeledSlider Value="{Binding StaticFrictionEngineOffDamping, Mode=TwoWay}" Minimum="0" Maximum="0.5" TickFrequency="0.01"
                                             Label="Engine Off Damping" StringFormat="{}{0:F2}"
                                             Description="Viscous damping when engine is off. Absorbs motor inertia to prevent buzz. Default 0.15."
+                                            DefaultValue="{Binding BuiltInDefaults.StaticFriction.EngineOffDamping}"
                                             SectionColor="{StaticResource SectionDamping}" />
                                         <controls:LabeledSlider Value="{Binding StaticFrictionEngineOnDamping, Mode=TwoWay}" Minimum="0" Maximum="0.2" TickFrequency="0.005"
                                             Label="Engine On Damping" StringFormat="{}{0:F3}"
                                             Description="Viscous damping when engine is running. Much lower — power assist. Default 0.02."
+                                            DefaultValue="{Binding BuiltInDefaults.StaticFriction.EngineOnDamping}"
                                             SectionColor="{StaticResource SectionDamping}" />
                                         <controls:LabeledSlider Value="{Binding StaticFrictionActiveDecay, Mode=TwoWay}" Minimum="0.5" Maximum="1" TickFrequency="0.01"
                                             Label="Active Decay" StringFormat="{}{0:F2}"
                                             Description="Per-frame displacement decay while turning. Lower = faster decay = more stable. 0.92 default works for most wheels. Use 0.5-0.8 for very strong wheel bases."
+                                            DefaultValue="{Binding BuiltInDefaults.StaticFriction.ActiveDecay}"
                                             SectionColor="{StaticResource SectionDamping}" />
                                         <controls:LabeledSlider Value="{Binding StaticFrictionReturnDecay, Mode=TwoWay}" Minimum="0.1" Maximum="0.99" TickFrequency="0.01"
                                             Label="Return Decay" StringFormat="{}{0:F2}"
                                             Description="Per-frame decay when spring pulls wheel back. Lower = faster oscillation kill. 0.65 default. Use 0.1-0.4 for very strong wheel bases."
+                                            DefaultValue="{Binding BuiltInDefaults.StaticFriction.ReturnDecay}"
                                             SectionColor="{StaticResource SectionDamping}" />
                                         <controls:LabeledSlider Value="{Binding StaticFrictionOutputSmoothAlpha, Mode=TwoWay}" Minimum="0.05" Maximum="1" TickFrequency="0.01"
                                             Label="Output Smoothing" StringFormat="{}{0:F2}"
                                             Description="EMA alpha for smoothing force output. 0.35 = smooth but responsive, 1.0 = no smoothing. Reduces notchy feel from game's discrete steer steps."
+                                            DefaultValue="{Binding BuiltInDefaults.StaticFriction.OutputSmoothAlpha}"
                                             SectionColor="{StaticResource SectionDamping}" />
                                     </StackPanel>
                                 </Expander>
@@ -381,18 +413,22 @@
                                 <controls:LabeledSlider Value="{Binding CrashImpactGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Impact Gain" StringFormat="{}{0:F2}"
                                     Description="How strong the crash kick feels. 0.3 = subtle nudge, 0.6 = noticeable kick, 1.0 = full force."
+                                    DefaultValue="{Binding BuiltInDefaults.Crash.ImpactGain}"
                                     SectionColor="{StaticResource SectionCrash}" />
                                 <controls:LabeledSlider Value="{Binding CrashSafetyClamp, Mode=TwoWay}" Minimum="0.1" Maximum="1.0" TickFrequency="0.01"
                                     Label="Safety Clamp" StringFormat="{}{0:F0}%" DisplayText="{Binding CrashSafetyClampPercentText}"
                                     Description="Maximum crash force as a fraction of total output. Prevents wall impacts from generating dangerous torque. 50% default is safe for all wheels."
+                                    DefaultValue="{Binding BuiltInDefaults.Crash.SafetyClamp}"
                                     SectionColor="{StaticResource SectionCrash}" />
                                 <controls:LabeledSlider Value="{Binding CrashTriggerThresholdG, Mode=TwoWay}" Minimum="1.0" Maximum="10.0" TickFrequency="0.1"
                                     Label="Trigger Threshold (G)" StringFormat="{}{0:F1}"
                                     Description="Minimum G-force spike to trigger crash detection. 3G = typical racing collision, 5G = heavy impact, 8G+ = extreme."
+                                    DefaultValue="{Binding BuiltInDefaults.Crash.TriggerThresholdG}"
                                     SectionColor="{StaticResource SectionCrash}" />
                                 <controls:LabeledSlider Value="{Binding CrashDecayRate, Mode=TwoWay}" Minimum="0.5" Maximum="0.98" TickFrequency="0.01"
                                     Label="Decay Rate" StringFormat="{}{0:F2}"
                                     Description="How fast the impact force fades. 0.88 = quick punch (~100ms), 0.95 = longer shake (~250ms), 0.98 = sustained rumble."
+                                    DefaultValue="{Binding BuiltInDefaults.Crash.DecayRate}"
                                     SectionColor="{StaticResource SectionCrash}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Safety Override (Hazard Mode)">
@@ -411,6 +447,7 @@
                                         <controls:LabeledSlider Value="{Binding CrashMinSpeedKmh, Mode=TwoWay}" Minimum="0" Maximum="50" TickFrequency="1"
                                             Label="Min Speed (km/h)" StringFormat="{}{0:F0}"
                                             Description="Minimum speed for crash detection. Below this, no crash forces are generated. Prevents false triggers in the pit lane."
+                                            DefaultValue="{Binding BuiltInDefaults.Crash.MinSpeedKmh}"
                                             SectionColor="{StaticResource SectionCrash}" />
                                     </StackPanel>
                                 </Expander>
@@ -439,14 +476,17 @@
                                 <controls:LabeledSlider Value="{Binding VibrationMasterGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                                     Label="Master" StringFormat="{}{0:F3}"
                                     Description="Master volume for all vibration effects. Scales Curb, Slip, Road, and ABS together."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.MasterGain}"
                                     SectionColor="{StaticResource SectionVibration}" />
                                 <controls:LabeledSlider Value="{Binding CurbGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                                     Label="Curb" StringFormat="{}{0:F3}"
                                     Description="Kerb strike vibration intensity. Also scales suspension-derived kerb bumps in the main force."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.KerbGain}"
                                     SectionColor="{StaticResource SectionVibration}" />
                                 <controls:LabeledSlider Value="{Binding SlipGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                                     Label="Slip" StringFormat="{}{0:F3}"
                                     Description="Tire slip vibration intensity. Scaled by Master."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.SlipGain}"
                                     SectionColor="{StaticResource SectionVibration}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed Vibration Settings">
@@ -454,18 +494,22 @@
                                         <controls:LabeledSlider Value="{Binding RoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                                             Label="Road" StringFormat="{}{0:F3}"
                                             Description="Road surface vibration intensity. Also scales suspension-derived road texture in the main force."
+                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.RoadGain}"
                                             SectionColor="{StaticResource SectionVibration}" />
                                         <controls:LabeledSlider Value="{Binding AbsGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                                             Label="ABS Intensity" StringFormat="{}{0:F3}"
                                             Description="ABS pulse vibration intensity. Also adds pulses to the main steering force when ABS activates."
+                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.AbsGain}"
                                             SectionColor="{StaticResource SectionVibration}" />
                                         <controls:LabeledSlider Value="{Binding AbsPulseAmplitude, Mode=TwoWay}" Minimum="0" Maximum="1.0" TickFrequency="0.01"
                                             Label="ABS Pulse Strength" StringFormat="{}{0:F3}"
                                             Description="How punchy each ABS pulse feels. Per-car tuning: gentle cars ~0.10, aggressive ~0.25-0.50."
+                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.AbsPulseAmplitude}"
                                             SectionColor="{StaticResource SectionVibration}" />
                                         <controls:LabeledSlider Value="{Binding SuspensionRoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.01"
                                             Label="Suspension Road" StringFormat="{}{0:F3}"
                                             Description="Suspension-derived road texture gain for the main force channel. Works with Road and Curb vibration gains."
+                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.SuspensionRoadGain}"
                                             SectionColor="{StaticResource SectionVibration}" />
                                     </StackPanel>
                                 </Expander>
@@ -489,10 +533,12 @@
                                 <controls:LabeledSlider Value="{Binding SpeedDamping, Mode=TwoWay}" Minimum="0" Maximum="25" TickFrequency="0.001"
                                     Label="Speed Damping" StringFormat="{}{0:F3}"
                                     Description="Viscous damping — adds resistance that increases with car speed. Higher = heavier steering at speed. Scaled by Damping Speed Ref."
+                                    DefaultValue="{Binding BuiltInDefaults.Damping.SpeedDamping}"
                                     SectionColor="{StaticResource SectionDamping}" />
                                 <controls:LabeledSlider Value="{Binding FrictionLevel, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.001"
                                     Label="Friction" StringFormat="{}{0:F3}"
                                     Description="Constant friction resistance when turning the wheel (Coulomb model). Higher = heavier, more resistant feel."
+                                    DefaultValue="{Binding BuiltInDefaults.Damping.Friction}"
                                     SectionColor="{StaticResource SectionDamping}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed Damping Settings">
@@ -500,10 +546,12 @@
                                         <controls:LabeledSlider Value="{Binding InertiaWeight, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.1"
                                             Label="Inertia" StringFormat="{}{0:F3}"
                                             Description="Simulates steering inertia — resists rapid direction changes based on angular acceleration. Increases with car speed."
+                                            DefaultValue="{Binding BuiltInDefaults.Damping.Inertia}"
                                             SectionColor="{StaticResource SectionDamping}" />
                                         <controls:LabeledSlider Value="{Binding DampingSpeedReference, Mode=TwoWay}" Minimum="50" Maximum="500" TickFrequency="5"
                                             Label="Damping Speed Ref (km/h)" StringFormat="{}{0:F0}"
                                             Description="Speed where speed-based damping reaches full strength. Lower = damping kicks in sooner."
+                                            DefaultValue="{Binding BuiltInDefaults.Damping.MaxSpeedReference}"
                                             SectionColor="{StaticResource SectionDamping}" />
                                     </StackPanel>
                                 </Expander>
@@ -527,10 +575,12 @@
                                 <controls:LabeledSlider Value="{Binding CorneringForce, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
                                     Label="Cornering Force" StringFormat="{}{0:F3}"
                                     Description="Adds force based on lateral G-forces during cornering. Gives a sense of how hard the car is turning."
+                                    DefaultValue="{Binding BuiltInDefaults.Dynamic.LateralGGain}"
                                     SectionColor="{StaticResource SectionDynamic}" />
                                 <controls:LabeledSlider Value="{Binding RoadFeel, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
                                     Label="Road Feel" StringFormat="{}{0:F3}"
                                     Description="Adds force from suspension compression changes (bumps, kerbs). Only detects rapid changes, not steady-state."
+                                    DefaultValue="{Binding BuiltInDefaults.Dynamic.SuspensionGain}"
                                     SectionColor="{StaticResource SectionDynamic}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed Dynamic Settings">
@@ -538,10 +588,12 @@
                                         <controls:LabeledSlider Value="{Binding AccelerationBrakingForce, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
                                             Label="Accel/Braking Force" StringFormat="{}{0:F3}"
                                             Description="Adds force from forward/backward G-forces. Feel weight transfer under braking and acceleration."
+                                            DefaultValue="{Binding BuiltInDefaults.Dynamic.LongitudinalGGain}"
                                             SectionColor="{StaticResource SectionDynamic}" />
                                         <controls:LabeledSlider Value="{Binding CarRotationForce, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
                                             Label="Car Rotation Force" StringFormat="{}{0:F3}"
                                             Description="Adds force based on how fast the car is rotating (yaw rate). Helps feel slides and transitions."
+                                            DefaultValue="{Binding BuiltInDefaults.Dynamic.YawRateGain}"
                                             SectionColor="{StaticResource SectionDynamic}" />
                                     </StackPanel>
                                 </Expander>
@@ -570,24 +622,29 @@
                                 <controls:LabeledSlider Value="{Binding LfeGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="LFE Gain" StringFormat="{}{0:F3}"
                                     Description="Overall intensity of the low-frequency effect mixed into the main force."
+                                    DefaultValue="{Binding BuiltInDefaults.Lfe.Gain}"
                                     SectionColor="{StaticResource SectionLfe}" />
                                 <controls:LabeledSlider Value="{Binding LfeFrequency, Mode=TwoWay}" Minimum="3" Maximum="30" TickFrequency="0.5"
                                     Label="Frequency" StringFormat="{}{0:F1}" Suffix=" Hz"
                                     Description="Base rumble frequency in Hz. Lower = deeper thump, higher = faster buzz."
+                                    DefaultValue="{Binding BuiltInDefaults.Lfe.Frequency}"
                                     SectionColor="{StaticResource SectionLfe}" />
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed LFE Settings">
                                     <StackPanel>
                                         <controls:LabeledSlider Value="{Binding LfeSuspensionDrive, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                             Label="Suspension Drive" StringFormat="{}{0:F3}"
                                             Description="How much suspension travel drives the LFE envelope. Higher = more reactive to bumps."
+                                            DefaultValue="{Binding BuiltInDefaults.Lfe.SuspensionDrive}"
                                             SectionColor="{StaticResource SectionLfe}" />
                                         <controls:LabeledSlider Value="{Binding LfeSpeedScaling, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                             Label="Speed Scaling" StringFormat="{}{0:F3}"
                                             Description="How much vehicle speed modulates LFE frequency. Higher = faster rumble at speed."
+                                            DefaultValue="{Binding BuiltInDefaults.Lfe.SpeedScaling}"
                                             SectionColor="{StaticResource SectionLfe}" />
                                         <controls:LabeledSlider Value="{Binding LfeRpmDrive, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                             Label="RPM Drive" StringFormat="{}{0:F3}"
                                             Description="How much engine RPM drives the LFE intensity and frequency. Higher = more engine vibration rumble at high RPM."
+                                            DefaultValue="{Binding BuiltInDefaults.Lfe.RpmDrive}"
                                             SectionColor="{StaticResource SectionLfe}" />
                                     </StackPanel>
                                 </Expander>
@@ -612,6 +669,7 @@
                                 <controls:LabeledSlider Value="{Binding CenterSuppressionDegrees, Mode=TwoWay}" Minimum="0" Maximum="30" TickFrequency="0.1"
                                     Label="Center Suppress (deg)" LabelWidth="185" StringFormat="{}{0:F3}"
                                     Description="Steering angle zone near center where forces are faded to zero (quadratic ramp). Wider = larger dead-feel zone. Only active when Sign Correction is enabled."
+                                    DefaultValue="{Binding BuiltInDefaults.Advanced.CenterSuppressionDegrees}"
                                     SectionColor="{StaticResource SectionSignal}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed Signal Settings">
@@ -619,30 +677,36 @@
                                         <controls:LabeledSlider Value="{Binding NoiseFloor, Mode=TwoWay}" Minimum="0" Maximum="0.05" TickFrequency="0.0005"
                                             Label="Noise Floor" LabelWidth="185" StringFormat="{}{0:F4}"
                                             Description="Forces below this are silenced. Eliminates tiny vibrations when the wheel should be still. Higher = quieter center but may lose fine detail."
+                                            DefaultValue="{Binding BuiltInDefaults.Advanced.NoiseFloor}"
                                             SectionColor="{StaticResource SectionSignal}" />
                                         <controls:LabeledSlider Value="{Binding CenterKneePower, Mode=TwoWay}" Minimum="0.5" Maximum="3.0" TickFrequency="0.01"
                                             Label="Center Knee Power" LabelWidth="185" StringFormat="{}{0:F3}"
                                             Description="Shapes how forces ramp up from zero. 1.0 = normal, higher = lighter at center with sharper force onset."
+                                            DefaultValue="{Binding BuiltInDefaults.Advanced.CenterKneePower}"
                                             SectionColor="{StaticResource SectionSignal}" />
                                         <controls:LabeledSlider Value="{Binding CenterBlendDegrees, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                                             Label="Center Blend (deg)" LabelWidth="185" StringFormat="{}{0:F3}"
                                             Description="Steering angle where Fy (cornering force) is suppressed near center. Prevents Fy buzz at straight-ahead."
+                                            DefaultValue="{Binding BuiltInDefaults.Advanced.CenterBlendDegrees}"
                                             SectionColor="{StaticResource SectionSignal}" />
 
                                         <TextBlock Text="Damping Tuning" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
                                         <controls:LabeledSlider Value="{Binding SteerVelocityReference, Mode=TwoWay}" Minimum="1" Maximum="50" TickFrequency="1"
                                             Label="Steer Vel Reference" LabelWidth="185" StringFormat="{}{0:F0}"
                                             Description="Reference speed for steering velocity normalization. Higher = less damping response to fast inputs."
+                                            DefaultValue="{Binding BuiltInDefaults.Advanced.SteerVelocityReference}"
                                             SectionColor="{StaticResource SectionSignal}" />
                                         <controls:LabeledSlider Value="{Binding VelocityDeadzone, Mode=TwoWay}" Minimum="0" Maximum="0.5" TickFrequency="0.01"
                                             Label="Velocity Deadzone" LabelWidth="185" StringFormat="{}{0:F3}"
                                             Description="Minimum steering speed for damping to activate. Higher = damping only during fast turns. Helps prevent center bounce-back."
+                                            DefaultValue="{Binding BuiltInDefaults.Advanced.VelocityDeadzone}"
                                             SectionColor="{StaticResource SectionSignal}" />
 
                                         <TextBlock Text="Smoothing" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
                                         <controls:LabeledSlider Value="{Binding LowSpeedSmoothKmh, Mode=TwoWay}" Minimum="0" Maximum="100" TickFrequency="1"
                                             Label="Low Speed Smooth (km/h)" LabelWidth="185" StringFormat="{}{0:F0}"
                                             Description="Speed below which all channel smoothing is increased. Higher = smoother low-speed feel but less detail in slow corners."
+                                            DefaultValue="{Binding BuiltInDefaults.Advanced.LowSpeedSmoothKmh}"
                                             SectionColor="{StaticResource SectionSignal}" />
                                     </StackPanel>
                                 </Expander>
@@ -670,6 +734,7 @@
                                 <controls:LabeledSlider Value="{Binding AutoGainScale, Mode=TwoWay}" Minimum="0.1" Maximum="5" TickFrequency="0.01"
                                     Label="Auto-Gain Scale" StringFormat="{}{0:F3}"
                                     Description="Target level when Auto-Gain is active. Higher = stronger auto-compensation so different cars feel similar."
+                                    DefaultValue="{Binding BuiltInDefaults.AutoGain.Scale}"
                                     SectionColor="{StaticResource SectionOutput}" />
                             </StackPanel>
                         </controls:SectionCard.InnerContent>
@@ -713,14 +778,17 @@
                                 <controls:LabeledSlider Value="{Binding WetWeatherRoadVibSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Road Vibration" StringFormat="{}{0:F3}"
                                     Description="How much road surface vibration is suppressed in wet conditions. 0 = full road feel, 0.7 = dampened, 1.0 = road feel removed."
+                                    DefaultValue="{Binding BuiltInDefaults.WetWeather.RoadVibSuppression}"
                                     SectionColor="{StaticResource SectionWetWeather}" />
                                 <controls:LabeledSlider Value="{Binding WetWeatherCurbSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Curb Vibration" StringFormat="{}{0:F3}"
                                     Description="How much curb/kerb vibration is suppressed in wet conditions. Kerbs are less pronounced on wet tracks."
+                                    DefaultValue="{Binding BuiltInDefaults.WetWeather.CurbSuppression}"
                                     SectionColor="{StaticResource SectionWetWeather}" />
                                 <controls:LabeledSlider Value="{Binding WetWeatherScrubSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Tire Scrub" StringFormat="{}{0:F3}"
                                     Description="How much tire scrub texture is suppressed in wet conditions. Less grip = less scrub grain."
+                                    DefaultValue="{Binding BuiltInDefaults.WetWeather.ScrubSuppression}"
                                     SectionColor="{StaticResource SectionWetWeather}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed Wet Weather Settings">
@@ -729,20 +797,24 @@
                                         <controls:LabeledSlider Value="{Binding WetWeatherManualIntensity, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                             Label="Manual Intensity" StringFormat="{}{0:F3}"
                                             Description="When auto-detect is off, this controls wetness intensity directly. 0 = dry, 1 = heavy rain."
+                                            DefaultValue="{Binding BuiltInDefaults.WetWeather.ManualIntensity}"
                                             SectionColor="{StaticResource SectionWetWeather}" />
 
                                         <TextBlock Text="Physics Adjustments" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
                                         <controls:LabeledSlider Value="{Binding WetWeatherPeakSlipAngleMultiplier, Mode=TwoWay}" Minimum="1.0" Maximum="3.0" TickFrequency="0.05"
                                             Label="Peak Slip Angle Mult" StringFormat="{}{0:F2}"
                                             Description="Multiplies the effective peak slip angle. 1.0 = dry curve, 1.6 = wider wet curve (peak grip at larger slip angles)."
+                                            DefaultValue="{Binding BuiltInDefaults.WetWeather.PeakSlipAngleMultiplier}"
                                             SectionColor="{StaticResource SectionWetWeather}" />
                                         <controls:LabeledSlider Value="{Binding WetWeatherDampingReduction, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                             Label="Damping Reduction" StringFormat="{}{0:F3}"
                                             Description="How much speed damping is reduced in wet conditions. Wet tyres have less mechanical grip = less steering resistance."
+                                            DefaultValue="{Binding BuiltInDefaults.WetWeather.DampingReduction}"
                                             SectionColor="{StaticResource SectionWetWeather}" />
                                         <controls:LabeledSlider Value="{Binding WetWeatherNoiseFloorSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                             Label="Noise Floor Boost" StringFormat="{}{0:F3}"
                                             Description="How much the noise floor is raised in wet conditions. Masks fine detail that would be lost on a wet track surface."
+                                            DefaultValue="{Binding BuiltInDefaults.WetWeather.NoiseFloorSuppression}"
                                             SectionColor="{StaticResource SectionWetWeather}" />
 
                                         <TextBlock Text="Hydroplaning" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
@@ -755,10 +827,12 @@
                                         <controls:LabeledSlider Value="{Binding WetWeatherHydroplaningSpeedThreshold, Mode=TwoWay}" Minimum="60" Maximum="250" TickFrequency="5"
                                             Label="Speed Threshold (km/h)" StringFormat="{}{0:F0}"
                                             Description="Speed above which hydroplaning risk increases. Lower = earlier onset (standing water), higher = only at very high speed."
+                                            DefaultValue="{Binding BuiltInDefaults.WetWeather.HydroplaningSpeedThreshold}"
                                             SectionColor="{StaticResource SectionWetWeather}" />
                                         <controls:LabeledSlider Value="{Binding WetWeatherHydroplaningMaxAttenuation, Mode=TwoWay}" Minimum="0" Maximum="0.8" TickFrequency="0.01"
                                             Label="Max Attenuation" StringFormat="{}{0:F3}"
                                             Description="Maximum force reduction during hydroplaning. 0.3 = subtle lightness, 0.6 = noticeable force loss, 0.8 = severe aquaplaning."
+                                            DefaultValue="{Binding BuiltInDefaults.WetWeather.HydroplaningMaxAttenuation}"
                                             SectionColor="{StaticResource SectionWetWeather}" />
                                     </StackPanel>
                                 </Expander>
@@ -790,21 +864,25 @@
                         <controls:LabeledSlider Value="{Binding OutputGain, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.001"
                             Label="Output Gain" DisplayText="{Binding OutputGainNmText}" ValueWidth="100" LabelAbove="True"
                             Description="Master output strength — the final multiplier before the force limiter."
+                            DefaultValue="{Binding BuiltInDefaults.OutputGain}"
                             SectionColor="{StaticResource SectionOutput}" />
 
                         <controls:LabeledSlider Value="{Binding MaxForceLimit, Mode=TwoWay}" Minimum="0.1" Maximum="1.0" TickFrequency="0.01"
                             Label="Max Force Limit" DisplayText="{Binding MaxForceLimitNmText}" ValueWidth="100" LabelAbove="True"
                             Description="Soft limiter — forces above this are gently rounded off."
+                            DefaultValue="{Binding BuiltInDefaults.SoftClipThreshold}"
                             SectionColor="{StaticResource SectionOutput}" />
 
                         <controls:LabeledSlider Value="{Binding ForceSensitivity, Mode=TwoWay}" Minimum="1" Maximum="1000" TickFrequency="1"
                             Label="Sensitivity" StringFormat="{}{0:F0}" IsLogarithmic="True" LabelAbove="True"
                             Description="Inverse sensitivity — higher = weaker forces. First gain stage."
+                            DefaultValue="{Binding BuiltInDefaults.NormalizationScale}"
                             SectionColor="{StaticResource SectionOutput}" />
 
                         <controls:LabeledSlider Value="{Binding MaxSlewRate, Mode=TwoWay}" Minimum="0.03" Maximum="0.50" TickFrequency="0.001"
                             Label="Max Slew Rate" StringFormat="{}{0:F4}" LabelAbove="True"
                             Description="Max force change per frame. Lower = smoother, higher = snappier."
+                            DefaultValue="{Binding BuiltInDefaults.Advanced.MaxSlewRate}"
                             SectionColor="{StaticResource SectionOutput}" />
 
                         <!-- Safety Toggles -->
@@ -844,14 +922,17 @@
                                 <controls:LabeledSlider Value="{Binding ForceScale, Mode=TwoWay}" Minimum="0.01" Maximum="20" TickFrequency="0.01"
                                     Label="Force Scale" StringFormat="{}{0:F3}" IsLogarithmic="True" LabelAbove="True"
                                     Description="Divides the mixed signal to normalize it. Works with Force Sensitivity."
+                                    DefaultValue="{Binding BuiltInDefaults.ForceScale}"
                                     SectionColor="{StaticResource SectionOutput}" />
                                 <controls:LabeledSlider Value="{Binding SteeringLockDegrees, Mode=TwoWay}" Minimum="180" Maximum="1080" TickFrequency="10"
                                     Label="Steering Lock" StringFormat="{}{0}" IsLogarithmic="True" LabelAbove="True"
                                     Description="Your wheel's total rotation in degrees."
+                                    DefaultValue="{Binding BuiltInDefaults.SteeringLockDegrees}"
                                     SectionColor="{StaticResource SectionOutput}" />
                                 <controls:LabeledSlider Value="{Binding WheelMaxTorqueNm, Mode=TwoWay}" Minimum="1" Maximum="25" TickFrequency="0.5"
                                     Label="Max Torque (Nm)" StringFormat="{}{0:F3}" LabelAbove="True"
                                     Description="Wheelbase max torque — used for Nm display. 5.5 = Moza R5, 9 = R9, 15 = R15."
+                                    DefaultValue="{Binding BuiltInDefaults.WheelMaxTorqueNm}"
                                     SectionColor="{StaticResource SectionOutput}" />
 
                                 <TextBlock Text="Response Curve" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />
