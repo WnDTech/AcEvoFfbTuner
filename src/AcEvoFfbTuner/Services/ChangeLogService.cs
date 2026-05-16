@@ -50,6 +50,49 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.21.1",
+            Date = new DateTime(2026, 5, 16),
+            Title = "Home Dashboard, Configurable Startup & UI Polish",
+            Features =
+            [
+                "Home page is now the default start-up view with live telemetry, quick start guide, and update notifications",
+                "Configurable default start page: choose which page opens on launch via Settings",
+                "Update available banner moved to Home page with prominent gold styling and one-click install"
+            ],
+            Improvements =
+            [
+                "Update notifications now appear as a prominent banner on the Home dashboard instead of the status bar",
+                "Page visibility syncs correctly when using a custom default start page"
+            ],
+            Fixes =
+            [
+                "Fixed page visibility not syncing when default start page was set before MainWindow loaded"
+            ]
+        },
+        new ChangeLogEntry
+        {
+            Version = "1.12.0",
+            Date = new DateTime(2026, 5, 15),
+            Title = "Wet Weather FFB, Force Inversion Fix & Diagnostics",
+            Features =
+            [
+                "Wet weather FFB processing: tyre compound classification and wet-condition force adjustments",
+                "Conflicting FFB apps detection with warning banner when other apps are interfering",
+                "Changelog fetched from GitHub Releases API with offline hardcoded fallback",
+                "Auto-normalization and damping floor diagnostics in snapshot output"
+            ],
+            Improvements =
+            [
+                "Fixed force inversion for all wheels — always run dynamic axis test on connect",
+                "Fixed wheel pushing away from centre when moving — implemented SignCorrectionEnabled",
+                "Styled scrollbars to match dark theme with orange accent"
+            ],
+            Fixes =
+            [
+            ]
+        },
+        new ChangeLogEntry
+        {
             Version = "1.7.0",
             Date = new DateTime(2026, 4, 30),
             Title = "FFB Realism Overhaul & Tyre Flex Simulation",
