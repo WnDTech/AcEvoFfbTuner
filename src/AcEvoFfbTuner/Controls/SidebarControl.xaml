@@ -25,7 +25,8 @@
         <StackPanel Grid.Row="0" Grid.RowSpan="2" Margin="0,0">
 
             <RadioButton x:Name="NavHomeBtn" GroupName="SidebarNav" Content="Home" Margin="4,0,4,1"
-                         Tag="{x:Static vm:NavPage.Home}" Click="OnNavClick" Cursor="Hand">
+                         Tag="{x:Static vm:NavPage.Home}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Home — status and quick start">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,9,12,8" Margin="0,0">
@@ -65,7 +66,8 @@
             </RadioButton>
 
             <RadioButton x:Name="NavTuningBtn" GroupName="SidebarNav" Content="FFB Tuning" Margin="4,1"
-                         Tag="{x:Static vm:NavPage.FfbTuning}" Click="OnNavClick" Cursor="Hand">
+                         Tag="{x:Static vm:NavPage.FfbTuning}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="FFB Tuning — all force effect parameters">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
@@ -105,7 +107,8 @@
             </RadioButton>
 
             <RadioButton x:Name="NavEqBtn" GroupName="SidebarNav" Content="Equalizer" Margin="4,1"
-                         Tag="{x:Static vm:NavPage.Equalizer}" Click="OnNavClick" Cursor="Hand">
+                         Tag="{x:Static vm:NavPage.Equalizer}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Equalizer — 10-band FFB frequency shaping">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
@@ -152,7 +155,8 @@
             </RadioButton>
 
             <RadioButton x:Name="NavMapBtn" GroupName="SidebarNav" Content="Track Map" Margin="4,1"
-                         Tag="{x:Static vm:NavPage.TrackMap}" Click="OnNavClick" Cursor="Hand">
+                         Tag="{x:Static vm:NavPage.TrackMap}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Track Map — record and view track layouts">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
@@ -192,7 +196,8 @@
             </RadioButton>
 
             <RadioButton x:Name="NavTelemetryBtn" GroupName="SidebarNav" Content="Telemetry" Margin="4,1"
-                         Tag="{x:Static vm:NavPage.Telemetry}" Click="OnNavClick" Cursor="Hand">
+                         Tag="{x:Static vm:NavPage.Telemetry}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Telemetry — live profiler and signal analysis">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
@@ -232,7 +237,8 @@
             </RadioButton>
 
             <RadioButton x:Name="NavDevicesBtn" GroupName="SidebarNav" Content="Devices" Margin="4,1"
-                         Tag="{x:Static vm:NavPage.Devices}" Click="OnNavClick" Cursor="Hand">
+                         Tag="{x:Static vm:NavPage.Devices}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Devices — LED effects, haptic pad, button assignments">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
@@ -272,7 +278,8 @@
             </RadioButton>
 
             <RadioButton x:Name="NavProfilesBtn" GroupName="SidebarNav" Content="Profiles" Margin="4,1"
-                         Tag="{x:Static vm:NavPage.Profiles}" Click="OnNavClick" Cursor="Hand">
+                         Tag="{x:Static vm:NavPage.Profiles}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Profiles — manage and import/export FFB profiles">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
@@ -315,7 +322,8 @@
         <StackPanel Grid.Row="2" Margin="0,0,0,8">
             <Border Background="#FF30363D" Height="1" Margin="12,4" />
             <Button x:Name="SettingsBtn" Content="Settings" Click="OnSettingsClick" Cursor="Hand" HorizontalAlignment="Stretch"
-                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1">
+                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1"
+                    ToolTip="App settings and debug tools">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
@@ -340,7 +348,8 @@
                 </Button.Template>
             </Button>
             <Button x:Name="CollapseBtn" Click="OnToggleCollapse" Cursor="Hand" HorizontalAlignment="Stretch"
-                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1">
+                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1"
+                    ToolTip="Collapse or expand sidebar">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">

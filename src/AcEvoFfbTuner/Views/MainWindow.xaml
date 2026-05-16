@@ -12,7 +12,8 @@
         Background="{StaticResource BgDark}"
         Foreground="{StaticResource TextBrush}"
         FontFamily="Segoe UI"
-        UseLayoutRounding="True">
+        UseLayoutRounding="True"
+        ToolTipService.IsEnabled="{Binding TooltipsEnabled}">
 
     <Window.DataContext>
         <vm:MainViewModel />
@@ -60,7 +61,8 @@
 
                 <!-- Connection Pill -->
                 <Button Grid.Column="2" x:Name="ConnectionPill" Click="OnConnectionPillClick"
-                        Cursor="Hand" VerticalAlignment="Center">
+                        Cursor="Hand" VerticalAlignment="Center"
+                        ToolTip="Select FFB device">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="PillBd" Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
@@ -178,7 +180,7 @@
                 <!-- Profile Pill + Save -->
                 <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="ProfilePill" Click="OnProfilePillClick"
-                            Cursor="Hand">
+                            Cursor="Hand" ToolTip="Select FFB profile">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="PillBd" Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
@@ -321,7 +323,8 @@
                         </Button.Template>
                     </Button>
                     <Button Command="{Binding SendDiagnosticPackCommand}" Cursor="Hand"
-                            Margin="0,0,8,0" VerticalAlignment="Center">
+                            Margin="0,0,8,0" VerticalAlignment="Center"
+                            ToolTip="Send diagnostic data to the developer">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="DiagBd" Background="#1AF0883E" BorderBrush="#FFF0883E"
@@ -363,7 +366,8 @@
                         </Button.Template>
                     </Button>
                     <ToggleButton IsChecked="{Binding IsRunning}" Command="{Binding ToggleTelemetryCommand}"
-                                  Margin="0,0,8,0" x:Name="StartStopToggle">
+                                  Margin="0,0,8,0" x:Name="StartStopToggle"
+                                  ToolTip="Start or stop FFB telemetry processing">
                         <ToggleButton.Style>
                             <Style TargetType="ToggleButton">
                                 <Setter Property="Content" Value="START" />
@@ -400,7 +404,7 @@
                             </Style>
                         </ToggleButton.Style>
                     </ToggleButton>
-                    <Button Content="PANIC" Command="{Binding PanicStopCommand}" Style="{StaticResource PanicButton}" Padding="16,6" FontSize="14" />
+                    <Button Content="PANIC" Command="{Binding PanicStopCommand}" Style="{StaticResource PanicButton}" Padding="16,6" FontSize="14" ToolTip="Immediately zero all FFB output" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -602,7 +606,8 @@
 
                     <!-- Haptic Test Button -->
                     <Button Command="{Binding TestHapticsCommand}" Cursor="Hand" VerticalAlignment="Center"
-                            Visibility="{Binding IsDeviceConnected, Converter={StaticResource BoolToVis}}">
+                            Visibility="{Binding IsDeviceConnected, Converter={StaticResource BoolToVis}}"
+                            ToolTip="Play a test vibration on your wheel">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="HapticBtnBorder" Background="#1A79C0FF" CornerRadius="4" Padding="10,3" SnapsToDevicePixels="True">
@@ -626,7 +631,8 @@
                     <Border Width="1" Background="{StaticResource BorderBrush}" Margin="8,0" Height="16" VerticalAlignment="Center" />
 
                     <!-- Donate -->
-                    <Button Click="OnDonateClick" Cursor="Hand" VerticalAlignment="Center">
+                    <Button Click="OnDonateClick" Cursor="Hand" VerticalAlignment="Center"
+                            ToolTip="Support the developer">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border Background="Transparent" CornerRadius="4" Padding="10,3" SnapsToDevicePixels="True">

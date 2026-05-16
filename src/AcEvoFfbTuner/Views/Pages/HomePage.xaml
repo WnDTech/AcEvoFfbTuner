@@ -188,7 +188,7 @@
                         <TextBlock Text="{Binding UpdateStatusText}" FontSize="13" Foreground="#FFE6EDF3" TextWrapping="Wrap" />
                     </StackPanel>
                     <Button Grid.Column="1" Command="{Binding DownloadAndInstallUpdateCommand}" Cursor="Hand" VerticalAlignment="Center"
-                            Margin="16,0,0,0">
+                            Margin="16,0,0,0" ToolTip="Download and install the latest version">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="UpdateBtnBorder" Background="#FFFFD600" CornerRadius="6" Padding="20,10" SnapsToDevicePixels="True">
@@ -265,7 +265,8 @@
                     <!-- START / STOP (hero button, center) -->
                     <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <ToggleButton IsChecked="{Binding IsRunning}" Command="{Binding ToggleTelemetryCommand}"
-                                      x:Name="HomeStartToggle">
+                                      x:Name="HomeStartToggle"
+                                      ToolTip="Start or stop FFB telemetry processing">
                             <ToggleButton.Style>
                                 <Style TargetType="ToggleButton">
                                     <Setter Property="Content" Value="&#x25B6;  START" />
@@ -309,7 +310,8 @@
                     <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="24,0,0,0">
                         <Button Content="PANIC" Command="{Binding PanicStopCommand}"
                                 FontSize="14" FontWeight="Bold" Cursor="Hand" Padding="20,12"
-                                Style="{StaticResource PanicButton}" />
+                                Style="{StaticResource PanicButton}"
+                                ToolTip="Immediately zero all FFB output" />
                         <TextBlock FontSize="11" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap" MaxWidth="140" TextAlignment="Center"
                                    Text="Zero all FFB · Assignable in Devices page" />
                     </StackPanel>
@@ -493,7 +495,8 @@
                         </StackPanel>
 
                         <!-- Test Buzz Button -->
-                        <Button Command="{Binding TestBuzzCommand}" Cursor="Hand" HorizontalAlignment="Stretch">
+                        <Button Command="{Binding TestBuzzCommand}" Cursor="Hand" HorizontalAlignment="Stretch"
+                                ToolTip="Play a 500ms diagnostic vibration on your wheel">
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Setter Property="Background" Value="#1AF0883E" />

@@ -943,7 +943,7 @@
                                         <ComboBoxItem Content="Progressive" />
                                         <ComboBoxItem Content="Dead Zone" />
                                     </ComboBox>
-                                    <Button Content="Apply" Command="{Binding ApplyLutPresetCommand}" Margin="12,0,0,0" Padding="20,6" />
+                                    <Button Content="Apply" Command="{Binding ApplyLutPresetCommand}" Margin="12,0,0,0" Padding="20,6" ToolTip="Apply the selected response curve preset" />
                                 </StackPanel>
                             </StackPanel>
                         </Expander>

@@ -11,7 +11,7 @@
                 <TextBlock Text="FFB EFFECT EQUALIZER" Style="{StaticResource GroupHeader}" VerticalAlignment="Center" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <TextBlock Text="Enable" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0" />
-                    <CheckBox IsChecked="{Binding EqEnabled}" VerticalAlignment="Center" />
+                    <CheckBox IsChecked="{Binding EqEnabled}" VerticalAlignment="Center" ToolTip="Enable or disable the FFB equalizer" />
                 </StackPanel>
             </DockPanel>
             <TextBlock Text="10-band parametric EQ for the FFB force signal. Boost or cut frequency ranges to shape how forces feel through the wheel." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,16" TextWrapping="Wrap" />

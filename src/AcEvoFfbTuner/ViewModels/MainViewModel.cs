@@ -3133,6 +3133,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private int _defaultStartPageIndex;
 
+    [ObservableProperty]
+    private bool _tooltipsEnabled = true;
+
     private NAudio.Wave.WasapiLoopbackCapture? _loopbackCapture;
     private NAudio.Wave.WaveFileWriter? _waveWriter;
     private string? _recordingTempPath;
@@ -3185,6 +3188,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    partial void OnTooltipsEnabledChanged(bool value)
+    {
+        _appSettings.TooltipsEnabled = value;
+        _appSettings.Save();
+    }
+
     public void LoadAppSettings()
     {
         SplashScreenEnabled = _appSettings.SplashScreenEnabled;
@@ -3193,6 +3202,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         AutoConnect = _appSettings.AutoConnect;
         AutoStart = _appSettings.AutoStart;
         IsPerCarAutoLoadEnabled = _appSettings.PerCarAutoLoadEnabled;
+        TooltipsEnabled = _appSettings.TooltipsEnabled;
 
         if (Enum.TryParse<NavPage>(_appSettings.DefaultStartPage, out var startPage))
         {

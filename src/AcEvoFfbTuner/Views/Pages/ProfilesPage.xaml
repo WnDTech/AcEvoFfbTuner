@@ -44,7 +44,8 @@
                         </TextBlock>
                     </DockPanel>
                     <CheckBox Content="Auto-load profile when car changes" IsChecked="{Binding IsPerCarAutoLoadEnabled}"
-                              Margin="100,4,0,4" FontSize="13" Foreground="#FFE6EDF3" />
+                              Margin="100,4,0,4" FontSize="13" Foreground="#FFE6EDF3"
+                              ToolTip="Automatically switch profiles when a different car is detected in-game" />
                 </StackPanel>
             </Border>
 
@@ -63,7 +64,7 @@
                             </Style>
                         </Button.Style>
                     </Button>
-                    <Button Content="Save As New Profile..." Command="{Binding SaveAsNewProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left" />
+                    <Button Content="Save As New Profile..." Command="{Binding SaveAsNewProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left" ToolTip="Save current settings as a new profile" />
                     <Button Content="Rename Profile" Command="{Binding RenameProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource OutlinedButton}">
@@ -94,8 +95,8 @@
             <TextBlock Text="Import / Export" Style="{StaticResource SubSectionHeader}" Margin="0,12,0,0" />
             <Border Background="#FF1C2128" CornerRadius="6" Padding="16,10" Margin="0,4">
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="Export Profile" Command="{Binding ExportProfileCommand}" Margin="0,4" Padding="16,6" Style="{StaticResource OutlinedButton}" />
-                    <Button Content="Import Profile" Command="{Binding ImportProfileCommand}" Margin="8,4,0,4" Padding="16,6" Style="{StaticResource OutlinedButton}" />
+                    <Button Content="Export Profile" Command="{Binding ExportProfileCommand}" Margin="0,4" Padding="16,6" Style="{StaticResource OutlinedButton}" ToolTip="Export current profile to a JSON file" />
+                    <Button Content="Import Profile" Command="{Binding ImportProfileCommand}" Margin="8,4,0,4" Padding="16,6" Style="{StaticResource OutlinedButton}" ToolTip="Import a profile from a JSON file" />
                 </StackPanel>
             </Border>
         </StackPanel>

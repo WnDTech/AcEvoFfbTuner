@@ -471,6 +471,19 @@
                 <Setter Property="Background" Value="Transparent" />
             </Style>
 
+            <Style TargetType="ToolTip">
+                <Setter Property="Background" Value="#FF2D333B" />
+                <Setter Property="Foreground" Value="#FFE6EDF3" />
+                <Setter Property="BorderBrush" Value="#FF444C56" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="8,5" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Placement" Value="MousePoint" />
+                <Setter Property="VerticalOffset" Value="4" />
+                <Setter Property="HorizontalOffset" Value="4" />
+                <Setter Property="HasDropShadow" Value="False" />
+            </Style>
+
             <Style TargetType="Border">
                 <Setter Property="Background" Value="Transparent" />
             </Style>

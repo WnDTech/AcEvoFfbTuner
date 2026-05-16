@@ -382,7 +382,8 @@
                             Click="OnOpenMotorTest"
                             Background="#FF333355" Foreground="#FFFF9800" BorderThickness="0"
                             Padding="16,10" FontSize="14" FontWeight="SemiBold" Cursor="Hand"
-                            HorizontalAlignment="Left" Margin="0,0,0,16">
+                            HorizontalAlignment="Left" Margin="0,0,0,16"
+                            ToolTip="Test individual haptic pad motors">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="Bd" Background="{TemplateBinding Background}"
@@ -435,7 +436,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Button:" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0" />
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding SnapshotButtonNames}" SelectedIndex="{Binding SnapshotButtonComboIndex}" FontSize="14" Padding="6,4" Margin="0,0,6,0" />
-                                <Button Grid.Column="2" Content="Assign" Command="{Binding AssignSnapshotButtonCommand}" Padding="12,6" FontSize="14" Style="{StaticResource OutlinedButton}" />
+                                <Button Grid.Column="2" Content="Assign" Command="{Binding AssignSnapshotButtonCommand}" Padding="12,6" FontSize="14" Style="{StaticResource OutlinedButton}" ToolTip="Listen for a button press to assign as snapshot trigger" />
                             </Grid>
                             <TextBlock Text="{Binding SnapshotAssignStatus}" FontSize="13" Foreground="#FFFFD600" FontWeight="Bold" Visibility="{Binding SnapshotAssignStatus, Converter={StaticResource NotEmptyToVis}}" />
                             <TextBlock Text="{Binding ButtonDetectionText}" FontSize="13" Foreground="#FFFFD600" FontWeight="Bold" />
@@ -464,7 +465,7 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <Button Grid.Column="2" Content="Refresh" Command="{Binding RefreshDevicesCommand}" Padding="12,6" FontSize="14" Style="{StaticResource OutlinedButton}" />
+                                <Button Grid.Column="2" Content="Refresh" Command="{Binding RefreshDevicesCommand}" Padding="12,6" FontSize="14" Style="{StaticResource OutlinedButton}" ToolTip="Refresh the list of connected devices" />
                             </Grid>
 
                             <Grid Margin="0,0,0,8">
@@ -475,7 +476,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Button:" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0" />
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding PanicButtonNames}" SelectedIndex="{Binding PanicButtonComboIndex}" FontSize="14" Padding="6,4" Margin="0,0,6,0" />
-                                <Button Grid.Column="2" Content="Assign" Command="{Binding AssignPanicButtonCommand}" Padding="12,6" FontSize="14" Style="{StaticResource OutlinedButton}" />
+                                <Button Grid.Column="2" Content="Assign" Command="{Binding AssignPanicButtonCommand}" Padding="12,6" FontSize="14" Style="{StaticResource OutlinedButton}" ToolTip="Listen for a button press to assign as panic stop" />
                             </Grid>
 
                             <TextBlock Text="{Binding PanicAssignStatus}" FontSize="13" Foreground="#FFFFD600" FontWeight="Bold" Visibility="{Binding PanicAssignStatus, Converter={StaticResource NotEmptyToVis}}" />

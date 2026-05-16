@@ -31,7 +31,8 @@
                         Margin="2,0,0,0"
                         Cursor="Hand"
                         Visibility="Collapsed"
-                        Click="OnResetClick">
+                        Click="OnResetClick"
+                        ToolTip="Reset to default value">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="ResetBd" Background="Transparent" CornerRadius="3" Padding="2">
