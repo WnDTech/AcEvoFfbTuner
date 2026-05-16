@@ -43,6 +43,8 @@ public partial class MainWindow : Window
             if (e.PropertyName == nameof(MainViewModel.CurrentPage))
                 UpdatePageVisibility();
         };
+
+        UpdatePageVisibility();
     }
 
     private void OnNavigateRequested(NavPage page)

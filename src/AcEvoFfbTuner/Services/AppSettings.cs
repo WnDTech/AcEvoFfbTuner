@@ -17,6 +17,7 @@ public sealed class AppSettings
     public bool AutoStart { get; set; }
     public string? LastConnectedDeviceInstanceId { get; set; }
     public bool PerCarAutoLoadEnabled { get; set; } = true;
+    public string DefaultStartPage { get; set; } = "Home";
 
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");

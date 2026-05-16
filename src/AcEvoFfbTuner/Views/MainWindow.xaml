@@ -415,8 +415,8 @@
             <controls:SidebarControl x:Name="Sidebar" Grid.Column="0" />
 
             <Grid Grid.Column="1" x:Name="ContentArea">
-                <pages:HomePage x:Name="HomePageCtrl" Visibility="Collapsed" />
-                <pages:FfbTuningPage x:Name="FfbTuningPageCtrl" Visibility="Visible" />
+                <pages:HomePage x:Name="HomePageCtrl" Visibility="Visible" />
+                <pages:FfbTuningPage x:Name="FfbTuningPageCtrl" Visibility="Collapsed" />
                 <pages:EqualizerPage x:Name="EqualizerPageCtrl" Visibility="Collapsed" />
                 <pages:TrackMapPage x:Name="TrackMapPageCtrl" Visibility="Collapsed" />
                 <pages:TelemetryPage x:Name="TelemetryPageCtrl" Visibility="Collapsed" />
@@ -618,37 +618,6 @@
                                         <Setter TargetName="HapticBtnBorder" Property="Background" Value="#33FFD600" />
                                         <Setter TargetName="HapticBtnText" Property="Foreground" Value="#FFFFD600" />
                                     </DataTrigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
-
-                    <Border Width="1" Background="{StaticResource BorderBrush}" Margin="8,0" Height="16" VerticalAlignment="Center" />
-
-                    <!-- Update Status -->
-                    <TextBlock FontSize="13" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Text" Value="{Binding UpdateStatusText}" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsUpdateAvailable}" Value="True">
-                                        <Setter Property="Foreground" Value="#FFFFD600" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <Button Command="{Binding DownloadAndInstallUpdateCommand}" Cursor="Hand" VerticalAlignment="Center"
-                            Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BoolToVis}}">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="UpdateBtnBorder" Background="#33FFD600" CornerRadius="4" Padding="10,3" SnapsToDevicePixels="True">
-                                    <TextBlock Text="{Binding LatestVersionText, StringFormat='Install {0}'}" FontSize="13" FontWeight="Bold" Foreground="#FFFFD600" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="UpdateBtnBorder" Property="Background" Value="#55FFD600" />
-                                    </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Button.Template>

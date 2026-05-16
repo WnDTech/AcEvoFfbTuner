@@ -36,7 +36,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private string _statusText = "Ready";
 
     [ObservableProperty]
-    private NavPage _currentPage = NavPage.FfbTuning;
+    private NavPage _currentPage = NavPage.Home;
 
     [ObservableProperty]
     private bool _isGameConnected;
@@ -3126,6 +3126,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _autoStart;
 
+    [ObservableProperty]
+    private int _defaultStartPageIndex;
+
     private NAudio.Wave.WasapiLoopbackCapture? _loopbackCapture;
     private NAudio.Wave.WaveFileWriter? _waveWriter;
     private string? _recordingTempPath;
@@ -3168,6 +3171,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _appSettings.Save();
     }
 
+    partial void OnDefaultStartPageIndexChanged(int value)
+    {
+        var pages = Enum.GetValues<NavPage>();
+        if (value >= 0 && value < pages.Length)
+        {
+            _appSettings.DefaultStartPage = pages[value].ToString();
+            _appSettings.Save();
+        }
+    }
+
     public void LoadAppSettings()
     {
         SplashScreenEnabled = _appSettings.SplashScreenEnabled;
@@ -3176,6 +3189,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         AutoConnect = _appSettings.AutoConnect;
         AutoStart = _appSettings.AutoStart;
         IsPerCarAutoLoadEnabled = _appSettings.PerCarAutoLoadEnabled;
+
+        if (Enum.TryParse<NavPage>(_appSettings.DefaultStartPage, out var startPage))
+        {
+            var pages = Enum.GetValues<NavPage>();
+            DefaultStartPageIndex = Array.IndexOf(pages, startPage);
+            CurrentPage = startPage;
+        }
+        else
+        {
+            DefaultStartPageIndex = 0;
+            CurrentPage = NavPage.Home;
+        }
+
         RefreshRecordingDevices();
     }
 
