@@ -31,6 +31,7 @@
     <Resource Include="Resources\wheel_nobg.png" />
     <Resource Include="Resources\wheel.ico" />
     <Resource Include="Resources\engine_start_default.wav" />
+    <Resource Include="Resources\splash-wheels\*.png" />
   </ItemGroup>
 
  </Project>

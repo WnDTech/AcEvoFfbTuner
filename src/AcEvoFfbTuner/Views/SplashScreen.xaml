@@ -24,12 +24,15 @@
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Grid x:Name="WheelContainer" Width="200" Height="200"
-                      RenderTransformOrigin="0.5,0.5">
+                    <Grid x:Name="WheelContainer" Width="200" Height="200"
+                          RenderTransformOrigin="0.5,0.5">
                     <Grid.RenderTransform>
-                        <RotateTransform x:Name="WheelRotation" Angle="0" />
+                        <TransformGroup>
+                            <RotateTransform x:Name="WheelRotation" Angle="0" />
+                            <TranslateTransform x:Name="WheelShake" X="0" Y="0" />
+                        </TransformGroup>
                     </Grid.RenderTransform>
-                    <Image Source="pack://application:,,,/Resources/wheel_nobg.png"
+                    <Image x:Name="WheelImage"
                            RenderOptions.BitmapScalingMode="HighQuality"
                            Width="200" Height="200" />
                 </Grid>

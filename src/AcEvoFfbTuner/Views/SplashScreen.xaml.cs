@@ -2,12 +2,20 @@ using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace AcEvoFfbTuner.Views;
 
 public partial class SplashScreen : Window
 {
+    private static readonly string[] SplashWheelUris =
+    {
+        "pack://application:,,,/Resources/splash-wheels/FanCSLElite.png",
+        "pack://application:,,,/Resources/splash-wheels/G27.png",
+        "pack://application:,,,/Resources/splash-wheels/GPro.png",
+        "pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png",
+    };
     private readonly DispatcherTimer _spinTimer;
     private readonly DispatcherTimer _progressTimer;
     private readonly DispatcherTimer _fadeOutTimer;
@@ -17,12 +25,16 @@ public partial class SplashScreen : Window
     private double _angle;
     private int _progressStep;
     private int _fadeOutTicks;
+    private readonly Random _rng = new();
 
     public event Action? LoadingComplete;
 
     public SplashScreen(string? customSoundPath = null)
     {
         InitializeComponent();
+
+        var idx = Random.Shared.Next(SplashWheelUris.Length);
+        WheelImage.Source = new BitmapImage(new Uri(SplashWheelUris[idx]));
 
         _customSoundPath = customSoundPath;
         _mediaPlayer = new MediaPlayer();
@@ -50,16 +62,58 @@ public partial class SplashScreen : Window
 
     private void OnSpinTick(object? sender, EventArgs e)
     {
-        var rpmFactor = _progressStep switch
+        var t = _progressStep * 0.09;
+
+        var phase = t % 7.0;
+
+        double target;
+
+        if (phase < 0.5)
         {
-            < 8 => 2.0,
-            < 15 => 8.0,
-            < 22 => 6.0,
-            < 28 => 3.0,
-            _ => 4.0
-        };
-        _angle = (_angle + rpmFactor) % 360;
+            target = Math.Sin(phase * 2 * Math.PI) * 10;
+        }
+        else if (phase < 1.5)
+        {
+            var p = (phase - 0.5) / 1.0;
+            target = EaseInOut(p) * 130;
+        }
+        else if (phase < 3.5)
+        {
+            var p = (phase - 1.5) / 2.0;
+            var baseAngle = 130 - p * 25;
+            var slip = Math.Sin(p * Math.PI * 5) * 20;
+            var selfAlign = Math.Sin(p * Math.PI * 13) * 12;
+            var rumble = Math.Sin(p * Math.PI * 40) * 7;
+            target = baseAngle + slip + selfAlign + rumble;
+        }
+        else if (phase < 5.0)
+        {
+            var p = (phase - 3.5) / 1.5;
+            var unwind = EaseInOut(p);
+            var baseAngle = 105 * (1.0 - unwind);
+            var rumble = Math.Sin(p * Math.PI * 45) * 10 * (1 - p);
+            target = baseAngle + rumble;
+        }
+        else
+        {
+            var p = (phase - 5.0) / 2.0;
+            target = Math.Sin(p * Math.PI) * 8;
+        }
+
+        _angle += (target - _angle) * 0.7;
         WheelRotation.Angle = _angle;
+        WheelShake.X = 0;
+        WheelShake.Y = 0;
+    }
+
+    private static double EaseInOut(double t) =>
+        t < 0.5 ? 2 * t * t : 1 - Math.Pow(-2 * t + 2, 2) / 2;
+
+    private double NextGaussian()
+    {
+        var u1 = 1.0 - _rng.NextDouble();
+        var u2 = 1.0 - _rng.NextDouble();
+        return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
     }
 
     private void OnProgressTick(object? sender, EventArgs e)
