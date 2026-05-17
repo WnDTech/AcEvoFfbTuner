@@ -22,12 +22,8 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Install Windows SDK 20348
-        run: |
-          $progressPreference = 'silentlyContinue'
-          Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2249371' -OutFile sdksetup.exe
-          Start-Process -Wait -FilePath sdksetup.exe -ArgumentList '/q','/features OptionId.WindowsSoftwareDevelopmentKit','/ceip off'
-          Remove-Item sdksetup.exe
+      - name: Install UWP workload for CsWinRT
+        run: dotnet workload install windows
 
       - name: Restore dependencies
         run: dotnet restore AcEvoFfbTuner.slnx
