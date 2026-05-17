@@ -242,46 +242,6 @@ public sealed class TelemetryLoop : IDisposable
                             GameConnectionChanged?.Invoke();
                             StatusChanged?.Invoke("Connected to AC Evo");
                         }
-
-                        bool shouldReadStatic = !_staticDataRead ||
-                            (System.Diagnostics.Stopwatch.GetTimestamp() - _lastStaticReReadTicks) > 2 * TicksPerSecond;
-
-                        if (shouldReadStatic && _reader.TryReadStatic(out var staticData))
-                        {
-                            _staticDataRead = true;
-                            _lastStaticReReadTicks = System.Diagnostics.Stopwatch.GetTimestamp();
-                            var newTrackName = DecodeString(staticData.Track);
-                            var trackConfig = DecodeString(staticData.TrackConfiguration);
-                            var nation = DecodeString(staticData.Nation);
-                            var sessionName = DecodeString(staticData.SessionName);
-                            float officialLength = staticData.TrackLengthM;
-
-                            _latestStaticRaw = staticData;
-
-                            if (!string.IsNullOrEmpty(newTrackName) && newTrackName != _lastDetectedTrackName)
-                            {
-                                _lastDetectedTrackName = newTrackName;
-                                MapBuilder.Reset();
-                                PositionDetector.ClearMap();
-                                ForceHeatmap.Initialize(0);
-                                LapRecorder.Initialize(0);
-                                DiagnosticHeatmap.Initialize(0);
-                                _posInitialized = false;
-                                _lastPosPacketId = -1;
-                                TrackChanged?.Invoke(newTrackName);
-                            }
-                            else
-                            {
-                                _lastDetectedTrackName = newTrackName;
-                            }
-
-                            if (!string.IsNullOrEmpty(_lastDetectedCarModel))
-                                StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Car: '{_lastDetectedCarModel}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
-                            else
-                                StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
-                            StaticDataReceived?.Invoke(_lastDetectedTrackName, trackConfig, officialLength,
-                                staticData.Latitude, staticData.Longitude);
-                        }
                     }
                     else
                     {
@@ -294,6 +254,49 @@ public sealed class TelemetryLoop : IDisposable
                         }
                         Thread.Sleep(500);
                         continue;
+                    }
+                }
+
+                if (_reader.IsConnected)
+                {
+                    bool shouldReadStatic = !_staticDataRead ||
+                        (System.Diagnostics.Stopwatch.GetTimestamp() - _lastStaticReReadTicks) > 2 * TicksPerSecond;
+
+                    if (shouldReadStatic && _reader.TryReadStatic(out var staticData))
+                    {
+                        _staticDataRead = true;
+                        _lastStaticReReadTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+                        var newTrackName = DecodeString(staticData.Track);
+                        var trackConfig = DecodeString(staticData.TrackConfiguration);
+                        var nation = DecodeString(staticData.Nation);
+                        var sessionName = DecodeString(staticData.SessionName);
+                        float officialLength = staticData.TrackLengthM;
+
+                        _latestStaticRaw = staticData;
+
+                        if (!string.IsNullOrEmpty(newTrackName) && newTrackName != _lastDetectedTrackName)
+                        {
+                            _lastDetectedTrackName = newTrackName;
+                            MapBuilder.Reset();
+                            PositionDetector.ClearMap();
+                            ForceHeatmap.Initialize(0);
+                            LapRecorder.Initialize(0);
+                            DiagnosticHeatmap.Initialize(0);
+                            _posInitialized = false;
+                            _lastPosPacketId = -1;
+                            TrackChanged?.Invoke(newTrackName);
+                        }
+                        else
+                        {
+                            _lastDetectedTrackName = newTrackName;
+                        }
+
+                        if (!string.IsNullOrEmpty(_lastDetectedCarModel))
+                            StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Car: '{_lastDetectedCarModel}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
+                        else
+                            StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
+                        StaticDataReceived?.Invoke(_lastDetectedTrackName, trackConfig, officialLength,
+                            staticData.Latitude, staticData.Longitude);
                     }
                 }
 
