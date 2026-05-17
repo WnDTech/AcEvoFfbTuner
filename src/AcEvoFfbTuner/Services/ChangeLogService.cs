@@ -50,6 +50,26 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.21.5",
+            Date = new DateTime(2026, 5, 17),
+            Title = "Satellite Maps, FFB Effects Redesign & UI Polish",
+            Features =
+            [
+                "Satellite map view with ESRI tiles, auto-alignment, calibration, and zoom-to-cursor",
+                "FFB effects separated into Curb & Rumble, Surface Vibration, and Offtrack sections",
+                "Per-slider reset-to-default button using built-in profile defaults",
+                "Dark-themed tooltips on all controls with option to disable in Settings",
+                "Random splash screen wheels with corner-turning FFB animation"
+            ],
+            Improvements =
+            [
+            ],
+            Fixes =
+            [
+            ]
+        },
+        new ChangeLogEntry
+        {
             Version = "1.21.1",
             Date = new DateTime(2026, 5, 16),
             Title = "Home Dashboard, Configurable Startup & UI Polish",
