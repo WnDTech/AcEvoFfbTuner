@@ -22,6 +22,11 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Setup Windows SDK
+        uses: GuillaumeFalourd/setup-windows-sdk@v2
+        with:
+          sdk-version: "20348"
+
       - name: Restore dependencies
         run: dotnet restore AcEvoFfbTuner.slnx
 
