@@ -365,8 +365,7 @@ public static class ChangeLogService
 
             if (string.IsNullOrWhiteSpace(line)) continue;
 
-            if (line.StartsWith("## What's New", StringComparison.OrdinalIgnoreCase) ||
-                line.StartsWith("## What's Changed", StringComparison.OrdinalIgnoreCase))
+            if (IsMainHeading(line))
                 continue;
 
             if (line == "---" || line == "***")
@@ -391,7 +390,7 @@ public static class ChangeLogService
                 continue;
             }
 
-            if (line.StartsWith("## ") && !line.StartsWith("## What's", StringComparison.OrdinalIgnoreCase))
+            if (line.StartsWith("## ") && !IsMainHeading(line))
             {
                 FlushItems(entry, currentCategory, currentItems);
                 currentItems.Clear();
@@ -401,6 +400,15 @@ public static class ChangeLogService
         }
 
         FlushItems(entry, currentCategory, currentItems);
+    }
+
+    private static bool IsMainHeading(string line)
+    {
+        if (!line.StartsWith("## ")) return false;
+        var rest = line.Substring(3).TrimStart();
+        return rest.StartsWith("What's New", StringComparison.OrdinalIgnoreCase) ||
+               rest.StartsWith("Whats New", StringComparison.OrdinalIgnoreCase) ||
+               rest.StartsWith("What's Changed", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string ClassifySection(string heading)
