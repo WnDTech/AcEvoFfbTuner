@@ -105,6 +105,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isDownloadingUpdate;
 
+    [ObservableProperty]
+    private int _downloadProgressPercent;
+
     private UpdateInfo? _pendingUpdate;
 
     private bool? _ffbWarningDismissed;
@@ -1157,6 +1160,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 _profileManager.SetActiveProfile(match);
                 StatusText = $"Auto-loaded profile '{match.Name}' for {carModel}";
             }
+        });
+        _telemetryLoop.TrackChanged += newTrackName => Application.Current?.Dispatcher.Invoke(() =>
+        {
+            IsTrackMapAvailable = false;
+            IsTrackMapRecording = false;
+            TrackLengthM = 0;
+            TrackWaypointCount = 0;
+            CornerCount = 0;
+            SectorCount = 0;
+            IsPitDetected = false;
+            TrackMapStatus = $"Track changed to: {newTrackName}";
+            StatusText = $"Track changed to: {newTrackName} — loading map…";
         });
 
         _uiUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
@@ -3724,10 +3739,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task DownloadAndInstallUpdateAsync()
     {
-        if (_pendingUpdate == null) return;
+        if (_pendingUpdate == null || IsDownloadingUpdate) return;
 
         IsDownloadingUpdate = true;
-        IsUpdateAvailable = false;
+        DownloadProgressPercent = 0;
         UpdateStatusText = "Downloading update...";
         LogUpdate($"DownloadAndInstall: starting for v{_pendingUpdate.Version}");
 
@@ -3736,9 +3751,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             var progress = new Progress<DownloadProgress>(p =>
             {
                 if (p.State == DownloadState.Downloading)
+                {
+                    DownloadProgressPercent = p.Percent;
                     UpdateStatusText = $"Downloading update... {p.Percent}%";
+                }
                 else
+                {
                     UpdateStatusText = "Launching installer...";
+                }
             });
 
             await GitHubUpdateService.DownloadAndInstallAsync(_pendingUpdate, progress);
@@ -3751,12 +3771,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             UpdateStatusText = $"Download failed: {ex.Message}";
-            IsUpdateAvailable = true;
             LogUpdate($"DownloadAndInstall FAILED: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
         }
         finally
         {
             IsDownloadingUpdate = false;
+            DownloadProgressPercent = 0;
         }
     }
 

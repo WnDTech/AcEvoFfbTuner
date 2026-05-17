@@ -179,29 +179,68 @@
                     BorderThickness="1" BorderBrush="#55FFD600"
                     Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BoolToVis}}">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="UPDATE AVAILABLE" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" Margin="0,0,0,2" />
-                        <TextBlock Text="{Binding UpdateStatusText}" FontSize="13" Foreground="#FFE6EDF3" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <Button Grid.Column="1" Command="{Binding DownloadAndInstallUpdateCommand}" Cursor="Hand" VerticalAlignment="Center"
-                            Margin="16,0,0,0" ToolTip="Download and install the latest version">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="UpdateBtnBorder" Background="#FFFFD600" CornerRadius="6" Padding="20,10" SnapsToDevicePixels="True">
-                                    <TextBlock Text="{Binding LatestVersionText, StringFormat='Install {0}'}" FontSize="14" FontWeight="Bold" Foreground="#FF1C2128" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="UpdateBtnBorder" Property="Background" Value="#FFE6B800" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" Margin="0,0,0,2">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="UPDATE AVAILABLE" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDownloadingUpdate}" Value="True">
+                                                <Setter Property="Text" Value="DOWNLOADING UPDATE" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="{Binding UpdateStatusText}" FontSize="13" Foreground="#FFE6EDF3" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Command="{Binding DownloadAndInstallUpdateCommand}" Cursor="Hand" VerticalAlignment="Center"
+                                Margin="16,0,0,0" ToolTip="Download and install the latest version">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="IsEnabled" Value="True" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="UpdateBtnBorder" Background="#FFFFD600" CornerRadius="6" Padding="20,10" SnapsToDevicePixels="True">
+                                                    <TextBlock x:Name="BtnText" Text="{Binding LatestVersionText, StringFormat='Install {0}'}" FontSize="14" FontWeight="Bold" Foreground="#FF1C2128" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="UpdateBtnBorder" Property="Background" Value="#FFE6B800" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter TargetName="UpdateBtnBorder" Property="Background" Value="#FF808060" />
+                                                        <Setter TargetName="BtnText" Property="Foreground" Value="#FF404030" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDownloadingUpdate}" Value="True">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </Grid>
+                    <!-- Download progress bar -->
+                    <ProgressBar Grid.Row="1" Minimum="0" Maximum="100"
+                                 Value="{Binding DownloadProgressPercent, Mode=OneWay}"
+                                 Height="8" Margin="0,10,0,0" Foreground="#FFFFD600" Background="#FF21262D"
+                                 BorderThickness="0"
+                                 Visibility="{Binding IsDownloadingUpdate, Converter={StaticResource BoolToVis}}" />
                 </Grid>
             </Border>
 

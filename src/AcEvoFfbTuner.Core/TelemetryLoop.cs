@@ -80,6 +80,8 @@ public sealed class TelemetryLoop : IDisposable
     private string _lastDetectedCarModel = "";
     private bool _staticDataRead;
     private long _lastStaticReReadTicks;
+    private AcEvoStatus _lastSessionStatus = AcEvoStatus.AcOff;
+    private int _lastGfxPacketId = -1;
 
     public readonly FfbLiveServer LiveServer = new();
 
@@ -156,6 +158,7 @@ public sealed class TelemetryLoop : IDisposable
     public event Action<TrackMap>? TrackMapCompleted;
     public event Action<string, string, float, float, float>? StaticDataReceived;
     public event Action<string>? CarModelChanged;
+    public event Action<string>? TrackChanged;
 
     public void Start()
     {
@@ -222,6 +225,8 @@ public sealed class TelemetryLoop : IDisposable
                             _pipeline.Reset();
                             _staticFriction.Reset();
                             _staticDataRead = false;
+                            _lastSessionStatus = AcEvoStatus.AcOff;
+                            _lastGfxPacketId = -1;
                             if (!MapBuilder.HasCompleteMap)
                             {
                                 MapBuilder.Reset();
@@ -245,13 +250,30 @@ public sealed class TelemetryLoop : IDisposable
                         {
                             _staticDataRead = true;
                             _lastStaticReReadTicks = System.Diagnostics.Stopwatch.GetTimestamp();
-                            _lastDetectedTrackName = DecodeString(staticData.Track);
+                            var newTrackName = DecodeString(staticData.Track);
                             var trackConfig = DecodeString(staticData.TrackConfiguration);
                             var nation = DecodeString(staticData.Nation);
                             var sessionName = DecodeString(staticData.SessionName);
                             float officialLength = staticData.TrackLengthM;
 
                             _latestStaticRaw = staticData;
+
+                            if (!string.IsNullOrEmpty(newTrackName) && newTrackName != _lastDetectedTrackName)
+                            {
+                                _lastDetectedTrackName = newTrackName;
+                                MapBuilder.Reset();
+                                PositionDetector.ClearMap();
+                                ForceHeatmap.Initialize(0);
+                                LapRecorder.Initialize(0);
+                                DiagnosticHeatmap.Initialize(0);
+                                _posInitialized = false;
+                                _lastPosPacketId = -1;
+                                TrackChanged?.Invoke(newTrackName);
+                            }
+                            else
+                            {
+                                _lastDetectedTrackName = newTrackName;
+                            }
 
                             if (!string.IsNullOrEmpty(_lastDetectedCarModel))
                                 StatusChanged?.Invoke($"Track: '{_lastDetectedTrackName}' | Car: '{_lastDetectedCarModel}' | Config: '{trackConfig}' | Nation: '{nation}' | Session: '{sessionName}' | Length: {officialLength:F0}m");
@@ -282,6 +304,43 @@ public sealed class TelemetryLoop : IDisposable
                     _latencyStopwatch.Restart();
 
                     _reader.TryReadGraphics(out SPageFileGraphicEvo graphics);
+
+                    if (_lastGfxPacketId >= 0 && graphics.PacketId < _lastGfxPacketId - 100)
+                    {
+                        _staticDataRead = false;
+                        _pipeline.Reset();
+                        MapBuilder.Reset();
+                        PositionDetector.ClearMap();
+                        ForceHeatmap.Initialize(0);
+                        LapRecorder.Initialize(0);
+                        DiagnosticHeatmap.Initialize(0);
+                        _posInitialized = false;
+                        _lastPosPacketId = -1;
+                        StatusChanged?.Invoke($"Session reset detected (packetId {_lastGfxPacketId} → {graphics.PacketId})");
+                    }
+                    _lastGfxPacketId = graphics.PacketId;
+
+                    var curStatus = graphics.Status;
+                    if (_lastSessionStatus != curStatus)
+                    {
+                        if (_lastSessionStatus == AcEvoStatus.AcLive && curStatus != AcEvoStatus.AcLive)
+                        {
+                            StatusChanged?.Invoke($"Session leaving LIVE (→ {curStatus})");
+                        }
+                        else if (_lastSessionStatus != AcEvoStatus.AcLive && curStatus == AcEvoStatus.AcLive)
+                        {
+                            _staticDataRead = false;
+                            MapBuilder.Reset();
+                            PositionDetector.ClearMap();
+                            ForceHeatmap.Initialize(0);
+                            LapRecorder.Initialize(0);
+                            DiagnosticHeatmap.Initialize(0);
+                            _posInitialized = false;
+                            _lastPosPacketId = -1;
+                            StatusChanged?.Invoke("Session LIVE resumed — forcing static re-read");
+                        }
+                        _lastSessionStatus = curStatus;
+                    }
 
                     var raw = MapRawData(physics, graphics);
 
