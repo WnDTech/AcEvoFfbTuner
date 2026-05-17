@@ -22,10 +22,12 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Setup Windows SDK
-        uses: GuillaumeFalourd/setup-windows-sdk@v2
-        with:
-          sdk-version: "20348"
+      - name: Install Windows SDK 20348
+        run: |
+          $progressPreference = 'silentlyContinue'
+          Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2249371' -OutFile sdksetup.exe
+          Start-Process -Wait -FilePath sdksetup.exe -ArgumentList '/q','/features OptionId.WindowsSoftwareDevelopmentKit','/ceip off'
+          Remove-Item sdksetup.exe
 
       - name: Restore dependencies
         run: dotnet restore AcEvoFfbTuner.slnx
