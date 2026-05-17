@@ -50,6 +50,26 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.21.6",
+            Date = new DateTime(2026, 5, 18),
+            Title = "Live Telemetry Dashboard Redesign & Stability Fixes",
+            Features =
+            [
+                "Redesigned live telemetry dashboard with splash-screen wheel, responsive signal monitor, and improved layout",
+                "Auto-update progress bar with download tracking and track/session reset detection"
+            ],
+            Improvements =
+            [
+            ],
+            Fixes =
+            [
+                "Fixed track change detection: static data re-read now happens outside connection block",
+                "Fixed autoupdate banner hiding during download",
+                "Fixed changelog parser to handle release headings with missing apostrophe"
+            ]
+        },
+        new ChangeLogEntry
+        {
             Version = "1.21.5",
             Date = new DateTime(2026, 5, 17),
             Title = "Satellite Maps, FFB Effects Redesign & UI Polish",
