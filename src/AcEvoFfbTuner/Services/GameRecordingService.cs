@@ -1,12 +1,17 @@
+using System;
 using System.Diagnostics;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using Windows.Graphics.Capture;
+using Windows.Graphics.DirectX;
+using Windows.Graphics.DirectX.Direct3D11;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
@@ -21,65 +26,89 @@ public sealed class GameRecordingService : IDisposable
     private static readonly string BundledFFmpegPath = Path.Combine(
         AppDomain.CurrentDomain.BaseDirectory, "ffmpeg.exe");
 
-    private Process? _ffmpegProcess;
     private string? _currentOutputPath;
     private string? _audioTempPath;
     private string? _videoOnlyPath;
     private DateTime _recordingStartTime;
     private bool _isRecording;
     private bool _disposed;
-    private bool _ffmpegNotFound;
-    private readonly TaskCompletionSource<bool> _stopCompletion = new();
-    private int _stoppedTickCount;
-    private const int StopAfterTicks = 90;
-    private Window? _overlayWindow;
-    private static string? _cachedEncoder;
-    private static string? _cachedCaptureMethod;
+
+    private Direct3D11CaptureFramePool? _framePool;
+    private GraphicsCaptureSession? _captureSession;
+    private GraphicsCaptureItem? _captureItem;
+    private IDirect3DDevice? _winrtDevice;
+    private IntPtr _d3dDeviceNative;
+    private IntPtr _dxgiDeviceNative;
+    private IntPtr _d3dContextNative;
+    private IntPtr _stagingTexture;
+
+    private Process? _ffmpegProcess;
+    private int _videoWidth;
+    private int _videoHeight;
+    private const int TargetFps = 30;
+    private static readonly TimeSpan FrameInterval = TimeSpan.FromSeconds(1.0 / TargetFps);
+    private long _framesWritten;
+    private DateTime _lastFrameTime;
+    private readonly object _frameLock = new();
+    private volatile bool _captureActive;
 
     private WasapiLoopbackCapture? _audioCapture;
     private WaveFileWriter? _audioWriter;
-    private double _audioVideoOffsetSec;
+
+    private Window? _overlayWindow;
+    private int _stoppedTickCount;
+    private const int StopAfterTicks = 90;
+    private static string? _cachedEncoder;
 
     public bool IsRecording => _isRecording;
     public string? CurrentOutputPath => _currentOutputPath;
     public DateTime RecordingStartTime => _recordingStartTime;
+    public static string RecordingsDirectory => RecordingsDir;
 
     public event Action<string, bool>? RecordingStateChanged;
 
-    public static string RecordingsDirectory => RecordingsDir;
-
     public void OnTelemetryTick(float speedKmh)
     {
-        if (_disposed || _ffmpegNotFound) return;
+        if (_disposed || !_isRecording) return;
 
-        if (speedKmh > 5.0f)
-        {
-            _stoppedTickCount = 0;
-            if (!_isRecording)
-                StartRecording();
-        }
-        else if (_isRecording)
+        if (speedKmh <= 5.0f)
         {
             _stoppedTickCount++;
             if (_stoppedTickCount >= StopAfterTicks)
                 StopRecording();
         }
+        else
+        {
+            _stoppedTickCount = 0;
+        }
     }
 
-    private void StartRecording()
+    public void StartRecording()
     {
         if (_isRecording || _disposed) return;
 
         try
         {
+            if (!GraphicsCaptureSession.IsSupported())
+            {
+                RecordingStateChanged?.Invoke("Recording unavailable — Windows.Graphics.Capture not supported (needs Win10 1903+)", false);
+                return;
+            }
+
+            IntPtr hWnd = FindAcevoWindow();
+            if (hWnd == IntPtr.Zero)
+            {
+                RecordingStateChanged?.Invoke("Recording unavailable — AC EVO window not found. Start the game first.", false);
+                return;
+            }
+
             string? ffmpegPath = FindFFmpeg();
             if (ffmpegPath == null)
             {
-                _ffmpegNotFound = true;
-                RecordingStateChanged?.Invoke(
-                    "Recording unavailable — ffmpeg.exe not found next to app", false);
+                RecordingStateChanged?.Invoke("Recording unavailable — ffmpeg.exe not found", false);
                 return;
             }
+
             Directory.CreateDirectory(RecordingsDir);
             string ts = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             _videoOnlyPath = Path.Combine(RecordingsDir, $"acevo_session_{ts}_video.mp4");
@@ -87,15 +116,221 @@ public sealed class GameRecordingService : IDisposable
             _currentOutputPath = Path.Combine(RecordingsDir, $"acevo_session_{ts}.mp4");
             _recordingStartTime = DateTime.Now;
             _stoppedTickCount = 0;
+            _framesWritten = 0;
+            _captureActive = false;
+
+            if (!CreateD3D11DeviceAndContext(out _d3dDeviceNative, out _dxgiDeviceNative, out _d3dContextNative))
+            {
+                RecordingStateChanged?.Invoke("Recording failed: could not create D3D11 device", false);
+                return;
+            }
+
+            _winrtDevice = CreateWinRTDeviceFromDXGI(_dxgiDeviceNative);
+
+            _captureItem = CreateCaptureItemForWindow(hWnd);
+            if (_captureItem == null)
+            {
+                CleanupD3D();
+                RecordingStateChanged?.Invoke("Recording failed: could not create capture item for AC EVO window", false);
+                return;
+            }
+
+            _videoWidth = _captureItem.Size.Width;
+            _videoHeight = _captureItem.Size.Height;
+
+            if (!CreateStagingTexture(_videoWidth, _videoHeight))
+            {
+                CleanupD3D();
+                RecordingStateChanged?.Invoke("Recording failed: could not create staging texture", false);
+                return;
+            }
+
+            _framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(
+                _winrtDevice,
+                DirectXPixelFormat.B8G8R8A8UIntNormalized,
+                2,
+                _captureItem.Size);
+
+            _captureSession = _framePool.CreateCaptureSession(_captureItem);
+            _captureSession.IsCursorCaptureEnabled = false;
 
             string encoder = GetBestEncoder(ffmpegPath);
-            string captureMethod = GetCaptureMethod(ffmpegPath);
+            StartFFmpeg(ffmpegPath, encoder);
 
-            string args = captureMethod == "ddagrab"
-                ? BuildDdagrabArgs(encoder, _videoOnlyPath)
-                : BuildGdigrabArgs(encoder, _videoOnlyPath);
+            System.Threading.Thread.Sleep(200);
+            if (_ffmpegProcess == null || _ffmpegProcess.HasExited)
+            {
+                CleanupStagingTexture();
+                CleanupCapture();
+                CleanupD3D();
+                RecordingStateChanged?.Invoke("Recording failed: FFmpeg exited immediately", false);
+                return;
+            }
 
-            var psi = new ProcessStartInfo
+            _captureActive = true;
+            _lastFrameTime = DateTime.MinValue;
+            _framePool.FrameArrived += OnFrameArrived;
+            _captureSession.StartCapture();
+
+            StartAudioCapture();
+
+            _isRecording = true;
+            ShowOverlay();
+            RecordingStateChanged?.Invoke(
+                $"Recording AC EVO (WinRT/{_videoWidth}x{_videoHeight}/{encoder}): {Path.GetFileName(_currentOutputPath)}", true);
+        }
+        catch (Exception ex)
+        {
+            StopAudioCapture();
+            CleanupStagingTexture();
+            CleanupCapture();
+            CleanupD3D();
+            RecordingStateChanged?.Invoke($"Recording failed: {ex.Message}", false);
+        }
+    }
+
+    private void OnFrameArrived(Direct3D11CaptureFramePool sender, object args)
+    {
+        if (!_captureActive) return;
+
+        try
+        {
+            var now = DateTime.UtcNow;
+            if (_lastFrameTime != DateTime.MinValue && now - _lastFrameTime < FrameInterval)
+                return;
+            _lastFrameTime = now;
+
+            using Direct3D11CaptureFrame? frame = sender.TryGetNextFrame();
+            if (frame == null) return;
+
+            int w = frame.ContentSize.Width;
+            int h = frame.ContentSize.Height;
+            if (w <= 0 || h <= 0) return;
+
+            byte[]? pixels = CopyFrameToCPU(frame, w, h);
+            if (pixels == null) return;
+
+            lock (_frameLock)
+            {
+                if (_ffmpegProcess != null && !_ffmpegProcess.HasExited)
+                {
+                    try
+                    {
+                        _ffmpegProcess.StandardInput.BaseStream.Write(pixels, 0, pixels.Length);
+                        _ffmpegProcess.StandardInput.BaseStream.Flush();
+                        _framesWritten++;
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch { }
+    }
+
+    private byte[]? CopyFrameToCPU(Direct3D11CaptureFrame frame, int width, int height)
+    {
+        if (_stagingTexture == IntPtr.Zero || _d3dContextNative == IntPtr.Zero)
+            return null;
+
+        try
+        {
+            var dxgiAccess = (IDirect3DDxgiInterfaceAccess)frame.Surface;
+            Guid texture2DGuid = new("6f15aaf2-d208-4e89-9ab4-489595d4444c"); // ID3D11Texture2D
+            IntPtr srcTexturePtr = dxgiAccess.GetInterface(ref texture2DGuid);
+            if (srcTexturePtr == IntPtr.Zero) return null;
+
+            try
+            {
+                D3D11Vtable.CopyResource(_d3dContextNative, _stagingTexture, srcTexturePtr);
+
+                var mapped = new D3D11_MAPPED_SUBRESOURCE();
+                int hr = D3D11Vtable.Map(_d3dContextNative, _stagingTexture, 0, 1, 0, ref mapped);
+                if (hr < 0) return null;
+
+                try
+                {
+                    int srcPitch = (int)mapped.RowPitch;
+                    int destPitch = width * 4;
+                    byte[] pixels = new byte[destPitch * height];
+
+                    unsafe
+                    {
+                        byte* src = (byte*)mapped.pData;
+                        fixed (byte* dst = pixels)
+                        {
+                            for (int y = 0; y < height; y++)
+                            {
+                                Buffer.MemoryCopy(src + y * srcPitch, dst + y * destPitch, destPitch, destPitch);
+                            }
+                        }
+                    }
+
+                    return pixels;
+                }
+                finally
+                {
+                    D3D11Vtable.Unmap(_d3dContextNative, _stagingTexture, 0);
+                }
+            }
+            finally
+            {
+                Marshal.Release(srcTexturePtr);
+            }
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private bool CreateStagingTexture(int width, int height)
+    {
+        try
+        {
+            var desc = new D3D11_TEXTURE2D_DESC
+            {
+                Width = (uint)width,
+                Height = (uint)height,
+                MipLevels = 1,
+                ArraySize = 1,
+                Format = 87, // DXGI_FORMAT_B8G8R8A8_UNORM
+                SampleDesc_Count = 1,
+                SampleDesc_Quality = 0,
+                Usage = 3, // D3D11_USAGE_STAGING
+                BindFlags = 0,
+                CPUAccessFlags = 0x10000, // D3D11_CPU_ACCESS_READ
+                MiscFlags = 0
+            };
+
+            IntPtr texture;
+            int hr = D3D11Vtable.CreateTexture2D(_d3dDeviceNative, ref desc, IntPtr.Zero, out texture);
+            if (hr < 0) return false;
+
+            _stagingTexture = texture;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void CleanupStagingTexture()
+    {
+        if (_stagingTexture != IntPtr.Zero)
+        {
+            Marshal.Release(_stagingTexture);
+            _stagingTexture = IntPtr.Zero;
+        }
+    }
+
+    private void StartFFmpeg(string ffmpegPath, string encoder)
+    {
+        string args = BuildFFmpegArgs(encoder, _videoWidth, _videoHeight, _videoOnlyPath!);
+
+        _ffmpegProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo
             {
                 FileName = ffmpegPath,
                 Arguments = args,
@@ -104,43 +339,217 @@ public sealed class GameRecordingService : IDisposable
                 RedirectStandardInput = true,
                 RedirectStandardError = true,
                 RedirectStandardOutput = true
-            };
+            },
+            EnableRaisingEvents = true
+        };
+        _ffmpegProcess.ErrorDataReceived += (s, e) => { };
+        _ffmpegProcess.Start();
+        _ffmpegProcess.BeginErrorReadLine();
+    }
 
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+    private static string BuildFFmpegArgs(string encoder, int width, int height, string outputPath)
+    {
+        var sb = new StringBuilder();
+        sb.Append("-y -hide_banner -loglevel warning ");
+        sb.Append($"-f rawvideo -pix_fmt bgra -s {width}x{height} -r {TargetFps} -i - ");
+        sb.Append($"-c:v {encoder} ");
+        if (encoder == "libx264")
+            sb.Append("-preset ultrafast -crf 23 ");
+        else
+            sb.Append("-b:v 15M ");
+        sb.Append("-an ");
+        sb.Append($"\"{outputPath}\"");
+        return sb.ToString();
+    }
 
-            StartAudioCapture();
-            long audioStartTicks = sw.ElapsedTicks;
+    private static string GetBestEncoder(string ffmpegPath)
+    {
+        if (_cachedEncoder != null)
+            return _cachedEncoder;
 
-            _ffmpegProcess = new Process { StartInfo = psi };
-            _ffmpegProcess.EnableRaisingEvents = true;
-            _ffmpegProcess.Exited += OnFFmpegExited;
-            _ffmpegProcess.ErrorDataReceived += OnFFmpegError;
-            _ffmpegProcess.Start();
-            _ffmpegProcess.BeginErrorReadLine();
-            long videoStartTicks = sw.ElapsedTicks;
+        string[] encoders = { "h264_amf", "h264_mf", "h264_nvenc", "h264_qsv", "libx264" };
 
-            _audioVideoOffsetSec = (double)(audioStartTicks - videoStartTicks) / System.Diagnostics.Stopwatch.Frequency;
-
-            System.Threading.Thread.Sleep(300);
-            if (_ffmpegProcess.HasExited)
-            {
-                StopAudioCapture();
-                try { if (_videoOnlyPath != null && File.Exists(_videoOnlyPath)) File.Delete(_videoOnlyPath); } catch { }
-                CleanupProcess();
-                RecordingStateChanged?.Invoke("Recording failed: FFmpeg exited immediately", false);
-                return;
-            }
-
-            _isRecording = true;
-            ShowOverlay();
-            RecordingStateChanged?.Invoke(
-                $"Recording AC EVO ({captureMethod}/{encoder}): {Path.GetFileName(_currentOutputPath)}", true);
-        }
-        catch (Exception ex)
+        foreach (var enc in encoders)
         {
-            StopAudioCapture();
-            RecordingStateChanged?.Invoke($"Recording failed: {ex.Message}", false);
-            CleanupProcess();
+            try
+            {
+                using var proc = Process.Start(new ProcessStartInfo
+                {
+                    FileName = ffmpegPath,
+                    Arguments = $"-hide_banner -loglevel error -f lavfi -i nullsrc=s=256x256:d=0.1 -c:v {enc} -t 0.2 -y -f null -",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardError = true
+                });
+                proc?.WaitForExit(10000);
+                if (proc?.ExitCode == 0)
+                {
+                    _cachedEncoder = enc;
+                    return enc;
+                }
+            }
+            catch { }
+        }
+
+        _cachedEncoder = "libx264";
+        return _cachedEncoder;
+    }
+
+    public string? StopRecording()
+    {
+        if (!_isRecording) return null;
+
+        _isRecording = false;
+        _captureActive = false;
+        _stoppedTickCount = 0;
+        HideOverlay();
+
+        try { _captureSession?.Dispose(); } catch { }
+        if (_framePool != null)
+            _framePool.FrameArrived -= OnFrameArrived;
+
+        System.Threading.Thread.Sleep(100);
+        StopAudioCapture();
+
+        lock (_frameLock)
+        {
+            try
+            {
+                if (_ffmpegProcess != null && !_ffmpegProcess.HasExited)
+                {
+                    _ffmpegProcess.StandardInput.BaseStream.Flush();
+                    _ffmpegProcess.StandardInput.Close();
+                }
+            }
+            catch { }
+        }
+
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                if (_ffmpegProcess != null && !_ffmpegProcess.HasExited)
+                    _ffmpegProcess.WaitForExit(15000);
+            }
+            catch { }
+
+            CleanupFFmpeg();
+            CleanupStagingTexture();
+            CleanupCapture();
+            CleanupD3D();
+
+            string? muxedPath = MuxAudioVideo();
+            CleanupTempFiles();
+
+            string? finalPath = muxedPath ?? _currentOutputPath;
+            if (finalPath != null && File.Exists(finalPath) && new FileInfo(finalPath).Length > 0)
+                RecordingStateChanged?.Invoke($"Recording saved: {Path.GetFileName(finalPath)}", false);
+            else
+                RecordingStateChanged?.Invoke("Recording saved (video may be empty)", false);
+        });
+
+        RecordingStateChanged?.Invoke("Recording stopped — finalizing...", false);
+        return _currentOutputPath;
+    }
+
+    private string? MuxAudioVideo()
+    {
+        if (_videoOnlyPath == null || !File.Exists(_videoOnlyPath) || new FileInfo(_videoOnlyPath).Length == 0)
+            return null;
+
+        bool hasAudio = _audioTempPath != null && File.Exists(_audioTempPath) && new FileInfo(_audioTempPath).Length > 44;
+
+        if (!hasAudio)
+        {
+            try { File.Move(_videoOnlyPath, _currentOutputPath!, overwrite: true); }
+            catch { try { File.Copy(_videoOnlyPath, _currentOutputPath!, true); } catch { } }
+            return _currentOutputPath;
+        }
+
+        string? ffmpegPath = FindFFmpeg();
+        if (ffmpegPath == null)
+        {
+            try { File.Copy(_videoOnlyPath, _currentOutputPath!, true); } catch { }
+            return _currentOutputPath;
+        }
+
+        try
+        {
+            string muxArgs = $"-y -hide_banner -loglevel error " +
+                             $"-i \"{_videoOnlyPath}\" -i \"{_audioTempPath}\" " +
+                             $"-c:v copy -c:a aac -b:a 192k -shortest \"{_currentOutputPath}\"";
+
+            using var proc = Process.Start(new ProcessStartInfo
+            {
+                FileName = ffmpegPath,
+                Arguments = muxArgs,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardError = true
+            });
+            proc?.WaitForExit(30000);
+
+            if (proc?.ExitCode == 0 && _currentOutputPath != null &&
+                File.Exists(_currentOutputPath) && new FileInfo(_currentOutputPath).Length > 0)
+                return _currentOutputPath;
+        }
+        catch { }
+
+        try { File.Copy(_videoOnlyPath, _currentOutputPath!, true); } catch { }
+        return _currentOutputPath;
+    }
+
+    private void CleanupTempFiles()
+    {
+        try { if (_videoOnlyPath != null && File.Exists(_videoOnlyPath)) File.Delete(_videoOnlyPath); } catch { }
+        try { if (_audioTempPath != null && File.Exists(_audioTempPath)) File.Delete(_audioTempPath); } catch { }
+        _videoOnlyPath = null;
+        _audioTempPath = null;
+    }
+
+    private void CleanupFFmpeg()
+    {
+        if (_ffmpegProcess != null)
+        {
+            try
+            {
+                if (!_ffmpegProcess.HasExited)
+                    try { _ffmpegProcess.Kill(); } catch { }
+                _ffmpegProcess.Dispose();
+            }
+            catch { }
+            _ffmpegProcess = null;
+        }
+    }
+
+    private void CleanupCapture()
+    {
+        try { _framePool?.Dispose(); } catch { }
+        _framePool = null;
+
+        try { _captureSession?.Dispose(); } catch { }
+        _captureSession = null;
+
+        _captureItem = null;
+        _winrtDevice = null;
+    }
+
+    private void CleanupD3D()
+    {
+        if (_d3dContextNative != IntPtr.Zero)
+        {
+            Marshal.Release(_d3dContextNative);
+            _d3dContextNative = IntPtr.Zero;
+        }
+        if (_d3dDeviceNative != IntPtr.Zero)
+        {
+            Marshal.Release(_d3dDeviceNative);
+            _d3dDeviceNative = IntPtr.Zero;
+        }
+        if (_dxgiDeviceNative != IntPtr.Zero)
+        {
+            Marshal.Release(_dxgiDeviceNative);
+            _dxgiDeviceNative = IntPtr.Zero;
         }
     }
 
@@ -187,200 +596,295 @@ public sealed class GameRecordingService : IDisposable
         _audioCapture = null;
     }
 
-    public string? StopRecording()
+    #region Window & Capture Item Helpers
+
+    private static IntPtr FindAcevoWindow()
     {
-        if (!_isRecording || _ffmpegProcess == null) return null;
-
-        _isRecording = false;
-        _stoppedTickCount = 0;
-        HideOverlay();
-
-        StopAudioCapture();
-
-        try { _ffmpegProcess.StandardInput.WriteLine("q"); } catch { }
-
-        _ = System.Threading.Tasks.Task.Run(() =>
+        IntPtr found = IntPtr.Zero;
+        EnumWindows((hWnd, lParam) =>
         {
+            GetWindowThreadProcessId(hWnd, out uint pid);
             try
             {
-                if (!_ffmpegProcess.WaitForExit(10000))
-                    try { _ffmpegProcess.Kill(); } catch { }
-            }
-            catch { }
-
-            CleanupProcess();
-            string? muxedPath = MuxAudioVideo();
-            CleanupTempFiles();
-
-            string? finalPath = muxedPath ?? _currentOutputPath;
-            if (finalPath != null && File.Exists(finalPath) && new FileInfo(finalPath).Length > 0)
-                RecordingStateChanged?.Invoke($"Recording saved: {Path.GetFileName(finalPath)}", false);
-            else
-                RecordingStateChanged?.Invoke("Recording saved", false);
-
-            _stopCompletion.TrySetResult(true);
-        });
-
-        RecordingStateChanged?.Invoke("Recording stopped — finalizing...", false);
-        return _currentOutputPath;
-    }
-
-    private string? MuxAudioVideo()
-    {
-        if (_videoOnlyPath == null || !File.Exists(_videoOnlyPath) || new FileInfo(_videoOnlyPath).Length == 0)
-            return null;
-
-        bool hasAudio = _audioTempPath != null && File.Exists(_audioTempPath) && new FileInfo(_audioTempPath).Length > 44;
-
-        if (!hasAudio)
-        {
-            try { File.Move(_videoOnlyPath, _currentOutputPath!, overwrite: true); }
-            catch { try { File.Copy(_videoOnlyPath, _currentOutputPath!, true); } catch { } }
-            return _currentOutputPath;
-        }
-
-        string? ffmpegPath = FindFFmpeg();
-        if (ffmpegPath == null)
-        {
-            try { File.Copy(_videoOnlyPath, _currentOutputPath!, true); } catch { }
-            return _currentOutputPath;
-        }
-
-        try
-        {
-            string itsoffset = Math.Abs(_audioVideoOffsetSec) > 0.005
-                ? $"-itsoffset {_audioVideoOffsetSec:F4}"
-                : "";
-
-            string muxArgs = $"-y -hide_banner -loglevel error " +
-                             $"-i \"{_videoOnlyPath}\" {itsoffset} -i \"{_audioTempPath}\" " +
-                             $"-c:v copy -c:a aac -b:a 192k -shortest \"{_currentOutputPath}\"";
-
-            using var proc = Process.Start(new ProcessStartInfo
-            {
-                FileName = ffmpegPath,
-                Arguments = muxArgs,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardError = true
-            });
-            proc?.WaitForExit(30000);
-
-            if (proc?.ExitCode == 0 && _currentOutputPath != null &&
-                File.Exists(_currentOutputPath) && new FileInfo(_currentOutputPath).Length > 0)
-                return _currentOutputPath;
-        }
-        catch { }
-
-        try { File.Copy(_videoOnlyPath, _currentOutputPath!, true); } catch { }
-        return _currentOutputPath;
-    }
-
-    private void CleanupTempFiles()
-    {
-        try { if (_videoOnlyPath != null && File.Exists(_videoOnlyPath)) File.Delete(_videoOnlyPath); } catch { }
-        try { if (_audioTempPath != null && File.Exists(_audioTempPath)) File.Delete(_audioTempPath); } catch { }
-        _videoOnlyPath = null;
-        _audioTempPath = null;
-    }
-
-    private static string BuildDdagrabArgs(string encoder, string outputPath)
-    {
-        var sb = new StringBuilder();
-        sb.Append("-y -hide_banner -loglevel warning ");
-        sb.Append("-init_hw_device d3d11va=dev ");
-        sb.Append("-filter_complex \"ddagrab=framerate=30:output_fmt=8bit,hwdownload,format=bgra\" ");
-        sb.Append($"-c:v {encoder} ");
-        if (encoder == "libx264")
-            sb.Append("-preset ultrafast -crf 23 ");
-        else
-            sb.Append("-b:v 15M ");
-        sb.Append("-an ");
-        sb.Append($"\"{outputPath}\"");
-        return sb.ToString();
-    }
-
-    private static string BuildGdigrabArgs(string encoder, string outputPath)
-    {
-        var sb = new StringBuilder();
-        sb.Append("-y -hide_banner -loglevel warning ");
-        sb.Append("-f gdigrab -framerate 30 -i desktop ");
-        sb.Append($"-c:v {encoder} ");
-        if (encoder == "libx264")
-            sb.Append("-preset ultrafast -crf 23 ");
-        else
-            sb.Append("-b:v 15M ");
-        sb.Append("-an ");
-        sb.Append($"\"{outputPath}\"");
-        return sb.ToString();
-    }
-
-    private static string GetCaptureMethod(string ffmpegPath)
-    {
-        if (_cachedCaptureMethod != null)
-            return _cachedCaptureMethod;
-
-        _cachedCaptureMethod = ProbeDdagrab(ffmpegPath) ? "ddagrab" : "gdigrab";
-        return _cachedCaptureMethod;
-    }
-
-    private static bool ProbeDdagrab(string ffmpegPath)
-    {
-        try
-        {
-            using var proc = Process.Start(new ProcessStartInfo
-            {
-                FileName = ffmpegPath,
-                Arguments = "-hide_banner -loglevel error -init_hw_device d3d11va=dev -filter_complex \"ddagrab=framerate=1:output_fmt=8bit,hwdownload,format=bgra\" -c:v libx264 -preset ultrafast -t 0.1 -y -f null -",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardError = true
-            });
-            proc?.WaitForExit(10000);
-            return proc?.ExitCode == 0;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static string GetBestEncoder(string ffmpegPath)
-    {
-        if (_cachedEncoder != null)
-            return _cachedEncoder;
-
-        string[] encoders = { "h264_mf", "h264_nvenc", "h264_amf", "h264_qsv", "libx264" };
-
-        foreach (var enc in encoders)
-        {
-            try
-            {
-                string filterArgs = enc == "libx264" || enc == "h264_mf"
-                    ? "-init_hw_device d3d11va=dev -filter_complex \"ddagrab=framerate=10:output_fmt=8bit,hwdownload,format=bgra\""
-                    : $"-f lavfi -i nullsrc=s=256x256:d=0.1";
-
-                using var proc = Process.Start(new ProcessStartInfo
+                using var proc = Process.GetProcessById((int)pid);
+                if (proc.ProcessName.Equals("AC2", StringComparison.OrdinalIgnoreCase) ||
+                    proc.ProcessName.Equals("acevo", StringComparison.OrdinalIgnoreCase) ||
+                    proc.ProcessName.Equals("AssettoCorsaEvo", StringComparison.OrdinalIgnoreCase))
                 {
-                    FileName = ffmpegPath,
-                    Arguments = $"-hide_banner -loglevel error {filterArgs} -c:v {enc} -t 0.2 -y -f null -",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardError = true
-                });
-                proc?.WaitForExit(10000);
-                if (proc?.ExitCode == 0)
-                {
-                    _cachedEncoder = enc;
-                    return enc;
+                    if (IsWindowVisible(hWnd) && GetWindow(hWnd, GW_OWNER) == IntPtr.Zero)
+                    {
+                        found = hWnd;
+                        return false;
+                    }
                 }
             }
             catch { }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+
+    private static GraphicsCaptureItem? CreateCaptureItemForWindow(IntPtr hWnd)
+    {
+        try
+        {
+            Guid interopGuid = typeof(IGraphicsCaptureItemInterop).GUID;
+            RoGetActivationFactory("Windows.Graphics.Capture.GraphicsCaptureItem", ref interopGuid, out object factory);
+            var interop = (IGraphicsCaptureItemInterop)factory;
+            interop.CreateForWindow(hWnd, typeof(GraphicsCaptureItem).GUID, out object raw);
+            return (GraphicsCaptureItem)raw;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool CreateD3D11DeviceAndContext(out IntPtr device, out IntPtr dxgiDevice, out IntPtr context)
+    {
+        device = IntPtr.Zero;
+        dxgiDevice = IntPtr.Zero;
+        context = IntPtr.Zero;
+
+        try
+        {
+            int[] driverTypes = { 1, 5 }; // HARDWARE, WARP
+            uint flags = 0x20; // BGRA_SUPPORT
+
+            foreach (var dt in driverTypes)
+            {
+                IntPtr dev = IntPtr.Zero;
+                IntPtr ctx = IntPtr.Zero;
+
+                int hr = D3D11CreateDevice(
+                    IntPtr.Zero, dt, IntPtr.Zero, flags,
+                    IntPtr.Zero, 0, 7,
+                    ref dev, IntPtr.Zero, ref ctx);
+
+                if (hr >= 0 && dev != IntPtr.Zero)
+                {
+                    device = dev;
+                    context = ctx;
+
+                    Guid dxgiGuid = new("54ec77fa-1377-44e6-8c32-88fd5f44c84c");
+                    int qiHr = Marshal.QueryInterface(dev, ref dxgiGuid, out IntPtr dxgi);
+                    if (qiHr >= 0)
+                        dxgiDevice = dxgi;
+
+                    return dxgiDevice != IntPtr.Zero;
+                }
+            }
+        }
+        catch { }
+
+        return false;
+    }
+
+    private static IDirect3DDevice CreateWinRTDeviceFromDXGI(IntPtr dxgiDevice)
+    {
+        CreateDirect3D11DeviceFromDXGIDevice(dxgiDevice, out object device);
+        return (IDirect3DDevice)device;
+    }
+
+    #endregion
+
+    #region P/Invoke
+
+    private const int GW_OWNER = 4;
+
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetWindow(IntPtr hWnd, int uCmd);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("d3d11.dll", EntryPoint = "D3D11CreateDevice")]
+    private static extern int D3D11CreateDevice(
+        IntPtr pAdapter, int DriverType, IntPtr Software, uint Flags,
+        IntPtr pFeatureLevels, uint FeatureLevels, uint SDKVersion,
+        ref IntPtr ppDevice, IntPtr pFeatureLevel, ref IntPtr ppImmediateContext);
+
+    [DllImport("d3d11.dll", EntryPoint = "CreateDirect3D11DeviceFromDXGIDevice")]
+    private static extern int CreateDirect3D11DeviceFromDXGIDevice(
+        IntPtr dxgiDevice, [Out, MarshalAs(UnmanagedType.IUnknown)] out object graphicsDevice);
+
+    [DllImport("combase.dll", PreserveSig = false)]
+    private static extern void RoGetActivationFactory(
+        [MarshalAs(UnmanagedType.HString)] string activatableClassId,
+        [In] ref Guid iid,
+        [Out, MarshalAs(UnmanagedType.IUnknown)] out object factory);
+
+    [ComImport]
+    [Guid("3628E81B-3CAC-4C60-B7F4-23CE0E0C3356")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [ComVisible(true)]
+    private interface IGraphicsCaptureItemInterop
+    {
+        IntPtr CreateForWindow(
+            [In] IntPtr window,
+            [In] ref Guid riid,
+            [Out, MarshalAs(UnmanagedType.IUnknown)] out object result);
+
+        IntPtr CreateForMonitor(
+            [In] IntPtr monitor,
+            [In] ref Guid riid,
+            [Out, MarshalAs(UnmanagedType.IUnknown)] out object result);
+    }
+
+    [ComImport]
+    [Guid("A9B3D012-31C8-4A25-9E8E-3DA1C4FBB0A5")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [ComVisible(true)]
+    private interface IDirect3DDxgiInterfaceAccess
+    {
+        IntPtr GetInterface(ref Guid riid);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct D3D11_TEXTURE2D_DESC
+    {
+        public uint Width;
+        public uint Height;
+        public uint MipLevels;
+        public uint ArraySize;
+        public int Format;
+        public uint SampleDesc_Count;
+        public uint SampleDesc_Quality;
+        public int Usage;
+        public uint BindFlags;
+        public uint CPUAccessFlags;
+        public uint MiscFlags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct D3D11_MAPPED_SUBRESOURCE
+    {
+        public IntPtr pData;
+        public uint RowPitch;
+        public uint DepthPitch;
+    }
+
+    private static class D3D11Vtable
+    {
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate int CreateTexture2DFn(IntPtr self, ref D3D11_TEXTURE2D_DESC desc, IntPtr initData, out IntPtr texture);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate int MapFn(IntPtr self, IntPtr resource, uint subresource, int mapType, uint mapFlags, ref D3D11_MAPPED_SUBRESOURCE mapped);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate void UnmapFn(IntPtr self, IntPtr resource, uint subresource);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate void CopyResourceFn(IntPtr self, IntPtr dst, IntPtr src);
+
+        public static int CreateTexture2D(IntPtr device, ref D3D11_TEXTURE2D_DESC desc, IntPtr initData, out IntPtr texture)
+        {
+            IntPtr vtable = Marshal.ReadIntPtr(device);
+            IntPtr fnPtr = Marshal.ReadIntPtr(vtable, 5 * IntPtr.Size);
+            var fn = Marshal.GetDelegateForFunctionPointer<CreateTexture2DFn>(fnPtr);
+            return fn(device, ref desc, initData, out texture);
         }
 
-        _cachedEncoder = "libx264";
-        return _cachedEncoder;
+        public static void CopyResource(IntPtr context, IntPtr dst, IntPtr src)
+        {
+            IntPtr vtable = Marshal.ReadIntPtr(context);
+            IntPtr fnPtr = Marshal.ReadIntPtr(vtable, 47 * IntPtr.Size);
+            var fn = Marshal.GetDelegateForFunctionPointer<CopyResourceFn>(fnPtr);
+            fn(context, dst, src);
+        }
+
+        public static int Map(IntPtr context, IntPtr resource, uint subresource, int mapType, uint mapFlags, ref D3D11_MAPPED_SUBRESOURCE mapped)
+        {
+            IntPtr vtable = Marshal.ReadIntPtr(context);
+            IntPtr fnPtr = Marshal.ReadIntPtr(vtable, 14 * IntPtr.Size);
+            var fn = Marshal.GetDelegateForFunctionPointer<MapFn>(fnPtr);
+            return fn(context, resource, subresource, mapType, mapFlags, ref mapped);
+        }
+
+        public static void Unmap(IntPtr context, IntPtr resource, uint subresource)
+        {
+            IntPtr vtable = Marshal.ReadIntPtr(context);
+            IntPtr fnPtr = Marshal.ReadIntPtr(vtable, 15 * IntPtr.Size);
+            var fn = Marshal.GetDelegateForFunctionPointer<UnmapFn>(fnPtr);
+            fn(context, resource, subresource);
+        }
     }
+
+    #endregion
+
+    #region Overlay
+
+    private void ShowOverlay()
+    {
+        try
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                if (_overlayWindow != null) return;
+                _overlayWindow = new Window
+                {
+                    Width = 300,
+                    Height = 36,
+                    WindowStyle = WindowStyle.None,
+                    ResizeMode = ResizeMode.NoResize,
+                    ShowInTaskbar = false,
+                    Topmost = true,
+                    AllowsTransparency = true,
+                    Background = null,
+                    IsHitTestVisible = false,
+                    Foreground = System.Windows.Media.Brushes.Transparent,
+                    Title = "",
+                    Content = new System.Windows.Controls.Border
+                    {
+                        Background = new System.Windows.Media.SolidColorBrush(
+                            System.Windows.Media.Color.FromArgb(180, 0, 0, 0)),
+                        CornerRadius = new System.Windows.CornerRadius(4),
+                        Padding = new System.Windows.Thickness(10, 6, 10, 6),
+                        Child = new System.Windows.Controls.TextBlock
+                        {
+                            Text = "\u25CF Recording Telemetry Session",
+                            Foreground = new System.Windows.Media.SolidColorBrush(
+                                System.Windows.Media.Color.FromRgb(229, 57, 53)),
+                            FontSize = 14,
+                            FontWeight = System.Windows.FontWeights.Bold,
+                            FontFamily = new System.Windows.Media.FontFamily("Segoe UI")
+                        }
+                    }
+                };
+                _overlayWindow.Left = 12;
+                _overlayWindow.Top = 12;
+                _overlayWindow.Show();
+            });
+        }
+        catch { }
+    }
+
+    private void HideOverlay()
+    {
+        try
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                if (_overlayWindow == null) return;
+                _overlayWindow.Close();
+                _overlayWindow = null;
+            });
+        }
+        catch { }
+    }
+
+    #endregion
+
+    #region FFmpeg Discovery
 
     private static string? FindFFmpeg()
     {
@@ -411,7 +915,6 @@ public sealed class GameRecordingService : IDisposable
         catch { }
 
         string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-
         string[] commonPaths =
         {
             Path.Combine(localAppData, "Microsoft", "WinGet", "Links", "ffmpeg.exe"),
@@ -442,92 +945,9 @@ public sealed class GameRecordingService : IDisposable
         return null;
     }
 
-    private void OnFFmpegError(object sender, DataReceivedEventArgs e)
-    {
-    }
+    #endregion
 
-    private void OnFFmpegExited(object? sender, EventArgs e)
-    {
-        _isRecording = false;
-        HideOverlay();
-        _stopCompletion.TrySetResult(true);
-    }
-
-    private void CleanupProcess()
-    {
-        if (_ffmpegProcess != null)
-        {
-            try
-            {
-                _ffmpegProcess.Exited -= OnFFmpegExited;
-                _ffmpegProcess.ErrorDataReceived -= OnFFmpegError;
-                if (!_ffmpegProcess.HasExited)
-                    try { _ffmpegProcess.Kill(); } catch { }
-                _ffmpegProcess.Dispose();
-            }
-            catch { }
-            _ffmpegProcess = null;
-        }
-    }
-
-    private void ShowOverlay()
-    {
-        try
-        {
-            Application.Current?.Dispatcher.Invoke(() =>
-            {
-                if (_overlayWindow != null) return;
-                _overlayWindow = new Window
-                {
-                    Width = 300,
-                    Height = 36,
-                    WindowStyle = WindowStyle.None,
-                    ResizeMode = ResizeMode.NoResize,
-                    ShowInTaskbar = false,
-                    Topmost = true,
-                    AllowsTransparency = true,
-                    Background = null,
-                    IsHitTestVisible = false,
-                    Foreground = System.Windows.Media.Brushes.Transparent,
-                    Title = "",
-                    Content = new System.Windows.Controls.Border
-                    {
-                        Background = new System.Windows.Media.SolidColorBrush(
-                            System.Windows.Media.Color.FromArgb(180, 0, 0, 0)),
-                        CornerRadius = new System.Windows.CornerRadius(4),
-                        Padding = new System.Windows.Thickness(10, 6, 10, 6),
-                        Child = new System.Windows.Controls.TextBlock
-                        {
-                            Text = "● Recording Telemetry Session",
-                            Foreground = new System.Windows.Media.SolidColorBrush(
-                                System.Windows.Media.Color.FromRgb(229, 57, 53)),
-                            FontSize = 14,
-                            FontWeight = System.Windows.FontWeights.Bold,
-                            FontFamily = new System.Windows.Media.FontFamily("Segoe UI")
-                        }
-                    }
-                };
-                _overlayWindow.Left = 12;
-                _overlayWindow.Top = 12;
-                _overlayWindow.Show();
-            });
-        }
-        catch { }
-    }
-
-    private void HideOverlay()
-    {
-        try
-        {
-            Application.Current?.Dispatcher.Invoke(() =>
-            {
-                if (_overlayWindow == null) return;
-                _overlayWindow.Close();
-                _overlayWindow = null;
-            });
-        }
-        catch { }
-    }
+    #region Upload
 
     public static async Task<string?> UploadRecordingAsync(string filePath, IProgress<string>? progress = null)
     {
@@ -650,6 +1070,10 @@ public sealed class GameRecordingService : IDisposable
         public override void Write(byte[] buffer, int offset, int count) => _inner.Write(buffer, offset, count);
     }
 
+    #endregion
+
+    #region Manifest
+
     public static RecordingManifest? BuildManifest()
     {
         if (!Directory.Exists(RecordingsDir)) return null;
@@ -676,15 +1100,20 @@ public sealed class GameRecordingService : IDisposable
         };
     }
 
+    #endregion
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+        _captureActive = false;
         StopRecording();
         HideOverlay();
         StopAudioCapture();
-        _stopCompletion.Task.Wait(TimeSpan.FromSeconds(15));
-        CleanupProcess();
+        CleanupFFmpeg();
+        CleanupStagingTexture();
+        CleanupCapture();
+        CleanupD3D();
         CleanupTempFiles();
     }
 }

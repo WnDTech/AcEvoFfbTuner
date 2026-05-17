@@ -184,6 +184,8 @@ public partial class TrackMapPage : UserControl
                 SatelliteMapCtrl.SetTrackMap(currentMap);
             }
             SatelliteMapCtrl.UpdateCarPosition(carX, carZ, heading, isOnTrack);
+            SatelliteMapCtrl.UpdateHeatmapOverlay(currentMap, forceHeatmap, showHeatmap);
+            SatelliteMapCtrl.UpdateDiagnosticMarkers(currentMap, diagnosticHeatmap, showDiagnostics);
 
             TrackMapCarX.Text = carX.ToString("F1");
             TrackMapCarZ.Text = carZ.ToString("F1");

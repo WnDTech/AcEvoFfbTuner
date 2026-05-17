@@ -90,6 +90,20 @@ public sealed class FfbDeviceManager : IDisposable
     public int ReconnectAttemptCount { get; set; }
     public bool AutoDetectedForceInvert { get; private set; }
 
+    public float ReadWheelAxisNormalized()
+    {
+        if (_device == null || !_isAcquired) return 0f;
+        try
+        {
+            _device.Poll();
+            var js = _device.GetCurrentState() as DI.JoystickState;
+            if (js != null)
+                return Math.Clamp(js.X / 32767f, -1f, 1f);
+        }
+        catch { }
+        return 0f;
+    }
+
     public static bool? DetectForceInversionKnown(string productName)
     {
         if (string.IsNullOrEmpty(productName)) return null;

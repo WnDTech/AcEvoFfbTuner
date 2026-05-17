@@ -29,6 +29,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly ProfileManager _profileManager;
     private readonly Services.GameRecordingService _gameRecordingService = new();
     private volatile bool _autoAlignInProgress;
+    private volatile bool _mapClearedByUser;
+    private string? _lastAutoLoadedTrack;
 
     public string AppVersion { get; } =
         System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
@@ -1062,6 +1064,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             IsScreenRecording = _gameRecordingService.IsRecording;
             if (!isRec && msg.Contains("saved:"))
                 ScreenRecordingPath = msg;
+            if (!isRec && !msg.Contains("saved:") && !msg.Contains("stopped") && !msg.Contains("finalizing"))
+                StatusText = msg;
         });
         _telemetryLoop.TrackMapCompleted += map => Application.Current?.Dispatcher.Invoke(() =>
         {
@@ -1113,7 +1117,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (!string.IsNullOrEmpty(trackName))
                 StatusText = $"Connected — Track: {trackName} ({config}) {lengthM:F0}m";
 
-            if (!_telemetryLoop.MapBuilder.HasCompleteMap && !string.IsNullOrEmpty(trackName))
+            if (!_telemetryLoop.MapBuilder.HasCompleteMap && !string.IsNullOrEmpty(trackName) && !_mapClearedByUser && _lastAutoLoadedTrack != trackName)
             {
                 var savedMap = TrackMap.Load(trackName);
                 if (savedMap != null && savedMap.Waypoints.Count >= 10)
@@ -1122,6 +1126,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     savedMap.GetCumulativeDistances();
                     if (savedMap.Corners.Count == 0) savedMap.Analyze();
 
+                    _lastAutoLoadedTrack = trackName;
                     _telemetryLoop.MapBuilder.SetImportedMap(savedMap);
                     _telemetryLoop.PositionDetector.SetMap(savedMap);
                     _telemetryLoop.ForceHeatmap.Initialize(savedMap.Waypoints.Count);
@@ -1163,6 +1168,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         });
         _telemetryLoop.TrackChanged += newTrackName => Application.Current?.Dispatcher.Invoke(() =>
         {
+            _mapClearedByUser = false;
+            _lastAutoLoadedTrack = null;
             IsTrackMapAvailable = false;
             IsTrackMapRecording = false;
             TrackLengthM = 0;
@@ -2050,6 +2057,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void StartTrackMapRecording()
     {
+        _mapClearedByUser = false;
+        _lastAutoLoadedTrack = null;
         _telemetryLoop.MapBuilder.Reset();
         _telemetryLoop.PositionDetector.ClearMap();
         _telemetryLoop.MapBuilder.StartRecording();
@@ -2066,6 +2075,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _telemetryLoop.MapBuilder.StopRecording();
         IsTrackMapRecording = false;
         StatusText = "Track map recording stopped";
+    }
+
+    [RelayCommand]
+    private void ToggleScreenRecording()
+    {
+        if (_gameRecordingService.IsRecording)
+        {
+            _gameRecordingService.StopRecording();
+            IsScreenRecording = false;
+        }
+        else
+        {
+            _gameRecordingService.StartRecording();
+        }
     }
 
     [RelayCommand]
@@ -2186,6 +2209,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ClearTrackMap()
     {
+        _mapClearedByUser = true;
+        _lastAutoLoadedTrack = null;
         _telemetryLoop.MapBuilder.Reset();
         _telemetryLoop.PositionDetector.ClearMap();
         _telemetryLoop.ForceHeatmap.Clear();
@@ -2207,7 +2232,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         LapComparison = "";
         RecommendationsText = "";
         Recommendations.Clear();
-        StatusText = "Track map cleared";
+        TrackMapStatus = "Map cleared — press Record to remap";
+        StatusText = "Track map cleared — press Record to remap";
     }
 
     [RelayCommand]
@@ -2404,7 +2430,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public string OutputGainNmText => $"{OutputGain:F3} (peak {MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
     public string CrashSafetyClampPercentText => $"{CrashSafetyClamp * 100:F0}% ({CrashSafetyClamp * MaxForceLimit * WheelMaxTorqueNm:F2} Nm max)";
 
-    public double ForceBarFillHeight => Math.Min(160, Math.Max(0, Math.Abs(CurrentForceOutput)) * 160);
+    public double ForceBarFillHeight => Math.Min(200, Math.Max(0, Math.Abs(CurrentForceOutput)) * 200);
     public double SpeedNeedleAngle => -90 + (Math.Min(360, Math.Max(0, SpeedKmh)) / 360.0) * 180;
 
     partial void OnLedBrightnessChanged(int value) => PushLedConfig();
@@ -2547,8 +2573,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             int rawDeg = raw.SteerDegrees;
             int lockDeg = (rawDeg > 90 && rawDeg <= 1440) ? rawDeg : SteeringLockDegrees;
             if (lockDeg <= 0) lockDeg = 900;
-            float steerFloat = (float)raw.SteerAngle;
-            SteerAngle = steerFloat * (lockDeg / 2f);
+            SteerAngle = (float)raw.SteerAngle * (lockDeg / 2f);
 
             DebugSnapshot =
                 $"=== RAW SHARED MEMORY ===\n" +
@@ -2750,6 +2775,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     TrackLatitude,
                     TrackLongitude,
                     TrackRotation);
+            }
+
+            if (Application.Current?.MainWindow is MainWindow mw3)
+            {
+                mw3.UpdateLiveMap(
+                    DetectedTrackName ?? "",
+                    _telemetryLoop.MapBuilder.CurrentMap,
+                    raw.CarX, raw.CarZ, raw.Heading, raw.SpeedKmh,
+                    IsOnTrackMap);
             }
         }
 

@@ -195,6 +195,47 @@
                 </RadioButton.Style>
             </RadioButton>
 
+            <RadioButton x:Name="NavLiveMapBtn" GroupName="SidebarNav" Content="Live Map" Margin="4,1"
+                         Tag="{x:Static vm:NavPage.LiveMap}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Live Map — satellite view with auto-aligned track overlay">
+                <RadioButton.Template>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M3,17 L3,7 L21,7 L21,17 Z M7,12 A3,3,0,1,0 13,12 A3,3,0,1,0 7,12 M15,9 L19,9 M15,12 L19,12 M15,15 L17,15"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </RadioButton.Template>
+                <RadioButton.Style>
+                    <Style TargetType="RadioButton">
+                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="#FFF0883E" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </RadioButton.Style>
+            </RadioButton>
+
             <RadioButton x:Name="NavTelemetryBtn" GroupName="SidebarNav" Content="Telemetry" Margin="4,1"
                          Tag="{x:Static vm:NavPage.Telemetry}" Click="OnNavClick" Cursor="Hand"
                          ToolTip="Telemetry — live profiler and signal analysis">

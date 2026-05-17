@@ -49,7 +49,7 @@ public partial class SidebarControl : UserControl
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Collapsed);
             CollapseBtn.ToolTip = "Expand sidebar";
 
-            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavTelemetryBtn, NavDevicesBtn, NavProfilesBtn })
+            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavDevicesBtn, NavProfilesBtn })
                 SetTemplateLabelVisibility(btn, "ItemLabel", Visibility.Collapsed);
 
             if (CollapseBtn.Template.FindName("CollapseArrow", CollapseBtn) is System.Windows.Shapes.Path arrow)
@@ -63,7 +63,7 @@ public partial class SidebarControl : UserControl
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Visible);
             CollapseBtn.ToolTip = null;
 
-            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavTelemetryBtn, NavDevicesBtn, NavProfilesBtn })
+            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavDevicesBtn, NavProfilesBtn })
                 SetTemplateLabelVisibility(btn, "ItemLabel", Visibility.Visible);
 
             if (CollapseBtn.Template.FindName("CollapseArrow", CollapseBtn) is System.Windows.Shapes.Path arrow)
@@ -83,6 +83,7 @@ public partial class SidebarControl : UserControl
         NavTuningBtn.IsChecked = page == NavPage.FfbTuning;
         NavEqBtn.IsChecked = page == NavPage.Equalizer;
         NavMapBtn.IsChecked = page == NavPage.TrackMap;
+        NavLiveMapBtn.IsChecked = page == NavPage.LiveMap;
         NavTelemetryBtn.IsChecked = page == NavPage.Telemetry;
         NavDevicesBtn.IsChecked = page == NavPage.Devices;
         NavProfilesBtn.IsChecked = page == NavPage.Profiles;

@@ -6,6 +6,7 @@ public enum NavPage
     FfbTuning,
     Equalizer,
     TrackMap,
+    LiveMap,
     Telemetry,
     Devices,
     Profiles,

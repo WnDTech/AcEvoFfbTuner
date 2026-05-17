@@ -357,25 +357,25 @@
                 </Grid>
             </Border>
 
-            <!-- LIVE TELEMETRY — Force bar + Signal Monitor + Steering + Hardware Insight -->
+            <!-- LIVE TELEMETRY — Full-width dashboard -->
             <Grid Margin="0,0,0,16">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="80" />
-                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="76" />
+                    <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="16" />
-                    <ColumnDefinition Width="200" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="190" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="190" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Force Output Meter (wider, with peak marker) -->
-                <Border Grid.Column="0" Background="#FF1C2128" CornerRadius="8" Padding="10"
+                <!-- Force Output Meter -->
+                <Border Grid.Column="0" Background="#FF1C2128" CornerRadius="8" Padding="8,10"
                         BorderThickness="1" BorderBrush="#FF30363D">
                     <StackPanel HorizontalAlignment="Center">
-                        <TextBlock Text="FORCE" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,4" />
-                        <Grid Width="50" Height="160" Margin="0,0,0,4">
-                            <!-- Background track -->
+                        <TextBlock Text="FORCE" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                        <Grid Width="44" Height="200" Margin="0,0,0,6">
                             <Border Background="#FF21262D" CornerRadius="4" />
-                            <!-- Force fill bar -->
                             <Border VerticalAlignment="Bottom" CornerRadius="4" Height="{Binding ForceBarFillHeight, FallbackValue=0}">
                                 <Border.Style>
                                     <Style TargetType="Border">
@@ -389,101 +389,112 @@
                                 </Border.Style>
                             </Border>
                         </Grid>
-                        <TextBlock Text="{Binding CurrentForceOutput, StringFormat='{}{0:F3}'}" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,0,0,1" />
+                        <TextBlock Text="{Binding CurrentForceOutput, StringFormat='{}{0:F3}'}" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,0,0,2" />
                         <TextBlock Text="{Binding CurrentRawForce, StringFormat='Raw {0:F3}'}" FontSize="10" Foreground="#FF8B949E" HorizontalAlignment="Center" />
                     </StackPanel>
                 </Border>
 
-                <!-- Live Telemetry: Signal Monitor + Steering -->
-                <Border Grid.Column="2" Background="#FF1C2128" CornerRadius="8" Padding="20,16"
+                <!-- Signal Monitor — fills available width -->
+                <Border Grid.Column="2" Background="#FF1C2128" CornerRadius="8" Padding="14,12"
                         BorderThickness="1" BorderBrush="#FF30363D">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="LIVE TELEMETRY" FontSize="11" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,12" />
-
-                        <!-- Signal Monitor (replaces Speed Gauge) -->
-                        <StackPanel Grid.Row="1" Grid.Column="0" HorizontalAlignment="Center">
-                            <TextBlock Text="SIGNAL MONITOR" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                            <Border Background="#FF21262D" CornerRadius="4" Width="260" Height="80">
-                                <Canvas Width="260" Height="80" ClipToBounds="True">
-                                    <!-- Center line -->
-                                    <Line X1="0" Y1="40" X2="260" Y2="40" Stroke="#FF30363D" StrokeThickness="1" StrokeDashArray="4,4" />
-                                    <!-- Low-Freq Torque line -->
-                                    <Polyline Points="{Binding SignalMonitorLowFreq}" Stroke="#FFF0883E" StrokeThickness="1.5" Fill="Transparent" />
-                                    <!-- High-Freq Haptics line -->
-                                    <Polyline Points="{Binding SignalMonitorHighFreq}" Stroke="#FF79C0FF" StrokeThickness="1.5" Fill="Transparent" />
-                                </Canvas>
-                            </Border>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
-                                <Ellipse Width="8" Height="8" Fill="#FFF0883E" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                <TextBlock Text="Low-Freq Torque" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,12,0" />
-                                <Ellipse Width="8" Height="8" Fill="#FF79C0FF" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                <TextBlock Text="High-Freq Haptics" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
+                        <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                            <TextBlock Text="SIGNAL MONITOR" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" />
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Ellipse Width="8" Height="8" Fill="#FFF0883E" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                <TextBlock Text="Torque" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,14,0" />
+                                <Ellipse Width="8" Height="8" Fill="#FF79C0FF" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                <TextBlock Text="Haptics" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
                             </StackPanel>
-                        </StackPanel>
+                        </DockPanel>
 
-                        <!-- Racing Wheel (rotates with steering input) -->
-                        <StackPanel Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center">
-                            <TextBlock Text="STEERING" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                            <Border Width="130" Height="130" ClipToBounds="False" HorizontalAlignment="Center">
-                                <Image Source="pack://application:,,,/Resources/wheel_nobg.png"
-                                       Width="90" Height="90" Stretch="Uniform"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       RenderTransformOrigin="0.5,0.5">
-                                    <Image.RenderTransform>
-                                        <RotateTransform Angle="{Binding SteerAngle}" />
-                                    </Image.RenderTransform>
-                                </Image>
-                            </Border>
-                            <TextBlock Text="{Binding SteerAngle, StringFormat='{}{0:F1}°'}" FontSize="16" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,4,0,0" />
-                        </StackPanel>
+                        <!-- Signal canvas wrapped in Viewbox for responsive scaling -->
+                        <Viewbox Grid.Row="1" Stretch="UniformToFill" StretchDirection="Both">
+                            <Canvas Width="260" Height="80" ClipToBounds="True">
+                                <Line X1="0" Y1="40" X2="260" Y2="40" Stroke="#FF30363D" StrokeThickness="1" StrokeDashArray="4,4" />
+                                <Line X1="0" Y1="10" X2="260" Y2="10" Stroke="#1A30363D" StrokeThickness="1" />
+                                <Line X1="0" Y1="70" X2="260" Y2="70" Stroke="#1A30363D" StrokeThickness="1" />
+                                <Polyline Points="{Binding SignalMonitorLowFreq}" Stroke="#FFF0883E" StrokeThickness="1.5" Fill="Transparent" />
+                                <Polyline Points="{Binding SignalMonitorHighFreq}" Stroke="#FF79C0FF" StrokeThickness="1.5" Fill="Transparent" />
+                            </Canvas>
+                        </Viewbox>
 
-                        <!-- Status row -->
-                        <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,4,0,0">
-                            <TextBlock Text="STATUS" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,10,0" VerticalAlignment="Center" />
-                            <TextBlock FontWeight="Bold" FontSize="13" VerticalAlignment="Center">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="Idle" />
-                                        <Setter Property="Foreground" Value="#FF8B949E" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsRunning}" Value="True">
-                                                <Setter Property="Text" Value="Running" />
-                                                <Setter Property="Foreground" Value="#FF7EE787" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsClipping}" Value="True">
-                                                <Setter Property="Text" Value="&#x26A0; Clipping" />
-                                                <Setter Property="Foreground" Value="#FFFF7B72" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </StackPanel>
+                        <!-- Bottom telemetry readouts -->
+                        <Grid Grid.Row="2" Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="SPEED" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Grid.Column="1" Text="{Binding SpeedKmh, StringFormat='{}{0:F0} km/h'}" FontSize="15" FontWeight="Bold" Foreground="#FFFFD600" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                                <TextBlock Text="STATUS" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock FontWeight="Bold" FontSize="13" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Idle" />
+                                            <Setter Property="Foreground" Value="#FF8B949E" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                    <Setter Property="Text" Value="Running" />
+                                                    <Setter Property="Foreground" Value="#FF7EE787" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsClipping}" Value="True">
+                                                    <Setter Property="Text" Value="&#x26A0; Clipping" />
+                                                    <Setter Property="Foreground" Value="#FFFF7B72" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- Steering Wheel — splash-screen quality image -->
+                <Border Grid.Column="4" Background="#FF1C2128" CornerRadius="8" Padding="10"
+                        BorderThickness="1" BorderBrush="#FF30363D">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="STEERING" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                        <Viewbox Grid.Row="1" Stretch="Uniform" MaxWidth="160" MaxHeight="160">
+                            <Image x:Name="DashboardWheelImage"
+                                   Source="pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png"
+                                   Width="160" Height="160" Stretch="Uniform"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   RenderTransformOrigin="0.5,0.5">
+                                <Image.RenderTransform>
+                                    <RotateTransform Angle="{Binding SteerAngle}" />
+                                </Image.RenderTransform>
+                            </Image>
+                        </Viewbox>
+                        <TextBlock Grid.Row="2" Text="{Binding SteerAngle, StringFormat='{}{0:F1}°'}" FontSize="18" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,6,0,0" />
                     </Grid>
                 </Border>
 
                 <!-- Hardware Insight Panel -->
-                <Border Grid.Column="4" Background="#FF1C2128" CornerRadius="8" Padding="16"
+                <Border Grid.Column="6" Background="#FF1C2128" CornerRadius="8" Padding="14"
                         BorderThickness="1" BorderBrush="#FF30363D">
                     <StackPanel>
-                        <TextBlock Text="HARDWARE INSIGHT" FontSize="11" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,12" />
+                        <TextBlock Text="HARDWARE INSIGHT" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,10" />
 
-                        <!-- Active Provider -->
                         <TextBlock Text="Active Provider" FontSize="10" Foreground="#FF8B949E" Margin="0,0,0,2" />
-                        <TextBlock Text="{Binding HalProviderName}" FontSize="14" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,14" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding HalProviderName}" FontSize="13" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,12" TextWrapping="Wrap" />
 
-                        <!-- SDK Connection LED -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
                                 <Ellipse.Style>
                                     <Style TargetType="Ellipse">
@@ -499,8 +510,7 @@
                             <TextBlock Text="SDK Connection" FontSize="12" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
                         </StackPanel>
 
-                        <!-- Haptic Engine LED -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
                                 <Ellipse.Style>
                                     <Style TargetType="Ellipse">
@@ -516,8 +526,7 @@
                             <TextBlock Text="Haptic Engine" FontSize="12" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
                         </StackPanel>
 
-                        <!-- Peripheral Sync LED -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                             <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
                                 <Ellipse.Style>
                                     <Style TargetType="Ellipse">
@@ -533,7 +542,6 @@
                             <TextBlock Text="Peripheral Sync" FontSize="12" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
                         </StackPanel>
 
-                        <!-- Test Buzz Button -->
                         <Button Command="{Binding TestBuzzCommand}" Cursor="Hand" HorizontalAlignment="Stretch"
                                 ToolTip="Play a 500ms diagnostic vibration on your wheel">
                             <Button.Style>
@@ -542,12 +550,12 @@
                                     <Setter Property="Foreground" Value="#FFF0883E" />
                                     <Setter Property="BorderBrush" Value="#FFF0883E" />
                                     <Setter Property="BorderThickness" Value="1" />
-                                    <Setter Property="FontSize" Value="13" />
+                                    <Setter Property="FontSize" Value="12" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
                                     <Setter Property="Template">
                                         <Setter.Value>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="BuzzBd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="12,8" SnapsToDevicePixels="True">
+                                                <Border x:Name="BuzzBd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="10,7" SnapsToDevicePixels="True">
                                                     <TextBlock x:Name="BuzzText" Text="Test Buzz" FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}" Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
@@ -571,7 +579,7 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <TextBlock Text="500ms diagnostic vibration" FontSize="10" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap" TextAlignment="Center" />
+                        <TextBlock Text="500ms diagnostic vibration" FontSize="9" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,3,0,0" TextWrapping="Wrap" TextAlignment="Center" />
                     </StackPanel>
                 </Border>
             </Grid>

@@ -322,6 +322,31 @@
                             </ControlTemplate>
                         </Button.Template>
                     </Button>
+                    <Button Command="{Binding ToggleScreenRecordingCommand}" Cursor="Hand"
+                            Margin="0,0,8,0" VerticalAlignment="Center"
+                            ToolTip="Record AC EVO window (WinRT capture, AMD-safe)">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="RecBd" Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="1" CornerRadius="14" Padding="10,6" SnapsToDevicePixels="True">
+                                    <TextBlock x:Name="RecBtnText" Text="REC" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="RecBd" Property="Background" Value="#FF30363D" />
+                                        <Setter TargetName="RecBd" Property="BorderBrush" Value="#FFE53935" />
+                                    </Trigger>
+                                    <DataTrigger Binding="{Binding IsScreenRecording}" Value="True">
+                                        <Setter TargetName="RecBd" Property="Background" Value="#1AE53935" />
+                                        <Setter TargetName="RecBd" Property="BorderBrush" Value="#FFE53935" />
+                                        <Setter TargetName="RecBtnText" Property="Foreground" Value="#FFE53935" />
+                                        <Setter TargetName="RecBtnText" Property="Text" Value="STOP" />
+                                    </DataTrigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                     <Button Command="{Binding SendDiagnosticPackCommand}" Cursor="Hand"
                             Margin="0,0,8,0" VerticalAlignment="Center"
                             ToolTip="Send diagnostic data to the developer">
@@ -423,6 +448,7 @@
                 <pages:FfbTuningPage x:Name="FfbTuningPageCtrl" Visibility="Collapsed" />
                 <pages:EqualizerPage x:Name="EqualizerPageCtrl" Visibility="Collapsed" />
                 <pages:TrackMapPage x:Name="TrackMapPageCtrl" Visibility="Collapsed" />
+                <pages:LiveMapPage x:Name="LiveMapPageCtrl" Visibility="Collapsed" />
                 <pages:TelemetryPage x:Name="TelemetryPageCtrl" Visibility="Collapsed" />
                 <pages:DevicesPage x:Name="DevicesPageCtrl" Visibility="Collapsed" />
                 <pages:ProfilesPage x:Name="ProfilesPageCtrl" Visibility="Collapsed" />
