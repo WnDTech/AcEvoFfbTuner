@@ -6,6 +6,7 @@ namespace AcEvoFfbTuner.Core.DirectInput;
 public sealed class Hf8SignalMapper
 {
     public const int ZoneCount = 8;
+    public const int SourceCount = 5;
 
     public enum Hf8Zone
     {
@@ -17,7 +18,16 @@ public sealed class Hf8SignalMapper
         BackLowerLeft = 5,
         BackUpperRight = 6,
         BackUpperLeft = 7
-    }
+    };
+
+    public enum Hf8Source
+    {
+        Suspension = 0,
+        Slip = 1,
+        Kerb = 2,
+        LateralG = 3,
+        Engine = 4
+    };
 
     public static readonly int[] PhysicalMotorToSdkIndex = [6, 7, 4, 5, 2, 3, 0, 1];
 
@@ -33,6 +43,75 @@ public sealed class Hf8SignalMapper
     {
         true, true, true, true, true, true, true, true
     };
+
+    public float[,] ZoneSourceWeights { get; set; } = CreateDefaultSourceWeights();
+
+    public static float[,] CreateDefaultSourceWeights()
+    {
+        var w = new float[ZoneCount, SourceCount];
+
+        w[(int)Hf8Zone.SeatFrontRight, (int)Hf8Source.Suspension] = 1.2f;
+        w[(int)Hf8Zone.SeatFrontRight, (int)Hf8Source.Slip] = 1.0f;
+        w[(int)Hf8Zone.SeatFrontRight, (int)Hf8Source.Kerb] = 0.3f;
+        w[(int)Hf8Zone.SeatFrontRight, (int)Hf8Source.LateralG] = 0.3f;
+        w[(int)Hf8Zone.SeatFrontRight, (int)Hf8Source.Engine] = 0.0f;
+
+        w[(int)Hf8Zone.SeatFrontLeft, (int)Hf8Source.Suspension] = 1.2f;
+        w[(int)Hf8Zone.SeatFrontLeft, (int)Hf8Source.Slip] = 1.0f;
+        w[(int)Hf8Zone.SeatFrontLeft, (int)Hf8Source.Kerb] = 0.3f;
+        w[(int)Hf8Zone.SeatFrontLeft, (int)Hf8Source.LateralG] = 0.3f;
+        w[(int)Hf8Zone.SeatFrontLeft, (int)Hf8Source.Engine] = 0.0f;
+
+        w[(int)Hf8Zone.SeatRearRight, (int)Hf8Source.Suspension] = 1.2f;
+        w[(int)Hf8Zone.SeatRearRight, (int)Hf8Source.Slip] = 1.0f;
+        w[(int)Hf8Zone.SeatRearRight, (int)Hf8Source.Kerb] = 0.3f;
+        w[(int)Hf8Zone.SeatRearRight, (int)Hf8Source.LateralG] = 0.3f;
+        w[(int)Hf8Zone.SeatRearRight, (int)Hf8Source.Engine] = 0.0f;
+
+        w[(int)Hf8Zone.SeatRearLeft, (int)Hf8Source.Suspension] = 1.2f;
+        w[(int)Hf8Zone.SeatRearLeft, (int)Hf8Source.Slip] = 1.0f;
+        w[(int)Hf8Zone.SeatRearLeft, (int)Hf8Source.Kerb] = 0.3f;
+        w[(int)Hf8Zone.SeatRearLeft, (int)Hf8Source.LateralG] = 0.3f;
+        w[(int)Hf8Zone.SeatRearLeft, (int)Hf8Source.Engine] = 0.0f;
+
+        w[(int)Hf8Zone.BackLowerRight, (int)Hf8Source.Suspension] = 0.0f;
+        w[(int)Hf8Zone.BackLowerRight, (int)Hf8Source.Slip] = 1.0f;
+        w[(int)Hf8Zone.BackLowerRight, (int)Hf8Source.Kerb] = 1.0f;
+        w[(int)Hf8Zone.BackLowerRight, (int)Hf8Source.LateralG] = 0.0f;
+        w[(int)Hf8Zone.BackLowerRight, (int)Hf8Source.Engine] = 2.0f;
+
+        w[(int)Hf8Zone.BackLowerLeft, (int)Hf8Source.Suspension] = 0.0f;
+        w[(int)Hf8Zone.BackLowerLeft, (int)Hf8Source.Slip] = 1.0f;
+        w[(int)Hf8Zone.BackLowerLeft, (int)Hf8Source.Kerb] = 1.0f;
+        w[(int)Hf8Zone.BackLowerLeft, (int)Hf8Source.LateralG] = 0.0f;
+        w[(int)Hf8Zone.BackLowerLeft, (int)Hf8Source.Engine] = 2.0f;
+
+        w[(int)Hf8Zone.BackUpperRight, (int)Hf8Source.Suspension] = 0.0f;
+        w[(int)Hf8Zone.BackUpperRight, (int)Hf8Source.Slip] = 1.0f;
+        w[(int)Hf8Zone.BackUpperRight, (int)Hf8Source.Kerb] = 0.0f;
+        w[(int)Hf8Zone.BackUpperRight, (int)Hf8Source.LateralG] = 1.0f;
+        w[(int)Hf8Zone.BackUpperRight, (int)Hf8Source.Engine] = 1.0f;
+
+        w[(int)Hf8Zone.BackUpperLeft, (int)Hf8Source.Suspension] = 0.0f;
+        w[(int)Hf8Zone.BackUpperLeft, (int)Hf8Source.Slip] = 1.0f;
+        w[(int)Hf8Zone.BackUpperLeft, (int)Hf8Source.Kerb] = 0.0f;
+        w[(int)Hf8Zone.BackUpperLeft, (int)Hf8Source.LateralG] = 1.0f;
+        w[(int)Hf8Zone.BackUpperLeft, (int)Hf8Source.Engine] = 1.0f;
+
+        return w;
+    }
+
+    public float GetSourceWeight(int zone, int source)
+    {
+        if (zone < 0 || zone >= ZoneCount || source < 0 || source >= SourceCount) return 0f;
+        return ZoneSourceWeights[zone, source];
+    }
+
+    public void SetSourceWeight(int zone, int source, float weight)
+    {
+        if (zone >= 0 && zone < ZoneCount && source >= 0 && source < SourceCount)
+            ZoneSourceWeights[zone, source] = weight;
+    }
 
     private float[] _prevSuspTravel = new float[4];
     private float[] _suspDelta = new float[4];
@@ -90,29 +169,63 @@ public sealed class Hf8SignalMapper
         float pushedRight = signedLateralG > 0.3f ? (signedLateralG - 0.3f) * 0.5f : 0f;
         float pushedLeft = signedLateralG < -0.3f ? (-signedLateralG - 0.3f) * 0.5f : 0f;
 
-        // SDK[1] Seat Front Left (driver's left thigh) — FL primary + RL cross + kerb left + pushed left
-        intensities[(int)Hf8Zone.SeatFrontLeft] = (flSusp * 1.2f + rlSusp * 0.4f + flSlip + kerbLeft * 0.3f + pushedLeft * 0.3f) * 0.8f;
+        float leftSuspMix = flSusp + rlSusp * 0.4f;
+        float rightSuspMix = frSusp + rrSusp * 0.4f;
+        float leftSuspRearMix = rlSusp + flSusp * 0.4f;
+        float rightSuspRearMix = rrSusp + frSusp * 0.4f;
 
-        // SDK[0] Seat Front Right (driver's right thigh) — FR primary + RR cross + kerb right + pushed right
-        intensities[(int)Hf8Zone.SeatFrontRight] = (frSusp * 1.2f + rrSusp * 0.4f + frSlip + kerbRight * 0.3f + pushedRight * 0.3f) * 0.8f;
+        float leftLowerEngineMix = absMod + rearSlipMod;
+        float rightLowerEngineMix = absMod + rearSlipMod;
+        float leftUpperEngineMix = lfeOut * 1.5f + rpmVib + rpmLimiter;
+        float rightUpperEngineMix = lfeOut * 1.5f + rpmVib + rpmLimiter;
 
-        // SDK[3] Seat Rear Left (driver's left rear) — RL primary + FL cross + kerb left + pushed left
-        intensities[(int)Hf8Zone.SeatRearLeft] = (rlSusp * 1.2f + flSusp * 0.4f + rlSlip + kerbLeft * 0.3f + pushedLeft * 0.3f) * 0.8f;
+        float[] zoneScale = [0.8f, 0.8f, 0.8f, 0.8f, 0.7f, 0.7f, 0.5f, 0.5f];
 
-        // SDK[2] Seat Rear Right (driver's right rear) — RR primary + FR cross + kerb right + pushed right
-        intensities[(int)Hf8Zone.SeatRearRight] = (rrSusp * 1.2f + frSusp * 0.4f + rrSlip + kerbRight * 0.3f + pushedRight * 0.3f) * 0.8f;
+        float[,] engineSignals = new float[ZoneCount, 1];
+        engineSignals[(int)Hf8Zone.SeatFrontLeft, 0] = 0f;
+        engineSignals[(int)Hf8Zone.SeatFrontRight, 0] = 0f;
+        engineSignals[(int)Hf8Zone.SeatRearLeft, 0] = 0f;
+        engineSignals[(int)Hf8Zone.SeatRearRight, 0] = 0f;
+        engineSignals[(int)Hf8Zone.BackLowerLeft, 0] = leftLowerEngineMix;
+        engineSignals[(int)Hf8Zone.BackLowerRight, 0] = rightLowerEngineMix;
+        engineSignals[(int)Hf8Zone.BackUpperLeft, 0] = leftUpperEngineMix;
+        engineSignals[(int)Hf8Zone.BackUpperRight, 0] = rightUpperEngineMix;
 
-        // SDK[5] Back Lower Left (driver's left lower back) — road + ABS biased left
-        intensities[(int)Hf8Zone.BackLowerLeft] = (roadMod * 2f * leftSuspRatio + absMod * 2f + rearSlipMod * 2f + absActive * 0.3f + slipVib * 0.2f) * 0.7f;
+        float[] suspSignals =
+        [
+            rightSuspMix, leftSuspMix, rightSuspRearMix, leftSuspRearMix,
+            0f, 0f, 0f, 0f
+        ];
+        float[] slipSignals =
+        [
+            frSlip, flSlip, rrSlip, rlSlip,
+            slipVib * 0.2f + absActive * 0.3f, slipVib * 0.2f + absActive * 0.3f, scrubMod, scrubMod
+        ];
+        float[] kerbSignals =
+        [
+            kerbRight, kerbLeft, kerbRight, kerbLeft,
+            roadMod * leftSuspRatio * 2f, roadMod * rightSuspRatio * 2f, 0f, 0f
+        ];
+        float[] latSignals =
+        [
+            pushedRight, pushedLeft, pushedRight, pushedLeft,
+            0f, 0f, pushedRight, pushedLeft
+        ];
 
-        // SDK[4] Back Lower Right (driver's right lower back) — road + ABS biased right
-        intensities[(int)Hf8Zone.BackLowerRight] = (roadMod * 2f * rightSuspRatio + absMod * 2f + rearSlipMod * 2f + absActive * 0.3f + slipVib * 0.2f) * 0.7f;
+        for (int z = 0; z < ZoneCount; z++)
+        {
+            float suspW = ZoneSourceWeights[z, (int)Hf8Source.Suspension];
+            float slipW = ZoneSourceWeights[z, (int)Hf8Source.Slip];
+            float kerbW = ZoneSourceWeights[z, (int)Hf8Source.Kerb];
+            float latW = ZoneSourceWeights[z, (int)Hf8Source.LateralG];
+            float engW = ZoneSourceWeights[z, (int)Hf8Source.Engine];
 
-        // SDK[7] Back Upper Left (driver's left upper back) — LFE + RPM + pushed left + scrub
-        intensities[(int)Hf8Zone.BackUpperLeft] = (lfeOut * 1.5f + rpmVib + rpmLimiter + pushedLeft + scrubMod) * 0.5f;
-
-        // SDK[6] Back Upper Right (driver's right upper back) — LFE + RPM + pushed right + scrub
-        intensities[(int)Hf8Zone.BackUpperRight] = (lfeOut * 1.5f + rpmVib + rpmLimiter + pushedRight + scrubMod) * 0.5f;
+            intensities[z] = (suspSignals[z] * suspW
+                            + slipSignals[z] * slipW
+                            + kerbSignals[z] * kerbW
+                            + latSignals[z] * latW
+                            + engineSignals[z, 0] * engW) * zoneScale[z];
+        }
 
         for (int i = 0; i < ZoneCount; i++)
         {

@@ -317,92 +317,204 @@
                         </DockPanel>
                     </Border>
 
-                    <!-- QUADRANT LAYOUT -->
-                    <Grid>
+                    <!-- MOTOR LAYOUT: 4 rows x 2 cols (Left | Right) -->
+
+                    <!-- ROW 1: SEAT FRONT — M8 FL (left) | M7 FR (right) -->
+                    <TextBlock Text="SEAT FRONT" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,6" />
+                    <Grid Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="12" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="16" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
 
-                        <!-- QUADRANT TOP-LEFT: SEAT FRONT -->
-                        <Border Grid.Row="0" Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
                                 BorderThickness="1" BorderBrush="#3379C0FF">
                             <StackPanel>
-                                <TextBlock Text="SEAT FRONT" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,10" />
+                                <TextBlock Text="M8 Seat FL" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain1, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="M8 Seat FL" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Motor 8: Seat Front Left (driver) — FL susp + slip + kerb"
-                                    SectionColor="#FF79C0FF" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled1}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
-
-                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain0, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="M7 Seat FR" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Motor 7: Seat Front Right (driver) — FR susp + slip + kerb"
-                                    SectionColor="#FF79C0FF" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled0}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                                    Label="Gain" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF79C0FF" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled1}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSusp1, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Susp" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSlip1, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Slip" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcKerb1, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Kerb" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcLatG1, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Lat G" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcEngine1, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Engine" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
                             </StackPanel>
                         </Border>
 
-                        <!-- QUADRANT TOP-RIGHT: SEAT REAR -->
-                        <Border Grid.Row="0" Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
+                                BorderThickness="1" BorderBrush="#3379C0FF">
+                            <StackPanel>
+                                <TextBlock Text="M7 Seat FR" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain0, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Gain" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF79C0FF" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled0}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSusp0, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Susp" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSlip0, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Slip" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcKerb0, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Kerb" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcLatG0, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Lat G" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcEngine0, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Engine" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- ROW 2: SEAT REAR — M6 RL (left) | M5 RR (right) -->
+                    <TextBlock Text="SEAT REAR" FontSize="12" FontWeight="Bold" Foreground="#FF56D4A0" Margin="0,0,0,6" />
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
                                 BorderThickness="1" BorderBrush="#3356D4A0">
                             <StackPanel>
-                                <TextBlock Text="SEAT REAR" FontSize="12" FontWeight="Bold" Foreground="#FF56D4A0" Margin="0,0,0,10" />
+                                <TextBlock Text="M6 Seat RL" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain3, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="M6 Seat RL" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Motor 6: Seat Rear Left (driver) — RL susp + slip"
-                                    SectionColor="#FF56D4A0" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled3}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
-
-                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain2, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="M5 Seat RR" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Motor 5: Seat Rear Right (driver) — RR susp + slip"
-                                    SectionColor="#FF56D4A0" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled2}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                                    Label="Gain" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF56D4A0" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled3}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSusp3, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Susp" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSlip3, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Slip" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcKerb3, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Kerb" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcLatG3, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Lat G" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcEngine3, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Engine" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
                             </StackPanel>
                         </Border>
 
-                        <!-- QUADRANT BOTTOM-LEFT: BACK LOWER -->
-                        <Border Grid.Row="2" Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
+                                BorderThickness="1" BorderBrush="#3356D4A0">
+                            <StackPanel>
+                                <TextBlock Text="M5 Seat RR" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain2, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Gain" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF56D4A0" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled2}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSusp2, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Susp" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSlip2, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Slip" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcKerb2, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Kerb" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcLatG2, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Lat G" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcEngine2, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Engine" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- ROW 3: BACK LOWER — M4 LL (left) | M3 LR (right) -->
+                    <TextBlock Text="BACK LOWER" FontSize="12" FontWeight="Bold" Foreground="#FFE08040" Margin="0,0,0,6" />
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
                                 BorderThickness="1" BorderBrush="#33E08040">
                             <StackPanel>
-                                <TextBlock Text="BACK LOWER" FontSize="12" FontWeight="Bold" Foreground="#FFE08040" Margin="0,0,0,10" />
+                                <TextBlock Text="M4 Back LL" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain5, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="M4 Back LL" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Motor 4: Back Lower Left (driver) — road + ABS + rear slip"
-                                    SectionColor="#FFE08040" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled5}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
-
-                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain4, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="M3 Back LR" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Motor 3: Back Lower Right (driver) — road + ABS + rear slip"
-                                    SectionColor="#FFE08040" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled4}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                                    Label="Gain" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFE08040" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled5}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSusp5, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Susp" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSlip5, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Slip" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcKerb5, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Kerb" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcLatG5, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Lat G" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcEngine5, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Engine" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
                             </StackPanel>
                         </Border>
 
-                        <!-- QUADRANT BOTTOM-RIGHT: BACK UPPER -->
-                        <Border Grid.Row="2" Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
+                                BorderThickness="1" BorderBrush="#33E08040">
+                            <StackPanel>
+                                <TextBlock Text="M3 Back LR" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <controls:LabeledSlider Value="{Binding Hf8ZoneGain4, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Gain" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFE08040" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled4}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSusp4, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Susp" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSlip4, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Slip" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcKerb4, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Kerb" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcLatG4, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Lat G" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcEngine4, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Engine" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- ROW 4: BACK UPPER — M2 UL (left) | M1 UR (right) -->
+                    <TextBlock Text="BACK UPPER" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,6" />
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
                                 BorderThickness="1" BorderBrush="#33F0883E">
                             <StackPanel>
-                                <TextBlock Text="BACK UPPER" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,10" />
+                                <TextBlock Text="M2 Back UL" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain7, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="M2 Back UL" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Motor 2: Back Upper Left (driver) — LFE + RPM + lat G + scrub"
-                                    SectionColor="#FFF0883E" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled7}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+                                    Label="Gain" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFF0883E" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled7}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSusp7, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Susp" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSlip7, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Slip" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcKerb7, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Kerb" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcLatG7, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Lat G" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcEngine7, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Engine" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
+                            </StackPanel>
+                        </Border>
 
+                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
+                                BorderThickness="1" BorderBrush="#33F0883E">
+                            <StackPanel>
+                                <TextBlock Text="M1 Back UR" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain6, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
-                                    Label="M1 Back UR" StringFormat="{}{0:F2}" ValueWidth="52"
-                                    Description="Motor 1: Back Upper Right (driver) — LFE + RPM + lat G + scrub"
-                                    SectionColor="#FFF0883E" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled6}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" />
+                                    Label="Gain" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFF0883E" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled6}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSusp6, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Susp" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcSlip6, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Slip" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcKerb6, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Kerb" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcLatG6, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Lat G" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
+                                <controls:LabeledSlider Value="{Binding Hf8SrcEngine6, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
+                                    Label="  Engine" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
                             </StackPanel>
                         </Border>
                     </Grid>

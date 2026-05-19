@@ -199,6 +199,8 @@ public sealed class FfbProfile
         {
             pipeline.Hf8SignalMapper.ZoneGains[i] = Hf8.GetZoneGain(i);
             pipeline.Hf8SignalMapper.ZoneEnabled[i] = Hf8.GetZoneEnabled(i);
+            for (int s = 0; s < Hf8SignalMapper.SourceCount; s++)
+                pipeline.Hf8SignalMapper.SetSourceWeight(i, s, Hf8.GetSourceWeight(i, s));
         }
 
         pipeline.GripGuard.Enabled = GripGuard.Enabled;
@@ -377,6 +379,9 @@ public sealed class FfbProfile
             ZoneEnabled = (bool[])pipeline.Hf8SignalMapper.ZoneEnabled.Clone(),
             OutputRateHz = Hf8?.OutputRateHz ?? 75
         };
+        for (int z = 0; z < Hf8SignalMapper.ZoneCount; z++)
+            for (int s = 0; s < Hf8SignalMapper.SourceCount; s++)
+                Hf8.SetSourceWeight(z, s, pipeline.Hf8SignalMapper.GetSourceWeight(z, s));
         GripGuard = new GripGuardConfig
         {
             Enabled = pipeline.GripGuard.Enabled,
@@ -1170,6 +1175,21 @@ public sealed class Hf8Config
         true, true, true, true, true, true, true, true
     };
 
+    public float[][] ZoneSourceWeights { get; set; } = CreateDefaultWeights();
+
+    public static float[][] CreateDefaultWeights()
+    {
+        var defaults = Hf8SignalMapper.CreateDefaultSourceWeights();
+        var jagged = new float[8][];
+        for (int z = 0; z < 8; z++)
+        {
+            jagged[z] = new float[5];
+            for (int s = 0; s < 5; s++)
+                jagged[z][s] = defaults[z, s];
+        }
+        return jagged;
+    }
+
     public float GetZoneGain(int zone) =>
         zone >= 0 && zone < ZoneGains.Length ? ZoneGains[zone] : 0f;
 
@@ -1188,6 +1208,21 @@ public sealed class Hf8Config
             ZoneEnabled[zone] = enabled;
     }
 
+    public float GetSourceWeight(int zone, int source)
+    {
+        if (zone >= 0 && zone < ZoneSourceWeights.Length && ZoneSourceWeights[zone] != null
+            && source >= 0 && source < ZoneSourceWeights[zone].Length)
+            return ZoneSourceWeights[zone][source];
+        return 0f;
+    }
+
+    public void SetSourceWeight(int zone, int source, float weight)
+    {
+        if (zone >= 0 && zone < ZoneSourceWeights.Length && ZoneSourceWeights[zone] != null
+            && source >= 0 && source < ZoneSourceWeights[zone].Length)
+            ZoneSourceWeights[zone][source] = weight;
+    }
+
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
     public void SanitizeFloats()
     {
@@ -1195,6 +1230,11 @@ public sealed class Hf8Config
         if (ZoneGains != null)
             for (int i = 0; i < ZoneGains.Length; i++)
                 ZoneGains[i] = S(ZoneGains[i]);
+        if (ZoneSourceWeights != null)
+            for (int z = 0; z < ZoneSourceWeights.Length; z++)
+                if (ZoneSourceWeights[z] != null)
+                    for (int s = 0; s < ZoneSourceWeights[z].Length; s++)
+                        ZoneSourceWeights[z][s] = S(ZoneSourceWeights[z][s]);
     }
 }
 

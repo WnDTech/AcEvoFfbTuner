@@ -543,6 +543,94 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private string _hf8ConnectionStatus = "No HF8 device detected";
 
     [ObservableProperty]
+    private float _hf8SrcSusp0 = 1.2f;
+    [ObservableProperty]
+    private float _hf8SrcSlip0 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcKerb0 = 0.3f;
+    [ObservableProperty]
+    private float _hf8SrcLatG0 = 0.3f;
+    [ObservableProperty]
+    private float _hf8SrcEngine0 = 0.0f;
+
+    [ObservableProperty]
+    private float _hf8SrcSusp1 = 1.2f;
+    [ObservableProperty]
+    private float _hf8SrcSlip1 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcKerb1 = 0.3f;
+    [ObservableProperty]
+    private float _hf8SrcLatG1 = 0.3f;
+    [ObservableProperty]
+    private float _hf8SrcEngine1 = 0.0f;
+
+    [ObservableProperty]
+    private float _hf8SrcSusp2 = 1.2f;
+    [ObservableProperty]
+    private float _hf8SrcSlip2 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcKerb2 = 0.3f;
+    [ObservableProperty]
+    private float _hf8SrcLatG2 = 0.3f;
+    [ObservableProperty]
+    private float _hf8SrcEngine2 = 0.0f;
+
+    [ObservableProperty]
+    private float _hf8SrcSusp3 = 1.2f;
+    [ObservableProperty]
+    private float _hf8SrcSlip3 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcKerb3 = 0.3f;
+    [ObservableProperty]
+    private float _hf8SrcLatG3 = 0.3f;
+    [ObservableProperty]
+    private float _hf8SrcEngine3 = 0.0f;
+
+    [ObservableProperty]
+    private float _hf8SrcSusp4 = 0.0f;
+    [ObservableProperty]
+    private float _hf8SrcSlip4 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcKerb4 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcLatG4 = 0.0f;
+    [ObservableProperty]
+    private float _hf8SrcEngine4 = 2.0f;
+
+    [ObservableProperty]
+    private float _hf8SrcSusp5 = 0.0f;
+    [ObservableProperty]
+    private float _hf8SrcSlip5 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcKerb5 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcLatG5 = 0.0f;
+    [ObservableProperty]
+    private float _hf8SrcEngine5 = 2.0f;
+
+    [ObservableProperty]
+    private float _hf8SrcSusp6 = 0.0f;
+    [ObservableProperty]
+    private float _hf8SrcSlip6 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcKerb6 = 0.0f;
+    [ObservableProperty]
+    private float _hf8SrcLatG6 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcEngine6 = 1.0f;
+
+    [ObservableProperty]
+    private float _hf8SrcSusp7 = 0.0f;
+    [ObservableProperty]
+    private float _hf8SrcSlip7 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcKerb7 = 0.0f;
+    [ObservableProperty]
+    private float _hf8SrcLatG7 = 1.0f;
+    [ObservableProperty]
+    private float _hf8SrcEngine7 = 1.0f;
+
+    [ObservableProperty]
     private bool _hf8Connected;
 
     [ObservableProperty]
@@ -2512,6 +2600,54 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnHf8ZoneEnabled6Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[6] = value;
     partial void OnHf8ZoneEnabled7Changed(bool value) => _pipeline.Hf8SignalMapper.ZoneEnabled[7] = value;
 
+    partial void OnHf8SrcSusp0Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(0, 0, value);
+    partial void OnHf8SrcSlip0Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(0, 1, value);
+    partial void OnHf8SrcKerb0Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(0, 2, value);
+    partial void OnHf8SrcLatG0Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(0, 3, value);
+    partial void OnHf8SrcEngine0Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(0, 4, value);
+
+    partial void OnHf8SrcSusp1Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(1, 0, value);
+    partial void OnHf8SrcSlip1Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(1, 1, value);
+    partial void OnHf8SrcKerb1Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(1, 2, value);
+    partial void OnHf8SrcLatG1Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(1, 3, value);
+    partial void OnHf8SrcEngine1Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(1, 4, value);
+
+    partial void OnHf8SrcSusp2Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(2, 0, value);
+    partial void OnHf8SrcSlip2Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(2, 1, value);
+    partial void OnHf8SrcKerb2Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(2, 2, value);
+    partial void OnHf8SrcLatG2Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(2, 3, value);
+    partial void OnHf8SrcEngine2Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(2, 4, value);
+
+    partial void OnHf8SrcSusp3Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(3, 0, value);
+    partial void OnHf8SrcSlip3Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(3, 1, value);
+    partial void OnHf8SrcKerb3Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(3, 2, value);
+    partial void OnHf8SrcLatG3Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(3, 3, value);
+    partial void OnHf8SrcEngine3Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(3, 4, value);
+
+    partial void OnHf8SrcSusp4Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(4, 0, value);
+    partial void OnHf8SrcSlip4Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(4, 1, value);
+    partial void OnHf8SrcKerb4Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(4, 2, value);
+    partial void OnHf8SrcLatG4Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(4, 3, value);
+    partial void OnHf8SrcEngine4Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(4, 4, value);
+
+    partial void OnHf8SrcSusp5Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(5, 0, value);
+    partial void OnHf8SrcSlip5Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(5, 1, value);
+    partial void OnHf8SrcKerb5Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(5, 2, value);
+    partial void OnHf8SrcLatG5Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(5, 3, value);
+    partial void OnHf8SrcEngine5Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(5, 4, value);
+
+    partial void OnHf8SrcSusp6Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(6, 0, value);
+    partial void OnHf8SrcSlip6Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(6, 1, value);
+    partial void OnHf8SrcKerb6Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(6, 2, value);
+    partial void OnHf8SrcLatG6Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(6, 3, value);
+    partial void OnHf8SrcEngine6Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(6, 4, value);
+
+    partial void OnHf8SrcSusp7Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(7, 0, value);
+    partial void OnHf8SrcSlip7Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(7, 1, value);
+    partial void OnHf8SrcKerb7Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(7, 2, value);
+    partial void OnHf8SrcLatG7Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(7, 3, value);
+    partial void OnHf8SrcEngine7Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(7, 4, value);
+
     partial void OnGripGuardEnabledChanged(bool value) => _pipeline.GripGuard.Enabled = value;
     partial void OnGripGuardPeakSlipAngleChanged(float value) => _pipeline.GripGuard.PeakSlipAngle = value;
     partial void OnGripGuardAttenuationStrengthChanged(float value) => _pipeline.GripGuard.AttenuationStrength = value;
@@ -2936,6 +3072,54 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Hf8ZoneEnabled5 = profile.Hf8.GetZoneEnabled(5);
         Hf8ZoneEnabled6 = profile.Hf8.GetZoneEnabled(6);
         Hf8ZoneEnabled7 = profile.Hf8.GetZoneEnabled(7);
+
+        Hf8SrcSusp0 = profile.Hf8.GetSourceWeight(0, 0);
+        Hf8SrcSlip0 = profile.Hf8.GetSourceWeight(0, 1);
+        Hf8SrcKerb0 = profile.Hf8.GetSourceWeight(0, 2);
+        Hf8SrcLatG0 = profile.Hf8.GetSourceWeight(0, 3);
+        Hf8SrcEngine0 = profile.Hf8.GetSourceWeight(0, 4);
+
+        Hf8SrcSusp1 = profile.Hf8.GetSourceWeight(1, 0);
+        Hf8SrcSlip1 = profile.Hf8.GetSourceWeight(1, 1);
+        Hf8SrcKerb1 = profile.Hf8.GetSourceWeight(1, 2);
+        Hf8SrcLatG1 = profile.Hf8.GetSourceWeight(1, 3);
+        Hf8SrcEngine1 = profile.Hf8.GetSourceWeight(1, 4);
+
+        Hf8SrcSusp2 = profile.Hf8.GetSourceWeight(2, 0);
+        Hf8SrcSlip2 = profile.Hf8.GetSourceWeight(2, 1);
+        Hf8SrcKerb2 = profile.Hf8.GetSourceWeight(2, 2);
+        Hf8SrcLatG2 = profile.Hf8.GetSourceWeight(2, 3);
+        Hf8SrcEngine2 = profile.Hf8.GetSourceWeight(2, 4);
+
+        Hf8SrcSusp3 = profile.Hf8.GetSourceWeight(3, 0);
+        Hf8SrcSlip3 = profile.Hf8.GetSourceWeight(3, 1);
+        Hf8SrcKerb3 = profile.Hf8.GetSourceWeight(3, 2);
+        Hf8SrcLatG3 = profile.Hf8.GetSourceWeight(3, 3);
+        Hf8SrcEngine3 = profile.Hf8.GetSourceWeight(3, 4);
+
+        Hf8SrcSusp4 = profile.Hf8.GetSourceWeight(4, 0);
+        Hf8SrcSlip4 = profile.Hf8.GetSourceWeight(4, 1);
+        Hf8SrcKerb4 = profile.Hf8.GetSourceWeight(4, 2);
+        Hf8SrcLatG4 = profile.Hf8.GetSourceWeight(4, 3);
+        Hf8SrcEngine4 = profile.Hf8.GetSourceWeight(4, 4);
+
+        Hf8SrcSusp5 = profile.Hf8.GetSourceWeight(5, 0);
+        Hf8SrcSlip5 = profile.Hf8.GetSourceWeight(5, 1);
+        Hf8SrcKerb5 = profile.Hf8.GetSourceWeight(5, 2);
+        Hf8SrcLatG5 = profile.Hf8.GetSourceWeight(5, 3);
+        Hf8SrcEngine5 = profile.Hf8.GetSourceWeight(5, 4);
+
+        Hf8SrcSusp6 = profile.Hf8.GetSourceWeight(6, 0);
+        Hf8SrcSlip6 = profile.Hf8.GetSourceWeight(6, 1);
+        Hf8SrcKerb6 = profile.Hf8.GetSourceWeight(6, 2);
+        Hf8SrcLatG6 = profile.Hf8.GetSourceWeight(6, 3);
+        Hf8SrcEngine6 = profile.Hf8.GetSourceWeight(6, 4);
+
+        Hf8SrcSusp7 = profile.Hf8.GetSourceWeight(7, 0);
+        Hf8SrcSlip7 = profile.Hf8.GetSourceWeight(7, 1);
+        Hf8SrcKerb7 = profile.Hf8.GetSourceWeight(7, 2);
+        Hf8SrcLatG7 = profile.Hf8.GetSourceWeight(7, 3);
+        Hf8SrcEngine7 = profile.Hf8.GetSourceWeight(7, 4);
 
         GripGuardEnabled = profile.GripGuard.Enabled;
         GripGuardPeakSlipAngle = profile.GripGuard.PeakSlipAngle;
