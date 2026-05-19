@@ -11,86 +11,116 @@
     </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="160" />
+            <ColumnDefinition x:Name="SidebarCol" Width="200" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- ═══ LEFT: VERTICAL DEVICE TABS ═══ -->
-        <Border Grid.Column="0" Background="{StaticResource BgPanel}"
+        <!-- ═══ LEFT: VERTICAL DEVICE TABS (COLLAPSIBLE) ═══ -->
+        <Border x:Name="SidebarBorder" Grid.Column="0" Background="{StaticResource BgPanel}"
                 BorderThickness="0,0,1,0" BorderBrush="{StaticResource BorderBrush}">
-            <StackPanel Margin="0,20,0,0">
-                <TextBlock Text="DEVICES" FontSize="11" FontWeight="Bold"
-                           Foreground="{StaticResource TextDimBrush}" Margin="16,0,0,12" />
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                <RadioButton x:Name="LedTab" GroupName="DeviceTab" IsChecked="True"
-                             Checked="OnTabChecked" Cursor="Hand">
-                    <RadioButton.Template>
-                        <ControlTemplate TargetType="RadioButton">
-                            <Border x:Name="TabBd" Background="Transparent" Padding="16,12" BorderThickness="3,0,0,0" BorderBrush="Transparent">
+                <StackPanel x:Name="SidebarContent" Grid.Row="0" Margin="0,20,0,0">
+                    <TextBlock x:Name="HeaderLabel" Text="DEVICES" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextDimBrush}" Margin="16,0,0,12" />
+
+                    <RadioButton x:Name="LedTab" GroupName="DeviceTab" IsChecked="True"
+                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="LED Effects">
+                        <RadioButton.Template>
+                            <ControlTemplate TargetType="RadioButton">
+                                <Border x:Name="TabBd" Background="Transparent" Padding="12,10" BorderThickness="3,0,0,0" BorderBrush="Transparent">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="💡" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock x:Name="TabLabel" Text="LED Effects" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
+                                    </Trigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
+                                        <Setter TargetName="TabBd" Property="BorderBrush" Value="#FF79C0FF" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </RadioButton.Template>
+                    </RadioButton>
+
+                    <RadioButton x:Name="HapticTab" GroupName="DeviceTab"
+                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="Haptic Pad">
+                        <RadioButton.Template>
+                            <ControlTemplate TargetType="RadioButton">
+                                <Border x:Name="TabBd" Background="Transparent" Padding="12,10" BorderThickness="3,0,0,0" BorderBrush="Transparent">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📳" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock x:Name="TabLabel" Text="Haptic Pad" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
+                                    </Trigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
+                                        <Setter TargetName="TabBd" Property="BorderBrush" Value="#FFD2A8FF" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </RadioButton.Template>
+                    </RadioButton>
+
+                    <RadioButton x:Name="ButtonsTab" GroupName="DeviceTab"
+                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="Buttons">
+                        <RadioButton.Template>
+                            <ControlTemplate TargetType="RadioButton">
+                                <Border x:Name="TabBd" Background="Transparent" Padding="12,10" BorderThickness="3,0,0,0" BorderBrush="Transparent">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🎮" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock x:Name="TabLabel" Text="Buttons" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
+                                    </Trigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
+                                        <Setter TargetName="TabBd" Property="BorderBrush" Value="#FFE3B341" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </RadioButton.Template>
+                    </RadioButton>
+                </StackPanel>
+
+                <Button x:Name="CollapseBtn" Grid.Row="2" Click="OnToggleCollapse" Cursor="Hand"
+                        HorizontalAlignment="Stretch" Background="Transparent" BorderThickness="0"
+                        Padding="12,8" Margin="0,0,0,8" ToolTip="Collapse sidebar">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="CbBd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="💡" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <TextBlock Text="LED Effects" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="CollapseArrow" Text="◂" FontSize="14" Foreground="#FF8B949E"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBlock x:Name="CollapseLabel" Text="Collapse" FontSize="12" Foreground="#FF8B949E"
+                                               VerticalAlignment="Center" />
                                 </StackPanel>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
-                                </Trigger>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
-                                    <Setter TargetName="TabBd" Property="BorderBrush" Value="#FF79C0FF" />
+                                    <Setter TargetName="CbBd" Property="Background" Value="#1AFFFFFF" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
-                    </RadioButton.Template>
-                </RadioButton>
-
-                <RadioButton x:Name="HapticTab" GroupName="DeviceTab"
-                             Checked="OnTabChecked" Cursor="Hand">
-                    <RadioButton.Template>
-                        <ControlTemplate TargetType="RadioButton">
-                            <Border x:Name="TabBd" Background="Transparent" Padding="16,12" BorderThickness="3,0,0,0" BorderBrush="Transparent">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="📳" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <TextBlock Text="Haptic Pad" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
-                                </Trigger>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
-                                    <Setter TargetName="TabBd" Property="BorderBrush" Value="#FFD2A8FF" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </RadioButton.Template>
-                </RadioButton>
-
-                <RadioButton x:Name="ButtonsTab" GroupName="DeviceTab"
-                             Checked="OnTabChecked" Cursor="Hand">
-                    <RadioButton.Template>
-                        <ControlTemplate TargetType="RadioButton">
-                            <Border x:Name="TabBd" Background="Transparent" Padding="16,12" BorderThickness="3,0,0,0" BorderBrush="Transparent">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="🎮" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <TextBlock Text="Buttons" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
-                                </Trigger>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
-                                    <Setter TargetName="TabBd" Property="BorderBrush" Value="#FFE3B341" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </RadioButton.Template>
-                </RadioButton>
-            </StackPanel>
+                    </Button.Template>
+                </Button>
+            </Grid>
         </Border>
 
         <!-- ═══ RIGHT: CONTENT PANELS ═══ -->
@@ -206,7 +236,7 @@
                                         <ComboBoxItem Content="Custom" />
                                     </ComboBox>
 
-                                    <Expander Style="{StaticResource SectionExpander}" Header="Individual RPM Thresholds">
+                                    <Expander Style="{StaticResource SectionExpander}" Header="Individual RPM Thresholds" IsExpanded="True">
                                         <StackPanel>
                                             <TextBlock Text="Each LED lights up when RPM reaches its threshold (% of redline)" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8" />
                                             <controls:LabeledSlider Value="{Binding LedRpmThreshold1, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"

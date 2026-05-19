@@ -117,6 +117,52 @@ public partial class DevicesPage : UserControl
         }
     }
 
+    private bool _sidebarCollapsed;
+
+    private void OnToggleCollapse(object sender, RoutedEventArgs e)
+    {
+        _sidebarCollapsed = !_sidebarCollapsed;
+        ApplySidebarState();
+    }
+
+    private void ApplySidebarState()
+    {
+        if (_sidebarCollapsed)
+        {
+            SidebarCol.Width = new GridLength(50);
+            HeaderLabel.Visibility = Visibility.Collapsed;
+
+            foreach (var btn in new[] { LedTab, HapticTab, ButtonsTab })
+                SetTemplateLabelVisibility(btn, "TabLabel", Visibility.Collapsed);
+
+            SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Collapsed);
+            CollapseBtn.ToolTip = "Expand sidebar";
+
+            if (CollapseBtn.Template?.FindName("CollapseArrow", CollapseBtn) is TextBlock arrow)
+                arrow.Text = "▸";
+        }
+        else
+        {
+            SidebarCol.Width = new GridLength(200);
+            HeaderLabel.Visibility = Visibility.Visible;
+
+            foreach (var btn in new[] { LedTab, HapticTab, ButtonsTab })
+                SetTemplateLabelVisibility(btn, "TabLabel", Visibility.Visible);
+
+            SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Visible);
+            CollapseBtn.ToolTip = "Collapse sidebar";
+
+            if (CollapseBtn.Template?.FindName("CollapseArrow", CollapseBtn) is TextBlock arrow)
+                arrow.Text = "◂";
+        }
+    }
+
+    private static void SetTemplateLabelVisibility(Control control, string name, Visibility visibility)
+    {
+        if (control.Template?.FindName(name, control) is FrameworkElement fe)
+            fe.Visibility = visibility;
+    }
+
     private void OnOpenMotorTest(object sender, RoutedEventArgs e)
     {
         Hf8MotorTestRequested?.Invoke(this, EventArgs.Empty);
