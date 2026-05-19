@@ -1,104 +1,239 @@
 <UserControl x:Class="AcEvoFfbTuner.Views.Pages.ProfilesPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
-        <StackPanel MaxWidth="500" HorizontalAlignment="Left">
-            <TextBlock Text="PROFILES" FontSize="24" FontWeight="Black" Foreground="#FFF0883E" Margin="0,0,0,4" />
-            <TextBlock Text="Manage your FFB profiles for different cars and wheel setups" FontSize="15" Foreground="#FF8B949E" Margin="0,0,0,16" />
-            <Border Background="#FF333355" Height="1" Margin="0,0,0,16" />
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MinWidth="400" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="480" />
+        </Grid.ColumnDefinitions>
 
-            <TextBlock Text="Current Profile" Style="{StaticResource SubSectionHeader}" />
-            <Border Background="#FF1C2128" CornerRadius="6" Padding="16,10" Margin="0,4,0,16">
-                <StackPanel>
-                    <DockPanel Margin="0,4">
-                        <TextBlock Text="Active Profile" Width="100" VerticalAlignment="Center" FontSize="15" />
-                        <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
-                                  DisplayMemberPath="Name" Width="280" HorizontalAlignment="Left" />
-                    </DockPanel>
-                    <DockPanel Margin="0,4">
-                        <TextBlock Text="Car Match" Width="100" VerticalAlignment="Center" FontSize="15" />
-                        <TextBox Text="{Binding ProfileCarMatch, UpdateSourceTrigger=PropertyChanged}"
-                                 Width="195" HorizontalAlignment="Left" FontSize="14"
-                                 ToolTip="AC EVO car model name for auto-loading this profile. Click 'Use Detected' to auto-fill." />
-                        <Button Content="Use Detected" Command="{Binding SetCarMatchFromDetectedCommand}"
-                                Padding="8,3" FontSize="12" Margin="4,0,0,0" VerticalAlignment="Center"
-                                ToolTip="Fill from detected car model" />
-                    </DockPanel>
-                    <DockPanel Margin="0,4">
-                        <TextBlock Text="Detected" Width="100" VerticalAlignment="Center" FontSize="15" Foreground="#FF8B949E" />
-                        <TextBlock VerticalAlignment="Center" FontSize="14">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="#FF66BB6A" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding DetectedCarModel}" Value="">
-                                            <Setter Property="Foreground" Value="#FF8B949E" />
-                                            <Setter Property="Text" Value="Start a session in AC EVO to detect car model" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                            <TextBlock.Text>
-                                <Binding Path="DetectedCarModel" />
-                            </TextBlock.Text>
-                        </TextBlock>
-                    </DockPanel>
-                    <CheckBox Content="Auto-load profile when car changes" IsChecked="{Binding IsPerCarAutoLoadEnabled}"
-                              Margin="100,4,0,4" FontSize="13" Foreground="#FFE6EDF3"
-                              ToolTip="Automatically switch profiles when a different car is detected in-game" />
-                </StackPanel>
-            </Border>
+        <!-- LEFT: Profile management -->
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,20">
+            <StackPanel HorizontalAlignment="Stretch">
 
-            <TextBlock Text="Actions" Style="{StaticResource SubSectionHeader}" />
-            <Border Background="#FF1C2128" CornerRadius="6" Padding="16,10" Margin="0,4">
-                <StackPanel>
-                    <Button Content="Save Current Profile" Command="{Binding SaveCurrentProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                <Setter Property="ToolTip" Value="Save current profile" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsBuiltInProfileSelected}" Value="True">
-                                        <Setter Property="Content" Value="Save Current Profile (Built-in → Save As)" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    <Button Content="Save As New Profile..." Command="{Binding SaveAsNewProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left" ToolTip="Save current settings as a new profile" />
-                    <Button Content="Rename Profile" Command="{Binding RenameProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource OutlinedButton}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsBuiltInProfileSelected}" Value="True">
-                                        <Setter Property="IsEnabled" Value="False" />
-                                        <Setter Property="ToolTip" Value="Built-in profiles cannot be renamed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    <Button Content="Delete Profile" Command="{Binding DeleteProfileCommand}" Margin="0,4" Padding="16,6" HorizontalAlignment="Left">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsBuiltInProfileSelected}" Value="True">
-                                        <Setter Property="IsEnabled" Value="False" />
-                                        <Setter Property="ToolTip" Value="Built-in profiles cannot be deleted" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                </StackPanel>
-            </Border>
+                <TextBlock Text="PROFILES" FontSize="24" FontWeight="Black" Foreground="#FFF0883E" Margin="0,0,0,4" />
+                <TextBlock Text="Manage your FFB profiles for different cars and tracks" FontSize="15" Foreground="#FF8B949E" Margin="0,0,0,16" TextWrapping="Wrap" />
+                <Border Background="#FF30363D" Height="1" Margin="0,0,0,24" />
 
-            <TextBlock Text="Import / Export" Style="{StaticResource SubSectionHeader}" Margin="0,12,0,0" />
-            <Border Background="#FF1C2128" CornerRadius="6" Padding="16,10" Margin="0,4">
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="Export Profile" Command="{Binding ExportProfileCommand}" Margin="0,4" Padding="16,6" Style="{StaticResource OutlinedButton}" ToolTip="Export current profile to a JSON file" />
-                    <Button Content="Import Profile" Command="{Binding ImportProfileCommand}" Margin="8,4,0,4" Padding="16,6" Style="{StaticResource OutlinedButton}" ToolTip="Import a profile from a JSON file" />
-                </StackPanel>
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+                <!-- CURRENT PROFILE + DETECTION side by side -->
+                <Grid Margin="0,0,0,24">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- CURRENT PROFILE -->
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="CURRENT PROFILE" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
+                        <TextBlock Text="Select and configure the active FFB profile." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
+
+                        <Border Background="#FF1C2128" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="#FF30363D">
+                            <StackPanel>
+                                <TextBlock Text="Active Profile" FontSize="15" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                                <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
+                                          DisplayMemberPath="Name" FontSize="14" Padding="6,4" Margin="0,0,0,12" />
+
+                                <TextBlock Text="Car Match" FontSize="14" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                                <TextBlock Text="Auto-load this profile when the detected car matches." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,4" TextWrapping="Wrap" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Text="{Binding ProfileCarMatch, UpdateSourceTrigger=PropertyChanged}"
+                                             FontSize="14" Padding="6,4" Margin="0,0,6,0"
+                                             ToolTip="AC EVO car model name for auto-loading this profile" />
+                                    <Button Grid.Column="1" Content="Use Detected" Command="{Binding SetCarMatchFromDetectedCommand}"
+                                            Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}"
+                                            ToolTip="Fill from detected car model" />
+                                </Grid>
+
+                                <TextBlock Text="Track Match" FontSize="14" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                                <TextBlock Text="Organise profiles by track for easy browsing." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,4" TextWrapping="Wrap" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Text="{Binding ProfileTrackMatch, UpdateSourceTrigger=PropertyChanged}"
+                                             FontSize="14" Padding="6,4" Margin="0,0,6,0"
+                                             ToolTip="AC EVO track name for organising profiles by track" />
+                                    <Button Grid.Column="1" Content="Use Detected" Command="{Binding SetTrackMatchFromDetectedCommand}"
+                                            Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}"
+                                            ToolTip="Fill from detected track name" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- DETECTION & AUTO-LOAD -->
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="DETECTION" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
+                        <TextBlock Text="Live telemetry detection from AC EVO." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
+
+                        <Border Background="#FF1C2128" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="#FF30363D">
+                            <StackPanel>
+                                <TextBlock Text="Detected Car" FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,4" />
+                                <TextBlock VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,14">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#FF66BB6A" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DetectedCarModel}" Value="">
+                                                    <Setter Property="Foreground" Value="#FF484F58" />
+                                                    <Setter Property="FontWeight" Value="Normal" />
+                                                    <Setter Property="Text" Value="No car detected — start a session" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                    <TextBlock.Text>
+                                        <Binding Path="DetectedCarModel" />
+                                    </TextBlock.Text>
+                                </TextBlock>
+
+                                <Border Background="#FF30363D" Height="1" Margin="0,0,0,14" />
+
+                                <TextBlock Text="Detected Track" FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,4" />
+                                <TextBlock VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,14">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#FF66BB6A" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DetectedTrackName}" Value="">
+                                                    <Setter Property="Foreground" Value="#FF484F58" />
+                                                    <Setter Property="FontWeight" Value="Normal" />
+                                                    <Setter Property="Text" Value="No track detected — start a session" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                    <TextBlock.Text>
+                                        <Binding Path="DetectedTrackName" />
+                                    </TextBlock.Text>
+                                </TextBlock>
+
+                                <Border Background="#FF30363D" Height="1" Margin="0,0,0,14" />
+
+                                <CheckBox Content="Auto-load profile when car changes" IsChecked="{Binding IsPerCarAutoLoadEnabled}"
+                                          FontSize="13" Foreground="#FFE6EDF3" Margin="0,0,0,4"
+                                          ToolTip="Automatically switch profiles when a different car is detected in-game" />
+                                <TextBlock Text="When enabled, switching cars in-game will automatically load the matching profile." FontSize="12" Foreground="#FF8B949E" Margin="28,0,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ACTIONS + IMPORT/EXPORT side by side -->
+                <Grid Margin="0,0,0,24">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- ACTIONS -->
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="ACTIONS" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
+                        <TextBlock Text="Save, rename, or delete the current profile." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
+
+                        <Border Background="#FF1C2128" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="#FF30363D">
+                            <StackPanel>
+                                <Button Content="Save Current Profile" Command="{Binding SaveCurrentProfileCommand}" Margin="0,0,0,6" Padding="16,6" HorizontalAlignment="Stretch">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                            <Setter Property="ToolTip" Value="Save current profile" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsBuiltInProfileSelected}" Value="True">
+                                                    <Setter Property="Content" Value="Save Current Profile (Built-in → Save As)" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="Save As New Profile..." Command="{Binding SaveAsNewProfileCommand}" Margin="0,0,0,6" Padding="16,6" HorizontalAlignment="Stretch" ToolTip="Save current settings as a new profile" />
+                                <Button Content="Rename Profile" Command="{Binding RenameProfileCommand}" Margin="0,0,0,6" Padding="16,6" HorizontalAlignment="Stretch">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource OutlinedButton}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsBuiltInProfileSelected}" Value="True">
+                                                    <Setter Property="IsEnabled" Value="False" />
+                                                    <Setter Property="ToolTip" Value="Built-in profiles cannot be renamed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="Delete Profile" Command="{Binding DeleteProfileCommand}" Padding="16,6" HorizontalAlignment="Stretch">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                            <Setter Property="Background" Value="#FFDA3633" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsBuiltInProfileSelected}" Value="True">
+                                                    <Setter Property="IsEnabled" Value="False" />
+                                                    <Setter Property="ToolTip" Value="Built-in profiles cannot be deleted" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- IMPORT / EXPORT -->
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="IMPORT / EXPORT" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
+                        <TextBlock Text="Share profiles or back them up to file." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
+
+                        <Border Background="#FF1C2128" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="#FF30363D">
+                            <StackPanel>
+                                <TextBlock Text="Export saves the current profile as a JSON file you can share. Import loads a profile from file and adds it to your collection." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
+                                <Button Content="Export Profile" Command="{Binding ExportProfileCommand}" Margin="0,0,0,6" Padding="16,6" HorizontalAlignment="Stretch" Style="{StaticResource OutlinedButton}" ToolTip="Export current profile to a JSON file" />
+                                <Button Content="Import Profile" Command="{Binding ImportProfileCommand}" Padding="16,6" HorizontalAlignment="Stretch" Style="{StaticResource OutlinedButton}" ToolTip="Import a profile from a JSON file" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Divider -->
+        <Border Grid.Column="1" Background="#FF30363D" Width="1" Margin="0,16,0,16" />
+
+        <!-- RIGHT: Profile browser sidebar -->
+        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="0,20,16,16">
+            <StackPanel>
+                <TextBlock Text="PROFILE BROWSER" FontSize="14" FontWeight="Bold" Foreground="#FFF0883E" Margin="8,0,0,8" />
+                <TextBlock Text="Browse and organise your profiles by list, track, or car." FontSize="12" Foreground="#FF8B949E" Margin="8,0,0,10" TextWrapping="Wrap" />
+
+                <!-- View mode toggle -->
+                <Border Background="#FF161B22" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,0,12" Padding="4">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <RadioButton x:Name="ViewList" Content="List" GroupName="ProfileViewMode" IsChecked="True"
+                                     Padding="12,6" FontSize="13" Foreground="#FFE6EDF3" Cursor="Hand"
+                                     Checked="OnViewModeChanged" />
+                        <RadioButton x:Name="ViewByTrack" Content="By Track" GroupName="ProfileViewMode"
+                                     Padding="12,6" FontSize="13" Foreground="#FFE6EDF3" Cursor="Hand"
+                                     Checked="OnViewModeChanged" />
+                        <RadioButton x:Name="ViewByCar" Content="By Car" GroupName="ProfileViewMode"
+                                     Padding="12,6" FontSize="13" Foreground="#FFE6EDF3" Cursor="Hand"
+                                     Checked="OnViewModeChanged" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Profile list / tree -->
+                <Border Background="#FF161B22" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D">
+                    <StackPanel x:Name="ProfileBrowserPanel" />
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

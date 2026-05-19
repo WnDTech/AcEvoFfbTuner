@@ -396,6 +396,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private string _profileCarMatch = "";
 
     [ObservableProperty]
+    private string _profileTrackMatch = "";
+
+    [ObservableProperty]
+    private int _profileOrganisationMode = 0;
+
+    [ObservableProperty]
     private FfbProfile? _selectedProfile;
 
     [ObservableProperty]
@@ -1221,6 +1227,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public void Initialize()
     {
+        _profileManager.AutoMigrate = _appSettings.AutoProfileUpgrade;
         _profileManager.Initialize();
         RefreshProfiles();
         RefreshDevices();
@@ -1719,6 +1726,23 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             SelectedProfile.CarMatch = DetectedCarModel;
             _profileManager.SaveProfile(SelectedProfile);
             StatusText = $"Car Match set to '{DetectedCarModel}' — saved and will auto-load for that car";
+        }
+    }
+
+    [RelayCommand]
+    private void SetTrackMatchFromDetected()
+    {
+        if (string.IsNullOrEmpty(DetectedTrackName))
+        {
+            StatusText = "No track detected yet — start a session in AC EVO first";
+            return;
+        }
+        ProfileTrackMatch = DetectedTrackName;
+        if (SelectedProfile != null)
+        {
+            SelectedProfile.TrackMatch = DetectedTrackName;
+            _profileManager.SaveProfile(SelectedProfile);
+            StatusText = $"Track Match set to '{DetectedTrackName}' — saved";
         }
     }
 
@@ -2800,6 +2824,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         BuiltInDefaults = FfbProfile.GetDefaultProfile(profile.Name);
         ProfileCarMatch = profile.CarMatch;
+        ProfileTrackMatch = profile.TrackMatch;
         SelectedMixMode = profile.MixMode switch
         {
             FfbMixModeDto.Replace => FfbMixMode.Replace,
@@ -2963,7 +2988,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void PushValuesToPipeline()
     {
         if (SelectedProfile != null)
+        {
             SelectedProfile.CarMatch = ProfileCarMatch;
+            SelectedProfile.TrackMatch = ProfileTrackMatch;
+        }
 
         _pipeline.ChannelMixer.MzFrontGain = MzFrontGain;
         _pipeline.ChannelMixer.MzFrontEnabled = MzFrontEnabled;
@@ -3276,6 +3304,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _tooltipsEnabled = true;
 
+    [ObservableProperty]
+    private bool _autoProfileUpgrade;
+
     private NAudio.Wave.WasapiLoopbackCapture? _loopbackCapture;
     private NAudio.Wave.WaveFileWriter? _waveWriter;
     private string? _recordingTempPath;
@@ -3334,6 +3365,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _appSettings.Save();
     }
 
+    partial void OnAutoProfileUpgradeChanged(bool value)
+    {
+        _appSettings.AutoProfileUpgrade = value;
+        _appSettings.Save();
+    }
+
     public void LoadAppSettings()
     {
         SplashScreenEnabled = _appSettings.SplashScreenEnabled;
@@ -3343,6 +3380,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         AutoStart = _appSettings.AutoStart;
         IsPerCarAutoLoadEnabled = _appSettings.PerCarAutoLoadEnabled;
         TooltipsEnabled = _appSettings.TooltipsEnabled;
+        AutoProfileUpgrade = _appSettings.AutoProfileUpgrade;
 
         if (Enum.TryParse<NavPage>(_appSettings.DefaultStartPage, out var startPage))
         {

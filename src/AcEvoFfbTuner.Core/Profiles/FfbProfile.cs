@@ -6,11 +6,12 @@ namespace AcEvoFfbTuner.Core.Profiles;
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 19;
+    public const int CurrentVersion = 20;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
     public string CarMatch { get; set; } = "";
+    public string TrackMatch { get; set; } = "";
 
     public override bool Equals(object? obj)
     {
@@ -26,6 +27,9 @@ public sealed class FfbProfile
 
     [JsonIgnore]
     public bool IsBuiltIn => AllDefaultNames.Contains(Name);
+
+    [JsonIgnore]
+    public bool NeedsMigration => Version < CurrentVersion;
 
     public FfbMixModeDto MixMode { get; set; } = FfbMixModeDto.Replace;
     public float OutputGain { get; set; } = 0.621f;
@@ -862,6 +866,11 @@ public sealed class FfbProfile
         if (Version < 19)
         {
             WetWeather ??= new WetWeatherConfig();
+        }
+
+        if (Version < 20)
+        {
+            TrackMatch ??= "";
         }
 
         Version = CurrentVersion;

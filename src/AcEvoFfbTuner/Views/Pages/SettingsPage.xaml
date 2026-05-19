@@ -53,8 +53,12 @@
                                 <TextBlock Text="Automatically start telemetry processing after the device connects (requires Auto Connect)." FontSize="12" Foreground="#FF8B949E" Margin="28,0,0,16" TextWrapping="Wrap" />
 
                                 <CheckBox Content="Show Tooltips" IsChecked="{Binding TooltipsEnabled}"
-                                          FontSize="15" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                                           FontSize="15" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
                                 <TextBlock Text="Show helpful tooltips when hovering over controls." FontSize="12" Foreground="#FF8B949E" Margin="28,0,0,16" TextWrapping="Wrap" />
+
+                                <CheckBox Content="Auto Upgrade Profiles" IsChecked="{Binding AutoProfileUpgrade}"
+                                           FontSize="15" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                                <TextBlock Text="Automatically upgrade profile data when a new app version requires schema changes. When off, profiles needing an upgrade will show a warning indicator." FontSize="12" Foreground="#FF8B949E" Margin="28,0,0,16" TextWrapping="Wrap" />
 
                                 <TextBlock Text="Default Start Page" FontSize="15" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
                                 <ComboBox SelectedIndex="{Binding DefaultStartPageIndex}" FontSize="14" Padding="6,4" Margin="0,0,0,0">

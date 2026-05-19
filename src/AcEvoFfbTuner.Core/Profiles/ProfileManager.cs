@@ -32,6 +32,8 @@ public sealed class ProfileManager
     private readonly List<FfbProfile> _profiles = new();
     private FfbProfile? _activeProfile;
 
+    public bool AutoMigrate { get; set; } = true;
+
     public IReadOnlyList<FfbProfile> Profiles => _profiles.AsReadOnly();
     public FfbProfile? ActiveProfile => _activeProfile;
 
@@ -155,7 +157,8 @@ public sealed class ProfileManager
             var profile = JsonSerializer.Deserialize<FfbProfile>(json, JsonOptions);
             if (profile == null) return null;
 
-            profile.Migrate();
+            if (AutoMigrate)
+                profile.Migrate();
 
             _profiles.Add(profile);
             SaveProfile(profile);
@@ -225,10 +228,13 @@ public sealed class ProfileManager
                 var profile = JsonSerializer.Deserialize<FfbProfile>(json, JsonOptions);
                 if (profile != null)
                 {
-                    int prevVersion = profile.Version;
-                    profile.Migrate();
-                    if (profile.Version > prevVersion)
-                        SaveProfile(profile);
+                    if (AutoMigrate)
+                    {
+                        int prevVersion = profile.Version;
+                        profile.Migrate();
+                        if (profile.Version > prevVersion)
+                            SaveProfile(profile);
+                    }
                     _profiles.Add(profile);
                 }
             }
