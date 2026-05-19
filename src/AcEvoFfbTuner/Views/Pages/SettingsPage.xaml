@@ -24,7 +24,7 @@
                 <TextBlock Text="App configuration and developer tools" FontSize="15" Foreground="#FF8B949E" Margin="0,0,0,16" TextWrapping="Wrap" />
                 <Border Background="#FF30363D" Height="1" Margin="0,0,0,24" />
 
-                <!-- APP OPTIONS + DEBUG TOOLS side by side -->
+                <!-- APP OPTIONS + STARTUP EFFECT side by side -->
                 <Grid Margin="0,0,0,24">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -76,107 +76,76 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- DEBUG TOOLS -->
+                    <!-- STARTUP EFFECT -->
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="DEBUG TOOLS" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
-                        <TextBlock Text="Raw telemetry data from shared memory and the FFB pipeline." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
+                        <TextBlock Text="STARTUP EFFECT" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
+                        <TextBlock Text="Customize the splash screen and startup sound." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <Button Content="Copy All" x:Name="CopyDebugBtn"
-                                    Click="OnCopyDebugToClipboard" Padding="10,6" FontSize="13"
-                                    Background="#FF21262D" Foreground="#FFE6EDF3" BorderThickness="0" Margin="0,0,6,0"
-                                    ToolTip="Copy debug telemetry data to clipboard" />
-                            <Button Content="Testing Guide" x:Name="OpenGuideBtn"
-                                    Click="OnOpenTestingGuide" Padding="10,6" FontSize="13"
-                                    Background="#FF21262D" Foreground="#FFE6EDF3" BorderThickness="0" Margin="0,0,6,0"
-                                    ToolTip="Open the FFB testing guide overlay" />
-                            <Button Content="Calibration" x:Name="OpenCalBtn"
-                                    Click="OnOpenCalibrationWizard" Padding="10,6" FontSize="13"
-                                    Background="#FF21262D" Foreground="#FFE6EDF3" BorderThickness="0"
-                                    ToolTip="Open the wheel calibration wizard" />
-                        </StackPanel>
+                        <Border Background="#FF1C2128" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="#FF30363D">
+                            <StackPanel>
+                                <CheckBox Content="Show splash screen on startup" IsChecked="{Binding SplashScreenEnabled}"
+                                          FontSize="15" Foreground="#FFE6EDF3" Margin="0,0,0,12" />
 
-                        <Border Background="#FF161B22" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D">
-                            <ScrollViewer MaxHeight="300" Padding="12">
-                                <TextBox IsReadOnly="True" BorderThickness="0" Background="Transparent"
-                                         Foreground="#FFE6EDF3" FontFamily="Consolas" FontSize="12"
-                                         Text="{Binding DebugSnapshot, Mode=OneWay}"
-                                         TextWrapping="Wrap"
-                                         VerticalScrollBarVisibility="Auto" />
-                            </ScrollViewer>
+                                <TextBlock Text="Audio Output Device" FontSize="14" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox Grid.Column="0" ItemsSource="{Binding AudioOutputDevices}"
+                                              SelectedItem="{Binding SelectedAudioOutputDevice}"
+                                              FontSize="14" Padding="6,4" Margin="0,0,10,0" />
+                                    <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshRecordingDevicesCommand}"
+                                            Padding="10,4" FontSize="14" Style="{StaticResource OutlinedButton}" />
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Content="&#xE120;" FontFamily="Segoe MDL2 Assets"
+                                            Command="{Binding StartRecordingCommand}"
+                                            Visibility="{Binding IsRecording, Converter={StaticResource InvertBoolToVis}}"
+                                            Padding="10,6" FontSize="16" Margin="0,0,6,0"
+                                            Background="#FF00C853" Foreground="White" BorderThickness="0"
+                                            ToolTip="Start Recording" />
+                                    <Button Grid.Column="1" Content="&#xE71A;" FontFamily="Segoe MDL2 Assets"
+                                            Command="{Binding StopRecordingCommand}"
+                                            Visibility="{Binding IsRecording, Converter={StaticResource BoolToVis}}"
+                                            Padding="10,6" FontSize="16" Margin="0,0,6,0"
+                                            Background="#FFFF1744" Foreground="White" BorderThickness="0"
+                                            ToolTip="Stop Recording" />
+                                    <Button Grid.Column="2" Content="Preview" Command="{Binding PreviewStartupSoundCommand}"
+                                            Padding="10,6" FontSize="14" Style="{StaticResource OutlinedButton}" Margin="0,0,6,0"
+                                            ToolTip="Preview the startup sound" />
+                                    <Button Grid.Column="3" Content="Browse" Command="{Binding BrowseStartupSoundCommand}"
+                                            Padding="10,6" FontSize="14" Style="{StaticResource OutlinedButton}"
+                                            ToolTip="Browse for a custom startup sound file" />
+                                </Grid>
+
+                                <TextBlock Text="{Binding RecordingStatus}" FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,6" />
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding CustomStartupSoundPath, TargetNullValue='Using default engine sound', FallbackValue='Using default engine sound'}"
+                                               FontSize="14" Foreground="#FF8B949E" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Content="Clear" Command="{Binding ClearStartupSoundCommand}"
+                                            Padding="8,2" FontSize="13" Style="{StaticResource OutlinedButton}"
+                                            Visibility="{Binding CustomStartupSoundPath, Converter={StaticResource NullToVis}}" />
+                                </Grid>
+                            </StackPanel>
                         </Border>
+                        <TextBlock Text="Records audio from your selected output device (speakers/headphones). Start recording, then play the game engine sound you want to capture. Or use Browse to pick an existing audio file." Style="{StaticResource SliderDescription}" Margin="0,8,0,0" TextWrapping="Wrap" />
                     </StackPanel>
                 </Grid>
-
-                <Border Background="#FF30363D" Height="1" Margin="0,0,0,24" />
-
-                <!-- STARTUP EFFECT SECTION -->
-                <TextBlock Text="STARTUP EFFECT" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
-                <TextBlock Text="Customize the splash screen and startup sound." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
-
-                <Border Background="#FF1C2128" CornerRadius="8" Padding="16,14" Margin="0,0,0,24"
-                        BorderThickness="1" BorderBrush="#FF30363D">
-                    <StackPanel>
-                        <CheckBox Content="Show splash screen on startup" IsChecked="{Binding SplashScreenEnabled}"
-                                  FontSize="15" Foreground="#FFE6EDF3" Margin="0,0,0,12" />
-
-                        <TextBlock Text="Audio Output Device" FontSize="14" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <ComboBox Grid.Column="0" ItemsSource="{Binding AudioOutputDevices}"
-                                      SelectedItem="{Binding SelectedAudioOutputDevice}"
-                                      FontSize="14" Padding="6,4" Margin="0,0,10,0" />
-                            <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshRecordingDevicesCommand}"
-                                    Padding="10,4" FontSize="14" Style="{StaticResource OutlinedButton}" />
-                        </Grid>
-
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Content="&#xE120;" FontFamily="Segoe MDL2 Assets"
-                                    Command="{Binding StartRecordingCommand}"
-                                    Visibility="{Binding IsRecording, Converter={StaticResource InvertBoolToVis}}"
-                                    Padding="10,6" FontSize="16" Margin="0,0,6,0"
-                                    Background="#FF00C853" Foreground="White" BorderThickness="0"
-                                    ToolTip="Start Recording" />
-                            <Button Grid.Column="1" Content="&#xE71A;" FontFamily="Segoe MDL2 Assets"
-                                    Command="{Binding StopRecordingCommand}"
-                                    Visibility="{Binding IsRecording, Converter={StaticResource BoolToVis}}"
-                                    Padding="10,6" FontSize="16" Margin="0,0,6,0"
-                                    Background="#FFFF1744" Foreground="White" BorderThickness="0"
-                                    ToolTip="Stop Recording" />
-                            <Button Grid.Column="2" Content="Preview" Command="{Binding PreviewStartupSoundCommand}"
-                                    Padding="10,6" FontSize="14" Style="{StaticResource OutlinedButton}" Margin="0,0,6,0"
-                                    ToolTip="Preview the startup sound" />
-                            <Button Grid.Column="3" Content="Browse" Command="{Binding BrowseStartupSoundCommand}"
-                                    Padding="10,6" FontSize="14" Style="{StaticResource OutlinedButton}"
-                                    ToolTip="Browse for a custom startup sound file" />
-                        </Grid>
-
-                        <TextBlock Text="{Binding RecordingStatus}" FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,6" />
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{Binding CustomStartupSoundPath, TargetNullValue='Using default engine sound', FallbackValue='Using default engine sound'}"
-                                       FontSize="14" Foreground="#FF8B949E" TextTrimming="CharacterEllipsis"
-                                       VerticalAlignment="Center" />
-                            <Button Grid.Column="1" Content="Clear" Command="{Binding ClearStartupSoundCommand}"
-                                    Padding="8,2" FontSize="13" Style="{StaticResource OutlinedButton}"
-                                    Visibility="{Binding CustomStartupSoundPath, Converter={StaticResource NullToVis}}" />
-                        </Grid>
-                    </StackPanel>
-                </Border>
-                <TextBlock Text="Records audio from your selected output device (speakers/headphones). Start recording, then play the game engine sound you want to capture. Or use Browse to pick an existing audio file." Style="{StaticResource SliderDescription}" Margin="0,0,0,24" />
 
             </StackPanel>
         </ScrollViewer>
@@ -184,18 +153,50 @@
         <!-- Divider -->
         <Border Grid.Column="1" Background="#FF30363D" Width="1" Margin="0,16,0,16" />
 
-        <!-- RIGHT: System Log -->
-        <DockPanel Grid.Column="2" Margin="0,20,16,16">
-            <TextBlock DockPanel.Dock="Top" Text="SYSTEM LOG" FontSize="14" FontWeight="Bold" Foreground="#FFF0883E" Margin="8,0,0,8" />
-            <Border Background="#FF161B22" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D">
-                <ListBox x:Name="SystemLogList"
-                         ItemsSource="{Binding SystemLogEntries}"
-                         Background="Transparent" BorderThickness="0"
-                         Foreground="#FFE6EDF3" FontFamily="Consolas" FontSize="12"
-                         Padding="4"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                         SelectionChanged="OnSystemLogSelectionChanged" />
-            </Border>
-        </DockPanel>
+        <!-- RIGHT: System Log + Debug Tools -->
+        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="0,20,16,16">
+            <StackPanel>
+                <!-- SYSTEM LOG -->
+                <TextBlock Text="SYSTEM LOG" FontSize="14" FontWeight="Bold" Foreground="#FFF0883E" Margin="8,0,0,8" />
+                <Border Background="#FF161B22" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,0,20">
+                    <ListBox x:Name="SystemLogList"
+                             ItemsSource="{Binding SystemLogEntries}"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="#FFE6EDF3" FontFamily="Consolas" FontSize="12"
+                             Padding="4" Height="200"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             SelectionChanged="OnSystemLogSelectionChanged" />
+                </Border>
+
+                <!-- DEBUG TOOLS -->
+                <TextBlock Text="DEBUG TOOLS" FontSize="14" FontWeight="Bold" Foreground="#FFF0883E" Margin="8,0,0,8" />
+                <TextBlock Text="Raw telemetry data from shared memory and the FFB pipeline." FontSize="12" Foreground="#FF8B949E" Margin="8,0,0,8" TextWrapping="Wrap" />
+
+                <StackPanel Orientation="Horizontal" Margin="8,0,0,8">
+                    <Button Content="Copy All" x:Name="CopyDebugBtn"
+                            Click="OnCopyDebugToClipboard" Padding="10,6" FontSize="13"
+                            Background="#FF21262D" Foreground="#FFE6EDF3" BorderThickness="0" Margin="0,0,6,0"
+                            ToolTip="Copy debug telemetry data to clipboard" />
+                    <Button Content="Testing Guide" x:Name="OpenGuideBtn"
+                            Click="OnOpenTestingGuide" Padding="10,6" FontSize="13"
+                            Background="#FF21262D" Foreground="#FFE6EDF3" BorderThickness="0" Margin="0,0,6,0"
+                            ToolTip="Open the FFB testing guide overlay" />
+                    <Button Content="Calibration" x:Name="OpenCalBtn"
+                            Click="OnOpenCalibrationWizard" Padding="10,6" FontSize="13"
+                            Background="#FF21262D" Foreground="#FFE6EDF3" BorderThickness="0"
+                            ToolTip="Open the wheel calibration wizard" />
+                </StackPanel>
+
+                <Border Background="#FF161B22" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,0,0">
+                    <ScrollViewer MaxHeight="300" Padding="12">
+                        <TextBox IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                                 Foreground="#FFE6EDF3" FontFamily="Consolas" FontSize="12"
+                                 Text="{Binding DebugSnapshot, Mode=OneWay}"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto" />
+                    </ScrollViewer>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>
