@@ -31,26 +31,6 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Install Windows SDK 20348 UAP platform
-        shell: pwsh
-        run: |
-          $uapDir = "${env:ProgramFiles(x86)}\Windows Kits\10\Platforms\UAP\10.0.20348.0"
-          if (Test-Path "$uapDir\Platform.xml") {
-            Write-Host "UAP 20348 already installed"
-            return
-          }
-          Write-Host "Installing Windows 10 SDK 20348 with UAP..."
-          $uri = 'https://go.microsoft.com/fwlink/p/?LinkId=2249371'
-          $installer = "$env:TEMP\winsdksetup.exe"
-          Invoke-WebRequest -Uri $uri -OutFile $installer -UseBasicParsing
-          Start-Process -Wait -FilePath $installer -ArgumentList '/q','/features OptionId.UWPManaged OptionId.UWPCpp','/ceip off','/norestart'
-          Remove-Item $installer -Force
-          if (Test-Path "$uapDir\Platform.xml") {
-            Write-Host "UAP 20348 Platform.xml installed successfully"
-          } else {
-            Write-Host "::warning::UAP Platform.xml not found after install"
-          }
-
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --yes --no-progress
