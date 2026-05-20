@@ -159,10 +159,12 @@ public sealed class DiagnosticPackService
             {
                 if (Directory.Exists(BaseDir))
                 {
+                    var today = DateTime.Today;
                     foreach (var file in Directory.GetFiles(BaseDir, "*.log"))
                     {
                         try
                         {
+                            if (File.GetLastWriteTime(file).Date != today) continue;
                             var entry = zip.CreateEntry($"Logs/{Path.GetFileName(file)}", CompressionLevel.Optimal);
                             using var source = File.OpenRead(file);
                             using var dest = entry.Open();
@@ -175,6 +177,7 @@ public sealed class DiagnosticPackService
                         if (Path.GetFileName(file) == "last_profile.txt") continue;
                         try
                         {
+                            if (File.GetLastWriteTime(file).Date != today) continue;
                             var entry = zip.CreateEntry($"Logs/{Path.GetFileName(file)}", CompressionLevel.Optimal);
                             using var source = File.OpenRead(file);
                             using var dest = entry.Open();
@@ -229,8 +232,16 @@ public sealed class DiagnosticPackService
     {
         if (!Directory.Exists(BaseDir)) return;
 
+        var today = DateTime.Today;
+
         foreach (var file in Directory.GetFiles(BaseDir, "*.log"))
         {
+            try
+            {
+                if (File.GetLastWriteTime(file).Date != today) continue;
+            }
+            catch { continue; }
+
             var entryName = $"Logs/{Path.GetFileName(file)}";
             try
             {
@@ -247,6 +258,12 @@ public sealed class DiagnosticPackService
         foreach (var file in Directory.GetFiles(BaseDir, "*.txt"))
         {
             if (Path.GetFileName(file) == "last_profile.txt") continue;
+            try
+            {
+                if (File.GetLastWriteTime(file).Date != today) continue;
+            }
+            catch { continue; }
+
             var entryName = $"Logs/{Path.GetFileName(file)}";
             try
             {
