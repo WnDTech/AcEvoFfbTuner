@@ -452,7 +452,7 @@ public sealed class TelemetryLoop : IDisposable
                             {
                             File.AppendAllText(LogPath,
                                 "Timestamp,SpeedKmh,SteerAngle,Gear,Mz_FL,Mz_FR,Fx_FL,Fx_FR,Fy_FL,Fy_FR," +
-                                "ChMzFront,ChFxFront,ChFyFront,PostCompress,PostLUT,PostSlip,PostDamping,PostDynamic,Output,Clipping,WL_FL,WL_FR,LatencyMs," +
+                                "ChMzFront,ChFxFront,ChFyFront,PostCompress,PostLUT,PostDamping,PostGainOut,PostDynamic,Output,Clipping,WL_FL,WL_FR,LatencyMs," +
                                 "KerbVib,SlipVib,RoadVib,AbsVib,VibForce,AbsGain\n");
                                 _logHeaderWritten = true;
                             }
@@ -461,8 +461,8 @@ public sealed class TelemetryLoop : IDisposable
                                 $"{raw.SpeedKmh:F1},{raw.SteerAngle:F4},{raw.Gear}," +
                                 $"{raw.Mz[0]:F4},{raw.Mz[1]:F4},{raw.Fx[0]:F2},{raw.Fx[1]:F2},{raw.Fy[0]:F2},{raw.Fy[1]:F2}," +
                                 $"{processed.ChannelMzFront:F6},{processed.ChannelFxFront:F6},{processed.ChannelFyFront:F6}," +
-                                $"{processed.PostCompressionForce:F6},{processed.PostLutForce:F6},{processed.PostSlipForce:F6}," +
-                                $"{processed.PostDampingForce:F6},{processed.PostDynamicForce:F6}," +
+                                $"{processed.PostCompressionForce:F6},{processed.PostLutForce:F6},{processed.PostDampingForce:F6}," +
+                                $"{processed.PostOutputGainForce:F6},{processed.PostDynamicForce:F6}," +
                                 $"{processed.MainForce:F6},{processed.IsClipping},{raw.WheelLoad[0]:F1},{raw.WheelLoad[1]:F1},{_lastLatencyMs:F2}," +
                                 $"{raw.KerbVibration:F4},{raw.SlipVibrations:F4},{raw.RoadVibrations:F4},{raw.AbsVibrations:F4},{processed.VibrationForce:F6},{_pipeline.VibrationMixer.AbsGain:F2}\n");
                         }
@@ -671,8 +671,8 @@ public sealed class TelemetryLoop : IDisposable
                 processed.ChannelFxFront,
                 processed.ChannelFyFront,
                 processed.PostCompressionForce,
-                processed.PostSlipForce,
                 processed.PostDampingForce,
+                processed.PostOutputGainForce,
                 processed.PostDynamicForce,
                 _pipeline.VibrationMixer.RoadForceModulation);
 

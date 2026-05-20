@@ -94,16 +94,22 @@ public partial class TelemetryPage : UserControl
         }
     }
 
+    private int _steeringLockDeg = 900;
+
     public void UpdateProfiler(float speed, float steerAngle, float forceOut, float rawFF,
-        float compress, float slip, float damping, float dynEff,
+        float compress, float postDampCore, float postGainCore, float dynEff,
         float mzFront, float fxFront, float fyFront, float lut, bool clipping,
-        float gasInput, float brakeInput, FfbRawData? rawPhysics = null, float wetness = 0f)
+        float gasInput, float brakeInput, FfbRawData? rawPhysics = null, float wetness = 0f,
+        int steeringLockDeg = 900)
     {
+        if (steeringLockDeg > 90 && steeringLockDeg <= 1440)
+            _steeringLockDeg = steeringLockDeg;
+
         ProfPush(_pOut, forceOut);
         ProfPush(_pRaw, rawFF);
         ProfPush(_pCmp, compress);
-        ProfPush(_pSlp, slip);
-        ProfPush(_pDmp, damping);
+        ProfPush(_pSlp, postDampCore);
+        ProfPush(_pDmp, postGainCore);
         ProfPush(_pDyn, dynEff);
         ProfPush(_pStr, steerAngle);
         ProfPush(_pSpd, speed / 400f);
@@ -127,7 +133,7 @@ public partial class TelemetryPage : UserControl
         ProfStats(speed, steerAngle, forceOut, rawFF, clipping, gasInput, brakeInput);
         RedrawProfilerTS();
 
-        float[] barVals = { mzFront, fxFront, fyFront, compress, lut, slip, damping, dynEff, forceOut };
+        float[] barVals = { mzFront, fxFront, fyFront, compress, lut, postDampCore, postGainCore, dynEff, forceOut };
         RedrawProfilerBars(barVals);
 
         if (_profilerOverlay != null)
@@ -146,11 +152,11 @@ public partial class TelemetryPage : UserControl
 
         if (rawPhysics != null)
         {
-            _pCsv.Add($"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{slip:F6},{damping:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3},{rawPhysics.SuspensionTravel[0]:F6},{rawPhysics.SuspensionTravel[1]:F6},{rawPhysics.SuspensionTravel[2]:F6},{rawPhysics.SuspensionTravel[3]:F6},{rawPhysics.WheelLoad[0]:F2},{rawPhysics.WheelLoad[1]:F2},{rawPhysics.WheelLoad[2]:F2},{rawPhysics.WheelLoad[3]:F2},{rawPhysics.SlipAngle[0]:F6},{rawPhysics.SlipAngle[1]:F6},{rawPhysics.SlipAngle[2]:F6},{rawPhysics.SlipAngle[3]:F6},{rawPhysics.TyreContactNormalX[0]:F6},{rawPhysics.TyreContactNormalX[1]:F6},{rawPhysics.TyreContactNormalX[2]:F6},{rawPhysics.TyreContactNormalX[3]:F6},{rawPhysics.TyreContactNormalZ[0]:F6},{rawPhysics.TyreContactNormalZ[1]:F6},{rawPhysics.TyreContactNormalZ[2]:F6},{rawPhysics.TyreContactNormalZ[3]:F6},{rawPhysics.TyreContactPointY[0]:F6},{rawPhysics.TyreContactPointY[1]:F6},{rawPhysics.KerbVibration:F6},{rawPhysics.RoadVibrations:F6},{wetness:F4}");
+            _pCsv.Add($"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{postDampCore:F6},{postGainCore:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3},{rawPhysics.SuspensionTravel[0]:F6},{rawPhysics.SuspensionTravel[1]:F6},{rawPhysics.SuspensionTravel[2]:F6},{rawPhysics.SuspensionTravel[3]:F6},{rawPhysics.WheelLoad[0]:F2},{rawPhysics.WheelLoad[1]:F2},{rawPhysics.WheelLoad[2]:F2},{rawPhysics.WheelLoad[3]:F2},{rawPhysics.SlipAngle[0]:F6},{rawPhysics.SlipAngle[1]:F6},{rawPhysics.SlipAngle[2]:F6},{rawPhysics.SlipAngle[3]:F6},{rawPhysics.TyreContactNormalX[0]:F6},{rawPhysics.TyreContactNormalX[1]:F6},{rawPhysics.TyreContactNormalX[2]:F6},{rawPhysics.TyreContactNormalX[3]:F6},{rawPhysics.TyreContactNormalZ[0]:F6},{rawPhysics.TyreContactNormalZ[1]:F6},{rawPhysics.TyreContactNormalZ[2]:F6},{rawPhysics.TyreContactNormalZ[3]:F6},{rawPhysics.TyreContactPointY[0]:F6},{rawPhysics.TyreContactPointY[1]:F6},{rawPhysics.KerbVibration:F6},{rawPhysics.RoadVibrations:F6},{wetness:F4}");
         }
         else
         {
-            _pCsv.Add($"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{slip:F6},{damping:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,{wetness:F4}");
+            _pCsv.Add($"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{postDampCore:F6},{postGainCore:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,{wetness:F4}");
         }
     }
 
@@ -172,7 +178,7 @@ public partial class TelemetryPage : UserControl
         if (_pN < PMax) _pN++;
 
         ProfSpeed.Text = $"{speed:F0} km/h";
-        ProfSteer.Text = $"{steer * 450f:F1}°";
+        ProfSteer.Text = $"{steer * (_steeringLockDeg / 2f):F1}°";
         ProfForce.Text = force.ToString("F3");
         ProfRawFF.Text = rawFF.ToString("F3");
 
@@ -322,7 +328,7 @@ public partial class TelemetryPage : UserControl
                 int dataStart = analysis.IndexOf("Time,", headerEnd);
                 if (dataStart >= 0)
                 {
-                    string header = "Time,SpeedKmh,SteerAngle,ForceOut,RawFF,Compress,LUT,Slip,Damping,Dynamic,MzFront,FxFront,FyFront,Clipping,Gas,Brake\n";
+                    string header = "Time,SpeedKmh,SteerAngle,ForceOut,RawFF,Compress,LUT,PostDamp,GainOut,Dynamic,MzFront,FxFront,FyFront,Clipping,Gas,Brake\n";
                     csvSection = header + analysis.Substring(dataStart);
                 }
             }
@@ -462,7 +468,7 @@ public partial class TelemetryPage : UserControl
         if (_pCsv.Count > 0)
         {
             sb.AppendLine($"=== TIME SERIES DATA ({_pCsv.Count} rows) ===");
-            sb.AppendLine("Time,SpeedKmh,SteerAngle,ForceOut,RawFF,Compress,LUT,Slip,Damping,Dynamic,MzFront,FxFront,FyFront,Clipping,Gas,Brake,SuspFL,SuspFR,SuspRL,SuspRR,LoadFL,LoadFR,LoadRL,LoadRR,SlipAFL,SlipAFR,SlipARL,SlipARR,NormalXFL,NormalXFR,NormalXRL,NormalXRR,NormalZFL,NormalZFR,NormalZRL,NormalZRR,CpYFL,CpYFR,KerbVib,RoadVib,Wetness");
+            sb.AppendLine("Time,SpeedKmh,SteerAngle,ForceOut,RawFF,Compress,LUT,PostDamp,GainOut,Dynamic,MzFront,FxFront,FyFront,Clipping,Gas,Brake,SuspFL,SuspFR,SuspRL,SuspRR,LoadFL,LoadFR,LoadRL,LoadRR,SlipAFL,SlipAFR,SlipARL,SlipARR,NormalXFL,NormalXFR,NormalXRL,NormalXRR,NormalZFL,NormalZFR,NormalZRL,NormalZRR,CpYFL,CpYFR,KerbVib,RoadVib,Wetness");
             foreach (var line in _pCsv)
                 sb.AppendLine(line);
         }

@@ -49,8 +49,8 @@ public sealed class FfbDiagnosticEvent
     public float FxFrontForce { get; set; }
     public float FyFrontForce { get; set; }
     public float PostCompressionForce { get; set; }
-    public float PostSlipForce { get; set; }
     public float PostDampingForce { get; set; }
+    public float PostOutputGainForce { get; set; }
     public float PostDynamicForce { get; set; }
     public float PrevMzFrontForce { get; set; }
     public float PrevFxFrontForce { get; set; }

@@ -110,8 +110,8 @@
                 <CheckBox x:Name="ShowOutput" Grid.Column="5" Content="Output" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FFF0883E" VerticalAlignment="Center" />
                 <CheckBox x:Name="ShowRaw" Grid.Column="6" Content="Raw FF" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FF00E676" VerticalAlignment="Center" />
                 <CheckBox x:Name="ShowCompress" Grid.Column="7" Content="Compress" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FF00BCD4" VerticalAlignment="Center" />
-                <CheckBox x:Name="ShowDamping" Grid.Column="8" Content="Damping" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FF9C27B0" VerticalAlignment="Center" />
-                <CheckBox x:Name="ShowSlip" Grid.Column="9" Content="Slip" IsChecked="False" Margin="4,0" FontSize="14" Foreground="#FFFF5722" VerticalAlignment="Center" />
+                 <CheckBox x:Name="ShowDamping" Grid.Column="8" Content="Gain Out" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FF9C27B0" VerticalAlignment="Center" />
+                 <CheckBox x:Name="ShowSlip" Grid.Column="9" Content="Post Damp" IsChecked="False" Margin="4,0" FontSize="14" Foreground="#FFFF5722" VerticalAlignment="Center" />
                 <CheckBox x:Name="ShowSpeed" Grid.Column="10" Content="Speed" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FF666666" VerticalAlignment="Center" />
                 <CheckBox x:Name="ShowDynamic" Grid.Column="11" Content="Dynamic" IsChecked="False" Margin="4,0" FontSize="14" Foreground="#FF795548" VerticalAlignment="Center" />
                 <CheckBox x:Name="ShowSteer" Grid.Column="12" Content="Steer°" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FFFFD600" VerticalAlignment="Center" />
@@ -144,11 +144,11 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <Ellipse Width="10" Height="10" Fill="#FF9C27B0" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Damping" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <TextBlock Text="Gain Out" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <Ellipse Width="10" Height="10" Fill="#FFFF5722" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Slip" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <TextBlock Text="Post Damp" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <Ellipse Width="10" Height="10" Fill="#FF795548" Margin="0,0,6,0" VerticalAlignment="Center" />

@@ -112,10 +112,10 @@ public sealed class FfbLiveServer : IDisposable
             _sb.Append(raw.BrakeInput.ToString("F3"));
             _sb.Append(",\"cp\":");
             _sb.Append(proc.PostCompressionForce.ToString("F6"));
-            _sb.Append(",\"sl\":");
-            _sb.Append(proc.PostSlipForce.ToString("F6"));
             _sb.Append(",\"dm\":");
             _sb.Append(proc.PostDampingForce.ToString("F6"));
+            _sb.Append(",\"go\":");
+            _sb.Append(proc.PostOutputGainForce.ToString("F6"));
             _sb.Append(",\"lu\":");
             _sb.Append(proc.PostLutForce.ToString("F6"));
             _sb.Append(",\"dy\":");

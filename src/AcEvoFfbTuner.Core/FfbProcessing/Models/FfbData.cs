@@ -84,8 +84,8 @@ public sealed class FfbProcessedData
     public float ChannelFinalFf { get; set; }
     public float PostLutForce { get; set; }
     public float PostCompressionForce { get; set; }
-    public float PostSlipForce { get; set; }
     public float PostDampingForce { get; set; }
+    public float PostOutputGainForce { get; set; }
     public float PostDynamicForce { get; set; }
     public float AutoGainApplied { get; set; }
     public bool IsClipping { get; set; }

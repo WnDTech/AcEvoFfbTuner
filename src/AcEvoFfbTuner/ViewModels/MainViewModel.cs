@@ -2757,8 +2757,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 $"FyFront (norm): {processed.ChannelFyFront:F6}\n" +
                 $"PostCompress:    {processed.PostCompressionForce:F6}\n" +
                 $"PostLUT:         {processed.PostLutForce:F6}\n" +
-                $"PostSlip:       {processed.PostSlipForce:F6}\n" +
                 $"PostDamping:    {processed.PostDampingForce:F6}\n" +
+                $"PostGainOut:    {processed.PostOutputGainForce:F6}\n" +
                 $"PostDynamic:    {processed.PostDynamicForce:F6}\n" +
                 $"OUTPUT:         {processed.MainForce:F6}   Clipping={processed.IsClipping}\n" +
                 $"AutoGain:       {processed.AutoGainApplied:F4}\n" +
@@ -2803,11 +2803,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 mw.UpdateProfiler(
                     raw.SpeedKmh, raw.SteerAngle,
                     processed.MainForce, processed.RawFinalFf,
-                    processed.PostCompressionForce, processed.PostSlipForce,
-                    processed.PostDampingForce, processed.PostDynamicForce,
+                    processed.PostCompressionForce, processed.PostDampingForce,
+                    processed.PostOutputGainForce, processed.PostDynamicForce,
                     processed.ChannelMzFront, processed.ChannelFxFront, processed.ChannelFyFront,
                     processed.PostLutForce, processed.IsClipping,
-                    raw.GasInput, raw.BrakeInput, raw, processed.WetnessFactor);
+                    raw.GasInput, raw.BrakeInput, raw, processed.WetnessFactor,
+                    lockDeg);
 
                 mw.UpdateCalibrationWizard(raw.SpeedKmh, processed.MainForce, processed.IsClipping);
             }

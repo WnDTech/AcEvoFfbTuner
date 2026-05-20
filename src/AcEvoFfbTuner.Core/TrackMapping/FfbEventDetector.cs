@@ -52,8 +52,8 @@ public sealed class FfbEventDetector
         float fxFront = 0f,
         float fyFront = 0f,
         float postCompression = 0f,
-        float postSlip = 0f,
         float postDamping = 0f,
+        float postGainOut = 0f,
         float postDynamic = 0f,
         float roadForceModulation = 0f)
     {
@@ -251,8 +251,8 @@ public sealed class FfbEventDetector
                 evt.FxFrontForce = fxFront;
                 evt.FyFrontForce = fyFront;
                 evt.PostCompressionForce = postCompression;
-                evt.PostSlipForce = postSlip;
                 evt.PostDampingForce = postDamping;
+                evt.PostOutputGainForce = postGainOut;
                 evt.PostDynamicForce = postDynamic;
                 evt.PrevMzFrontForce = _prevMzFront;
                 evt.PrevFxFrontForce = _prevFxFront;
