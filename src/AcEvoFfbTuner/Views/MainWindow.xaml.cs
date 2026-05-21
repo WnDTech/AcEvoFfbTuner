@@ -47,6 +47,11 @@ public partial class MainWindow : Window
         UpdatePageVisibility();
     }
 
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        Title = $"AC Evo FFB Tuner v{typeof(MainWindow).Assembly.GetName().Version?.ToString(3)} ({GitHash.Commit})";
+    }
+
     private void OnNavigateRequested(NavPage page)
     {
         if (DataContext is MainViewModel vm)

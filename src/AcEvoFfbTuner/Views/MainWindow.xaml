@@ -6,7 +6,7 @@
         xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls"
         xmlns:local="clr-namespace:AcEvoFfbTuner.Views"
         xmlns:pages="clr-namespace:AcEvoFfbTuner.Views.Pages"
-        Title="AC Evo FFB Tuner" Height="900" Width="1280"
+         Title="AC Evo FFB Tuner" Height="900" Width="1280" Loaded="Window_Loaded"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/wheel.ico"
         Background="{StaticResource BgDark}"

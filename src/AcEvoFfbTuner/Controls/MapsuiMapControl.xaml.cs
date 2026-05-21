@@ -83,12 +83,10 @@ public partial class MapsuiMapControl : UserControl
 
         MapCtrl.Map = _map;
 
-        CalibInputOverlay.MouseLeftButtonDown += OnMouseLeftDown;
-        CalibInputOverlay.MouseLeftButtonUp += OnMouseLeftButtonUp;
-        CalibInputOverlay.MouseMove += OnMouseMove;
+        CalibInputOverlay.PreviewMouseLeftButtonDown += OnMouseLeftDown;
+        CalibInputOverlay.PreviewMouseLeftButtonUp += OnMouseLeftButtonUp;
+        CalibInputOverlay.PreviewMouseMove += OnMouseMove;
         CalibInputOverlay.PreviewMouseWheel += OnPreviewMouseWheel;
-
-        PreviewMouseWheel += OnUserControlMouseWheel;
     }
 
     private static TileLayer CreateSatelliteTileLayer()
@@ -514,6 +512,7 @@ public partial class MapsuiMapControl : UserControl
         _mapService.AdjustCalibration(dLat, dLon, 0);
 
         RefreshTrackOverlay();
+        MapCtrl.Refresh();
         e.Handled = true;
     }
 
@@ -526,18 +525,7 @@ public partial class MapsuiMapControl : UserControl
         _mapService.AdjustCalibration(0, 0, delta);
 
         RefreshTrackOverlay();
-        e.Handled = true;
-    }
-
-    private void OnUserControlMouseWheel(object sender, MouseWheelEventArgs e)
-    {
-        if (!_isCalibrating || _mapService == null) return;
-
-        double rotStep = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 2.0 : 0.5;
-        double delta = e.Delta > 0 ? rotStep : -rotStep;
-        _mapService.AdjustCalibration(0, 0, delta);
-
-        RefreshTrackOverlay();
+        MapCtrl.Refresh();
         e.Handled = true;
     }
 

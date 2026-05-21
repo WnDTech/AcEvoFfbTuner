@@ -18,7 +18,18 @@
     <Version>1.21.6</Version>
     <AssemblyVersion>1.21.6.0</AssemblyVersion>
     <FileVersion>1.21.6.0</FileVersion>
+    <SourceRevisionId>dev</SourceRevisionId>
   </PropertyGroup>
+
+  <Target Name="SetGitHash" BeforeTargets="CoreCompile">
+    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" Condition="'$(SourceRevisionId)' == 'dev'">
+      <Output TaskParameter="ConsoleOutput" PropertyName="SourceRevisionId" />
+    </Exec>
+    <WriteLinesToFile File="$(IntermediateOutputPath)GitHash.g.cs" Lines="namespace AcEvoFfbTuner%7B internal static class GitHash%7B public const string Commit = %22$(SourceRevisionId)%22%3B%7D%7D" Overwrite="true" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)GitHash.g.cs" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <ProjectReference Include="..\AcEvoFfbTuner.Core\AcEvoFfbTuner.Core.csproj" />

@@ -31,7 +31,7 @@ public static class TrackAlignmentService
         double gameCenterX = waypoints.Average(w => w.X);
         double gameCenterZ = waypoints.Average(w => w.Z);
 
-        var gamePoints = waypoints.Select(w => (X: w.X - gameCenterX, Z: w.Z - gameCenterZ)).ToList();
+        var gamePoints = waypoints.Select(w => (X: (double)w.X - gameCenterX, Z: (double)w.Z - gameCenterZ)).ToList();
 
         int gameStep = Math.Max(1, gamePoints.Count / 100);
         int osmStep = Math.Max(1, osmMeters.Count / 100);
@@ -46,40 +46,35 @@ public static class TrackAlignmentService
         double bestAngle = 0;
         double bestError = double.MaxValue;
 
-        for (int invertZ = 0; invertZ <= 1; invertZ++)
+        for (int deg = 0; deg < 360; deg++)
         {
-            double zSign = invertZ == 0 ? 1.0 : -1.0;
+            double rad = deg * Math.PI / 180.0;
+            double cosR = Math.Cos(rad);
+            double sinR = Math.Sin(rad);
 
-            for (int deg = 0; deg < 360; deg++)
+            double error = 0;
+            foreach (var gp in subGame)
             {
-                double rad = deg * Math.PI / 180.0;
-                double cosR = Math.Cos(rad);
-                double sinR = Math.Sin(rad);
+                double dx = gp.X * scale;
+                double dz = -gp.Z * scale;
+                double rx = dx * cosR + dz * sinR;
+                double ry = -dx * sinR + dz * cosR;
 
-                double error = 0;
-                foreach (var gp in subGame)
+                double minDist = double.MaxValue;
+                foreach (var op in subOsm)
                 {
-                    double dx = gp.X * scale;
-                    double dz = gp.Z * zSign * scale;
-                    double rx = dx * cosR - dz * sinR;
-                    double ry = dx * sinR + dz * cosR;
-
-                    double minDist = double.MaxValue;
-                    foreach (var op in subOsm)
-                    {
-                        double ddx = rx - op.X;
-                        double ddy = ry - op.Y;
-                        double d = ddx * ddx + ddy * ddy;
-                        if (d < minDist) minDist = d;
-                    }
-                    error += minDist;
+                    double ddx = rx - op.X;
+                    double ddy = ry - op.Y;
+                    double d = ddx * ddx + ddy * ddy;
+                    if (d < minDist) minDist = d;
                 }
+                error += minDist;
+            }
 
-                if (error < bestError)
-                {
-                    bestError = error;
-                    bestAngle = deg;
-                }
+            if (error < bestError)
+            {
+                bestError = error;
+                bestAngle = deg;
             }
         }
 
@@ -94,9 +89,9 @@ public static class TrackAlignmentService
             foreach (var gp in subGame)
             {
                 double dx = gp.X * scale;
-                double dz = gp.Z * scale;
-                double rx = dx * cosR - dz * sinR;
-                double ry = dx * sinR + dz * cosR;
+                double dz = -gp.Z * scale;
+                double rx = dx * cosR + dz * sinR;
+                double ry = -dx * sinR + dz * cosR;
 
                 double minDist = double.MaxValue;
                 foreach (var op in subOsm)
