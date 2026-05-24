@@ -527,7 +527,6 @@ public sealed class FfbDeviceManager : IDisposable
 
     /// <summary>
     /// Sets the target force for the interpolation thread to smoothly ramp towards.
-    /// The actual device command is sent by the interpolation thread at ~1kHz.
     /// </summary>
     public void SendConstantForce(float normalizedForce)
     {

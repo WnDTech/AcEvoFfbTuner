@@ -68,6 +68,7 @@ public sealed class FfbRawData
     public float AirTemp { get; set; }
     public float RoadTemp { get; set; }
     public float[] TyreDirtyLevel { get; set; } = new float[4];
+    public float[] TyreGrip { get; set; } = new float[4];
 }
 
 public sealed class FfbProcessedData
@@ -109,6 +110,12 @@ public sealed class FfbProcessedData
     /// Wet weather factor: 0 = dry, 1 = full wet. Computed by FfbWetWeather.
     /// </summary>
     public float WetnessFactor { get; set; }
+
+    /// <summary>
+    /// Gear shift mute gain: 0.0 = hard mute, 1.0 = full force. Set by ApplyGearShiftFilter.
+    /// TelemetryLoop uses this to skip device interpolation during hard mute phases.
+    /// </summary>
+    public float GearShiftMuteGain { get; set; } = 1.0f;
 
     public TyreCompoundCategory TyreCategory { get; set; }
     public string TyreCompoundFrontName { get; set; } = "";

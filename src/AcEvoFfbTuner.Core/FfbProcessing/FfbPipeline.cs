@@ -3,7 +3,7 @@ using AcEvoFfbTuner.Core.FfbProcessing.Models;
 
 namespace AcEvoFfbTuner.Core.FfbProcessing;
 
-public sealed class FfbPipeline
+public class FfbPipeline
 {
     public FfbChannelMixer ChannelMixer { get; } = new();
     public FfbLutCurve LutCurve { get; } = new();
@@ -33,6 +33,9 @@ public sealed class FfbPipeline
 
     public bool AutoGainEnabled { get; set; } = false;
     public float AutoGainScale { get; set; } = 1.0f;
+    public virtual bool GearShiftFilterEnabled { get; set; } = false;
+
+    public float GearShiftMuteGain { get; private set; } = 1.0f;
 
     // No-op: sign correction is handled by device-level inversion
     public bool SignCorrectionEnabled { get; set; } = true;
@@ -59,8 +62,13 @@ public sealed class FfbPipeline
     public int ReverseGearValue { get; set; } = 0;
 
     private float _prevDetailOutput;
+    private float _shiftMuteDuration = 1.500f;
+    private float _fadeInDuration = 0.500f;
+    private float _shiftTimeTracker;
+    private int _lastGear = 1;
+    private float _gearShiftPrevForce;
 
-    public FfbProcessedData Process(FfbRawData raw)
+    public virtual FfbProcessedData Process(FfbRawData raw)
     {
         float autoGain = 1.0f;
         if (AutoGainEnabled && raw.CarFfbMultiplier > 0.001f)
@@ -252,11 +260,17 @@ public sealed class FfbPipeline
 
         _prevDetailOutput = raw.SpeedKmh < 0.5f ? 0f : detailForce;
 
+        // Hook for subclasses to modify detailForce before final mix
+        OnDetailForceProcessed(coreOutput, ref detailForce);
+
         // ═══════════════════════════════════════════════════════════════════════
         // FINAL MIX — Core (zero-latency) + Detail (filtered)
         // ═══════════════════════════════════════════════════════════════════════
 
-        float finalOutput = coreOutput + detailForce;
+        // Gear shift filter: EMA on core force only — detail effects pass through
+        float deltaTime = 1f / 60f;
+        float filteredCore = ApplyGearShiftFilter(coreOutput, deltaTime, raw.Gear);
+        float finalOutput = filteredCore + detailForce;
 
         // Output clipper (soft clip at threshold)
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
@@ -275,7 +289,7 @@ public sealed class FfbPipeline
         return new FfbProcessedData
         {
             MainForce = finalOutput,
-            VibrationForce = vibration,
+            VibrationForce = vibration * GearShiftMuteGain,
             RawFinalFf = raw.FinalFf,
             ChannelMzFront = channels.MzFront,
             ChannelFxFront = channels.FxFront,
@@ -299,7 +313,8 @@ public sealed class FfbPipeline
             WetnessFactor = WetWeather.WetnessFactor,
             TyreCategory = TyreCompoundClassifier.Classify(raw.TyreCompoundFront),
             TyreCompoundFrontName = raw.TyreCompoundFront,
-            TyreCompoundRearName = raw.TyreCompoundRear
+            TyreCompoundRearName = raw.TyreCompoundRear,
+            GearShiftMuteGain = GearShiftMuteGain
         };
     }
 
@@ -321,5 +336,45 @@ public sealed class FfbPipeline
 
 
         _prevDetailOutput = 0f;
+        _shiftTimeTracker = 0f;
+        _lastGear = 1;
+        _gearShiftPrevForce = 0f;
+        GearShiftMuteGain = 1.0f;
+    }
+
+    /// <summary>
+    /// Called after detailForce is fully computed but before final core+detail mix.
+    /// Override in subclass to apply game-specific detail path processing.
+    /// Base implementation is a no-op.
+    /// </summary>
+    protected virtual void OnDetailForceProcessed(float coreOutput, ref float detailForce)
+    {
+    }
+
+    public float ApplyGearShiftFilter(float currentForce, float deltaTime, int currentGear)
+    {
+        if (currentGear != _lastGear)
+        {
+            _shiftTimeTracker = _shiftMuteDuration + _fadeInDuration;
+            _lastGear = currentGear;
+        }
+
+        if (!GearShiftFilterEnabled || _shiftTimeTracker <= 0.0f)
+        {
+            _gearShiftPrevForce = currentForce;
+            GearShiftMuteGain = 1.0f;
+            return currentForce;
+        }
+
+        _shiftTimeTracker -= deltaTime;
+
+        // Adaptive EMA: only smooth large deltas (>2%). Small changes pass through.
+        float forceDelta = Math.Abs(currentForce - _gearShiftPrevForce);
+        float alpha = forceDelta > 0.02f ? 0.005f : 1.0f;
+        float smoothed = _gearShiftPrevForce + alpha * (currentForce - _gearShiftPrevForce);
+
+        _gearShiftPrevForce = smoothed;
+        GearShiftMuteGain = 1.0f;
+        return smoothed;
     }
 }

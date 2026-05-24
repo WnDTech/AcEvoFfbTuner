@@ -55,6 +55,14 @@ public sealed class AppSettings
             var json = JsonSerializer.Serialize(this, JsonOptions);
             File.WriteAllText(FilePath, json);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            try
+            {
+                File.WriteAllText(Path.Combine(BasePath, "settings_error.log"),
+                    $"{DateTime.Now}: Failed to save settings.json to '{FilePath}': {ex}");
+            }
+            catch { }
+        }
     }
 }

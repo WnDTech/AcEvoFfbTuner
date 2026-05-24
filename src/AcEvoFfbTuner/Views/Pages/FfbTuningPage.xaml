@@ -228,6 +228,13 @@
                                                 <TextBlock Text="Front Wheels Only" FontSize="15" />
                                             </StackPanel>
                                         </DockPanel>
+                                        <DockPanel Margin="0,6">
+                                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                                <CheckBox IsChecked="{Binding GearChangeMuteEnabled}" Margin="0,0,12,0" />
+                                                <TextBlock Text="Mute Gear Change FFB (R3E)" FontSize="15" Foreground="#FFE6EDF3" />
+                                            </StackPanel>
+                                            <TextBlock Text="Suppresses force spikes during gear shifts in RaceRoom." FontSize="12" Foreground="#FF8B949E" Margin="28,4,0,0" TextWrapping="Wrap" />
+                                        </DockPanel>
                                     </StackPanel>
                                 </Expander>
                             </StackPanel>

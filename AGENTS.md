@@ -14,6 +14,14 @@ Our goal is to **fix the code** so we can establish a reliable baseline profile 
 - Always build after code changes
 - Run lint/typecheck if available
 
+### Pipeline Isolation — CRITICAL
+- **Each game's FFB pipeline must be completely separate.** No game-specific code may touch another game's pipeline in any way. This avoids breaking another game's FFB.
+- **EVO pipeline** lives in `FfbPipeline.cs` (base class). Do NOT add R3E-specific logic here.
+- **R3E pipeline** lives in `R3eFfbPipeline.cs` (subclass). All R3E-specific processing must be here.
+- Shared base class changes must be zero-impact for EVO: virtual hooks that default to no-op, or existing properties that default to zero/disabled.
+- Profile changes for one game must not alter the other game's behavior — check default values before modifying `FfbProfile.cs` or shared configs.
+- When editing `FfbProfile.cs`, always confirm and state whether the change is for RaceRoom or EVO. R3E-specific pipeline properties must be guarded behind `if (pipeline is R3eFfbPipeline r3e)` casts.
+
 ### Key Files
 - `src/AcEvoFfbTuner.Core/FfbProcessing/FfbPipeline.cs` — Main FFB pipeline (center suppression, slew, hysteresis)
 - `src/AcEvoFfbTuner.Core/FfbProcessing/FfbChannelMixer.cs` — Channel mixing, EMAs, spike clamp

@@ -331,6 +331,14 @@ public partial class MainWindow : Window
         ProfilePopup.IsOpen = true;
     }
 
+    private void OnGamePillClick(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        vm.SelectedGame = vm.SelectedGame == SupportedGame.AcEvo
+            ? SupportedGame.Raceroom
+            : SupportedGame.AcEvo;
+    }
+
     private void OnProfilePopupOpened(object sender, EventArgs e)
     {
         ProfileEmptyText.Visibility = ProfileList.Items.Count == 0

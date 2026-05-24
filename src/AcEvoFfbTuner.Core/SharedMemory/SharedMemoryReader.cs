@@ -4,7 +4,7 @@ using AcEvoFfbTuner.Core.SharedMemory.Structs;
 
 namespace AcEvoFfbTuner.Core.SharedMemory;
 
-public sealed class SharedMemoryReader : IDisposable
+public sealed class SharedMemoryReader : ISharedMemoryReader
 {
     private const string PhysicsMapName = @"Local\acevo_pmf_physics";
     private const string GraphicsMapName = @"Local\acevo_pmf_graphics";

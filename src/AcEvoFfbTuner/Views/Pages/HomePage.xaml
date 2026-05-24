@@ -101,10 +101,11 @@
                             </Ellipse.Style>
                         </Ellipse>
                         <TextBlock Text="GAME" FontSize="12" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <TextBlock Text="{Binding GameDisplayName}" FontWeight="SemiBold" FontSize="14" Foreground="#FFE6EDF3" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <TextBlock FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="Not Connected" />
+                                    <Setter Property="Text" Value="Offline" />
                                     <Setter Property="Foreground" Value="#FF8B949E" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsGameConnected}" Value="True">

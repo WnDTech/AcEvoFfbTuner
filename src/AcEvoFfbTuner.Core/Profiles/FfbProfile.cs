@@ -110,6 +110,7 @@ public sealed class FfbProfile
         };
 
         pipeline.ChannelMixer.FyInverted = FyInverted;
+        pipeline.GearShiftFilterEnabled = Slip.GearChangeMuteEnabled;
 
         pipeline.MasterGain = 1000f / Math.Max(NormalizationScale, 1f);
         pipeline.ForceScale = ForceScale;
@@ -136,8 +137,17 @@ public sealed class FfbProfile
 
         pipeline.SlipEnhancer.SlipRatioGain = Slip.SlipRatioGain;
         pipeline.SlipEnhancer.SlipAngleGain = Slip.SlipAngleGain;
+        pipeline.SlipEnhancer.SlipAngleShapeGain = Slip.SlipAngleShapeGain;
         pipeline.SlipEnhancer.SlipThreshold = Slip.SlipThreshold;
         pipeline.SlipEnhancer.UseFrontOnly = Slip.UseFrontOnly;
+
+        if (pipeline is R3eFfbPipeline r3e)
+        {
+            r3e.GearChangeMuteEnabled = Slip.GearChangeMuteEnabled;
+            r3e.GearSpikeThreshold = Slip.GearSpikeThreshold;
+            r3e.BrakeBoostGain = Slip.BrakeBoostGain;
+            r3e.BrakeBoostThreshold = Slip.BrakeBoostThreshold;
+        }
 
         pipeline.DynamicEffects.LateralGGain = Dynamic.LateralGGain;
         pipeline.DynamicEffects.LongitudinalGGain = Dynamic.LongitudinalGGain;
@@ -300,8 +310,14 @@ public sealed class FfbProfile
         {
             SlipRatioGain = pipeline.SlipEnhancer.SlipRatioGain,
             SlipAngleGain = pipeline.SlipEnhancer.SlipAngleGain,
+            SlipAngleShapeGain = pipeline.SlipEnhancer.SlipAngleShapeGain,
             SlipThreshold = pipeline.SlipEnhancer.SlipThreshold,
-            UseFrontOnly = pipeline.SlipEnhancer.UseFrontOnly
+            UseFrontOnly = pipeline.SlipEnhancer.UseFrontOnly,
+            GearChangeMuteEnabled = (pipeline as R3eFfbPipeline)?.GearChangeMuteEnabled ?? pipeline.GearShiftFilterEnabled,
+            GearChangeMuteFrames = 20,
+            GearSpikeThreshold = (pipeline as R3eFfbPipeline)?.GearSpikeThreshold ?? 3000f,
+            BrakeBoostGain = (pipeline as R3eFfbPipeline)?.BrakeBoostGain ?? 0.4f,
+            BrakeBoostThreshold = (pipeline as R3eFfbPipeline)?.BrakeBoostThreshold ?? 0.1f
         };
         Dynamic = new DynamicConfig
         {
@@ -966,11 +982,17 @@ public sealed class SlipConfig
 {
     public float SlipRatioGain { get; set; } = 0.10f;
     public float SlipAngleGain { get; set; } = 0.20f;
+    public float SlipAngleShapeGain { get; set; } = 0.0f;
     public float SlipThreshold { get; set; } = 0.10f;
     public bool UseFrontOnly { get; set; } = true;
+    public bool GearChangeMuteEnabled { get; set; } = true;
+    public int GearChangeMuteFrames { get; set; } = 20;
+    public float GearSpikeThreshold { get; set; } = 3000f;
+    public float BrakeBoostGain { get; set; } = 0.4f;
+    public float BrakeBoostThreshold { get; set; } = 0.1f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipThreshold = S(SlipThreshold); }
+    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); }
 }
 
 public sealed class DynamicConfig

@@ -20,12 +20,18 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace AcEvoFfbTuner.ViewModels;
 
+public enum SupportedGame
+{
+    AcEvo,
+    Raceroom
+}
+
 public sealed partial class MainViewModel : ObservableObject, IDisposable
 {
-    private readonly SharedMemoryReader _reader;
-    private readonly FfbPipeline _pipeline;
+    private ISharedMemoryReader _reader;
+    private FfbPipeline _pipeline;
     private readonly FfbDeviceManager _deviceManager;
-    private readonly TelemetryLoop _telemetryLoop;
+    private TelemetryLoop _telemetryLoop;
     private readonly ProfileManager _profileManager;
     private readonly Services.GameRecordingService _gameRecordingService = new();
     private volatile bool _autoAlignInProgress;
@@ -34,6 +40,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public string AppVersion { get; } =
         System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
+
+    [ObservableProperty]
+    private SupportedGame _selectedGame = SupportedGame.AcEvo;
+
+    public string GameDisplayName => SelectedGame == SupportedGame.Raceroom ? "RaceRoom" : "AC EVO";
+
+    public int SelectedGameIndex
+    {
+        get => (int)SelectedGame;
+        set => SelectedGame = (SupportedGame)value;
+    }
 
     [ObservableProperty]
     private string _statusText = "Ready";
@@ -216,6 +233,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _slipUseFrontOnly = true;
+
+    [ObservableProperty]
+    private bool _gearChangeMuteEnabled = true;
 
     [ObservableProperty]
     private float _corneringForce;
@@ -776,6 +796,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private int _snapshotButtonIndex = -1;
+    private bool _suppressSettingsSave;
 
     [ObservableProperty]
     private int _snapshotButtonComboIndex;
@@ -901,7 +922,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         SnapshotButtonIndex = value <= 0 ? -1 : value - 1;
         _appSettings.SnapshotButtonComboIndex = value;
-        _appSettings.Save();
+        if (!_suppressSettingsSave)
+            _appSettings.Save();
     }
 
     partial void OnPanicButtonComboIndexChanged(int value)
@@ -1090,8 +1112,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public MainViewModel()
     {
-        _reader = new SharedMemoryReader();
-        _pipeline = new FfbPipeline();
+        _reader = CreateReader(SelectedGame);
+        _pipeline = CreatePipeline(SelectedGame);
         _deviceManager = new FfbDeviceManager();
         _telemetryLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
         _profileManager = new ProfileManager();
@@ -1144,7 +1166,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             IsGameConnected = _telemetryLoop.IsGameConnected;
             if (IsGameConnected)
-                AddSystemLog("Game connected (AC EVO shared memory)");
+                AddSystemLog($"Game connected ({GameDisplayName})");
             else
             {
                 _gameRecordingService.StopRecording();
@@ -1281,6 +1303,101 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
          AddSystemLog("Application initialized");
      }
 
+    private static ISharedMemoryReader CreateReader(SupportedGame game) => game switch
+    {
+        SupportedGame.Raceroom => new RaceroomSharedMemoryReader(),
+        _ => new SharedMemoryReader()
+    };
+
+    private static FfbPipeline CreatePipeline(SupportedGame game) => game switch
+    {
+        SupportedGame.Raceroom => new R3eFfbPipeline(),
+        _ => new FfbPipeline()
+    };
+
+    partial void OnSelectedGameChanged(SupportedGame value)
+    {
+        var wasRunning = _telemetryLoop.IsRunning;
+        if (wasRunning)
+            _telemetryLoop.Stop();
+
+        _telemetryLoop.Dispose();
+        _reader.Dispose();
+        _reader = CreateReader(value);
+        _pipeline = CreatePipeline(value);
+        OnPropertyChanged(nameof(GameDisplayName));
+
+        // Re-apply active profile settings to the new pipeline
+        if (_profileManager.ActiveProfile != null)
+            _profileManager.ActiveProfile.ApplyToPipeline(_pipeline);
+
+        var newLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
+        WireTelemetryLoopEvents(newLoop);
+        _telemetryLoop = newLoop;
+
+        if (wasRunning)
+        {
+            _telemetryLoop.Start();
+            StatusText = $"Switched to {GameDisplayName} — telemetry restarted";
+        }
+        else
+        {
+            StatusText = $"Switched to {GameDisplayName}";
+        }
+
+        AddSystemLog($"Game source changed to {GameDisplayName}");
+    }
+
+    private void WireTelemetryLoopEvents(TelemetryLoop newLoop)
+    {
+        newLoop.StatusChanged += status => Application.Current?.Dispatcher.Invoke(() => StatusText = status);
+        newLoop.GameConnectionChanged += () => Application.Current?.Dispatcher.Invoke(() =>
+        {
+            IsGameConnected = newLoop.IsGameConnected;
+            if (IsGameConnected)
+                AddSystemLog($"Game connected ({GameDisplayName})");
+            else
+            {
+                _gameRecordingService.StopRecording();
+                IsScreenRecording = false;
+                AddSystemLog("Game disconnected");
+            }
+        });
+        newLoop.TrackMapCompleted += map => Application.Current?.Dispatcher.Invoke(() =>
+        {
+            IsTrackMapAvailable = true;
+            IsTrackMapRecording = false;
+            TrackLengthM = map.TrackLengthM;
+            TrackWaypointCount = map.Waypoints.Count;
+            CornerCount = map.Corners.Count;
+            SectorCount = map.Sectors.Count;
+            if (string.IsNullOrEmpty(map.TrackName) || map.TrackName.StartsWith("track_"))
+                map.TrackName = newLoop.DetectedTrackName;
+            DetectedTrackName = map.TrackName;
+            IsPitDetected = map.PitLane.IsDetected;
+            TrackMapStatus = $"{map.Waypoints.Count} pts | {map.TrackLengthM:F0}m | {map.Corners.Count} corners | {map.Sectors.Count} sectors";
+        });
+        newLoop.StaticDataReceived += (trackName, config, lengthM, latitude, longitude) => Application.Current?.Dispatcher.Invoke(() =>
+        {
+            DetectedTrackName = trackName;
+            if (!string.IsNullOrEmpty(trackName))
+                StatusText = $"Connected — Track: {trackName} ({config}) {lengthM:F0}m";
+        });
+        newLoop.CarModelChanged += carModel => Application.Current?.Dispatcher.Invoke(() =>
+        {
+            DetectedCarModel = carModel;
+            StatusText = $"Car detected: {carModel}";
+        });
+        newLoop.TrackChanged += newTrackName => Application.Current?.Dispatcher.Invoke(() =>
+        {
+            _mapClearedByUser = false;
+            _lastAutoLoadedTrack = null;
+            IsTrackMapAvailable = false;
+            IsTrackMapRecording = false;
+            StatusText = $"Track changed to: {newTrackName}";
+        });
+    }
+
     private async Task AutoAlignTrackAsync(string trackName)
     {
         _autoAlignInProgress = true;
@@ -1411,6 +1528,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             ForceInvertEnabled = _deviceManager.AutoDetectedForceInvert;
             IsAutoSetupAvailable = WheelMaxTorqueNm > 0;
             RefreshSnapshotButtonNames();
+            RefreshPanicButtonNames();
+            RestoreButtonSettings();
             if (!_uiUpdateTimer.IsEnabled)
                 _uiUpdateTimer.Start();
             _telemetryLoop.AutoDetectAndSetProvider();
@@ -1489,15 +1608,26 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         OnPropertyChanged(nameof(PanicDeviceButtonCount));
         RefreshPanicButtonNames();
+        RestoreButtonSettings();
     }
 
     private void RefreshSnapshotButtonNames()
     {
-        var names = _deviceManager.GetButtonNames();
-        SnapshotButtonNames.Clear();
-        SnapshotButtonNames.Add("Disabled");
-        foreach (var name in names)
-            SnapshotButtonNames.Add(name);
+        int savedIndex = SnapshotButtonComboIndex;
+        _suppressSettingsSave = true;
+        try
+        {
+            var names = _deviceManager.GetButtonNames();
+            SnapshotButtonNames.Clear();
+            SnapshotButtonNames.Add("Disabled");
+            foreach (var name in names)
+                SnapshotButtonNames.Add(name);
+        }
+        finally
+        {
+            _suppressSettingsSave = false;
+            SnapshotButtonComboIndex = savedIndex;
+        }
     }
 
     private void RefreshPanicButtonNames()
@@ -2465,6 +2595,35 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnSlipAngleGainChanged(float value) => _pipeline.SlipEnhancer.SlipAngleGain = value;
     partial void OnSlipThresholdChanged(float value) => _pipeline.SlipEnhancer.SlipThreshold = value;
     partial void OnSlipUseFrontOnlyChanged(bool value) => _pipeline.SlipEnhancer.UseFrontOnly = value;
+
+    partial void OnGearChangeMuteEnabledChanged(bool value)
+    {
+        var logPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "AcEvoFfbTuner", "ffb_debug.log");
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            File.AppendAllText(logPath,
+                $"[VM] OnGearChangeMuteEnabledChanged called: value={value} | _pipeline type={_pipeline.GetType().Name} | BEFORE: _pipeline.GearShiftFilterEnabled={_pipeline.GearShiftFilterEnabled}\n");
+        }
+        catch { }
+
+        _pipeline.GearShiftFilterEnabled = value;
+        R3eFfbPipeline? r3e = null;
+        if (_pipeline is R3eFfbPipeline r3ePipeline)
+            r3e = r3ePipeline;
+
+        if (r3e != null)
+            r3e.GearChangeMuteEnabled = value;
+
+        try
+        {
+            File.AppendAllText(logPath,
+                $"[VM] OnGearChangeMuteEnabledChanged AFTER: _pipeline.GearShiftFilterEnabled={_pipeline.GearShiftFilterEnabled} | r3e={(r3e != null ? r3e.GearChangeMuteEnabled.ToString() : "N/A")}\n");
+        }
+        catch { }
+    }
     partial void OnCorneringForceChanged(float value) => _pipeline.DynamicEffects.LateralGGain = value;
     partial void OnAccelerationBrakingForceChanged(float value) => _pipeline.DynamicEffects.LongitudinalGGain = value;
     partial void OnRoadFeelChanged(float value) => _pipeline.DynamicEffects.SuspensionGain = value;
@@ -2998,6 +3157,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         SlipAngleGain = profile.Slip.SlipAngleGain;
         SlipThreshold = profile.Slip.SlipThreshold;
         SlipUseFrontOnly = profile.Slip.UseFrontOnly;
+        GearChangeMuteEnabled = profile.Slip.GearChangeMuteEnabled;
         CorneringForce = profile.Dynamic.LateralGGain;
         AccelerationBrakingForce = profile.Dynamic.LongitudinalGGain;
         RoadFeel = profile.Dynamic.SuspensionGain;

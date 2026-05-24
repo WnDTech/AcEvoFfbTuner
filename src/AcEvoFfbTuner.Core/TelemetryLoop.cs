@@ -20,7 +20,7 @@ public sealed class TelemetryLoop : IDisposable
 
     private const int GameTickIntervalMs = 3;
 
-    private readonly SharedMemoryReader _reader;
+    private readonly ISharedMemoryReader _reader;
     private readonly FfbPipeline _pipeline;
     private readonly FfbDeviceManager _deviceManager;
     private readonly FfbStaticFriction _staticFriction = new();
@@ -85,7 +85,7 @@ public sealed class TelemetryLoop : IDisposable
 
     public readonly FfbLiveServer LiveServer = new();
 
-    public TelemetryLoop(SharedMemoryReader reader, FfbPipeline pipeline, FfbDeviceManager deviceManager)
+    public TelemetryLoop(ISharedMemoryReader reader, FfbPipeline pipeline, FfbDeviceManager deviceManager)
     {
         _reader = reader;
         _pipeline = pipeline;
@@ -347,6 +347,10 @@ public sealed class TelemetryLoop : IDisposable
 
                     var raw = MapRawData(physics, graphics);
 
+                    // Inject R3E tyre grip data (unavailable from AC EVO struct)
+                    if (_reader is RaceroomSharedMemoryReader r3e)
+                        raw.TyreGrip = r3e.TireGrip;
+
                     IntegratePosition(raw, physics);
 
                     var processed = _pipeline.Process(raw);
@@ -380,7 +384,7 @@ public sealed class TelemetryLoop : IDisposable
                         float stationaryForce = raw.SpeedKmh < 0.5f ? _staticFriction.Compute(raw) : 0f;
                         bool hasStationaryForce = Math.Abs(stationaryForce) > 0.001f;
 
-                        if (_ffbProvider != null && _ffbProvider.IsInitialized)
+if (_ffbProvider != null && _ffbProvider.IsInitialized)
                         {
                             if (hasStationaryForce)
                             {

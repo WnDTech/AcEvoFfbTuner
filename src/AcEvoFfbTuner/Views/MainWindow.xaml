@@ -6,7 +6,7 @@
         xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls"
         xmlns:local="clr-namespace:AcEvoFfbTuner.Views"
         xmlns:pages="clr-namespace:AcEvoFfbTuner.Views.Pages"
-         Title="AC Evo FFB Tuner" Height="900" Width="1280" Loaded="Window_Loaded"
+         Title="AC Evo FFB Tuner" Height="900" Width="1280" MinWidth="900" MinHeight="600" Loaded="Window_Loaded"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/wheel.ico"
         Background="{StaticResource BgDark}"
@@ -41,8 +41,11 @@
         <!-- ═══ HEADER BAR (single row) ═══ -->
         <Border Grid.Row="0" Background="{StaticResource BgPanel}" Padding="16,8"
                 BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderBrush}">
+            <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="16" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="16" />
                     <ColumnDefinition Width="Auto" />
@@ -177,8 +180,42 @@
                     </Border>
                 </Popup>
 
+                <!-- Game Pill -->
+                <Button Grid.Column="4" x:Name="GamePill" Click="OnGamePillClick"
+                        Cursor="Hand" VerticalAlignment="Center"
+                        ToolTip="Switch between AC EVO and RaceRoom">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="PillBd" Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="14" Padding="14,6" SnapsToDevicePixels="True">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="#FF555555" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
+                                                        <Setter Property="Fill" Value="#FF7EE787" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Text="{Binding GameDisplayName}" FontSize="14" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text=" &#x21C4;" FontSize="10" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" FontFamily="Segoe UI Symbol" Margin="4,0,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="PillBd" Property="Background" Value="#FF30363D" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
                 <!-- Profile Pill + Save -->
-                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="ProfilePill" Click="OnProfilePillClick"
                             Cursor="Hand" ToolTip="Select FFB profile">
                         <Button.Template>
@@ -304,7 +341,7 @@
                 </Popup>
 
                 <!-- Send Diagnostics + Compact View + Recording Indicator + START / STOP + PANIC -->
-                <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Grid.Column="8" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="CompactViewBtn" Click="OnCompactViewClick" Cursor="Hand"
                             Margin="0,0,8,0" VerticalAlignment="Center" ToolTip="Pop out compact tuner">
                         <Button.Template>
@@ -432,6 +469,7 @@
                     <Button Content="PANIC" Command="{Binding PanicStopCommand}" Style="{StaticResource PanicButton}" Padding="16,6" FontSize="14" ToolTip="Immediately zero all FFB output" />
                 </StackPanel>
             </Grid>
+            </Viewbox>
         </Border>
 
         <!-- ═══ CONTENT AREA ═══ -->
