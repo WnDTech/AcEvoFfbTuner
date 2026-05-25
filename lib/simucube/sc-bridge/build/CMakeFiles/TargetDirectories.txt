@@ -1,0 +1,3 @@
+C:/Users/paul_/OneDrive/Documents/APP/ACEVO - Telemetry FFB/lib/simucube/sc-bridge/build/CMakeFiles/sc_bridge.dir
+C:/Users/paul_/OneDrive/Documents/APP/ACEVO - Telemetry FFB/lib/simucube/sc-bridge/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/paul_/OneDrive/Documents/APP/ACEVO - Telemetry FFB/lib/simucube/sc-bridge/build/CMakeFiles/ZERO_CHECK.dir

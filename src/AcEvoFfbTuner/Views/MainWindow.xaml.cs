@@ -334,9 +334,12 @@ public partial class MainWindow : Window
     private void OnGamePillClick(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel vm) return;
-        vm.SelectedGame = vm.SelectedGame == SupportedGame.AcEvo
-            ? SupportedGame.Raceroom
-            : SupportedGame.AcEvo;
+        vm.SelectedGame = vm.SelectedGame switch
+        {
+            SupportedGame.AcEvo => SupportedGame.Raceroom,
+            SupportedGame.Raceroom => SupportedGame.AssettoCorsa,
+            _ => SupportedGame.AcEvo
+        };
     }
 
     private void OnProfilePopupOpened(object sender, EventArgs e)

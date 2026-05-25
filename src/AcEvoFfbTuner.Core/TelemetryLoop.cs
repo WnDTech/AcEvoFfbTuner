@@ -351,6 +351,10 @@ public sealed class TelemetryLoop : IDisposable
                     if (_reader is RaceroomSharedMemoryReader r3e)
                         raw.TyreGrip = r3e.TireGrip;
 
+                    // Inject AC tyre grip data
+                    if (_reader is AssettoCorsaSharedMemoryReader ac)
+                        raw.TyreGrip = ac.TireGrip;
+
                     IntegratePosition(raw, physics);
 
                     var processed = _pipeline.Process(raw);

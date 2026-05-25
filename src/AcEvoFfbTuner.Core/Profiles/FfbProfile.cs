@@ -149,6 +149,14 @@ public sealed class FfbProfile
             r3e.BrakeBoostThreshold = Slip.BrakeBoostThreshold;
         }
 
+        if (pipeline is AcFfbPipeline ac)
+        {
+            ac.GearChangeMuteEnabled = Slip.GearChangeMuteEnabled;
+            ac.GearSpikeThreshold = Slip.GearSpikeThreshold;
+            ac.BrakeBoostGain = Slip.BrakeBoostGain;
+            ac.BrakeBoostThreshold = Slip.BrakeBoostThreshold;
+        }
+
         pipeline.DynamicEffects.LateralGGain = Dynamic.LateralGGain;
         pipeline.DynamicEffects.LongitudinalGGain = Dynamic.LongitudinalGGain;
         pipeline.DynamicEffects.SuspensionGain = Dynamic.SuspensionGain;
@@ -313,11 +321,19 @@ public sealed class FfbProfile
             SlipAngleShapeGain = pipeline.SlipEnhancer.SlipAngleShapeGain,
             SlipThreshold = pipeline.SlipEnhancer.SlipThreshold,
             UseFrontOnly = pipeline.SlipEnhancer.UseFrontOnly,
-            GearChangeMuteEnabled = (pipeline as R3eFfbPipeline)?.GearChangeMuteEnabled ?? pipeline.GearShiftFilterEnabled,
+            GearChangeMuteEnabled = (pipeline as R3eFfbPipeline)?.GearChangeMuteEnabled
+                                  ?? (pipeline as AcFfbPipeline)?.GearChangeMuteEnabled
+                                  ?? pipeline.GearShiftFilterEnabled,
             GearChangeMuteFrames = 20,
-            GearSpikeThreshold = (pipeline as R3eFfbPipeline)?.GearSpikeThreshold ?? 3000f,
-            BrakeBoostGain = (pipeline as R3eFfbPipeline)?.BrakeBoostGain ?? 0.4f,
-            BrakeBoostThreshold = (pipeline as R3eFfbPipeline)?.BrakeBoostThreshold ?? 0.1f
+            GearSpikeThreshold = (pipeline as R3eFfbPipeline)?.GearSpikeThreshold
+                               ?? (pipeline as AcFfbPipeline)?.GearSpikeThreshold
+                               ?? 3000f,
+            BrakeBoostGain = (pipeline as R3eFfbPipeline)?.BrakeBoostGain
+                           ?? (pipeline as AcFfbPipeline)?.BrakeBoostGain
+                           ?? 0.4f,
+            BrakeBoostThreshold = (pipeline as R3eFfbPipeline)?.BrakeBoostThreshold
+                                ?? (pipeline as AcFfbPipeline)?.BrakeBoostThreshold
+                                ?? 0.1f
         };
         Dynamic = new DynamicConfig
         {

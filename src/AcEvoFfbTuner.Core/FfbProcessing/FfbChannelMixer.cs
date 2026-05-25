@@ -79,7 +79,8 @@ public sealed class FfbChannelMixer
     private float _mzPeak, _fxPeak, _fyPeak;
     private const float ChannelPeakDecay = 0.997f;
     private const float ChannelAutoTarget = 1.0f;
-    private const float ChannelAutoMinPeak = 1.0f;
+    private const float AutoMinPeakDefault = 1.0f;
+    public float AutoMinPeak { get; set; } = AutoMinPeakDefault;
 
     private float _smCoreFxFront;
     private float _smCoreFxRear;
@@ -141,15 +142,15 @@ public sealed class FfbChannelMixer
         _fyPeak = Math.Max(_fyPeak * ChannelPeakDecay, absRawFy);
 
         float effectiveMzScale = MzScale;
-        if (_mzPeak > ChannelAutoMinPeak)
+        if (_mzPeak > AutoMinPeak)
             effectiveMzScale = Math.Max(effectiveMzScale, _mzPeak / ChannelAutoTarget);
 
         float effectiveFxScale = FxScale;
-        if (_fxPeak > ChannelAutoMinPeak)
+        if (_fxPeak > AutoMinPeak)
             effectiveFxScale = Math.Max(effectiveFxScale, _fxPeak / ChannelAutoTarget);
 
         float effectiveFyScale = FyScale;
-        if (_fyPeak > ChannelAutoMinPeak)
+        if (_fyPeak > AutoMinPeak)
             effectiveFyScale = Math.Max(effectiveFyScale, _fyPeak / ChannelAutoTarget);
 
         float mzFront = MzFrontEnabled ? SoftClamp(Normalize(rawMzFront, effectiveMzScale) * MzFrontGain) : 0f;
@@ -308,15 +309,15 @@ public sealed class FfbChannelMixer
     public AutoNormDiagnostics GetAutoNormDiagnostics()
     {
         float effectiveMzScale = MzScale;
-        bool mzAuto = _mzPeak > ChannelAutoMinPeak;
+        bool mzAuto = _mzPeak > AutoMinPeak;
         if (mzAuto) effectiveMzScale = Math.Max(effectiveMzScale, _mzPeak / ChannelAutoTarget);
 
         float effectiveFxScale = FxScale;
-        bool fxAuto = _fxPeak > ChannelAutoMinPeak;
+        bool fxAuto = _fxPeak > AutoMinPeak;
         if (fxAuto) effectiveFxScale = Math.Max(effectiveFxScale, _fxPeak / ChannelAutoTarget);
 
         float effectiveFyScale = FyScale;
-        bool fyAuto = _fyPeak > ChannelAutoMinPeak;
+        bool fyAuto = _fyPeak > AutoMinPeak;
         if (fyAuto) effectiveFyScale = Math.Max(effectiveFyScale, _fyPeak / ChannelAutoTarget);
 
         return new AutoNormDiagnostics

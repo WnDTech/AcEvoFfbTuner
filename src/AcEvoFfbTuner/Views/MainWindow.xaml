@@ -183,7 +183,7 @@
                 <!-- Game Pill -->
                 <Button Grid.Column="4" x:Name="GamePill" Click="OnGamePillClick"
                         Cursor="Hand" VerticalAlignment="Center"
-                        ToolTip="Switch between AC EVO and RaceRoom">
+                        ToolTip="Switch between AC EVO, RaceRoom, and Assetto Corsa">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="PillBd" Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
@@ -503,10 +503,10 @@
             <StackPanel>
                 <TextBlock Text="IN-GAME FFB IS STILL ACTIVE" FontSize="18" FontWeight="Black" Foreground="#FFF0883E" HorizontalAlignment="Center" Margin="0,0,0,8" />
                 <TextBlock TextWrapping="Wrap" FontSize="14" Foreground="#FFE6EDF3" MaxWidth="700" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,8">
-                    <Run Text="AC EVO's Force Feedback is still enabled. Open the game's FFB settings and set the " /><Run FontWeight="Bold" Text="FFB Gain slider to 0" /><Run Text=", then " /><Run FontWeight="Bold" Foreground="#FFFF1744" Text="restart the game" /><Run Text=" for it to take effect. This app replaces the game's FFB entirely — if both are active they will fight for exclusive control of your wheel." />
+                    <Run Text="{Binding GameDisplayName, Mode=OneWay, StringFormat='{}{0}\'s'}" /><Run Text=" Force Feedback is still enabled. Open the game's FFB settings and set the " /><Run FontWeight="Bold" Text="FFB Gain slider to 0" /><Run Text=", then " /><Run FontWeight="Bold" Foreground="#FFFF1744" Text="restart the game" /><Run Text=" for it to take effect. This app replaces the game's FFB entirely — if both are active they will fight for exclusive control of your wheel." />
                 </TextBlock>
                 <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FFFFAB00" MaxWidth="700" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,10">
-                    <Run FontStyle="Italic" Text="Changes to FFB settings in AC EVO require a game restart to apply. If you've already set FFB to 0 and restarted, you can safely dismiss this." />
+                    <Run FontStyle="Italic" Text="Changes to FFB settings in " /><Run FontStyle="Italic" Text="{Binding GameDisplayName, Mode=OneWay}" /><Run FontStyle="Italic" Text=" require a game restart to apply. If you've already set FFB to 0 and restarted, you can safely dismiss this." />
                 </TextBlock>
                 <Button Content="DISMISS" Command="{Binding DismissGameFfbWarningCommand}"
                         HorizontalAlignment="Center" Padding="24,6" FontSize="14" FontWeight="Bold" />

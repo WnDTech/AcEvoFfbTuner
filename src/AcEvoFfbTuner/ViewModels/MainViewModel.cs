@@ -23,7 +23,8 @@ namespace AcEvoFfbTuner.ViewModels;
 public enum SupportedGame
 {
     AcEvo,
-    Raceroom
+    Raceroom,
+    AssettoCorsa
 }
 
 public sealed partial class MainViewModel : ObservableObject, IDisposable
@@ -44,7 +45,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private SupportedGame _selectedGame = SupportedGame.AcEvo;
 
-    public string GameDisplayName => SelectedGame == SupportedGame.Raceroom ? "RaceRoom" : "AC EVO";
+    public string GameDisplayName => SelectedGame switch
+    {
+        SupportedGame.Raceroom => "RaceRoom",
+        SupportedGame.AssettoCorsa => "Assetto Corsa",
+        _ => "AC EVO"
+    };
 
     public int SelectedGameIndex
     {
@@ -1306,12 +1312,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private static ISharedMemoryReader CreateReader(SupportedGame game) => game switch
     {
         SupportedGame.Raceroom => new RaceroomSharedMemoryReader(),
+        SupportedGame.AssettoCorsa => new AssettoCorsaSharedMemoryReader(),
         _ => new SharedMemoryReader()
     };
 
     private static FfbPipeline CreatePipeline(SupportedGame game) => game switch
     {
         SupportedGame.Raceroom => new R3eFfbPipeline(),
+        SupportedGame.AssettoCorsa => new AcFfbPipeline(),
         _ => new FfbPipeline()
     };
 

@@ -1,0 +1,55 @@
+=== RECORDING MANIFEST (generated 2026-05-16 00:03:43) ===
+Note: Video files are stored locally on the user's machine at:
+  C:\Users\shawn\AppData\Roaming\AcEvoFfbTuner\recordings
+Ask the user to share specific recordings if needed.
+
+File: acevo_session_20260516_000248.mp4
+  Size: 28.7 MB
+  Created: 2026-05-15 23:03:05 UTC
+  Path: C:\Users\shawn\AppData\Roaming\AcEvoFfbTuner\recordings\acevo_session_20260516_000248.mp4
+
+File: acevo_session_20260516_000211.mp4
+  Size: 39.7 MB
+  Created: 2026-05-15 23:02:34 UTC
+  Path: C:\Users\shawn\AppData\Roaming\AcEvoFfbTuner\recordings\acevo_session_20260516_000211.mp4
+
+File: acevo_session_20260516_000115.mp4
+  Size: 96.7 MB
+  Created: 2026-05-15 23:02:10 UTC
+  Path: C:\Users\shawn\AppData\Roaming\AcEvoFfbTuner\recordings\acevo_session_20260516_000115.mp4
+
+File: acevo_session_20260516_000002.mp4
+  Size: 75.8 MB
+  Created: 2026-05-15 23:00:46 UTC
+  Path: C:\Users\shawn\AppData\Roaming\AcEvoFfbTuner\recordings\acevo_session_20260516_000002.mp4
+
+File: acevo_session_20260515_235920.mp4
+  Size: 56.7 MB
+  Created: 2026-05-15 22:59:53 UTC
+  Path: C:\Users\shawn\AppData\Roaming\AcEvoFfbTuner\recordings\acevo_session_20260515_235920.mp4
+
+File: acevo_session_20260515_235821.mp4
+  Size: 34.4 MB
+  Created: 2026-05-15 22:58:42 UTC
+  Path: C:\Users\shawn\AppData\Roaming\AcEvoFfbTuner\recordings\acevo_session_20260515_235821.mp4
+
+File: acevo_session_20260515_235740.mp4
+  Size: 56.9 MB
+  Created: 2026-05-15 22:58:13 UTC
+  Path: C:\Users\shawn\AppData\Roaming\AcEvoFfbTuner\recordings\acevo_session_20260515_235740.mp4
+
+File: acevo_session_20260515_235651.mp4
+  Size: 80.7 MB
+  Created: 2026-05-15 22:57:39 UTC
+  Path: C:\Users\shawn\AppData\Roaming\AcEvoFfbTuner\recordings\acevo_session_20260515_235651.mp4
+
+File: acevo_session_20260515_235539.mp4
+  Size: 119.1 MB
+  Created: 2026-05-15 22:56:47 UTC
+  Path: C:\Users\shawn\AppData\Roaming\AcEvoFfbTuner\recordings\acevo_session_20260515_235539.mp4
+
+File: acevo_session_20260515_235126.mp4
+  Size: 10.5 MB
+  Created: 2026-05-15 22:51:32 UTC
+  Path: C:\Users\shawn\AppData\Roaming\AcEvoFfbTuner\recordings\acevo_session_20260515_235126.mp4
+

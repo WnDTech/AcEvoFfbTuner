@@ -1,0 +1,261 @@
+{
+  "version": 18,
+  "name": "Default - Fanatec ClubSport DD",
+  "carMatch": "",
+  "mixMode": "Replace",
+  "outputGain": 0.23,
+  "forceSensitivity": 1000,
+  "forceScale": 1,
+  "softClipThreshold": 0.8,
+  "compressionPower": 1,
+  "signCorrectionEnabled": true,
+  "forceInvertEnabled": false,
+  "wheelMaxTorqueNm": 15,
+  "mzFront": {
+    "gain": 0.42,
+    "enabled": true
+  },
+  "fxFront": {
+    "gain": 0.15,
+    "enabled": true
+  },
+  "fyFront": {
+    "gain": 0.2,
+    "enabled": true
+  },
+  "mzRear": {
+    "gain": 0,
+    "enabled": false
+  },
+  "fxRear": {
+    "gain": 0,
+    "enabled": false
+  },
+  "fyRear": {
+    "gain": 0,
+    "enabled": false
+  },
+  "finalFf": {
+    "gain": 0,
+    "enabled": false
+  },
+  "wheelLoadWeighting": 0,
+  "fyInverted": true,
+  "mzScale": 30,
+  "fxScale": 4000,
+  "fyScale": 5000,
+  "lutCurve": {
+    "outputValues": [
+      0,
+      0.03125,
+      0.0625,
+      0.09375,
+      0.125,
+      0.15625,
+      0.1875,
+      0.21875,
+      0.25,
+      0.28125,
+      0.3125,
+      0.34375,
+      0.375,
+      0.40625,
+      0.4375,
+      0.46875,
+      0.5,
+      0.53125,
+      0.5625,
+      0.59375,
+      0.625,
+      0.65625,
+      0.6875,
+      0.71875,
+      0.75,
+      0.78125,
+      0.8125,
+      0.84375,
+      0.875,
+      0.90625,
+      0.9375,
+      0.96875,
+      1
+    ]
+  },
+  "steeringLockDegrees": 900,
+  "damping": {
+    "viscousDamping": 0.25,
+    "speedDamping": 0.5,
+    "friction": 0.16,
+    "inertia": 0.12,
+    "dampingSpeedReference": 200
+  },
+  "slip": {
+    "slipRatioGain": 0.1,
+    "slipAngleGain": 0.2,
+    "slipThreshold": 0.1,
+    "useFrontOnly": true
+  },
+  "dynamic": {
+    "corneringForce": 0,
+    "accelerationBrakingForce": 0,
+    "roadFeel": 0.4,
+    "carRotationForce": 0
+  },
+  "autoGain": {
+    "enabled": false,
+    "scale": 1
+  },
+  "vibrations": {
+    "curbGain": 1,
+    "slipGain": 0.8,
+    "roadGain": 0,
+    "absGain": 1,
+    "masterGain": 0.35,
+    "suspensionRoadGain": 1.5,
+    "scrubGain": 0.5,
+    "rearSlipGain": 0.6,
+    "absPulseAmplitude": 0.25,
+    "curbSeverityScale": 10,
+    "scrubForceScale": 0.0005,
+    "rearSlipForceScale": 0.0005
+  },
+  "advanced": {
+    "maxSlewRate": 0.85,
+    "centerSuppressionDegrees": 1.5,
+    "centerKneePower": 1,
+    "hysteresisThreshold": 0,
+    "noiseFloor": 0.003,
+    "hysteresisWatchdogFrames": 0,
+    "centerBlendDegrees": 1,
+    "steerVelocityReference": 10,
+    "velocityDeadzone": 0.05,
+    "lowSpeedSmoothKmh": 15
+  },
+  "lfe": {
+    "enabled": false,
+    "gain": 0.5,
+    "frequency": 10,
+    "suspensionDrive": 0.6,
+    "speedScaling": 0.5,
+    "rpmDrive": 0.3
+  },
+  "equalizer": {
+    "enabled": false,
+    "bandGains": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "tyreFlex": {
+    "flexGain": 0.12,
+    "carcassStiffness": 1,
+    "flexSmoothing": 0.7,
+    "contactPatchWeight": 0.5,
+    "loadFlexGain": 0.3,
+    "contactPatchSensitivity": 1
+  },
+  "ledEffects": {
+    "brightness": 100,
+    "flashRateTicks": 16,
+    "absFlashEnabled": true,
+    "flagIndicatorsEnabled": true,
+    "shiftLimiterFlashEnabled": true,
+    "colorScheme": "TrafficLight",
+    "rpmPreset": "Default",
+    "rpmThresholds": [
+      50,
+      60,
+      70,
+      80,
+      85,
+      90,
+      93,
+      96,
+      98,
+      100
+    ],
+    "customColors": [
+      "#FF00CE00",
+      "#FF00CE00",
+      "#FF00CE00",
+      "#FFFFCC00",
+      "#FFFFCC00",
+      "#FFFFCC00",
+      "#FFFF6600",
+      "#FFFF6600",
+      "#FFFF0606",
+      "#FFFF0606"
+    ]
+  },
+  "hf8": {
+    "enabled": false,
+    "masterGain": 0.7,
+    "outputRateHz": 75,
+    "zoneGains": [
+      0.8,
+      0.8,
+      0.8,
+      0.8,
+      0.6,
+      0.6,
+      0.5,
+      0.7
+    ],
+    "zoneEnabled": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "gripGuard": {
+    "enabled": true,
+    "peakSlipAngle": 0.1,
+    "attenuationStrength": 1,
+    "mechanicalTrailGain": 0.015,
+    "minSpeedKmh": 10
+  },
+  "staticFriction": {
+    "gain": 1,
+    "maxElasticStretch": 0.01,
+    "springStiffness": 15,
+    "kineticFrictionBase": 0.2,
+    "engineOffDamping": 0.15,
+    "engineOnDamping": 0.02,
+    "engineOffScale": 1,
+    "engineOnScale": 0.3,
+    "activeDecay": 0.92,
+    "returnDecay": 0.65,
+    "outputSmoothAlpha": 0.35
+  },
+  "crash": {
+    "enabled": true,
+    "impactGain": 0.6,
+    "safetyClamp": 0.5,
+    "decayRate": 0.88,
+    "triggerThresholdG": 3,
+    "minSpeedKmh": 5,
+    "safetyOverride": false
+  },
+  "tyreCondition": {
+    "enabled": true,
+    "blowoutVibrationGain": 0.4,
+    "pressureLossGain": 0.2,
+    "damageAsymmetryGain": 0.15,
+    "blowoutPressureThreshold": 0.4,
+    "maxBlowoutAmplitude": 0.25
+  },
+  "lastTelemetrySnapshot": null
+}
