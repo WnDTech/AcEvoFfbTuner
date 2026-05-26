@@ -625,8 +625,9 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
 
         for (int i = 0; i < 4; i++)
         {
-            physics.Fy[i] = _smLatG * load[i] * 0.5f;
-            physics.Fx[i] = _smLongG * load[i] * 0.2f;
+            // Clamp synthesized lateral/longitudinal forces to avoid extreme spikes
+            physics.Fy[i] = Math.Clamp(_smLatG * load[i] * 0.5f, -600f, 600f);
+            physics.Fx[i] = Math.Clamp(_smLongG * load[i] * 0.2f, -600f, 600f);
         }
 
         // ── Off-track / dirty tyres ────────────────────────────────
