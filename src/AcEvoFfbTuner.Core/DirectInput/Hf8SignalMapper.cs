@@ -115,6 +115,7 @@ public sealed class Hf8SignalMapper
 
     private float[] _prevSuspTravel = new float[4];
     private float[] _suspDelta = new float[4];
+    private float[] _prevCombinedSlip = new float[4];
 
     public float[] Map(
         FfbRawData raw,
@@ -145,13 +146,13 @@ public sealed class Hf8SignalMapper
         float slipVib = raw.SlipVibrations;
 
         float flSusp = Math.Clamp(suspDelta[0] * 80f, 0f, 0.6f);
-        float flSlip = Math.Clamp(wheelSlip[0] * 5f, 0f, 0.4f);
+        float flSlip = Math.Clamp(wheelSlip[0] * 2f, 0f, 0.4f);
         float frSusp = Math.Clamp(suspDelta[1] * 80f, 0f, 0.6f);
-        float frSlip = Math.Clamp(wheelSlip[1] * 5f, 0f, 0.4f);
+        float frSlip = Math.Clamp(wheelSlip[1] * 2f, 0f, 0.4f);
         float rlSusp = Math.Clamp(suspDelta[2] * 80f, 0f, 0.6f);
-        float rlSlip = Math.Clamp(wheelSlip[2] * 5f, 0f, 0.4f);
+        float rlSlip = Math.Clamp(wheelSlip[2] * 2f, 0f, 0.4f);
         float rrSusp = Math.Clamp(suspDelta[3] * 80f, 0f, 0.6f);
-        float rrSlip = Math.Clamp(wheelSlip[3] * 5f, 0f, 0.4f);
+        float rrSlip = Math.Clamp(wheelSlip[3] * 2f, 0f, 0.4f);
 
         float rpmVib = rpmNorm * 0.2f;
         float rpmLimiter = raw.IsRpmLimiterOn ? 0.6f : 0f;
@@ -198,8 +199,10 @@ public sealed class Hf8SignalMapper
         ];
         float[] slipSignals =
         [
-            frSlip, flSlip, rrSlip, rlSlip,
-            slipVib * 0.2f + absActive * 0.3f, slipVib * 0.2f + absActive * 0.3f, scrubMod, scrubMod
+            scrubMod * 0.5f + rearSlipMod * 0.5f, scrubMod * 0.5f + rearSlipMod * 0.5f,
+            scrubMod * 0.5f + rearSlipMod * 0.5f, scrubMod * 0.5f + rearSlipMod * 0.5f,
+            rearSlipMod, rearSlipMod,
+            scrubMod, scrubMod
         ];
         float[] kerbSignals =
         [
@@ -249,14 +252,18 @@ public sealed class Hf8SignalMapper
         return _suspDelta;
     }
 
-    private static float[] ComputeWheelSlip(FfbRawData raw)
+    private float[] ComputeWheelSlip(FfbRawData raw)
     {
         var slip = new float[4];
         for (int i = 0; i < 4; i++)
         {
             float sr = MathF.Abs(raw.SlipRatio[i]);
             float sa = MathF.Abs(raw.SlipAngle[i]);
-            slip[i] = Math.Clamp(sr + sa * 0.5f, 0f, 1f);
+            float combined = sr + sa * 0.5f;
+            float delta = MathF.Abs(combined - _prevCombinedSlip[i]);
+            _prevCombinedSlip[i] = combined;
+            // Only activate on sharp transients (>3% change per frame).
+            slip[i] = delta > 0.03f ? Math.Clamp(delta * 5f, 0f, 0.4f) : 0f;
         }
         return slip;
     }
@@ -265,5 +272,8 @@ public sealed class Hf8SignalMapper
     {
         Array.Clear(_prevSuspTravel);
         Array.Clear(_suspDelta);
+        Array.Clear(_prevCombinedSlip);
     }
 }
+
+

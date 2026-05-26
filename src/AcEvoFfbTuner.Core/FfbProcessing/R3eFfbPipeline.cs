@@ -74,4 +74,18 @@ public sealed class R3eFfbPipeline : FfbPipeline
         else if (coreOutput < 0f && detailForce > 0f)
             detailForce = Math.Min(detailForce, -coreOutput * 0.5f);
     }
+
+    protected override float ApplyCenteringOverride(float coreOutput, FfbRawData raw)
+    {
+        // V-shape quadratic centre suppression for R3E.
+        // Smooth force fade near steering centre — no notchiness.
+        // Only applies when a non-zero suppression zone is configured.
+        if (CenterSuppressionDegrees > 0.001f)
+        {
+            float absSteerDeg = Math.Abs(raw.SteerAngle) * (180f / (float)Math.PI);
+            float normalized = Math.Clamp(absSteerDeg / CenterSuppressionDegrees, 0f, 1f);
+            return coreOutput * normalized * normalized;
+        }
+        return coreOutput;
+    }
 }

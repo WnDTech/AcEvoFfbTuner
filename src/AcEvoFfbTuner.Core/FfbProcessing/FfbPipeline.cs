@@ -128,6 +128,9 @@ public class FfbPipeline
         // Output gain
         float coreOutput = coreDamped * OutputGain;
 
+        // Game-specific centering override (e.g. R3E V-shape center suppression)
+        coreOutput = ApplyCenteringOverride(coreOutput, raw);
+
         // Grip guard: prevents dangerous pull-away forces when front tyres lose grip.
         // Caps forces that pull wheel toward steer direction at post-peak slip angles.
         // Adds mechanical trail centering (like real caster) that's always active.
@@ -349,6 +352,16 @@ public class FfbPipeline
     /// </summary>
     protected virtual void OnDetailForceProcessed(float coreOutput, ref float detailForce)
     {
+    }
+
+    /// <summary>
+    /// Called after output gain but before GripGuard. Override to apply game-specific
+    /// centering force shaping. Base implementation returns coreOutput unchanged.
+    /// R3E override applies V-shape quadratic center suppression.
+    /// </summary>
+    protected virtual float ApplyCenteringOverride(float coreOutput, FfbRawData raw)
+    {
+        return coreOutput;
     }
 
     public float ApplyGearShiftFilter(float currentForce, float deltaTime, int currentGear)

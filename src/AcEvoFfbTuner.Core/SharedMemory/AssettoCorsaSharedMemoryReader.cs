@@ -257,8 +257,7 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
             // Assume already normalized -1..+1
             steerNorm = rawSteer;
         }
-        // Invert steer sign to match device orientation
-        p.SteerAngle = Math.Clamp(-steerNorm, -1f, 1f);
+        p.SteerAngle = Math.Clamp(steerNorm, -1f, 1f);
         p.SpeedKmh = ac.SpeedKmh;
         p.Velocity = CopyArr(ac.Velocity, 3);
         p.AccG = CopyArr(ac.AccG, 3);
@@ -648,49 +647,29 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
         // Full force at 20 m/s (~72 km/h). Gradual ramp from 0.2 at very low speed.
         float speedFactor = Math.Clamp(speedMs / 20f, 0.2f, 1f);
 
-        // ── Steer-based centering (baseline road feel) ─────────────
-        // Real GT car centering: ~10-15 Nm at 50 km/h, 25% steer.
-        // Formula: steer^0.65 * speedFactor * multiplier
-        // 0.25^0.65 * 0.7 * 55 ≈ 10 Nm target.
+        // ── Steer-based centering (dead simple proportional) ─────────
+        // MOZA convention: positive force = LEFT, negative = RIGHT
+        // Mz = +steer * k: steerNeg→MzNeg→RIGHT, steerPos→MzPos→LEFT
         float absSteer = Math.Abs(steerRad);
-        float steerSign = steerRad > 0f ? 1f : -1f;
-        // Reduce centering strength to avoid hard pull; add small deadzone
-        float rawCentering = 0f;
-        if (absSteer > 0.02f)
-            rawCentering = -MathF.Pow(absSteer, 0.65f) * speedFactor * 12f * steerSign;
-
-        // EMA smoothing on centering to kill noise from AC1's quantized steer
-        _smCenteringMz += (rawCentering - _smCenteringMz) * 0.08f;
-        float centeringMz = _smCenteringMz;
-
-        // ── Pneumatic trail SAT (cornering feel) ───────────────────
-        // Real SAT: ~5-50 Nm depending on lateral G and load.
-        // Formula: latG * load * trail * multiplier
-        // 0.3 * 4000 * 0.019 * 0.3 ≈ 7 Nm target.
-        float satFront = -_smLatG * load[0] * pneuTrailF * 0.3f * speedFactor * dirtFactor;
-        float satRear = -_smLatG * load[2] * pneuTrailR * 0.15f * speedFactor * dirtFactor;
+        float centeringForce;
+        if (absSteer < 0.15f)
+            centeringForce = 0f;
+        else
+            centeringForce = steerRad * speedFactor * 3f;
 
         if (physics.Mz == null || physics.Mz.Length < 4)
             physics.Mz = new float[4];
-        physics.Mz[0] = centeringMz * 0.55f + satFront;
-        physics.Mz[1] = centeringMz * 0.55f + satFront;
-        physics.Mz[2] = centeringMz * 0.25f + satRear;
-        physics.Mz[3] = centeringMz * 0.25f + satRear;
+        physics.Mz[0] = centeringForce;
+        physics.Mz[1] = centeringForce;
+        physics.Mz[2] = centeringForce * 0.45f;
+        physics.Mz[3] = centeringForce * 0.45f;
 
-        // ── Rate limiter: prevent force spikes during gear changes ─
-        float rawMz = physics.Mz[0];
-        float maxDelta = Math.Max(2f, Math.Abs(_lastOutputMz) * 0.3f);
-        float mzDelta = rawMz - _lastOutputMz;
-        float clampedMz;
-        if (Math.Abs(mzDelta) > maxDelta)
-            clampedMz = _lastOutputMz + Math.Sign(mzDelta) * maxDelta;
-        else
-            clampedMz = rawMz;
-        _lastOutputMz = clampedMz;
-        physics.Mz[0] = clampedMz;
-        physics.Mz[1] = clampedMz;
-        physics.Mz[2] = clampedMz * 0.45f;
-        physics.Mz[3] = clampedMz * 0.45f;
+        // Zero Fx/Fy out completely during debug
+        for (int i = 0; i < 4; i++)
+        {
+            physics.Fx[i] = 0f;
+            physics.Fy[i] = 0f;
+        }
 
         physics.FinalFf = physics.Mz[0];
     }

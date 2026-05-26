@@ -22,6 +22,14 @@ Our goal is to **fix the code** so we can establish a reliable baseline profile 
 - Profile changes for one game must not alter the other game's behavior — check default values before modifying `FfbProfile.cs` or shared configs.
 - When editing `FfbProfile.cs`, always confirm and state whether the change is for RaceRoom or EVO. R3E-specific pipeline properties must be guarded behind `if (pipeline is R3eFfbPipeline r3e)` casts.
 
+### Haptics Pipeline Isolation — CRITICAL
+- **Each game's haptics (vibration) pipeline must be completely separate.** R3E haptic data comes from `RaceroomSharedMemoryReader` (synthesized from shared memory). EVO haptic data comes from `AssettoCorsaSharedMemoryReader` (real game telemetry). No cross-contamination.
+- **R3E haptics** are synthesized in `RaceroomSharedMemoryReader`: `KerbVibration`, `SlipVibrations`, `RoadVibrations`, `AbsVibrations`. These feed the shared `VibrationMixer` with game-specific data.
+- **EVO haptics** come from real game physics via `AssettoCorsaSharedMemoryReader`. The shared `VibrationMixer` processes game-specific data — not shared logic.
+- **Profile vibration gains** (`vibrations.masterGain`, `curbGain`, etc.) apply to both games. R3E-specific vibration handling must be in `R3eFfbPipeline.cs` via `OnDetailForceProcessed` override or a new virtual hook in the base class.
+- **All R3E-specific centering/force shaping** must be in `R3eFfbPipeline.cs` via virtual hooks (`ApplyCenteringOverride`, `OnDetailForceProcessed`). EVO must not be affected.
+- **Virtual hooks added to `FfbPipeline`** must default to no-op in the base class. Zero-impact for EVO.
+
 ### Key Files
 - `src/AcEvoFfbTuner.Core/FfbProcessing/FfbPipeline.cs` — Main FFB pipeline (center suppression, slew, hysteresis)
 - `src/AcEvoFfbTuner.Core/FfbProcessing/FfbChannelMixer.cs` — Channel mixing, EMAs, spike clamp

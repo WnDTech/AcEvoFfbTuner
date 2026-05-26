@@ -35,13 +35,7 @@ public sealed class AcFfbPipeline : FfbPipeline
 
     public override FfbProcessedData Process(FfbRawData raw)
     {
-        float brakeBoost = 1f;
-        if (raw.BrakeInput > BrakeBoostThreshold)
-        {
-            float brakeIntensity = Math.Clamp((raw.BrakeInput - BrakeBoostThreshold) / (1f - BrakeBoostThreshold), 0f, 1f);
-            brakeBoost = 1f + BrakeBoostGain * brakeIntensity;
-        }
-
+        // ── Save and apply AC-specific mixer scales ──────────────
         float savedMzScale = ChannelMixer.MzScale;
         float savedMzFrontGain = ChannelMixer.MzFrontGain;
         float savedFxScale = ChannelMixer.FxScale;
@@ -50,12 +44,25 @@ public sealed class AcFfbPipeline : FfbPipeline
         float savedFyFrontGain = ChannelMixer.FyFrontGain;
         float savedFriction = Damping.FrictionLevel;
 
-        ChannelMixer.MzScale = 2f;
-        ChannelMixer.MzFrontGain = 0.4f;
-        ChannelMixer.FxScale = 1500f;
-        ChannelMixer.FxFrontGain = 0.15f;
-        ChannelMixer.FyScale = 1500f;
-        ChannelMixer.FyFrontGain = 0.4f;
+        // AC base scales (tuned for synthesized forces vs EVO native forces)
+        const float acBaseMzScale = 2f;
+        const float acBaseMzgain = 0.4f;
+        const float acBaseFxScale = 1500f;
+        const float acBaseFxgain = 0.15f;
+        const float acBaseFyScale = 1500f;
+
+        // Apply user's slider as relative factor over AC base (EVO default MzScale=30)
+        float userMzFactor = Math.Clamp(savedMzScale / 30f, 0.1f, 5f);
+        float userFxFactor = Math.Clamp(savedFxScale / 500f, 0.1f, 5f);
+        float userFyFactor = Math.Clamp(savedFyScale / 5000f, 0.1f, 5f);
+
+        ChannelMixer.MzScale = acBaseMzScale * userMzFactor;
+        ChannelMixer.MzFrontGain = acBaseMzgain * userMzFactor;
+        ChannelMixer.FxScale = acBaseFxScale * userFxFactor;
+        ChannelMixer.FxFrontGain = acBaseFxgain * userFxFactor;
+        ChannelMixer.FyScale = acBaseFyScale * userFyFactor;
+        ChannelMixer.FyFrontGain = 0.0f;
+        ChannelMixer.FyFrontEnabled = false;
         Damping.FrictionLevel = 0.02f;
 
         float mixedForce = ChannelMixer.Mix(raw, out var channels);
@@ -82,8 +89,6 @@ public sealed class AcFfbPipeline : FfbPipeline
         float coreOutput = coreDamped * OutputGain;
         coreOutput = _prevCoreOutput * 0.8f + coreOutput * 0.2f;
         _prevCoreOutput = coreOutput;
-
-        coreOutput *= brakeBoost;
 
         if (raw.SpeedKmh < 0.5f)
             coreOutput = 0f;
