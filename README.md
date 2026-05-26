@@ -6,9 +6,11 @@
 
 **Website:** [ffbtuner.wndtech.tips](https://ffbtuner.wndtech.tips/)
 
-A Windows desktop application that intercepts, processes, and enhances Force Feedback signals from **Assetto Corsa EVO** before sending them to your DirectInput-compatible steering wheel.
+A Windows desktop application that intercepts, processes, and enhances Force Feedback signals from **Assetto Corsa EVO**, **RaceRoom Racing Experience**, and **Assetto Corsa** before sending them to your DirectInput-compatible steering wheel.
 
-Instead of relying on the game's native FFB output, this tool reads raw physics telemetry from AC EVO's shared memory — tire forces, slip data, suspension travel, G-forces, vibrations — runs it through a fully configurable 15-stage DSP pipeline, and sends the processed result directly to the wheel via a 1 kHz interpolation thread for buttery-smooth force output.
+Instead of relying on the game's native FFB output, this tool reads raw physics telemetry from each game's shared memory — tire forces, slip data, suspension travel, G-forces, vibrations — runs it through a fully configurable DSP pipeline with game-specific overrides, and sends the processed result directly to the wheel via a 1 kHz interpolation thread for buttery-smooth force output.
+
+Each game has its own isolated FFB pipeline, shared memory reader, and haptic synthesis path, so tuning one game never affects another.
 
 ## Download & Install
 
@@ -19,6 +21,16 @@ The app checks for updates automatically on startup and will notify you when a n
 **Requirements:** Windows 10+, .NET 8.0 runtime (bundled in the self-contained installer), a DirectInput-compatible FFB wheel.
 
 ## Features
+
+### Multi-Game Support
+
+Select your game from a dropdown — the app automatically switches to the correct shared memory reader, FFB pipeline, and haptic synthesis:
+
+| Game | Reader | Pipeline | Shared Memory |
+|------|--------|----------|---------------|
+| **Assetto Corsa EVO** | `SharedMemoryReader` | `FfbPipeline` (base) | `LocalSurface` memory-mapped file |
+| **RaceRoom Racing Experience** | `RaceroomSharedMemoryReader` | `R3eFfbPipeline` | `$R3E` memory-mapped file |
+| **Assetto Corsa** | `AssettoCorsaSharedMemoryReader` | `AcFfbPipeline` | AC shared memory |
 
 ### Multi-Stage FFB Processing Pipeline
 
@@ -37,6 +49,22 @@ The app checks for updates automatically on startup and will notify you when a n
 13. **10-Band Equalizer** — Parametric biquad EQ shaping force signal frequency content (see below)
 14. **Vibration Mixer** — Curb, slip, road surface, ABS vibration, tire scrub texture (30–50 Hz at grip limit), rear slip warning (12–25 Hz oversteer rumble), ABS force modulation
 15. **LFE/Rumble Generator** — Low-frequency effects driven by suspension travel and RPM for engine rumble and bump impacts
+
+### Game-Specific Pipeline Overrides
+
+Each game's pipeline extends the base with game-specific force shaping:
+
+**RaceRoom (`R3eFfbPipeline`):**
+- **Brake Weight-Transfer Boost** — Scales Mz proportionally when braking, simulating increased front tyre grip from weight transfer
+- **DC Blocker** — Removes turn-correlated bias from suspension EMAs that would push the wheel off-center during cornering
+- **Dynamic Suppression** — Prevents the detail channel from reversing the core centering direction at small steer angles
+- **V-Shape Centre Suppression** — Quadratic force fade near steering centre for smooth, natural self-centering
+
+**Assetto Corsa (`AcFfbPipeline`):**
+- **AC-Specific Mixer Scales** — Overrides channel mixer gains (Mz, Fx, Fy) tuned for AC's synthesized force data
+- **Gear Shift Filter** — Mutes force spikes during gear changes
+- **Brake Boost** — Configurable weight-transfer boost for braking zones
+- **Simplified Pipeline** — Skips detail path (dynamic effects, tyre flex, EQ) for AC's lower-fidelity telemetry
 
 ### 10-Band FFB Equalizer
 
@@ -83,6 +111,22 @@ All providers inherit from `IFFBProvider` and are auto-selected by `WheelbaseFac
 
 **Status bar** shows active provider capabilities as live feature pills (e.g., *FullForce Active*, *Rim Rumble*, *Gear Display*, *Torque Capped 8Nm*, *Maurice*). A **Haptic Test** button sends a 500ms 50Hz sine wave through both torque and vibration paths to verify the SDK link without needing to be in-car.
 
+### HF8 Haptic Pad Integration
+
+Direct support for the **ButtKicker HF8** haptic seat pad via the ForceFeel SDK:
+
+| Feature | Details |
+|---------|---------|
+| **8 Motor Zones** | Seat Front L/R, Seat Rear L/R, Back Lower L/R, Back Upper L/R |
+| **5 Telemetry Sources** | Suspension, Tire Slip, Kerb, Lateral G, Engine RPM |
+| **Per-Zone Source Weights** | Independent weight sliders for each source on each motor zone |
+| **Per-Zone Gain & Enable** | Individual intensity and on/off control per zone |
+| **Master Gain** | Global volume control for all zones |
+| **Output Rate** | Configurable 15–120 Hz (75 Hz for HF8 Pro, 15 Hz for original HF8) |
+| **Motor Test** | Popup to test individual motors directly |
+
+Source weights are mapped intelligently: seat zones emphasize suspension and slip feedback, back zones emphasize engine RPM and lateral G for maximum immersion.
+
 ### Auto Setup & Wheel Detection
 
 - **Auto Setup** generates a complete baseline profile tuned for the detected wheel type and torque
@@ -108,6 +152,8 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 - Records track layout from car position data during a lap
 - Auto-detects corners and sectors with labels
 - Real-time car position and heading indicator on 2D track map
+- **Satellite Map View** — Mapsui-based ESRI tile overlay with auto-alignment, calibration mode (drag to shift, scroll to rotate), and zoom-to-cursor
+- Hardcoded GPS coordinates for 25+ known tracks (Nurburgring, Spa, Monza, Suzuka, etc.)
 - Force heatmap and diagnostic heatmap overlay (snap events, oscillations, clipping, anomalies)
 - Popout overlay window for second-screen use during track creation
 - Generates actionable tuning recommendations with one-click apply
@@ -130,6 +176,8 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 
 - JSON-based profiles for all FFB, EQ, LFE, tyre flex, vibration, LED, and advanced settings
 - Save, rename, delete, export, and import profiles
+- **Sidebar browser** with track/car grouping for quick profile selection
+- Optional auto-upgrade of profiles when the app updates
 - Baseline profiles included for popular wheelbases (7+ pre-configured)
 
 ### Testing Guide
@@ -145,6 +193,7 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 
 ### Additional Features
 
+- **Multi-Game Selection** — Switch between AC EVO, RaceRoom, and Assetto Corsa from a dropdown; pipeline and reader auto-switch
 - **What's New Dialog** — Versioned changelog shown on startup after updates
 - **1 kHz Output Interpolation** — Dedicated thread interpolating between 333 Hz physics frames for smooth force transitions
 - **Auto-Update** — Downloads and installs new releases automatically
@@ -152,6 +201,7 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 - **Game FFB Detection** — Warns if in-game FFB is not set to 0
 - **Panic Stop** — Immediately zeroes all FFB output and disconnects from the device
 - **Custom Slider Controls** — Editable values, logarithmic scale, undo, reset, context menu, section color theming
+- **Collapsible Sidebar** — Icon-only mode for more screen real estate, wider 200px default layout
 
 ## Tech Stack
 
@@ -164,9 +214,11 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 | Audio | NAudio |
 | FFB Device | SharpDX.DirectInput |
 | Telemetry | Windows Memory-Mapped Files |
+| Satellite Maps | Mapsui.Wpf (ESRI tile overlay) |
 | Video Capture | FFmpeg (D3D11 ddagrab / gdigrab) |
 | Moza SDK | Native DLL interop |
 | Fanatec SDK | EndorFanatecSdk64 P/Invoke (120+ exports) |
+| HF8 Haptics | ForceFeel SDK (reflection-based) |
 | Installer | Inno Setup |
 | CI/CD | GitHub Actions |
 | Testing | xUnit |
@@ -176,16 +228,16 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 ```
 src/AcEvoFfbTuner.Core/            Core library (no UI dependencies)
   DirectInput/                      FFB device management, 1 kHz interpolation, multi-vendor LED control
-  FfbProcessing/                    15-stage FFB DSP pipeline, EQ, LFE, tyre flex, live auto-tuner
+  FfbProcessing/                    FFB DSP pipeline (base + R3E/AC subclasses), EQ, LFE, tyre flex, live auto-tuner
   FfbProviders/                     Hardware Abstraction Layer — vendor SDK providers (Fanatec, Simucube, Logitech, Asetek, VNM) + GenericDirectInput + WheelbaseFactory
   Profiles/                         Profile model, CRUD, auto-detection, wheelbase auto-configurator
-  SharedMemory/                     AC EVO telemetry reader (~333Hz) & struct definitions
-  TrackMapping/                     Track map, heatmap, diagnostics, recommendations
+  SharedMemory/                     Shared memory readers (AC EVO, RaceRoom, Assetto Corsa) + struct definitions
+  TrackMapping/                     Track map, heatmap, diagnostics, recommendations, satellite tile service
 src/AcEvoFfbTuner/                  WPF application (UI layer)
-  Controls/                         Custom LabeledSlider with edit/undo/context menu
+  Controls/                         Custom LabeledSlider, MapsuiMapControl (satellite view)
   Services/                         Auto-update, changelog, session recording, replay visualizer, diagnostics
   ViewModels/                       MVVM view models
-  Views/                            Windows, tabs, overlays (10 tabs, splash, what's new, popouts)
+  Views/                            Windows, tabs, overlays (10+ tabs, splash, what's new, popouts, HF8 motor test)
 src/AcEvoFfbTuner.Tests/            Unit tests
 tools/                              Utility projects (MmfChecker, MozaLedTest)
 installer/                          Inno Setup installer script
@@ -209,23 +261,34 @@ dotnet test src/AcEvoFfbTuner.Tests
 ## Data Flow
 
 ```
-AC EVO Shared Memory
-  → SharedMemoryReader (physics @ ~333Hz)
-    → FfbPipeline.Process():
+Game Shared Memory (selected via dropdown)
+  → SharedMemoryReader (game-specific: AC EVO ~333Hz / R3E / AC)
+    → FfbPipeline.Process() (game-specific subclass):
+       EVO:  FfbPipeline (base class)
+       R3E:  R3eFfbPipeline (brake boost, DC blocker, V-shape centre suppression)
+       AC:   AcFfbPipeline (AC mixer scales, simplified detail path)
+
+       Core Path (Zero-Latency):
        1. Auto-Gain (car FFB multiplier compensation)
        2. Channel Mixer (Mz/Fx/Fy blend, front + rear, wheel-load weighting)
        3. Normalize + compress
        4. LUT response curve
-       5. Slip enhancement
-       6. Damping & friction (Coulomb model, angular acceleration inertia)
-       7. Dynamic effects (suspension, G-force, yaw rate)
-       8. Tyre flex (carcass deformation + contact patch dynamics)
-       9. Output clipping
-      10. Physics-preserving center fade + low-speed fade
-      11. Slew rate limiter (speed-scaled)
-      12. 10-Band Equalizer (parametric biquad filters)
-      13. Vibration Mixer (curb/slip/road/ABS + tire scrub + rear slip warning)
-      14. LFE/Rumble (suspension + RPM driven)
+       5. Damping & friction (Coulomb model, angular acceleration inertia)
+       6. Centre fade + low-speed fade
+       7. GripGuard / CrashDetector / TyreCondition / WetWeather
+
+       Detail Path (Filtered):
+       8. Slip enhancement
+       9. Dynamic effects (suspension, G-force, yaw rate)
+      10. Tyre flex (carcass deformation + contact patch dynamics)
+      11. Vibration Mixer (curb/slip/road/ABS + tire scrub + rear slip warning)
+      12. LFE/Rumble (suspension + RPM driven)
+      13. 10-Band Equalizer (parametric biquad filters)
+      14. Slew rate limiter (speed-scaled)
+
+       Final Mix:
+      15. Gear shift filter + output clipper + noise floor gate
+
     → IFFBProvider (Hardware Abstraction Layer):
         WheelbaseFactory auto-detects vendor → selects provider:
         ├─ FanatecProvider → EndorFanatecSdk64 (FullForce, LEDs, rumble, torque cap)
@@ -236,6 +299,7 @@ AC EVO Shared Memory
         → DirectInput ConstantForce → Wheel
         → DirectInput Periodic vibration → Wheel (if supported)
       → WheelLedController → LED shift lights / ABS flash / flags
+    → Hf8SignalMapper → HF8 Haptic Pad (8-zone seat vibration)
 ```
 
 ## License
