@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -1062,6 +1063,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<string> PanicButtonNames { get; } = new();
     public ObservableCollection<string> ActiveFeatures { get; } = new();
     public ObservableCollection<string> SystemLogEntries { get; } = new();
+    public ObservableCollection<string> RecentSystemLogEntries { get; } = new();
+
+    private static readonly string SystemLogFilePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "AcEvoFfbTuner", "system_log.json");
 
     [ObservableProperty]
     private bool _isHapticTestRunning;
@@ -1466,6 +1472,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             LoadProfileValues(_profileManager.ActiveProfile);
             SelectedProfile = Profiles.FirstOrDefault(p => p.Name == _profileManager.ActiveProfile.Name);
         }
+
+        LoadSystemLog();
 
         _ = CheckForUpdatesAsync();
         _ = EnsureFfmpegAsync();
@@ -2250,6 +2258,45 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         SystemLogEntries.Add(formatted);
         while (SystemLogEntries.Count > 500)
             SystemLogEntries.RemoveAt(0);
+
+        RecentSystemLogEntries.Clear();
+        if (SystemLogEntries.Count > 0)
+            RecentSystemLogEntries.Add(SystemLogEntries[^1]);
+
+        SaveSystemLog();
+    }
+
+    private void SaveSystemLog()
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(SystemLogFilePath)!;
+            Directory.CreateDirectory(dir);
+            var json = JsonSerializer.Serialize(SystemLogEntries.ToList());
+            File.WriteAllText(SystemLogFilePath, json);
+        }
+        catch { }
+    }
+
+    private void LoadSystemLog()
+    {
+        try
+        {
+            if (!File.Exists(SystemLogFilePath)) return;
+            var json = File.ReadAllText(SystemLogFilePath);
+            var entries = JsonSerializer.Deserialize<List<string>>(json);
+            if (entries == null) return;
+            SystemLogEntries.Clear();
+            foreach (var e in entries)
+                SystemLogEntries.Add(e);
+
+            RecentSystemLogEntries.Clear();
+            if (SystemLogEntries.Count > 0)
+            {
+                RecentSystemLogEntries.Add(SystemLogEntries[0]);
+            }
+        }
+        catch { }
     }
 
     private void UpdateSignalMonitor(float lowFreqValue, float highFreqValue)

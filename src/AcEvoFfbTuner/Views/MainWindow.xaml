@@ -557,7 +557,7 @@
                 <TextBlock Text="SYS LOG" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
 
                 <!-- System Log Entries -->
-                <ItemsControl Grid.Column="1" ItemsSource="{Binding SystemLogEntries}" VerticalAlignment="Center" Margin="0,0,16,0">
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding RecentSystemLogEntries}" VerticalAlignment="Center" Margin="0,0,16,0">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel Orientation="Horizontal" />
