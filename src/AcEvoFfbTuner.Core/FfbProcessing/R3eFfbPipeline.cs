@@ -82,7 +82,11 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // Only applies when a non-zero suppression zone is configured.
         if (CenterSuppressionDegrees > 0.001f)
         {
-            float absSteerDeg = Math.Abs(raw.SteerAngle) * (180f / (float)Math.PI);
+            // SteerAngle is normalized -1..+1 (not radians).
+            // Convert to actual wheel degrees using the configured steering lock.
+            float lockHalf = Math.Abs(raw.SteerDegrees) * 0.5f;
+            if (lockHalf < 1f) lockHalf = 450f; // fallback to 900° lock
+            float absSteerDeg = Math.Abs(raw.SteerAngle) * lockHalf;
             float normalized = Math.Clamp(absSteerDeg / CenterSuppressionDegrees, 0f, 1f);
             return coreOutput * normalized * normalized;
         }

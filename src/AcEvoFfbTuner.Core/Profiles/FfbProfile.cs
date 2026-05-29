@@ -4,14 +4,26 @@ using AcEvoFfbTuner.Core.FfbProcessing;
 
 namespace AcEvoFfbTuner.Core.Profiles;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ProfileScope
+{
+    General,
+    PerGame,
+    PerCar,
+    PerTrack,
+    PerCarAndTrack
+}
+
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 20;
+    public const int CurrentVersion = 21;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
     public string CarMatch { get; set; } = "";
     public string TrackMatch { get; set; } = "";
+    public string GameMatch { get; set; } = "";
+    public ProfileScope Scope { get; set; } = ProfileScope.General;
 
     public override bool Equals(object? obj)
     {
@@ -908,6 +920,12 @@ public sealed class FfbProfile
         if (Version < 20)
         {
             TrackMatch ??= "";
+        }
+
+        if (Version < 21)
+        {
+            GameMatch ??= "";
+            Scope = ProfileScope.General;
         }
 
         Version = CurrentVersion;

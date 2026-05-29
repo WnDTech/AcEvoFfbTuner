@@ -7,6 +7,8 @@ namespace AcEvoFfbTuner.Views.Pages;
 
 public partial class HomePage : UserControl
 {
+    public event EventHandler? SetupWizardRequested;
+
     private static readonly string[] DashboardWheelUris =
     {
         "pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png",
@@ -30,5 +32,10 @@ public partial class HomePage : UserControl
     private void OnDismissQuickStart(object sender, RoutedEventArgs e)
     {
         QuickStartCard.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnLaunchSetupWizard(object sender, RoutedEventArgs e)
+    {
+        SetupWizardRequested?.Invoke(this, EventArgs.Empty);
     }
 }

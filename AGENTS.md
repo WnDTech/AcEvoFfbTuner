@@ -11,8 +11,15 @@ Our goal is to **fix the code** so we can establish a reliable baseline profile 
 
 ### Build & Verify
 - Build command: `dotnet build AcEvoFfbTuner.slnx -c Release`
-- Always build after code changes
+- **Always run a FULL clean build after any edit:** `dotnet clean AcEvoFfbTuner.slnx -c Release -q 2>&1; dotnet build AcEvoFfbTuner.slnx -c Release`
+- Incremental builds can cache stale XAML/code-behind artifacts, hiding mismatches until runtime. Always clean first.
 - Run lint/typecheck if available
+
+### Local Backups
+- The official local backup directory is: `C:\Users\paul_\OneDrive\Documents\APP\ACEVO - Telemetry FFB\backups\YYYY-MM-DD\src`
+- Always create a dated backup before making sweeping or experimental changes: `Copy-Item -Path src -Destination "backups\$(Get-Date -Format 'yyyy-MM-dd')\src" -Recurse`
+- To restore a backup: `Copy-Item -Path "backups\YYYY-MM-DD\src\*" -Destination src -Recurse -Force`
+- The backup folder is the canonical source of truth for reverting after a screw-up.
 
 ### Pipeline Isolation — CRITICAL
 - **Each game's FFB pipeline must be completely separate.** No game-specific code may touch another game's pipeline in any way. This avoids breaking another game's FFB.

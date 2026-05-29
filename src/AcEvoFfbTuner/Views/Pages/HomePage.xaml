@@ -9,6 +9,87 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24">
         <StackPanel>
 
+            <!-- ═══ SETUP WIZARD — Prominent entry card above everything ═══ -->
+            <Border x:Name="SetupWizardCard"
+                    CornerRadius="10" Padding="28,20"
+                    BorderThickness="2" BorderBrush="#FFF0883E" Margin="0,0,0,16">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FF2D1F00" Offset="0" />
+                        <GradientStop Color="#FF1C2128" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Icon -->
+                    <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+                            Background="#33F0883E" CornerRadius="20" Width="56" Height="56"
+                            VerticalAlignment="Center" Margin="0,0,20,0">
+                        <TextBlock Text="&#x26A1;" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+
+                    <!-- Title + Subtitle -->
+                    <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="NEW? START HERE" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,2" />
+                        <TextBlock Text="Interactive Setup Wizard" FontSize="20" FontWeight="Black" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                        <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" MaxWidth="380">
+                            Guided step-by-step FFB tuning overlay  ·  Works with your game running  ·  Adjust, test, save
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Launch Button -->
+                    <Button Grid.Row="0" Grid.RowSpan="2" Grid.Column="2"
+                            x:Name="LaunchSetupWizardBtn"
+                            Content="&#x26A1;  LAUNCH WIZARD"
+                            FontSize="16" FontWeight="Bold" Cursor="Hand"
+                            Padding="28,14" VerticalAlignment="Center"
+                            ToolTip="Open the guided Setup Wizard overlay to tune your FFB step by step"
+                            Click="OnLaunchSetupWizard">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="#FF1C2128" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                                    SnapsToDevicePixels="True">
+                                                <TextBlock Text="{TemplateBinding Content}"
+                                                           Foreground="{TemplateBinding Foreground}"
+                                                           FontSize="{TemplateBinding FontSize}"
+                                                           FontWeight="{TemplateBinding FontWeight}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#FFE6B800" />
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#FFCC8800" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Border>
+
             <!-- QUICK START — Horizontal stepper, auto-hide when connected -->
             <Border x:Name="QuickStartCard" Background="#FF1C2128" CornerRadius="8" Padding="24,18"
                     BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,0,16">

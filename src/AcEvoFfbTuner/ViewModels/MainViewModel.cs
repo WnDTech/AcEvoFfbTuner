@@ -1886,6 +1886,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         catch { }
     }
 
+    private void SaveProfileMetadata(FfbProfile profile)
+    {
+        profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
+        profile.ForceInvertEnabled = ForceInvertEnabled;
+        profile.SteeringLockDegrees = SteeringLockDegrees;
+        profile.Hf8.OutputRateHz = Hf8OutputRateHz;
+        profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
+    }
+
     [RelayCommand]
     private void SaveAsNewProfile()
     {
@@ -1902,16 +1911,42 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (dialog.ShowDialog() == true)
         {
             var profile = _profileManager.SaveProfileFromPipeline(_pipeline, dialog.Result!);
-            profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
-            profile.ForceInvertEnabled = ForceInvertEnabled;
-            profile.SteeringLockDegrees = SteeringLockDegrees;
-            profile.Hf8.OutputRateHz = Hf8OutputRateHz;
-            profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
+            SaveProfileMetadata(profile);
             _profileManager.SaveProfile(profile);
             _profileManager.SetActiveProfile(profile);
             RefreshProfiles();
             SelectedProfile = profile;
         }
+    }
+
+    public void WizardSaveProfile(string name, ProfileScope scope)
+    {
+        PushValuesToPipeline();
+
+        var profile = _profileManager.SaveProfileFromPipeline(_pipeline, name);
+        profile.Scope = scope;
+        profile.GameMatch = GameDisplayName;
+
+        switch (scope)
+        {
+            case ProfileScope.PerCar:
+                profile.CarMatch = DetectedCarModel ?? "";
+                break;
+            case ProfileScope.PerTrack:
+                profile.TrackMatch = DetectedTrackName ?? "";
+                break;
+            case ProfileScope.PerCarAndTrack:
+                profile.CarMatch = DetectedCarModel ?? "";
+                profile.TrackMatch = DetectedTrackName ?? "";
+                break;
+        }
+
+        SaveProfileMetadata(profile);
+        _profileManager.SaveProfile(profile);
+        _profileManager.SetActiveProfile(profile);
+        RefreshProfiles();
+        SelectedProfile = profile;
+        StatusText = $"Setup profile '{name}' saved and active";
     }
 
     private string GetNextProfileName(string baseName)
@@ -2978,6 +3013,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     lockDeg);
 
                 mw.UpdateCalibrationWizard(raw.SpeedKmh, processed.MainForce, processed.IsClipping);
+                mw.UpdateSetupWizard(raw.SpeedKmh, processed.MainForce, raw.SteerAngle, processed.IsClipping, processed.ChannelMzFront);
             }
 
             WetWeatherCurrentFactor = processed.WetnessFactor;

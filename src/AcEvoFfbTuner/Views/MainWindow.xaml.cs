@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
+using AcEvoFfbTuner.Core.Profiles;
 using AcEvoFfbTuner.Core.TrackMapping;
 using AcEvoFfbTuner.ViewModels;
 using AcEvoFfbTuner.Views.Pages;
@@ -20,6 +21,7 @@ public partial class MainWindow : Window
     private CalibrationWizardOverlay? _calibrationWizard;
     private Hf8MotorTestPopup? _hf8MotorTest;
     private CompactTunerWindow? _compactTuner;
+    private SetupWizardOverlay? _setupWizard;
 
     public MainWindow()
     {
@@ -37,6 +39,7 @@ public partial class MainWindow : Window
         SettingsPageCtrl.TestingGuideRequested += OnTestingGuideRequested;
         SettingsPageCtrl.CalibrationWizardRequested += OnCalibrationWizardRequested;
         DevicesPageCtrl.Hf8MotorTestRequested += OnHf8MotorTestRequested;
+        HomePageCtrl.SetupWizardRequested += OnSetupWizardRequested;
 
         ((MainViewModel)DataContext).PropertyChanged += (s, e) =>
         {
@@ -88,6 +91,7 @@ public partial class MainWindow : Window
         _profilerOverlay?.Close();
         _trackMapPopout?.Close();
         _calibrationWizard?.Close();
+        _setupWizard?.Close();
         _iconPreview?.Close();
         _compactTuner?.Close();
         Application.Current.Shutdown();
@@ -96,6 +100,11 @@ public partial class MainWindow : Window
     public void UpdateCalibrationWizard(float speedKmh, float mainForce, bool isClipping)
     {
         _calibrationWizard?.UpdateLiveValues(speedKmh, mainForce, isClipping);
+    }
+
+    public void UpdateSetupWizard(float speedKmh, float mainForce, float steerAngle, bool isClipping, float mzFront)
+    {
+        _setupWizard?.UpdateLiveValues(speedKmh, mainForce, steerAngle, isClipping, mzFront);
     }
 
     public void UpdateProfiler(float speed, float steerAngle, float forceOut, float rawFF,
@@ -234,6 +243,45 @@ public partial class MainWindow : Window
         _calibrationWizard.InitializeSlidersFromPipeline();
         _calibrationWizard.Closed += (_, _) => _calibrationWizard = null;
         _calibrationWizard.Show();
+    }
+
+    private void OnSetupWizardRequested(object? sender, EventArgs e)
+    {
+        OpenSetupWizard();
+    }
+
+    private void OpenSetupWizard()
+    {
+        if (_setupWizard != null)
+        {
+            _setupWizard.Activate();
+            return;
+        }
+
+        if (DataContext is not ViewModels.MainViewModel vm) return;
+
+        try
+        {
+            File.AppendAllText(@"C:\Users\paul_\AppData\Roaming\AcEvoFfbTuner\wiz_dbg.log", $"[{DateTime.Now:HH:mm:ss.fff}] Creating wizard...\n");
+            var wizard = new SetupWizardOverlay(
+                vm.Pipeline,
+                vm.DeviceManager,
+                vm.TelemetryLoop,
+                vm,
+                (name, scope) => vm.WizardSaveProfile(name, scope));
+
+            File.AppendAllText(@"C:\Users\paul_\AppData\Roaming\AcEvoFfbTuner\wiz_dbg.log", $"[{DateTime.Now:HH:mm:ss.fff}] Wizard created, showing...\n");
+            wizard.Closed += (_, _) => _setupWizard = null;
+            wizard.Show();
+            File.AppendAllText(@"C:\Users\paul_\AppData\Roaming\AcEvoFfbTuner\wiz_dbg.log", $"[{DateTime.Now:HH:mm:ss.fff}] Show() returned\n");
+            _setupWizard = wizard;
+        }
+        catch (Exception ex)
+        {
+            _setupWizard = null;
+            MessageBox.Show($"Setup Wizard failed:\n{ex.GetType().Name}: {ex.Message}",
+                "Wizard Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void OnHf8MotorTestRequested(object? sender, EventArgs e)
