@@ -367,7 +367,9 @@ public partial class SetupWizardOverlay : Window
     private void PopulateReviewValues()
     {
         if (ReviewCenterSuppress != null)
-            ReviewCenterSuppress.Text = _pipeline.CenterSuppressionDegrees.ToString("F1") + "\u00B0";
+                    ReviewCenterSuppress.Text = _pipeline.CenterSuppressionDegrees.ToString("F1") + "\u00B0" +
+                        $"  |  Sharp: {_pipeline.CenterSharpnessDegrees:F1}\u00B0" +
+                        $"  |  Str: {_pipeline.CoreForceMultiplier:F1}x";
         if (ReviewSlewRate != null)
             ReviewSlewRate.Text = _pipeline.MaxSlewRate.ToString("F2");
         if (ReviewMzGain != null)

@@ -714,6 +714,8 @@
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="13" Foreground="#FF8B949E">
                                 <Run Text="Suppress: " /><Run Text="{Binding CenterSuppressionDegrees, StringFormat='{}{0:F1}&#176;'}" Foreground="#FF79C0FF" />
+                                <Run Text=" · " /><Run Text="Strength: " /><Run Text="{Binding CoreForceMultiplier, StringFormat='{}{0:F1}x'}" Foreground="#FF79C0FF" />
+                                <Run Text=" · " /><Run Text="Sharp: " /><Run Text="{Binding CenterSharpnessDegrees, StringFormat='{}{0:F1}&#176;'}" Foreground="#FF79C0FF" />
                                 <Run Text=" · " /><Run Text="Noise: " /><Run Text="{Binding NoiseFloor, StringFormat='{}{0:F4}'}" Foreground="#FF79C0FF" />
                                 <Run Text=" · " /><Run Text="Blend: " /><Run Text="{Binding CenterBlendDegrees, StringFormat='{}{0:F1}&#176;'}" Foreground="#FF79C0FF" />
                             </TextBlock>
@@ -725,6 +727,12 @@
                                     Label="Center Suppress (deg)" LabelWidth="185" StringFormat="{}{0:F3}"
                                     Description="Steering angle zone near center where forces are faded to zero (quadratic ramp). Wider = larger dead-feel zone. Only active when Sign Correction is enabled."
                                     DefaultValue="{Binding BuiltInDefaults.Advanced.CenterSuppressionDegrees}"
+                                    SectionColor="{StaticResource SectionSignal}" />
+
+                                <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Center Strength (x)" LabelWidth="185" StringFormat="{}{0:F1}"
+                                    Description="Scales centering/core force magnitude at ALL speeds. R3E default 3.0x. Higher = stronger centering feel."
+                                    DefaultValue="{Binding BuiltInDefaults.Advanced.CoreForceMultiplier}"
                                     SectionColor="{StaticResource SectionSignal}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed Signal Settings">
@@ -743,6 +751,11 @@
                                             Label="Center Blend (deg)" LabelWidth="185" StringFormat="{}{0:F3}"
                                             Description="Steering angle where Fy (cornering force) is suppressed near center. Prevents Fy buzz at straight-ahead."
                                             DefaultValue="{Binding BuiltInDefaults.Advanced.CenterBlendDegrees}"
+                                            SectionColor="{StaticResource SectionSignal}" />
+                                        <controls:LabeledSlider Value="{Binding CenterSharpnessDegrees, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                            Label="Center Sharpness (deg)" LabelWidth="185" StringFormat="{}{0:F1}"
+                                            Description="R3E: steering angle where centering force reaches full via smoothstep. Lower = sharper/crisper on-center feel. 0 = disabled (crispest)."
+                                            DefaultValue="{Binding BuiltInDefaults.Advanced.CenterSharpnessDegrees}"
                                             SectionColor="{StaticResource SectionSignal}" />
 
                                         <TextBlock Text="Damping Tuning" Style="{StaticResource SubSectionHeader}" Margin="0,10,0,2" />

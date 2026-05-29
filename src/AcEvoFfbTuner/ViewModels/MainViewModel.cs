@@ -401,6 +401,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _centerBlendDegrees = 1.0f;
 
     [ObservableProperty]
+    private float _centerSharpnessDegrees = 3.0f;
+
+    [ObservableProperty]
+    private float _coreForceMultiplier = 1.0f;
+
+    [ObservableProperty]
     private float _steerVelocityReference = 10.0f;
 
     [ObservableProperty]
@@ -2717,6 +2723,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnNoiseFloorChanged(float value) => _pipeline.NoiseFloor = value;
     partial void OnHysteresisWatchdogFramesChanged(int value) => _pipeline.HysteresisWatchdogFrames = value;
     partial void OnCenterBlendDegreesChanged(float value) => _pipeline.ChannelMixer.CenterBlendDegrees = value;
+    partial void OnCenterSharpnessDegreesChanged(float value) => _pipeline.CenterSharpnessDegrees = value;
+    partial void OnCoreForceMultiplierChanged(float value) => _pipeline.CoreForceMultiplier = value;
     partial void OnSteerVelocityReferenceChanged(float value) => _pipeline.Damping.SteerVelocityReference = value;
     partial void OnVelocityDeadzoneChanged(float value) => _pipeline.Damping.VelocityDeadzone = value;
     partial void OnLowSpeedSmoothKmhChanged(float value) => _pipeline.ChannelMixer.LowSpeedSmoothKmh = value;
@@ -3242,6 +3250,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         NoiseFloor = profile.Advanced.NoiseFloor;
         HysteresisWatchdogFrames = profile.Advanced.HysteresisWatchdogFrames;
         CenterBlendDegrees = profile.Advanced.CenterBlendDegrees;
+        CenterSharpnessDegrees = profile.Advanced.CenterSharpnessDegrees;
+        CoreForceMultiplier = profile.Advanced.CoreForceMultiplier;
         SteerVelocityReference = profile.Advanced.SteerVelocityReference;
         VelocityDeadzone = profile.Advanced.VelocityDeadzone;
         LowSpeedSmoothKmh = profile.Advanced.LowSpeedSmoothKmh;
@@ -3447,6 +3457,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.NoiseFloor = NoiseFloor;
         _pipeline.HysteresisWatchdogFrames = HysteresisWatchdogFrames;
         _pipeline.ChannelMixer.CenterBlendDegrees = CenterBlendDegrees;
+        _pipeline.CenterSharpnessDegrees = CenterSharpnessDegrees;
+        _pipeline.CoreForceMultiplier = CoreForceMultiplier;
         _pipeline.Damping.SteerVelocityReference = SteerVelocityReference;
         _pipeline.Damping.VelocityDeadzone = VelocityDeadzone;
         _pipeline.ChannelMixer.LowSpeedSmoothKmh = LowSpeedSmoothKmh;

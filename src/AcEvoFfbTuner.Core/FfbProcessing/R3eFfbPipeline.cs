@@ -35,7 +35,7 @@ public sealed class R3eFfbPipeline : FfbPipeline
     public float BrakeBoostThreshold { get; set; } = 0.1f;
 
     /// <summary>Core force multiplier: directly scales R3E core steering force at ALL speeds to compensate for pipeline processing attenuation. Default 3.0x works well with Moza R5 5.5Nm. Adjust per preference.</summary>
-    public float CoreForceMultiplier { get; set; } = 3.0f;
+    public override float CoreForceMultiplier { get; set; } = 3.0f;
 
     public override bool GearShiftFilterEnabled
     {
@@ -83,20 +83,24 @@ public sealed class R3eFfbPipeline : FfbPipeline
             detailForce = Math.Min(detailForce, -coreOutput * 0.5f);
     }
 
+    /// <summary>
+    /// Center sharpness override for R3E.
+    /// Applies a smoothstep ramp from 0 to full force over CenterSharpnessDegrees.
+    /// At 0° (disabled), the reader's built-in sqrt ramp is the only shaping.
+    /// Default 3.0° matches the reader smooth zone for a natural compound feel.
+    /// Lower = sharper on-center, higher = softer/progressive.
+    /// </summary>
     protected override float ApplyCenteringOverride(float coreOutput, FfbRawData raw)
     {
-        // V-shape quadratic centre suppression for R3E.
-        // Smooth force fade near steering centre — no notchiness.
-        // Only applies when a non-zero suppression zone is configured.
-        if (CenterSuppressionDegrees > 0.001f)
+        if (CenterSharpnessDegrees > 0.001f)
         {
-            // SteerAngle is normalized -1..+1 (not radians).
-            // Convert to actual wheel degrees using the configured steering lock.
             float lockHalf = Math.Abs(raw.SteerDegrees) * 0.5f;
-            if (lockHalf < 1f) lockHalf = 450f; // fallback to 900° lock
+            if (lockHalf < 1f) lockHalf = 450f;
             float absSteerDeg = Math.Abs(raw.SteerAngle) * lockHalf;
-            float normalized = Math.Clamp(absSteerDeg / CenterSuppressionDegrees, 0f, 1f);
-            return coreOutput * normalized * normalized;
+            float t = Math.Clamp(absSteerDeg / CenterSharpnessDegrees, 0f, 1f);
+            // Smoothstep S-curve: smooth, notch-free transition
+            float ramp = t * t * (3f - 2f * t);
+            return coreOutput * ramp;
         }
         return coreOutput;
     }

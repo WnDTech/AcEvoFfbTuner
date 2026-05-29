@@ -192,6 +192,12 @@
                     <TextBlock Text="SIGNAL PROCESSING" FontSize="10" FontWeight="Bold" Foreground="{StaticResource SectionTyreSlip}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding CenterSuppressionDegrees, Mode=TwoWay}" Minimum="0" Maximum="30" TickFrequency="0.5"
                         Label="Center Suppress" StringFormat="{}{0:F1}" Suffix="°"
+                        SectionColor="{StaticResource SectionTyreSlip}" Margin="0,0,0,4" />
+                    <controls:LabeledSlider Value="{Binding CenterSharpnessDegrees, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.5"
+                        Label="Center Sharp" StringFormat="{}{0:F1}" Suffix="°"
+                        SectionColor="{StaticResource SectionTyreSlip}" Margin="0,0,0,4" />
+                    <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.5"
+                        Label="Center Str" StringFormat="{}{0:F1}" Suffix="x"
                         SectionColor="{StaticResource SectionTyreSlip}" Margin="0,0,0,8" />
 
                     <!-- SAVE -->

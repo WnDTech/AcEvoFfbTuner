@@ -151,7 +151,7 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
             // deadbands. Force scales linearly from 0°, eliminating the center notch.
             float steerDeg = steerNorm * _lastData.SteerLockDegrees * 0.5f;
             float absSteerDeg = Math.Abs(steerDeg);
-            const float centerSmoothZoneDeg = 5.0f;
+            const float centerSmoothZoneDeg = 3.0f;
             float centeringFactor;
             if (absSteerDeg < centerSmoothZoneDeg)
             {

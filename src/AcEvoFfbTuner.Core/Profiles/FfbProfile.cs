@@ -200,6 +200,8 @@ public sealed class FfbProfile
         pipeline.NoiseFloor = Advanced.NoiseFloor;
         pipeline.HysteresisWatchdogFrames = Advanced.HysteresisWatchdogFrames;
         pipeline.ChannelMixer.CenterBlendDegrees = Advanced.CenterBlendDegrees;
+        pipeline.CenterSharpnessDegrees = Advanced.CenterSharpnessDegrees;
+        pipeline.CoreForceMultiplier = Advanced.CoreForceMultiplier;
         pipeline.Damping.SteerVelocityReference = Advanced.SteerVelocityReference;
         pipeline.Damping.VelocityDeadzone = Advanced.VelocityDeadzone;
         pipeline.ChannelMixer.LowSpeedSmoothKmh = Advanced.LowSpeedSmoothKmh;
@@ -386,6 +388,8 @@ public sealed class FfbProfile
             NoiseFloor = pipeline.NoiseFloor,
             HysteresisWatchdogFrames = pipeline.HysteresisWatchdogFrames,
             CenterBlendDegrees = pipeline.ChannelMixer.CenterBlendDegrees,
+            CenterSharpnessDegrees = pipeline.CenterSharpnessDegrees,
+            CoreForceMultiplier = pipeline.CoreForceMultiplier,
             SteerVelocityReference = pipeline.Damping.SteerVelocityReference,
             VelocityDeadzone = pipeline.Damping.VelocityDeadzone,
             LowSpeedSmoothKmh = pipeline.ChannelMixer.LowSpeedSmoothKmh
@@ -1092,12 +1096,14 @@ public sealed class AdvancedConfig
     public float NoiseFloor { get; set; } = 0.003f;
     public int HysteresisWatchdogFrames { get; set; } = 0;
     public float CenterBlendDegrees { get; set; } = 1.0f;
+    public float CenterSharpnessDegrees { get; set; } = 3.0f;
+    public float CoreForceMultiplier { get; set; } = 1.0f;
     public float SteerVelocityReference { get; set; } = 10.0f;
     public float VelocityDeadzone { get; set; } = 0.05f;
     public float LowSpeedSmoothKmh { get; set; } = 15.0f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { MaxSlewRate = S(MaxSlewRate); CenterSuppressionDegrees = S(CenterSuppressionDegrees); CenterKneePower = S(CenterKneePower); HysteresisThreshold = S(HysteresisThreshold); NoiseFloor = S(NoiseFloor); CenterBlendDegrees = S(CenterBlendDegrees); SteerVelocityReference = S(SteerVelocityReference); VelocityDeadzone = S(VelocityDeadzone); LowSpeedSmoothKmh = S(LowSpeedSmoothKmh); }
+    public void SanitizeFloats() { MaxSlewRate = S(MaxSlewRate); CenterSuppressionDegrees = S(CenterSuppressionDegrees); CenterKneePower = S(CenterKneePower); HysteresisThreshold = S(HysteresisThreshold); NoiseFloor = S(NoiseFloor); CenterBlendDegrees = S(CenterBlendDegrees); CenterSharpnessDegrees = S(CenterSharpnessDegrees); CoreForceMultiplier = S(CoreForceMultiplier); SteerVelocityReference = S(SteerVelocityReference); VelocityDeadzone = S(VelocityDeadzone); LowSpeedSmoothKmh = S(LowSpeedSmoothKmh); }
 }
 
 public sealed class LfeConfig

@@ -475,6 +475,8 @@ public partial class TelemetryPage : UserControl
             sb.AppendLine($"NoiseFloor:         {p.NoiseFloor:F4}");
             sb.AppendLine($"SteerDirDeadzone:   {p.SteerDirDeadzone:F4}");
             sb.AppendLine($"CenterKneePower:    {p.CenterKneePower:F2}");
+            sb.AppendLine($"CenterSharpnessDeg: {p.CenterSharpnessDegrees:F1}");
+            sb.AppendLine($"CoreForceMultiplier: {p.CoreForceMultiplier:F2}");
         }
         sb.AppendLine();
 

@@ -57,6 +57,23 @@ public class FfbPipeline
     public int HysteresisWatchdogFrames { get; set; } = 5;
     public float CenterKneePower { get; set; } = 1.0f;
 
+    /// <summary>
+    /// Center sharpness angle (R3E): steering degrees at which centering force
+    /// reaches full strength via smoothstep ramp. Lower = sharper on-center feel,
+    /// higher = softer/progressive. Default 3.0° matches reader smooth zone.
+    /// 0 = disabled (reader-only shaping, maximum crispness).
+    /// RaceRoom uses this via ApplyCenteringOverride.
+    /// </summary>
+    public float CenterSharpnessDegrees { get; set; } = 3.0f;
+
+    /// <summary>
+    /// Core force multiplier. Scales total core/centering force at ALL speeds.
+    /// Used by R3E (default 3.0x) to compensate for pipeline processing attenuation.
+    /// EVO default 1.0x (no compensation needed).
+    /// Virtual so R3eFfbPipeline can override the default.
+    /// </summary>
+    public virtual float CoreForceMultiplier { get; set; } = 1.0f;
+
     public float ReverseAttenuation { get; set; } = 0.45f;
     public float ReverseDetailPass { get; set; } = 0.50f;
     public int ReverseGearValue { get; set; } = 0;
