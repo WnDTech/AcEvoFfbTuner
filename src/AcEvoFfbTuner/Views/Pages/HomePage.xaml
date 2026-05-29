@@ -450,14 +450,42 @@
                         </StackPanel>
                         <Button Command="{Binding TestBuzzCommand}" Cursor="Hand"
                                 Content="Test Buzz" FontSize="11" FontWeight="SemiBold" Padding="12,5"
-                                Background="#1AF0883E" Foreground="#FFF0883E" BorderBrush="#FFF0883E"
-                                 BorderThickness="1"
-                                 ToolTip="Play a 500ms diagnostic vibration on your wheel">
+                                Background="#33F0883E" Foreground="#FFE6EDF3" BorderBrush="#33F0883E"
+                                BorderThickness="1"
+                                ToolTip="Play a 500ms diagnostic vibration on your wheel">
                             <Button.Style>
                                 <Style TargetType="Button">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="5" Padding="{TemplateBinding Padding}"
+                                                        SnapsToDevicePixels="True">
+                                                    <TextBlock Text="{TemplateBinding Content}"
+                                                               Foreground="{TemplateBinding Foreground}"
+                                                               FontSize="{TemplateBinding FontSize}"
+                                                               FontWeight="{TemplateBinding FontWeight}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#55F0883E" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#FF161B22" />
+                                                        <Setter TargetName="Bd" Property="BorderBrush" Value="#FF30363D" />
+                                                        <Setter Property="Foreground" Value="#FF484F58" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsTestBuzzRunning}" Value="True">
                                             <Setter Property="Content" Value="Buzzing..." />
+                                            <Setter Property="Foreground" Value="#FFFFD600" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
