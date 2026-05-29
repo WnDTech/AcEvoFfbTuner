@@ -52,6 +52,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _ => "AC EVO"
     };
 
+    public bool IsAcEvo => SelectedGame == SupportedGame.AcEvo;
+    public bool IsRaceroom => SelectedGame == SupportedGame.Raceroom;
+    public bool IsAssettoCorsa => SelectedGame == SupportedGame.AssettoCorsa;
+
     public int SelectedGameIndex
     {
         get => (int)SelectedGame;
@@ -1340,6 +1344,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _reader = CreateReader(value);
         _pipeline = CreatePipeline(value);
         OnPropertyChanged(nameof(GameDisplayName));
+        OnPropertyChanged(nameof(IsAcEvo));
+        OnPropertyChanged(nameof(IsRaceroom));
+        OnPropertyChanged(nameof(IsAssettoCorsa));
 
         // Re-apply active profile settings to the new pipeline
         if (_profileManager.ActiveProfile != null)

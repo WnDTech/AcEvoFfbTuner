@@ -7,6 +7,7 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <converters:EnumToBoolConverter x:Key="EnumToBoolConverter" />
         <converters:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis" />
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -228,7 +229,7 @@
                                                 <TextBlock Text="Front Wheels Only" FontSize="15" />
                                             </StackPanel>
                                         </DockPanel>
-                                        <DockPanel Margin="0,6">
+                                        <DockPanel Margin="0,6" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}">
                                             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
                                                 <CheckBox IsChecked="{Binding GearChangeMuteEnabled}" Margin="0,0,12,0" />
                                                 <TextBlock Text="Mute Gear Change FFB (R3E)" FontSize="15" Foreground="#FFE6EDF3" />
@@ -243,6 +244,7 @@
 
                     <!-- TIRE GRIP FEEL -->
                     <controls:SectionCard Title="TIRE GRIP FEEL"
+                                          Visibility="{Binding IsRaceroom, Converter={StaticResource InverseBoolToVis}}"
                                           SectionBrush="{StaticResource SectionGripFeel}"
                                           IsExpanded="False">
                         <controls:SectionCard.SummaryContent>
@@ -730,6 +732,7 @@
                                     SectionColor="{StaticResource SectionSignal}" />
 
                                 <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}"
                                     Label="Center Strength (x)" LabelWidth="185" StringFormat="{}{0:F1}"
                                     Description="Scales centering/core force magnitude at ALL speeds. R3E default 3.0x. Higher = stronger centering feel."
                                     DefaultValue="{Binding BuiltInDefaults.Advanced.CoreForceMultiplier}"
@@ -753,6 +756,7 @@
                                             DefaultValue="{Binding BuiltInDefaults.Advanced.CenterBlendDegrees}"
                                             SectionColor="{StaticResource SectionSignal}" />
                                         <controls:LabeledSlider Value="{Binding CenterSharpnessDegrees, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                            Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}"
                                             Label="Center Sharpness (deg)" LabelWidth="185" StringFormat="{}{0:F1}"
                                             Description="R3E: steering angle where centering force reaches full via smoothstep. Lower = sharper/crisper on-center feel. 0 = disabled (crispest)."
                                             DefaultValue="{Binding BuiltInDefaults.Advanced.CenterSharpnessDegrees}"
@@ -814,6 +818,7 @@
 
                     <!-- WET WEATHER -->
                     <controls:SectionCard Title="WET WEATHER"
+                                          Visibility="{Binding IsRaceroom, Converter={StaticResource InverseBoolToVis}}"
                                           SectionBrush="{StaticResource SectionWetWeather}"
                                           IsExpanded="False">
                         <controls:SectionCard.SummaryContent>

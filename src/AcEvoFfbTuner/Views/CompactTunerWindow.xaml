@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls"
+        xmlns:converters="clr-namespace:AcEvoFfbTuner.Converters"
         Title="AC Evo FFB Tuner — Compact"
         Width="420" Height="680"
         MinWidth="280" MinHeight="360"
@@ -15,6 +16,10 @@
         FontFamily="Segoe UI"
         UseLayoutRounding="True"
         Loaded="OnLoaded">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+    </Window.Resources>
 
     <Border x:Name="RootBorder" CornerRadius="6" BorderThickness="1"
             BorderBrush="#FF30363D" Background="{StaticResource BgDark}">
@@ -194,9 +199,11 @@
                         Label="Center Suppress" StringFormat="{}{0:F1}" Suffix="°"
                         SectionColor="{StaticResource SectionTyreSlip}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding CenterSharpnessDegrees, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.5"
+                        Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}"
                         Label="Center Sharp" StringFormat="{}{0:F1}" Suffix="°"
                         SectionColor="{StaticResource SectionTyreSlip}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.5"
+                        Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}"
                         Label="Center Str" StringFormat="{}{0:F1}" Suffix="x"
                         SectionColor="{StaticResource SectionTyreSlip}" Margin="0,0,0,8" />
 
