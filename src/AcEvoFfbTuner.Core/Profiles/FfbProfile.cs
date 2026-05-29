@@ -159,6 +159,7 @@ public sealed class FfbProfile
             r3e.GearSpikeThreshold = Slip.GearSpikeThreshold;
             r3e.BrakeBoostGain = Slip.BrakeBoostGain;
             r3e.BrakeBoostThreshold = Slip.BrakeBoostThreshold;
+            r3e.CoreForceMultiplier = Slip.CoreForceMultiplier;
         }
 
         if (pipeline is AcFfbPipeline ac)
@@ -1024,9 +1025,10 @@ public sealed class SlipConfig
     public float GearSpikeThreshold { get; set; } = 3000f;
     public float BrakeBoostGain { get; set; } = 0.4f;
     public float BrakeBoostThreshold { get; set; } = 0.1f;
+    public float CoreForceMultiplier { get; set; } = 3.0f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); }
+    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); }
 }
 
 public sealed class DynamicConfig

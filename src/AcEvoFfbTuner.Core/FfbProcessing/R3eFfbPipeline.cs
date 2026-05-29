@@ -34,6 +34,9 @@ public sealed class R3eFfbPipeline : FfbPipeline
     public float BrakeBoostGain { get; set; } = 0.4f;
     public float BrakeBoostThreshold { get; set; } = 0.1f;
 
+    /// <summary>Core force multiplier: directly scales R3E core steering force at ALL speeds to compensate for pipeline processing attenuation. Default 3.0x works well with Moza R5 5.5Nm. Adjust per preference.</summary>
+    public float CoreForceMultiplier { get; set; } = 3.0f;
+
     public override bool GearShiftFilterEnabled
     {
         get => _gearChangeMuteEnabled;
@@ -55,10 +58,15 @@ public sealed class R3eFfbPipeline : FfbPipeline
             brakeBoost = 1f + BrakeBoostGain * brakeIntensity;
         }
 
+        // Core force multiplier: uniform scaling at ALL speeds.
+        // Compensates for pipeline processing that attenuates the R3E signal.
+        float coreBoost = CoreForceMultiplier;
+
         var result = base.Process(raw);
 
-        result.MainForce *= brakeBoost;
-        result.CoreForce *= brakeBoost;
+        float combinedBoost = brakeBoost * coreBoost;
+        result.MainForce *= combinedBoost;
+        result.CoreForce *= combinedBoost;
 
         return result;
     }

@@ -182,15 +182,20 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
                 float slipVib = maxFrontSlip > 0.08f ? Math.Min((maxFrontSlip - 0.08f) * 5f, 1f) : 0f;
                 physics.SlipVibrations = slipVib;
 
-                // Synthesize slip angle from R3E's real TireGrip data.
-                // TireGrip 1.0 = full grip → slipAngle 0. TireGrip 0.0 = fully sliding → slipAngle Max.
-                // This enables GripGuard attenuation, SlipAngleShapeGain, Scrub, and RearSlip
-                // for R3E using authentic per-wheel physics data.
+                // Synthesize slip angle from R3E's real TireGrip data using a nonlinear
+                // mapping with deadband. The real relationship between grip utilization
+                // and slip angle follows a Pacejka-like curve:
+                //   - Linear region (TireGrip 0.85-1.0): slipAngle ≈ 0 (tyre grips normally)
+                //   - Transition  (TireGrip 0.60-0.85): slipAngle builds slowly as peak Mz approaches
+                //   - Post-peak   (TireGrip 0.00-0.60): slipAngle ramps to max as tyre fully slides
+                // This prevents constant rumble during normal cornering — slip-sensitive effects
+                // (scrub, rear slip, slip enhancer, grip guard) only activate when the tyre
+                // is genuinely working near or past its grip limit.
                 const float maxSyntheticSlipAngle = 0.20f;
-                physics.SlipAngle[0] = (1.0f - Math.Clamp(_lastData.TireGrip.FrontLeft, 0f, 1f)) * maxSyntheticSlipAngle;
-                physics.SlipAngle[1] = (1.0f - Math.Clamp(_lastData.TireGrip.FrontRight, 0f, 1f)) * maxSyntheticSlipAngle;
-                physics.SlipAngle[2] = (1.0f - Math.Clamp(_lastData.TireGrip.RearLeft, 0f, 1f)) * maxSyntheticSlipAngle;
-                physics.SlipAngle[3] = (1.0f - Math.Clamp(_lastData.TireGrip.RearRight, 0f, 1f)) * maxSyntheticSlipAngle;
+                physics.SlipAngle[0] = SynthesizeSlipAngle(_lastData.TireGrip.FrontLeft, maxSyntheticSlipAngle);
+                physics.SlipAngle[1] = SynthesizeSlipAngle(_lastData.TireGrip.FrontRight, maxSyntheticSlipAngle);
+                physics.SlipAngle[2] = SynthesizeSlipAngle(_lastData.TireGrip.RearLeft, maxSyntheticSlipAngle);
+                physics.SlipAngle[3] = SynthesizeSlipAngle(_lastData.TireGrip.RearRight, maxSyntheticSlipAngle);
             }
 
             physics.KerbVibration = SynthesizeKerbVibration();
@@ -368,6 +373,26 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
         if (carSpeedMs <= 0f) return 0f;
         return Math.Abs(tireSpeedMs - carSpeedMs) / carSpeedMs;
     }
+
+    /// <summary>
+    /// Nonlinear slip angle synthesis from R3E's TireGrip with deadband.
+    /// TireGrip 1.0-0.85 (linear region): slipAngle ≈ 0 — no rumble in normal cornering.
+    /// TireGrip 0.85-0.60 (transition): slipAngle builds quadratically — approaching peak Mz.
+    /// TireGrip 0.60-0.00 (post-peak): slipAngle continues to max — full slide feel.
+    /// This prevents slip-sensitive effects (scrub, rear slip, slip enhancer, grip guard)
+    /// from activating during normal grip cornering.
+    /// </summary>
+    private static float SynthesizeSlipAngle(float tireGrip, float maxSlipAngle)
+    {
+        float gripLoss = 1.0f - Math.Clamp(tireGrip, 0f, 1f);
+        // Deadband: gripLoss must exceed 0.15 (TireGrip < 0.85) before any signal.
+        // This represents the linear elastic region of the tyre where grip is abundant.
+        float deadbandLoss = Math.Max(gripLoss - 0.15f, 0f) / 0.85f; // normalized 0..1
+        // Quadratic curve: signal builds slowly near deadband, accelerates as grip fades.
+        // Matches the Pacejka Mz characteristic shape.
+        return deadbandLoss * deadbandLoss * maxSlipAngle;
+    }
+
 
     private float SynthesizeRoadVibration()
     {
