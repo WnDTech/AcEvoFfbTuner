@@ -221,12 +221,9 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
                 physics.Fx[i] = physics.SlipRatio[i] * tireLoads[i] * 0.05f;
             }
 
-            if (_lastData.Player.LocalGforce.X != 0 || _lastData.Player.LocalGforce.Y != 0 || _lastData.Player.LocalGforce.Z != 0)
-            {
-                physics.AccG[0] = (float)_lastData.Player.LocalGforce.X;
-                physics.AccG[1] = (float)_lastData.Player.LocalGforce.Y;
-                physics.AccG[2] = (float)_lastData.Player.LocalGforce.Z;
-            }
+            physics.AccG[0] = (float)_lastData.LocalAcceleration.X;
+            physics.AccG[1] = (float)_lastData.LocalAcceleration.Y;
+            physics.AccG[2] = (float)_lastData.LocalAcceleration.Z;
 
             if (_lastData.Player.AngularVelocity.X != 0 || _lastData.Player.AngularVelocity.Y != 0 || _lastData.Player.AngularVelocity.Z != 0)
             {
