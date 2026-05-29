@@ -149,6 +149,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _steerAngle;
 
     [ObservableProperty]
+    private float _latG;
+
+    [ObservableProperty]
+    private float _longG;
+
+    [ObservableProperty]
     private string _debugSnapshot = "Waiting for telemetry data...";
 
     [ObservableProperty]
@@ -2799,8 +2805,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.OutputGain = value;
         OnPropertyChanged(nameof(OutputGainNmText));
     }
-    partial void OnCurrentForceOutputChanged(float value) => OnPropertyChanged(nameof(ForceBarFillHeight));
+    partial void OnCurrentForceOutputChanged(float value)
+    {
+        OnPropertyChanged(nameof(ForceBarFillHeight));
+    }
     partial void OnSpeedKmhChanged(float value) => OnPropertyChanged(nameof(SpeedNeedleAngle));
+
+    public float MaxGaugeForce => WheelMaxTorqueNm > 0 ? Math.Max(WheelMaxTorqueNm, 8f) : 10f;
 
     public string MaxForceLimitNmText => $"{MaxForceLimit:F3} ({MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
     public string OutputGainNmText => $"{OutputGain:F3} (peak {MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
@@ -2984,6 +2995,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CurrentRawForce = processed.RawFinalFf;
             IsClipping = processed.IsClipping;
             SpeedKmh = processed.SpeedKmh;
+            LatG = raw.AccG?.Length > 0 ? raw.AccG[0] : 0f;
+            LongG = raw.AccG?.Length > 1 ? raw.AccG[1] : 0f;
             ActiveLedCount = _deviceManager.ActiveLedCount;
 
             float highFreqHaptics = processed.VibrationForce;

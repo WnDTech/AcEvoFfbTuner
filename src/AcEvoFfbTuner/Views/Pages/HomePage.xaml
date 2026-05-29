@@ -9,9 +9,316 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24">
         <StackPanel>
 
-            <!-- ═══ SETUP WIZARD — Prominent entry card above everything ═══ -->
+            <!-- ═══ GLASS COCKPIT PFD ═══ (seamless instrument panel) -->
+            <Border Background="#FF0D1117" CornerRadius="8" Padding="20,16" Margin="0,0,0,16"
+                    BorderThickness="1" BorderBrush="#FF30363D">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Top strip: speed + status -->
+                    <Grid Grid.Row="0" Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SpeedKmh, StringFormat='{}{0:F0}'}"
+                                       FontSize="40" FontWeight="Black" Foreground="#FFFFD600" />
+                            <TextBlock Text="km/h" FontSize="13" Foreground="#FF8B949E" Margin="6,8,0,0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="7" Height="7" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="#FF484F58" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                <Setter Property="Fill" Value="#FF7EE787" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="IDLE" />
+                                        <Setter Property="Foreground" Value="#FF484F58" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                <Setter Property="Text" Value="RUNNING" />
+                                                <Setter Property="Foreground" Value="#FF7EE787" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="{Binding PacketsPerSecond, StringFormat='  {0} pkt/s'}" FontSize="11" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="14,0,0,0" />
+                            <Ellipse Width="3" Height="3" Fill="#FF30363D" Margin="8,0" VerticalAlignment="Center" />
+                            <Ellipse Width="7" Height="7" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="#FF484F58" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsClipping}" Value="True">
+                                                <Setter Property="Fill" Value="#FFFF7B72" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#FF8B949E">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="OK" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsClipping}" Value="True">
+                                                <Setter Property="Text" Value="CLIP" />
+                                                <Setter Property="Foreground" Value="#FFFF7B72" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Divider -->
+                    <Border Grid.Row="1" Grid.RowSpan="2" VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                            Height="1" Background="#FF21262D" Margin="0,0,0,12" />
+
+                    <!-- Main 3-column instrument panel -->
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" MinWidth="200" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- LEFT: G-Force instrument -->
+                        <Border Grid.Column="0" Background="#FF0D1117" CornerRadius="6"
+                                BorderThickness="1" BorderBrush="#FF21262D" Padding="16,12"
+                                VerticalAlignment="Top">
+                            <StackPanel>
+                                <TextBlock Text="G" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,10"
+                                           HorizontalAlignment="Center" />
+                                <Grid Width="88" Height="88" Margin="0,0,0,10">
+                                    <Line X1="44" Y1="4" X2="44" Y2="84" Stroke="#FF21262D" StrokeThickness="1" />
+                                    <Line X1="4" Y1="44" X2="84" Y2="44" Stroke="#FF21262D" StrokeThickness="1" />
+                                    <Ellipse Width="72" Height="72" Stroke="#FF21262D" StrokeThickness="1" />
+                                    <TextBlock Text="G" FontSize="11" Foreground="#FF484F58"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Ellipse x:Name="GForceDot" Width="10" Height="10" Fill="#FF79C0FF"
+                                             HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                    <Ellipse Width="14" Height="14" Stroke="#3379C0FF" StrokeThickness="2"
+                                             HorizontalAlignment="Left" VerticalAlignment="Top"
+                                             Margin="37,37,0,0" IsHitTestVisible="False" />
+                                </Grid>
+                                <StackPanel HorizontalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                        <TextBlock Text="LAT" FontSize="9" Foreground="#FF8B949E" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding LatG, StringFormat='{}{0:F2}'}" FontSize="12" Foreground="#FF79C0FF" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="LNG" FontSize="9" Foreground="#FF8B949E" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding LongG, StringFormat='{}{0:F2}'}" FontSize="12" Foreground="#FF79C0FF" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- CENTER: Force instrument (primary) -->
+                        <Border Grid.Column="1" Background="#FF0D1117" CornerRadius="6"
+                                BorderThickness="1" BorderBrush="#FF21262D" Padding="24,12"
+                                Margin="12,0" VerticalAlignment="Top">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="FORCE" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E"
+                                           HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4">
+                                    <TextBlock Text="{Binding CurrentForceOutput, StringFormat='{}{0:F2}'}"
+                                               FontSize="36" FontWeight="Black" Foreground="#FFE6EDF3" />
+                                    <TextBlock Text="Nm" FontSize="14" Foreground="#FF8B949E" Margin="6,10,0,0" />
+                                </StackPanel>
+                                <Border Grid.Row="2" Background="#FF161B22" CornerRadius="3"
+                                        Height="16" Margin="0,0,0,8" BorderThickness="1" BorderBrush="#FF21262D">
+                                    <Border x:Name="ForceBarFill" Background="#F0883E" CornerRadius="3"
+                                            HorizontalAlignment="Left" Width="0" />
+                                </Border>
+                                <Grid Grid.Row="3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding CurrentRawForce, StringFormat='raw {0:F2}'}"
+                                               FontSize="10" Foreground="#FF8B949E" HorizontalAlignment="Left" />
+                                    <TextBlock Grid.Column="2" Text="{Binding DeviceName}"
+                                               FontSize="10" Foreground="#FF8B949E" HorizontalAlignment="Right" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <!-- RIGHT: Steering instrument -->
+                        <Border Grid.Column="2" Background="#FF0D1117" CornerRadius="6"
+                                BorderThickness="1" BorderBrush="#FF21262D" Padding="16,12"
+                                VerticalAlignment="Top" MinWidth="120">
+                            <StackPanel>
+                                <TextBlock Text="STEERING" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E"
+                                           HorizontalAlignment="Center" Margin="0,0,0,10" />
+                                <Viewbox Stretch="Uniform" MaxWidth="100" MaxHeight="100" Margin="0,0,0,10">
+                                    <Image x:Name="DashboardWheelImage"
+                                           Source="pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png"
+                                           Width="80" Height="80" Stretch="Uniform"
+                                           RenderOptions.BitmapScalingMode="HighQuality"
+                                           RenderTransformOrigin="0.5,0.5">
+                                        <Image.RenderTransform>
+                                            <RotateTransform Angle="{Binding SteerAngle}" />
+                                        </Image.RenderTransform>
+                                    </Image>
+                                </Viewbox>
+                                <TextBlock Text="{Binding SteerAngle, StringFormat='{}{0:F1}°'}"
+                                           FontSize="20" FontWeight="Bold" Foreground="#FFE6EDF3"
+                                           HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                <TextBlock Text="steering angle" FontSize="9" Foreground="#FF8B949E"
+                                           HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Ellipse Width="6" Height="6" Fill="#F0883E" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                    <TextBlock FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsDeviceConnected}" Value="True">
+                                                        <Setter Property="Text" Value="{Binding WheelMaxTorqueNm, StringFormat='{}{0:F0}° lock'}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                    </Grid>
+
+                    <!-- Bottom annunciator strip -->
+                    <Border Grid.Row="2" Background="#FF0D1117" CornerRadius="4"
+                            BorderThickness="1" BorderBrush="#FF21262D" Padding="14,8" Margin="0,12,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,16,0">
+                                <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="#FF484F58" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
+                                                    <Setter Property="Fill" Value="#FF7EE787" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <TextBlock Text="{Binding GameDisplayName}" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,16,0">
+                                <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="#FF484F58" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDeviceConnected}" Value="True">
+                                                    <Setter Property="Fill" Value="#FF79C0FF" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <TextBlock Text="{Binding DeviceName}" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,16,0">
+                                <Ellipse Width="6" Height="6" Fill="#F0883E" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding SelectedProfile.Name, FallbackValue='No Profile'}" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="0,0,16,0">
+                                <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="#FF484F58" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsHalHapticEngineActive}" Value="True">
+                                                    <Setter Property="Fill" Value="#FF7EE787" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <TextBlock Text="HAPT" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="5" Orientation="Horizontal" Margin="0,0,16,0">
+                                <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="#FF484F58" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsHalSdkConnected}" Value="True">
+                                                    <Setter Property="Fill" Value="#FF7EE787" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <TextBlock Text="SDK" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="6" Orientation="Horizontal">
+                                <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="#FF484F58" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsHalPeripheralSynced}" Value="True">
+                                                    <Setter Property="Fill" Value="#FF7EE787" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <TextBlock Text="PERIPH" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                </Grid>
+            </Border>
+
+            <!-- ═══ SETUP WIZARD ═══ -->
             <Border x:Name="SetupWizardCard"
-                    CornerRadius="10" Padding="28,20"
+                    CornerRadius="10" Padding="28,22"
                     BorderThickness="2" BorderBrush="#FFF0883E" Margin="0,0,0,16">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -30,29 +337,26 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <!-- Icon -->
                     <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
                             Background="#33F0883E" CornerRadius="20" Width="56" Height="56"
                             VerticalAlignment="Center" Margin="0,0,20,0">
                         <TextBlock Text="&#x26A1;" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
 
-                    <!-- Title + Subtitle -->
                     <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="NEW? START HERE" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,2" />
-                        <TextBlock Text="Interactive Setup Wizard" FontSize="20" FontWeight="Black" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
-                        <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" MaxWidth="380">
-                            Guided step-by-step FFB tuning overlay  ·  Works with your game running  ·  Adjust, test, save
+                        <TextBlock Text="SETUP WIZARD" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,2" />
+                        <TextBlock Text="Guided FFB Tuning for AC EVO, RaceRoom &amp; Assetto Corsa" FontSize="20" FontWeight="Black" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                        <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" MaxWidth="400">
+                            Step-by-step wheel setup · Works with your game running · Tune, test, and save profiles
                         </TextBlock>
                     </StackPanel>
 
-                    <!-- Launch Button -->
                     <Button Grid.Row="0" Grid.RowSpan="2" Grid.Column="2"
                             x:Name="LaunchSetupWizardBtn"
                             Content="&#x26A1;  LAUNCH WIZARD"
                             FontSize="16" FontWeight="Bold" Cursor="Hand"
                             Padding="28,14" VerticalAlignment="Center"
-                            ToolTip="Open the guided Setup Wizard overlay to tune your FFB step by step"
+                            ToolTip="Open the guided Setup Wizard overlay"
                             Click="OnLaunchSetupWizard">
                         <Button.Style>
                             <Style TargetType="Button">
@@ -90,494 +394,17 @@
                 </Grid>
             </Border>
 
-            <!-- QUICK START — Horizontal stepper, auto-hide when connected -->
-            <Border x:Name="QuickStartCard" Background="#FF1C2128" CornerRadius="8" Padding="24,18"
-                    BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,0,16">
-                <StackPanel>
-                    <DockPanel Margin="0,0,0,14">
-                        <TextBlock Text="QUICK START" FontSize="15" FontWeight="Bold" Foreground="#FFF0883E" VerticalAlignment="Center" />
-                        <Button DockPanel.Dock="Right" Content="Dismiss" Click="OnDismissQuickStart"
-                                Padding="8,4" FontSize="12" Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Cursor="Hand" />
-                    </DockPanel>
+            <!-- ═══ ZONE 3: THE GARAGE ═══ -->
+            <StackPanel>
 
-                    <!-- Horizontal stepper: 1 → 2 → 3 -->
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="40" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="40" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Step 1 -->
-                        <Border Grid.Column="0" Background="#FF21262D" CornerRadius="6" Padding="16,14">
-                            <StackPanel>
-                                <Border Background="#FFF0883E" CornerRadius="12" Width="24" Height="24" Margin="0,0,0,8" HorizontalAlignment="Left">
-                                    <TextBlock Text="1" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <TextBlock Text="Close Other Apps" FontSize="14" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
-                                <TextBlock Text="Moza Pit House, Logitech G HUB, Fanatec driver, SimHub, vJoy" FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Arrow 1→2 -->
-                        <TextBlock Grid.Column="1" Text="&#x276F;" FontSize="18" Foreground="#FF30363D" HorizontalAlignment="Center" VerticalAlignment="Center" />
-
-                        <!-- Step 2 -->
-                        <Border Grid.Column="2" Background="#FF21262D" CornerRadius="6" Padding="16,14">
-                            <StackPanel>
-                                <Border Background="#FFF0883E" CornerRadius="12" Width="24" Height="24" Margin="0,0,0,8" HorizontalAlignment="Left">
-                                    <TextBlock Text="2" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <TextBlock Text="Set In-Game FFB = 0" FontSize="14" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
-                                <TextBlock Text="AC EVO Settings > Controls > FFB Gain = 0, restart game" FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Arrow 2→3 -->
-                        <TextBlock Grid.Column="3" Text="&#x276F;" FontSize="18" Foreground="#FF30363D" HorizontalAlignment="Center" VerticalAlignment="Center" />
-
-                        <!-- Step 3 -->
-                        <Border Grid.Column="4" Background="#FF21262D" CornerRadius="6" Padding="16,14">
-                            <StackPanel>
-                                <Border Background="#FFF0883E" CornerRadius="12" Width="24" Height="24" Margin="0,0,0,8" HorizontalAlignment="Left">
-                                    <TextBlock Text="3" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <TextBlock Text="Connect &amp; Start" FontSize="14" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
-                                <TextBlock Text="Select wheel, Connect, load a profile, then START" FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-
-                    <TextBlock Text="Use the sidebar to navigate: FFB Tuning, Equalizer, Track Map, Telemetry, Devices, Profiles"
-                               FontSize="12" Foreground="#FF8B949E" Margin="0,12,0,0" TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-
-            <!-- HERO STATUS BAR — Game + Device + Profile in one row -->
-            <Border Background="#FF1C2128" CornerRadius="8" Padding="20,16" Margin="0,0,0,16"
-                    BorderThickness="1" BorderBrush="#FF30363D">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="24" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="24" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Game Status -->
+                <!-- Hardware Insight Strip -->
+                <Border Background="#FF1C2128" CornerRadius="8" Padding="16,10" Margin="0,0,0,8"
+                        BorderThickness="1" BorderBrush="#FF30363D">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Ellipse Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center">
-                            <Ellipse.Style>
-                                <Style TargetType="Ellipse">
-                                    <Setter Property="Fill" Value="#FF8B949E" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
-                                            <Setter Property="Fill" Value="#FF7EE787" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Ellipse.Style>
-                        </Ellipse>
-                        <TextBlock Text="GAME" FontSize="12" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,10,0" />
-                        <TextBlock Text="{Binding GameDisplayName}" FontWeight="SemiBold" FontSize="14" Foreground="#FFE6EDF3" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBlock FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="Offline" />
-                                    <Setter Property="Foreground" Value="#FF8B949E" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
-                                            <Setter Property="Text" Value="Connected" />
-                                            <Setter Property="Foreground" Value="#FF7EE787" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <TextBlock Text="{Binding PacketsPerSecond, StringFormat=' · {0} pkt/s'}" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                    </StackPanel>
-
-                    <!-- Separator -->
-                    <Border Grid.Column="1" Width="1" Background="#FF30363D" VerticalAlignment="Stretch" Margin="0,2" />
-
-                    <!-- Device Status -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Ellipse Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center">
-                            <Ellipse.Style>
-                                <Style TargetType="Ellipse">
-                                    <Setter Property="Fill" Value="#FF8B949E" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsDeviceConnected}" Value="True">
-                                            <Setter Property="Fill" Value="#FF79C0FF" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Ellipse.Style>
-                        </Ellipse>
-                        <TextBlock Text="DEVICE" FontSize="12" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,10,0" />
-                        <TextBlock Text="{Binding DeviceName}" FontWeight="SemiBold" FontSize="14" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
-                        <TextBlock FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsDeviceConnected}" Value="True">
-                                            <Setter Property="Text" Value="{Binding WheelMaxTorqueNm, StringFormat=' · {0:F1} Nm'}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
-
-                    <!-- Separator -->
-                    <Border Grid.Column="3" Width="1" Background="#FF30363D" VerticalAlignment="Stretch" Margin="0,2" />
-
-                    <!-- Profile Status -->
-                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
-                        <Ellipse Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center">
-                            <Ellipse.Style>
-                                <Style TargetType="Ellipse">
-                                    <Setter Property="Fill" Value="#FF8B949E" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding SelectedProfile}" Value="{x:Null}">
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Ellipse.Style>
-                        </Ellipse>
-                        <TextBlock Text="PROFILE" FontSize="12" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,10,0" />
-                        <TextBlock Text="{Binding SelectedProfile.Name, FallbackValue='None'}" FontWeight="SemiBold" FontSize="14" Foreground="#FFF0883E" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding ProfileCarMatch, FallbackValue=''}" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- UPDATE AVAILABLE BANNER -->
-            <Border Background="#33FFD600" CornerRadius="8" Padding="20,14" Margin="0,0,0,16"
-                    BorderThickness="1" BorderBrush="#55FFD600"
-                    Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BoolToVis}}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid Grid.Row="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" Margin="0,0,0,2">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="UPDATE AVAILABLE" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsDownloadingUpdate}" Value="True">
-                                                <Setter Property="Text" Value="DOWNLOADING UPDATE" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            <TextBlock Text="{Binding UpdateStatusText}" FontSize="13" Foreground="#FFE6EDF3" TextWrapping="Wrap" />
-                        </StackPanel>
-                        <Button Grid.Column="1" Command="{Binding DownloadAndInstallUpdateCommand}" Cursor="Hand" VerticalAlignment="Center"
-                                Margin="16,0,0,0" ToolTip="Download and install the latest version">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="IsEnabled" Value="True" />
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="UpdateBtnBorder" Background="#FFFFD600" CornerRadius="6" Padding="20,10" SnapsToDevicePixels="True">
-                                                    <TextBlock x:Name="BtnText" Text="{Binding LatestVersionText, StringFormat='Install {0}'}" FontSize="14" FontWeight="Bold" Foreground="#FF1C2128" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="UpdateBtnBorder" Property="Background" Value="#FFE6B800" />
-                                                    </Trigger>
-                                                    <Trigger Property="IsEnabled" Value="False">
-                                                        <Setter TargetName="UpdateBtnBorder" Property="Background" Value="#FF808060" />
-                                                        <Setter TargetName="BtnText" Property="Foreground" Value="#FF404030" />
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsDownloadingUpdate}" Value="True">
-                                            <Setter Property="IsEnabled" Value="False" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                    </Grid>
-                    <!-- Download progress bar -->
-                    <ProgressBar Grid.Row="1" Minimum="0" Maximum="100"
-                                 Value="{Binding DownloadProgressPercent, Mode=OneWay}"
-                                 Height="8" Margin="0,10,0,0" Foreground="#FFFFD600" Background="#FF21262D"
-                                 BorderThickness="0"
-                                 Visibility="{Binding IsDownloadingUpdate, Converter={StaticResource BoolToVis}}" />
-                </Grid>
-            </Border>
-
-            <!-- CONTROL CENTER — Start (hero) + Auto Setup + Panic -->
-            <Border Background="#FF1C2128" CornerRadius="8" Padding="28,24" Margin="0,0,0,16"
-                    BorderThickness="1" BorderBrush="#FF30363D">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Auto Setup (secondary, left) -->
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
-                        <Button Content="AUTO SETUP" Command="{Binding AutoSetupCommand}" IsEnabled="{Binding IsAutoSetupAvailable}"
-                                FontSize="14" FontWeight="Bold" Cursor="Hand" Padding="20,12"
-                                ToolTip="Auto-configure all FFB settings for your connected wheelbase">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Background" Value="#FF21262D" />
-                                    <Setter Property="Foreground" Value="#FF79C0FF" />
-                                    <Setter Property="BorderBrush" Value="#FF30363D" />
-                                    <Setter Property="BorderThickness" Value="1" />
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#FF30363D" />
-                                                    </Trigger>
-                                                    <Trigger Property="IsEnabled" Value="False">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#FF161B22" />
-                                                        <Setter TargetName="Bd" Property="BorderBrush" Value="#FF21262D" />
-                                                        <Setter Property="Foreground" Value="#FF484F58" />
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                        <TextBlock FontSize="11" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap" MaxWidth="160" TextAlignment="Center">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="Auto-configure all FFB settings for your wheelbase torque rating" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsAutoSetupAvailable}" Value="True">
-                                            <Setter Property="Text" Value="{Binding AutoSetupStatus}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
-
-                    <!-- START / STOP (hero button, center) -->
-                    <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <ToggleButton IsChecked="{Binding IsRunning}" Command="{Binding ToggleTelemetryCommand}"
-                                      x:Name="HomeStartToggle"
-                                      ToolTip="Start or stop FFB telemetry processing">
-                            <ToggleButton.Style>
-                                <Style TargetType="ToggleButton">
-                                    <Setter Property="Content" Value="&#x25B6;  START" />
-                                    <Setter Property="Background" Value="#FF2E7D32" />
-                                    <Setter Property="Foreground" Value="White" />
-                                    <Setter Property="BorderThickness" Value="2" />
-                                    <Setter Property="BorderBrush" Value="#FF4CAF50" />
-                                    <Setter Property="Padding" Value="48,16" />
-                                    <Setter Property="FontSize" Value="22" />
-                                    <Setter Property="FontWeight" Value="Bold" />
-                                    <Setter Property="Cursor" Value="Hand" />
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="ToggleButton">
-                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
-                                                    <TextBlock Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#FF388E3C" />
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsRunning}" Value="True">
-                                            <Setter Property="Content" Value="&#x25A0;  STOP" />
-                                            <Setter Property="Background" Value="#FFF0883E" />
-                                            <Setter Property="Foreground" Value="White" />
-                                            <Setter Property="BorderBrush" Value="#FFFF9800" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ToggleButton.Style>
-                        </ToggleButton>
-                        <TextBlock Text="Toggle telemetry processing" FontSize="12" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,6,0,0" />
-                    </StackPanel>
-
-                    <!-- Panic (muted, right) -->
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="24,0,0,0">
-                        <Button Content="PANIC" Command="{Binding PanicStopCommand}"
-                                FontSize="14" FontWeight="Bold" Cursor="Hand" Padding="20,12"
-                                Style="{StaticResource PanicButton}"
-                                ToolTip="Immediately zero all FFB output" />
-                        <TextBlock FontSize="11" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap" MaxWidth="140" TextAlignment="Center"
-                                   Text="Zero all FFB · Assignable in Devices page" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- LIVE TELEMETRY — Full-width dashboard -->
-            <Grid Margin="0,0,0,16">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="76" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="190" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="190" />
-                </Grid.ColumnDefinitions>
-
-                <!-- Force Output Meter -->
-                <Border Grid.Column="0" Background="#FF1C2128" CornerRadius="8" Padding="8,10"
-                        BorderThickness="1" BorderBrush="#FF30363D">
-                    <StackPanel HorizontalAlignment="Center">
-                        <TextBlock Text="FORCE" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                        <Grid Width="44" Height="200" Margin="0,0,0,6">
-                            <Border Background="#FF21262D" CornerRadius="4" />
-                            <Border VerticalAlignment="Bottom" CornerRadius="4" Height="{Binding ForceBarFillHeight, FallbackValue=0}">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Background" Value="#FFF0883E" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsClipping}" Value="True">
-                                                <Setter Property="Background" Value="#FFFF7B72" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                            </Border>
-                        </Grid>
-                        <TextBlock Text="{Binding CurrentForceOutput, StringFormat='{}{0:F3}'}" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,0,0,2" />
-                        <TextBlock Text="{Binding CurrentRawForce, StringFormat='Raw {0:F3}'}" FontSize="10" Foreground="#FF8B949E" HorizontalAlignment="Center" />
-                    </StackPanel>
-                </Border>
-
-                <!-- Signal Monitor — fills available width -->
-                <Border Grid.Column="2" Background="#FF1C2128" CornerRadius="8" Padding="14,12"
-                        BorderThickness="1" BorderBrush="#FF30363D">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <DockPanel Grid.Row="0" Margin="0,0,0,8">
-                            <TextBlock Text="SIGNAL MONITOR" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8" Fill="#FFF0883E" Margin="0,0,5,0" VerticalAlignment="Center" />
-                                <TextBlock Text="Torque" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,14,0" />
-                                <Ellipse Width="8" Height="8" Fill="#FF79C0FF" Margin="0,0,5,0" VerticalAlignment="Center" />
-                                <TextBlock Text="Haptics" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </DockPanel>
-
-                        <!-- Signal canvas wrapped in Viewbox for responsive scaling -->
-                        <Viewbox Grid.Row="1" Stretch="UniformToFill" StretchDirection="Both">
-                            <Canvas Width="260" Height="80" ClipToBounds="True">
-                                <Line X1="0" Y1="40" X2="260" Y2="40" Stroke="#FF30363D" StrokeThickness="1" StrokeDashArray="4,4" />
-                                <Line X1="0" Y1="10" X2="260" Y2="10" Stroke="#1A30363D" StrokeThickness="1" />
-                                <Line X1="0" Y1="70" X2="260" Y2="70" Stroke="#1A30363D" StrokeThickness="1" />
-                                <Polyline Points="{Binding SignalMonitorLowFreq}" Stroke="#FFF0883E" StrokeThickness="1.5" Fill="Transparent" />
-                                <Polyline Points="{Binding SignalMonitorHighFreq}" Stroke="#FF79C0FF" StrokeThickness="1.5" Fill="Transparent" />
-                            </Canvas>
-                        </Viewbox>
-
-                        <!-- Bottom telemetry readouts -->
-                        <Grid Grid.Row="2" Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="SPEED" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <TextBlock Grid.Column="1" Text="{Binding SpeedKmh, StringFormat='{}{0:F0} km/h'}" FontSize="15" FontWeight="Bold" Foreground="#FFFFD600" VerticalAlignment="Center" />
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
-                                <TextBlock Text="STATUS" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                <TextBlock FontWeight="Bold" FontSize="13" VerticalAlignment="Center">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Idle" />
-                                            <Setter Property="Foreground" Value="#FF8B949E" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsRunning}" Value="True">
-                                                    <Setter Property="Text" Value="Running" />
-                                                    <Setter Property="Foreground" Value="#FF7EE787" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding IsClipping}" Value="True">
-                                                    <Setter Property="Text" Value="&#x26A0; Clipping" />
-                                                    <Setter Property="Foreground" Value="#FFFF7B72" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </StackPanel>
-                        </Grid>
-                    </Grid>
-                </Border>
-
-                <!-- Steering Wheel — splash-screen quality image -->
-                <Border Grid.Column="4" Background="#FF1C2128" CornerRadius="8" Padding="10"
-                        BorderThickness="1" BorderBrush="#FF30363D">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="STEERING" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                        <Viewbox Grid.Row="1" Stretch="Uniform" MaxWidth="160" MaxHeight="160">
-                            <Image x:Name="DashboardWheelImage"
-                                   Source="pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png"
-                                   Width="160" Height="160" Stretch="Uniform"
-                                   RenderOptions.BitmapScalingMode="HighQuality"
-                                   RenderTransformOrigin="0.5,0.5">
-                                <Image.RenderTransform>
-                                    <RotateTransform Angle="{Binding SteerAngle}" />
-                                </Image.RenderTransform>
-                            </Image>
-                        </Viewbox>
-                        <TextBlock Grid.Row="2" Text="{Binding SteerAngle, StringFormat='{}{0:F1}°'}" FontSize="18" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,6,0,0" />
-                    </Grid>
-                </Border>
-
-                <!-- Hardware Insight Panel -->
-                <Border Grid.Column="6" Background="#FF1C2128" CornerRadius="8" Padding="14"
-                        BorderThickness="1" BorderBrush="#FF30363D">
-                    <StackPanel>
-                        <TextBlock Text="HARDWARE INSIGHT" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,10" />
-
-                        <TextBlock Text="Active Provider" FontSize="10" Foreground="#FF8B949E" Margin="0,0,0,2" />
-                        <TextBlock Text="{Binding HalProviderName}" FontSize="13" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,12" TextWrapping="Wrap" />
-
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <TextBlock Text="HARDWARE" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBlock Text="{Binding HalProviderName}" FontSize="12" FontWeight="SemiBold" Foreground="#FFF0883E" VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
+                            <Ellipse Width="6" Height="6" Margin="0,0,4,0" VerticalAlignment="Center">
                                 <Ellipse.Style>
                                     <Style TargetType="Ellipse">
                                         <Setter Property="Fill" Value="#FF484F58" />
@@ -589,11 +416,10 @@
                                     </Style>
                                 </Ellipse.Style>
                             </Ellipse>
-                            <TextBlock Text="SDK Connection" FontSize="12" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                            <TextBlock Text="SDK" FontSize="11" Foreground="#FF8B949E" VerticalAlignment="Center" />
                         </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
+                            <Ellipse Width="6" Height="6" Margin="0,0,4,0" VerticalAlignment="Center">
                                 <Ellipse.Style>
                                     <Style TargetType="Ellipse">
                                         <Setter Property="Fill" Value="#FF484F58" />
@@ -605,11 +431,10 @@
                                     </Style>
                                 </Ellipse.Style>
                             </Ellipse>
-                            <TextBlock Text="Haptic Engine" FontSize="12" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                            <TextBlock Text="Haptics" FontSize="11" Foreground="#FF8B949E" VerticalAlignment="Center" />
                         </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                            <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                            <Ellipse Width="6" Height="6" Margin="0,0,4,0" VerticalAlignment="Center">
                                 <Ellipse.Style>
                                     <Style TargetType="Ellipse">
                                         <Setter Property="Fill" Value="#FF484F58" />
@@ -621,38 +446,15 @@
                                     </Style>
                                 </Ellipse.Style>
                             </Ellipse>
-                            <TextBlock Text="Peripheral Sync" FontSize="12" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                            <TextBlock Text="Peripheral" FontSize="11" Foreground="#FF8B949E" VerticalAlignment="Center" />
                         </StackPanel>
-
-                        <Button Command="{Binding TestBuzzCommand}" Cursor="Hand" HorizontalAlignment="Stretch"
-                                ToolTip="Play a 500ms diagnostic vibration on your wheel">
+                        <Button Command="{Binding TestBuzzCommand}" Cursor="Hand"
+                                Content="Test Buzz" FontSize="11" FontWeight="SemiBold" Padding="12,5"
+                                Background="#1AF0883E" Foreground="#FFF0883E" BorderBrush="#FFF0883E"
+                                 BorderThickness="1"
+                                 ToolTip="Play a 500ms diagnostic vibration on your wheel">
                             <Button.Style>
                                 <Style TargetType="Button">
-                                    <Setter Property="Background" Value="#1AF0883E" />
-                                    <Setter Property="Foreground" Value="#FFF0883E" />
-                                    <Setter Property="BorderBrush" Value="#FFF0883E" />
-                                    <Setter Property="BorderThickness" Value="1" />
-                                    <Setter Property="FontSize" Value="12" />
-                                    <Setter Property="FontWeight" Value="SemiBold" />
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="BuzzBd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="10,7" SnapsToDevicePixels="True">
-                                                    <TextBlock x:Name="BuzzText" Text="Test Buzz" FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}" Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="BuzzBd" Property="Background" Value="#33F0883E" />
-                                                    </Trigger>
-                                                    <Trigger Property="IsEnabled" Value="False">
-                                                        <Setter TargetName="BuzzBd" Property="Background" Value="#FF161B22" />
-                                                        <Setter TargetName="BuzzBd" Property="BorderBrush" Value="#FF21262D" />
-                                                        <Setter TargetName="BuzzText" Property="Foreground" Value="#FF484F58" />
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsTestBuzzRunning}" Value="True">
                                             <Setter Property="Content" Value="Buzzing..." />
@@ -661,17 +463,50 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <TextBlock Text="500ms diagnostic vibration" FontSize="9" Foreground="#FF8B949E" HorizontalAlignment="Center" Margin="0,3,0,0" TextWrapping="Wrap" TextAlignment="Center" />
                     </StackPanel>
                 </Border>
-            </Grid>
 
-            <!-- STATUS MESSAGE -->
-            <Border Background="#FF1C2128" CornerRadius="8" Padding="16,10" Margin="0,0,0,16"
-                    BorderThickness="1" BorderBrush="#FF30363D"
-                    Visibility="{Binding StatusText, Converter={StaticResource NotEmptyToVis}}">
-                <TextBlock Text="{Binding StatusText}" FontSize="14" Foreground="#FF8B949E" TextWrapping="Wrap" />
-            </Border>
+                <!-- Update Available Banner (compact) -->
+                <Border Background="#33FFD600" CornerRadius="8" Padding="16,10" Margin="0,0,0,8"
+                        BorderThickness="1" BorderBrush="#55FFD600"
+                        Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BoolToVis}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="#FFFFD600">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="⏫ Update available" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDownloadingUpdate}" Value="True">
+                                                <Setter Property="Text" Value="⏬ Downloading update..." />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="{Binding UpdateStatusText}" FontSize="11" Foreground="#FFE6EDF3" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Content="{Binding LatestVersionText, StringFormat='Install {0}'}"
+                                Command="{Binding DownloadAndInstallUpdateCommand}" Cursor="Hand"
+                                FontSize="12" FontWeight="Bold" Padding="16,6" Margin="12,0,0,0"
+                                Background="#FFFFD600" Foreground="#FF1C2128" BorderThickness="0"
+                                ToolTip="Download the latest version" />
+                    </Grid>
+                </Border>
+
+                <!-- Status Message -->
+                <Border Background="#FF1C2128" CornerRadius="8" Padding="14,10" Margin="0,0,0,16"
+                        BorderThickness="1" BorderBrush="#FF30363D"
+                        Visibility="{Binding StatusText, Converter={StaticResource NotEmptyToVis}}">
+                    <TextBlock Text="{Binding StatusText}" FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" />
+                </Border>
+
+            </StackPanel>
 
         </StackPanel>
     </ScrollViewer>
