@@ -1,0 +1,72 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Core background surfaces - cooler, slightly lighter -->
+    <SolidColorBrush x:Key="BgDark" Color="#FF0E121B" />
+    <SolidColorBrush x:Key="BgPanel" Color="#FF141A24" />
+    <SolidColorBrush x:Key="BgCard" Color="#FF1A212E" />
+    <SolidColorBrush x:Key="BgInput" Color="#FF1E2633" />
+
+    <!-- Accent colors - steel blue -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#FF5C9CE6" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#FF7DB3F0" />
+    <SolidColorBrush x:Key="AccentDragBrush" Color="#FFA3CCF7" />
+    <SolidColorBrush x:Key="AccentGlow" Color="#335C9CE6" />
+    <SolidColorBrush x:Key="AccentHoverBg" Color="#335C9CE6" />
+    <SolidColorBrush x:Key="AccentSelectedBg" Color="#3B7BC8" />
+    <SolidColorBrush x:Key="AccentDimBg" Color="#1A5C9CE6" />
+
+    <!-- Status colors -->
+    <SolidColorBrush x:Key="GreenBrush" Color="#FF34D399" />
+    <SolidColorBrush x:Key="YellowBrush" Color="#FFFCD34D" />
+    <SolidColorBrush x:Key="RedBrush" Color="#FFF87171" />
+    <SolidColorBrush x:Key="WhiteBrush" Color="#FFFFFFFF" />
+
+    <!-- Text colors -->
+    <SolidColorBrush x:Key="TextBrush" Color="#FFE2E8F0" />
+    <SolidColorBrush x:Key="TextDimBrush" Color="#FF8892A6" />
+
+    <!-- Borders and dividers -->
+    <SolidColorBrush x:Key="BorderBrush" Color="#FF2D3548" />
+    <SolidColorBrush x:Key="DividerBrush" Color="#FF2D3548" />
+    <SolidColorBrush x:Key="HoverOverlayBrush" Color="#22FFFFFF" />
+    <SolidColorBrush x:Key="PopupBorderBrush" Color="#FF8892A6" />
+    <SolidColorBrush x:Key="PopupBg" Color="#FF1A212E" />
+
+    <!-- Section accent colors -->
+    <SolidColorBrush x:Key="SectionTyreForces" Color="#FF7EB8E0" />
+    <SolidColorBrush x:Key="SectionTyreSlip" Color="#FF5BBF9E" />
+    <SolidColorBrush x:Key="SectionGripFeel" Color="#FF7BD996" />
+    <SolidColorBrush x:Key="SectionDamping" Color="#FFD4B04A" />
+    <SolidColorBrush x:Key="SectionDynamic" Color="#FF5C9CE6" />
+    <SolidColorBrush x:Key="SectionTyreFlex" Color="#FF66A3D9" />
+    <SolidColorBrush x:Key="SectionOutput" Color="#FF5C9CE6" />
+    <SolidColorBrush x:Key="SectionVibration" Color="#FFC7A8E0" />
+    <SolidColorBrush x:Key="SectionCurb" Color="#FFA88ED9" />
+    <SolidColorBrush x:Key="SectionOfftrack" Color="#FFBF9A80" />
+    <SolidColorBrush x:Key="SectionLfe" Color="#FFE07A7A" />
+    <SolidColorBrush x:Key="SectionSignal" Color="#FF7EB8E0" />
+    <SolidColorBrush x:Key="SectionCrash" Color="#FFE05555" />
+    <SolidColorBrush x:Key="SectionWetWeather" Color="#FF5AA9E6" />
+
+    <!-- Tab control -->
+    <SolidColorBrush x:Key="TabHoverBg" Color="#FF1E2633" />
+    <SolidColorBrush x:Key="TabSelectedBorder" Color="#FF5C9CE6" />
+
+    <!-- Slider -->
+    <SolidColorBrush x:Key="SliderTrackBg" Color="#FF2E3A50" />
+    <SolidColorBrush x:Key="SliderThumbStroke" Color="#FFFFFFFF" />
+
+    <!-- Scrollbar -->
+    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#FF3D4860" />
+    <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#FF8892A6" />
+    <SolidColorBrush x:Key="ScrollThumbDragBrush" Color="#FF5C9CE6" />
+    <SolidColorBrush x:Key="ScrollBarTrack" Color="#0FFFFFFF" />
+
+    <!-- Tooltip -->
+    <SolidColorBrush x:Key="ToolTipBg" Color="#FF262E3D" />
+    <SolidColorBrush x:Key="ToolTipBorder" Color="#FF3D4860" />
+    <SolidColorBrush x:Key="ToolTipText" Color="#FFE2E8F0" />
+
+    <!-- Expander -->
+    <SolidColorBrush x:Key="ExpanderArrowBrush" Color="#FF8892A6" />
+</ResourceDictionary>

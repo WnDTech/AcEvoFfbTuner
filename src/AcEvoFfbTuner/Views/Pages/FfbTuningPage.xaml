@@ -17,7 +17,7 @@
 
         <!-- ═══ PROFILE SUMMARY BAR ═══ -->
         <Border Grid.Row="0" Background="{StaticResource BgCard}" Padding="24,10"
-                BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderBrush}">
+                BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="CAR" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -29,7 +29,7 @@
                                Visibility="{Binding DetectedCarModel, Converter={StaticResource NotEmptyToVis}}" />
                 </Grid>
 
-                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,24,2" />
+                <Border Width="1" Background="{DynamicResource BorderBrush}" Margin="0,2,24,2" />
 
                 <TextBlock Text="WHEEL" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -47,22 +47,22 @@
                     </TextBlock.Style>
                 </TextBlock>
 
-                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,24,2" />
+                <Border Width="1" Background="{DynamicResource BorderBrush}" Margin="0,2,24,2" />
 
                 <TextBlock Text="PROFILE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Text="{Binding SelectedProfile.Name, FallbackValue='No profile', TargetNullValue='No profile'}"
-                           FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"
+                           FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"
                            VerticalAlignment="Center" Margin="0,0,24,0" />
 
-                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,24,2" />
+                <Border Width="1" Background="{DynamicResource BorderBrush}" Margin="0,2,24,2" />
 
                 <TextBlock Text="PEAK" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Text="{Binding OutputGainNmText}" FontSize="14" FontWeight="SemiBold"
                            Foreground="#FFF0883E" VerticalAlignment="Center" />
 
-                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,2,24,2" />
+                <Border Width="1" Background="{DynamicResource BorderBrush}" Margin="0,2,24,2" />
 
                 <TextBlock Text="MIX" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />

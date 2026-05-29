@@ -9,8 +9,8 @@
          Title="AC Evo FFB Tuner" Height="900" Width="1280" MinWidth="900" MinHeight="600" Loaded="Window_Loaded"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/wheel.ico"
-        Background="{StaticResource BgDark}"
-        Foreground="{StaticResource TextBrush}"
+        Background="{DynamicResource BgDark}"
+        Foreground="{DynamicResource TextBrush}"
         FontFamily="Segoe UI"
         UseLayoutRounding="True"
         ToolTipService.IsEnabled="{Binding TooltipsEnabled}">
@@ -39,8 +39,8 @@
         </Grid.RowDefinitions>
 
         <!-- ═══ HEADER BAR (single row) ═══ -->
-        <Border Grid.Row="0" Background="{StaticResource BgPanel}" Padding="16,8"
-                BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderBrush}">
+        <Border Grid.Row="0" Background="{DynamicResource BgPanel}" Padding="16,8"
+                BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}">
             <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -57,9 +57,9 @@
 
                 <!-- Logo + Version -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="AC EVO" FontSize="20" FontWeight="Black" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0" />
-                    <TextBlock Text="FFB TUNER" FontSize="20" FontWeight="Light" Foreground="{StaticResource TextBrush}" VerticalAlignment="Bottom" Margin="0,0,8,0" />
-                    <TextBlock Text="{Binding AppVersion, StringFormat='v{0}'}" FontSize="13" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Bottom" Margin="0,0,0,1" />
+                    <TextBlock Text="AC EVO" FontSize="20" FontWeight="Black" Foreground="{DynamicResource AccentBrush}" Margin="0,0,6,0" />
+                    <TextBlock Text="FFB TUNER" FontSize="20" FontWeight="Light" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Bottom" Margin="0,0,8,0" />
+                    <TextBlock Text="{Binding AppVersion, StringFormat='v{0}'}" FontSize="13" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Bottom" Margin="0,0,0,1" />
                 </StackPanel>
 
                 <!-- Connection Pill -->
@@ -68,7 +68,7 @@
                         ToolTip="Select FFB device">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="PillBd" Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
+                            <Border x:Name="PillBd" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderBrush}"
                                     BorderThickness="1" CornerRadius="14" Padding="14,6" SnapsToDevicePixels="True">
                                 <StackPanel Orientation="Horizontal">
                                     <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
@@ -86,18 +86,18 @@
                                     <TextBlock FontSize="14" VerticalAlignment="Center">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
                                                 <Setter Property="Text" Value="No device" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsDeviceConnected}" Value="True">
-                                                        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                                                         <Setter Property="Text" Value="{Binding DeviceName}" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
-                                    <TextBlock Text=" &#x25BE;" FontSize="10" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                    <TextBlock Text=" &#x25BE;" FontSize="10" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
                                 </StackPanel>
                             </Border>
                             <ControlTemplate.Triggers>
@@ -113,22 +113,22 @@
                 <Popup x:Name="DevicePopup" PlacementTarget="{Binding ElementName=ConnectionPill}"
                        Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
                        PopupAnimation="Slide" Width="280" Opened="OnDevicePopupOpened">
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="12"
-                            BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="8" Padding="12"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
                             Margin="0,4,0,0">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,8">
                                 <TextBlock Text="SELECT DEVICE" FontSize="11" FontWeight="Bold"
-                                           Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                           Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                 <Button DockPanel.Dock="Right" Content="&#x21BB;" FontSize="14"
                                         Click="OnDeviceRefreshClick" Cursor="Hand"
-                                        Background="Transparent" Foreground="{StaticResource TextDimBrush}"
+                                        Background="Transparent" Foreground="{DynamicResource TextDimBrush}"
                                         BorderThickness="0" Padding="4,0" VerticalAlignment="Center" />
                             </DockPanel>
                             <ListBox x:Name="DeviceList" ItemsSource="{Binding AvailableDevices}"
                                      SelectionChanged="OnDeviceListSelectionChanged"
                                      MaxHeight="220" BorderThickness="0" Background="Transparent"
-                                     Foreground="{StaticResource TextBrush}">
+                                     Foreground="{DynamicResource TextBrush}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="2,4">
@@ -174,7 +174,7 @@
                                 </ListBox.ItemContainerStyle>
                             </ListBox>
                             <TextBlock x:Name="DeviceEmptyText" Text="No devices found" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Center"
                                        Margin="0,12,0,8" Visibility="Collapsed" />
                         </StackPanel>
                     </Border>
@@ -186,7 +186,7 @@
                         ToolTip="Switch between AC EVO, RaceRoom, and Assetto Corsa">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="PillBd" Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
+                            <Border x:Name="PillBd" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderBrush}"
                                     BorderThickness="1" CornerRadius="14" Padding="14,6" SnapsToDevicePixels="True">
                                 <StackPanel Orientation="Horizontal">
                                     <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
@@ -201,8 +201,8 @@
                                             </Style>
                                         </Ellipse.Style>
                                     </Ellipse>
-                                    <TextBlock Text="{Binding GameDisplayName}" FontSize="14" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Text=" &#x21C4;" FontSize="10" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" FontFamily="Segoe UI Symbol" Margin="4,0,0,0" />
+                                    <TextBlock Text="{Binding GameDisplayName}" FontSize="14" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text=" &#x21C4;" FontSize="10" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" FontFamily="Segoe UI Symbol" Margin="4,0,0,0" />
                                 </StackPanel>
                             </Border>
                             <ControlTemplate.Triggers>
@@ -220,13 +220,13 @@
                             Cursor="Hand" ToolTip="Select FFB profile">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="PillBd" Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
+                                <Border x:Name="PillBd" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderBrush}"
                                         BorderThickness="1" CornerRadius="14" Padding="14,6" SnapsToDevicePixels="True">
                                     <StackPanel Orientation="Horizontal">
-                                        <Ellipse Width="8" Height="8" Fill="{StaticResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <Ellipse Width="8" Height="8" Fill="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding SelectedProfile.Name, FallbackValue='No profile', TargetNullValue='No profile'}"
-                                                   FontSize="14" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                        <TextBlock FontSize="11" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="4,0,0,0">
+                                                   FontSize="14" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="4,0,0,0">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -239,7 +239,7 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                        <TextBlock Text=" &#x25BE;" FontSize="10" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                        <TextBlock Text=" &#x25BE;" FontSize="10" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
                                     </StackPanel>
                                 </Border>
                                 <ControlTemplate.Triggers>
@@ -254,9 +254,9 @@
                             Cursor="Hand" Margin="4,0,0,0" ToolTip="Save profile">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="SaveBd" Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
+                                <Border x:Name="SaveBd" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderBrush}"
                                         BorderThickness="1" CornerRadius="14" Padding="10,6" SnapsToDevicePixels="True">
-                                    <TextBlock Text="Save" FontSize="13" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Save" FontSize="13" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
@@ -272,13 +272,13 @@
                 <Popup x:Name="ProfilePopup" PlacementTarget="{Binding ElementName=ProfilePill}"
                        Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
                        PopupAnimation="Slide" Width="300" Opened="OnProfilePopupOpened">
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="12"
-                            BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="8" Padding="12"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
                             Margin="0,4,0,0">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,8">
                                 <TextBlock Text="SELECT PROFILE" FontSize="11" FontWeight="Bold"
-                                           Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                           Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                 <Button DockPanel.Dock="Right" Content="Save As..."
                                         Command="{Binding SaveAsNewProfileCommand}"
                                         FontSize="11" Padding="8,3" Cursor="Hand" VerticalAlignment="Center"
@@ -288,14 +288,14 @@
                                      SelectedItem="{Binding SelectedProfile}"
                                      SelectionChanged="OnProfileListSelectionChanged"
                                      MaxHeight="260" BorderThickness="0" Background="Transparent"
-                                     Foreground="{StaticResource TextBrush}">
+                                     Foreground="{DynamicResource TextBrush}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="2,4">
                                             <Ellipse Width="6" Height="6" Margin="0,0,8,0" VerticalAlignment="Center">
                                                 <Ellipse.Style>
                                                     <Style TargetType="Ellipse">
-                                                        <Setter Property="Fill" Value="{StaticResource AccentBrush}" />
+                                                        <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsBuiltIn}" Value="True">
                                                                 <Setter Property="Fill" Value="#FF555555" />
@@ -334,7 +334,7 @@
                                 </ListBox.ItemContainerStyle>
                             </ListBox>
                             <TextBlock x:Name="ProfileEmptyText" Text="No profiles found" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Center"
                                        Margin="0,12,0,8" Visibility="Collapsed" />
                         </StackPanel>
                     </Border>
@@ -346,14 +346,14 @@
                             Margin="0,0,8,0" VerticalAlignment="Center" ToolTip="Pop out compact tuner">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="PopBd" Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
+                                <Border x:Name="PopBd" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderBrush}"
                                         BorderThickness="1" CornerRadius="14" Padding="10,6" SnapsToDevicePixels="True">
-                                    <TextBlock Text="Pop Out" FontSize="13" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Pop Out" FontSize="13" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter TargetName="PopBd" Property="Background" Value="#FF30363D" />
-                                        <Setter TargetName="PopBd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                        <Setter TargetName="PopBd" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -364,10 +364,10 @@
                             ToolTip="Record AC EVO window (WinRT capture, AMD-safe)">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="RecBd" Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
+                                <Border x:Name="RecBd" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderBrush}"
                                         BorderThickness="1" CornerRadius="14" Padding="10,6" SnapsToDevicePixels="True">
                                     <TextBlock x:Name="RecBtnText" Text="REC" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                               Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
@@ -537,8 +537,8 @@
         </Border>
 
         <!-- ═══ STATUS BAR (System Log) ═══ -->
-        <Border Grid.Row="2" Background="{StaticResource BgPanel}" Padding="12,4"
-                BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderBrush}">
+        <Border Grid.Row="2" Background="{DynamicResource BgPanel}" Padding="12,4"
+                BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderBrush}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -554,7 +554,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- System Log Icon -->
-                <TextBlock Text="SYS LOG" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <TextBlock Text="SYS LOG" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
 
                 <!-- System Log Entries -->
                 <ItemsControl Grid.Column="1" ItemsSource="{Binding RecentSystemLogEntries}" VerticalAlignment="Center" Margin="0,0,16,0">
@@ -565,13 +565,13 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding StringFormat='{}{0}  ·'}" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding StringFormat='{}{0}  ·'}" FontSize="12" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
                 <!-- Separator -->
-                <Border Grid.Column="2" Width="1" Background="{StaticResource BorderBrush}" Margin="0,2" />
+                <Border Grid.Column="2" Width="1" Background="{DynamicResource BorderBrush}" Margin="0,2" />
 
                 <!-- Game Status -->
                 <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
@@ -607,11 +607,11 @@
 
                 <!-- Packets/sec -->
                 <TextBlock Grid.Column="5" Text="{Binding PacketsPerSecond, StringFormat='{}{0} pkt/s'}"
-                           FontSize="13" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="12,0" />
+                           FontSize="13" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="12,0" />
 
                 <!-- Force Output -->
                 <TextBlock Grid.Column="6" Text="{Binding CurrentForceOutput, StringFormat='{}{0:F3} Nm'}"
-                           FontSize="13" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" FontWeight="Medium" Margin="0,0,12,0" />
+                           FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" FontWeight="Medium" Margin="0,0,12,0" />
 
                 <!-- REC Indicator -->
                 <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
@@ -647,7 +647,7 @@
                 </StackPanel>
 
                 <!-- Separator -->
-                <Border Grid.Column="8" Width="1" Background="{StaticResource BorderBrush}" Margin="4,2" />
+                <Border Grid.Column="8" Width="1" Background="{DynamicResource BorderBrush}" Margin="4,2" />
 
                 <!-- Active Features + Haptic Test -->
                 <StackPanel Grid.Column="9" Orientation="Horizontal" VerticalAlignment="Center">
@@ -660,7 +660,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{StaticResource BgInput}" BorderBrush="{StaticResource BorderBrush}"
+                                <Border Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderBrush}"
                                         BorderThickness="1" CornerRadius="4" Padding="8,2" Margin="0,0,4,0">
                                     <TextBlock Text="{Binding}" FontSize="11" Foreground="#FF79C0FF" VerticalAlignment="Center" />
                                 </Border>
@@ -692,7 +692,7 @@
                         </Button.Template>
                     </Button>
 
-                    <Border Width="1" Background="{StaticResource BorderBrush}" Margin="8,0" Height="16" VerticalAlignment="Center" />
+                    <Border Width="1" Background="{DynamicResource BorderBrush}" Margin="8,0" Height="16" VerticalAlignment="Center" />
 
                     <!-- Donate -->
                     <Button Click="OnDonateClick" Cursor="Hand" VerticalAlignment="Center"

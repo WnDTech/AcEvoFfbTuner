@@ -22,7 +22,7 @@
     </Window.Resources>
 
     <Border x:Name="RootBorder" CornerRadius="6" BorderThickness="1"
-            BorderBrush="#FF30363D" Background="{StaticResource BgDark}">
+            BorderBrush="#FF30363D" Background="{DynamicResource BgDark}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -30,7 +30,7 @@
             </Grid.RowDefinitions>
 
             <!-- Custom Title Bar -->
-            <Border x:Name="TitleBar" Grid.Row="0" Background="{StaticResource BgPanel}"
+            <Border x:Name="TitleBar" Grid.Row="0" Background="{DynamicResource BgPanel}"
                     CornerRadius="6,6,0,0" Padding="10,6"
                     BorderThickness="0,0,0,1" BorderBrush="#FF30363D">
                 <Grid>
@@ -43,8 +43,8 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
-                        <TextBlock Text="FFB" FontSize="14" FontWeight="Black" Foreground="{StaticResource AccentBrush}" Margin="0,0,4,0" />
-                        <TextBlock Text="COMPACT" FontSize="14" FontWeight="Light" Foreground="{StaticResource TextBrush}" />
+                        <TextBlock Text="FFB" FontSize="14" FontWeight="Black" Foreground="{DynamicResource AccentBrush}" Margin="0,0,4,0" />
+                        <TextBlock Text="COMPACT" FontSize="14" FontWeight="Light" Foreground="{DynamicResource TextBrush}" />
                     </StackPanel>
 
                     <ComboBox Grid.Column="1" ItemsSource="{Binding Profiles}"
@@ -78,19 +78,19 @@
                     <!-- Info strip -->
                     <WrapPanel Margin="0,0,0,6">
                         <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
-                            <TextBlock Text="CAR" FontSize="9" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBlock Text="CAR" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
                             <TextBlock Text="{Binding DetectedCarModel, FallbackValue='—', TargetNullValue='—'}" FontSize="11" Foreground="#FF79C0FF" VerticalAlignment="Center" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
-                            <TextBlock Text="PEAK" FontSize="9" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBlock Text="{Binding OutputGainNmText}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="PEAK" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBlock Text="{Binding OutputGainNmText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="MIX" FontSize="9" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBlock Text="MIX" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
                             <TextBlock FontSize="11" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
+                                        <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding SelectedMixMode}" Value="Replace">
                                                 <Setter Property="Foreground" Value="#FF79C0FF" />
@@ -108,21 +108,21 @@
                     </WrapPanel>
 
                     <!-- MASTER OUTPUT -->
-                    <TextBlock Text="MASTER OUTPUT" FontSize="10" FontWeight="Bold" Foreground="{StaticResource SectionOutput}" Margin="0,0,0,4" />
+                    <TextBlock Text="MASTER OUTPUT" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SectionOutput}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding OutputGain, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.001"
                         Label="Output Gain" DisplayText="{Binding OutputGainNmText}" ValueWidth="68" LabelAbove="True"
-                        SectionColor="{StaticResource SectionOutput}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,2" />
                     <controls:LabeledSlider Value="{Binding MaxForceLimit, Mode=TwoWay}" Minimum="0.1" Maximum="1.0" TickFrequency="0.01"
                         Label="Max Force Limit" DisplayText="{Binding MaxForceLimitNmText}" ValueWidth="68" LabelAbove="True"
-                        SectionColor="{StaticResource SectionOutput}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,2" />
                     <controls:LabeledSlider Value="{Binding ForceSensitivity, Mode=TwoWay}" Minimum="1" Maximum="1000" TickFrequency="1"
                         Label="Sensitivity" StringFormat="{}{0:F0}" IsLogarithmic="True" LabelAbove="True"
-                        SectionColor="{StaticResource SectionOutput}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,2" />
                     <controls:LabeledSlider Value="{Binding MaxSlewRate, Mode=TwoWay}" Minimum="0.03" Maximum="0.50" TickFrequency="0.001"
                         Label="Max Slew Rate" StringFormat="{}{0:F4}" LabelAbove="True"
-                        SectionColor="{StaticResource SectionOutput}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,2" />
 
-                    <Border Background="{StaticResource BgCard}" CornerRadius="3" Padding="6,4" Margin="0,4,0,8">
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="3" Padding="6,4" Margin="0,4,0,8">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -140,79 +140,79 @@
                     </Border>
 
                     <!-- TYRE FORCES -->
-                    <TextBlock Text="TYRE FORCES" FontSize="10" FontWeight="Bold" Foreground="{StaticResource SectionTyreForces}" Margin="0,0,0,4" />
+                    <TextBlock Text="TYRE FORCES" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SectionTyreForces}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding MzFrontGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
                         Label="Mz (Self-Align)" StringFormat="{}{0:F3}"
                         ShowCheckBox="True" IsChecked="{Binding MzFrontEnabled}"
-                        SectionColor="{StaticResource SectionTyreForces}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionTyreForces}" Margin="0,0,0,2" />
                     <controls:LabeledSlider Value="{Binding FxFrontGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
                         Label="Fx (Longitudinal)" StringFormat="{}{0:F3}"
                         ShowCheckBox="True" IsChecked="{Binding FxFrontEnabled}"
-                        SectionColor="{StaticResource SectionTyreForces}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionTyreForces}" Margin="0,0,0,2" />
                     <controls:LabeledSlider Value="{Binding FyFrontGain, Mode=TwoWay}" Minimum="-10" Maximum="10" TickFrequency="0.01"
                         Label="Fy (Lateral)" StringFormat="{}{0:F3}"
                         ShowCheckBox="True" IsChecked="{Binding FyFrontEnabled}"
-                        SectionColor="{StaticResource SectionTyreForces}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionTyreForces}" Margin="0,0,0,2" />
                     <controls:LabeledSlider Value="{Binding MzScale, Mode=TwoWay}" Minimum="1" Maximum="500" TickFrequency="0.5"
                         Label="Mz Scale" StringFormat="{}{0:F0}" IsLogarithmic="True"
-                        SectionColor="{StaticResource SectionTyreForces}" Margin="0,0,0,8" />
+                        SectionColor="{DynamicResource SectionTyreForces}" Margin="0,0,0,8" />
 
                     <!-- DAMPING & FRICTION -->
-                    <TextBlock Text="DAMPING &amp; FRICTION" FontSize="10" FontWeight="Bold" Foreground="{StaticResource SectionDamping}" Margin="0,0,0,4" />
+                    <TextBlock Text="DAMPING &amp; FRICTION" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SectionDamping}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding SpeedDamping, Mode=TwoWay}" Minimum="0" Maximum="25" TickFrequency="0.1"
                         Label="Speed Damping" StringFormat="{}{0:F2}"
-                        SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,2" />
                     <controls:LabeledSlider Value="{Binding FrictionLevel, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.1"
                         Label="Friction" StringFormat="{}{0:F2}"
-                        SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,8" />
+                        SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,8" />
 
                     <!-- CURB & RUMBLE -->
-                    <TextBlock Text="CURB &amp; RUMBLE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource SectionCurb}" Margin="0,0,0,4" />
+                    <TextBlock Text="CURB &amp; RUMBLE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SectionCurb}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding CurbGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                         Label="Curb" StringFormat="{}{0:F2}"
-                        SectionColor="{StaticResource SectionCurb}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionCurb}" Margin="0,0,0,2" />
                     <controls:LabeledSlider Value="{Binding VibrationMasterGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                         Label="Vib Master" StringFormat="{}{0:F2}"
-                        SectionColor="{StaticResource SectionCurb}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionCurb}" Margin="0,0,0,2" />
 
                     <!-- SURFACE VIBRATION -->
-                    <TextBlock Text="SURFACE VIBRATION" FontSize="10" FontWeight="Bold" Foreground="{StaticResource SectionVibration}" Margin="0,6,0,4" />
+                    <TextBlock Text="SURFACE VIBRATION" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SectionVibration}" Margin="0,6,0,4" />
                     <controls:LabeledSlider Value="{Binding SlipGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                         Label="Slip" StringFormat="{}{0:F2}"
-                        SectionColor="{StaticResource SectionVibration}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionVibration}" Margin="0,0,0,2" />
                     <controls:LabeledSlider Value="{Binding RoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                         Label="Road" StringFormat="{}{0:F2}"
-                        SectionColor="{StaticResource SectionVibration}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionVibration}" Margin="0,0,0,2" />
                     <controls:LabeledSlider Value="{Binding AbsGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                         Label="ABS" StringFormat="{}{0:F2}"
-                        SectionColor="{StaticResource SectionVibration}" Margin="0,0,0,2" />
+                        SectionColor="{DynamicResource SectionVibration}" Margin="0,0,0,2" />
 
                     <!-- OFFTRACK EFFECTS -->
-                    <TextBlock Text="OFFTRACK" FontSize="10" FontWeight="Bold" Foreground="{StaticResource SectionOfftrack}" Margin="0,6,0,4" />
+                    <TextBlock Text="OFFTRACK" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SectionOfftrack}" Margin="0,6,0,4" />
                     <controls:LabeledSlider Value="{Binding OfftrackGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                         Label="Offtrack" StringFormat="{}{0:F2}"
-                        SectionColor="{StaticResource SectionOfftrack}" Margin="0,0,0,8" />
+                        SectionColor="{DynamicResource SectionOfftrack}" Margin="0,0,0,8" />
 
                     <!-- SIGNAL PROCESSING -->
-                    <TextBlock Text="SIGNAL PROCESSING" FontSize="10" FontWeight="Bold" Foreground="{StaticResource SectionTyreSlip}" Margin="0,0,0,4" />
+                    <TextBlock Text="SIGNAL PROCESSING" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding CenterSuppressionDegrees, Mode=TwoWay}" Minimum="0" Maximum="30" TickFrequency="0.5"
                         Label="Center Suppress" StringFormat="{}{0:F1}" Suffix="°"
-                        SectionColor="{StaticResource SectionTyreSlip}" Margin="0,0,0,4" />
+                        SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding CenterSharpnessDegrees, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.5"
                         Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}"
                         Label="Center Sharp" StringFormat="{}{0:F1}" Suffix="°"
-                        SectionColor="{StaticResource SectionTyreSlip}" Margin="0,0,0,4" />
+                        SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.5"
                         Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}"
                         Label="Center Str" StringFormat="{}{0:F1}" Suffix="x"
-                        SectionColor="{StaticResource SectionTyreSlip}" Margin="0,0,0,8" />
+                        SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,8" />
 
                     <!-- SAVE -->
-                    <Border Background="{StaticResource BgPanel}" CornerRadius="4" Padding="8,6" Margin="0,4,0,0">
+                    <Border Background="{DynamicResource BgPanel}" CornerRadius="4" Padding="8,6" Margin="0,4,0,0">
                         <Button Command="{Binding SaveCurrentProfileCommand}" Cursor="Hand" HorizontalAlignment="Stretch">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
-                                    <Border x:Name="SaveBd" Background="{StaticResource AccentBrush}" CornerRadius="3" Padding="10,6">
+                                    <Border x:Name="SaveBd" Background="{DynamicResource AccentBrush}" CornerRadius="3" Padding="10,6">
                                         <TextBlock Text="SAVE PROFILE" FontWeight="Bold" FontSize="12"
                                                    Foreground="White" HorizontalAlignment="Center" />
                                     </Border>

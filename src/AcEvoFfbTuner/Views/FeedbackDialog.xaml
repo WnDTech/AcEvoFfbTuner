@@ -7,7 +7,7 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="{StaticResource BgDark}"
-        Foreground="{StaticResource TextBrush}">
+        Foreground="{DynamicResource TextBrush}">
 
     <Grid Margin="24">
         <Grid.RowDefinitions>

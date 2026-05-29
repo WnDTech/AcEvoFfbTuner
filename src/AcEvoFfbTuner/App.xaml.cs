@@ -25,6 +25,8 @@ public partial class App : Application
 
         Settings = AppSettings.Load();
 
+        ThemeManager.ApplyTheme(Settings.ThemeName);
+
         if (Settings.SplashScreenEnabled)
         {
             var customSound = Settings.CustomStartupSoundPath;

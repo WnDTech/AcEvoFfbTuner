@@ -151,6 +151,31 @@
                     </StackPanel>
                 </Grid>
 
+                <!-- THEME -->
+                <StackPanel Margin="0,0,0,24">
+                    <TextBlock Text="THEME" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,4" />
+                    <TextBlock Text="Choose the app color scheme. Changes apply immediately." FontSize="14" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap" />
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="8" Padding="16,14"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                        <ComboBox SelectedItem="{Binding ThemeMode, Mode=TwoWay}" FontSize="14" Padding="6,4" MinWidth="200" HorizontalAlignment="Left">
+                            <ComboBox.ItemsSource>
+                                <x:Array Type="sys:String" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                                    <sys:String>Onyx</sys:String>
+                                    <sys:String>Slate</sys:String>
+                                    <sys:String>Obsidian</sys:String>
+                                    <sys:String>Graphite</sys:String>
+                                    <sys:String>Amber</sys:String>
+                                    <sys:String>Crimson</sys:String>
+                                    <sys:String>Jade</sys:String>
+                                    <sys:String>Cobalt</sys:String>
+                                    <sys:String>Rose</sys:String>
+                                    <sys:String>Charcoal</sys:String>
+                                </x:Array>
+                            </ComboBox.ItemsSource>
+                        </ComboBox>
+                    </Border>
+                </StackPanel>
+
             </StackPanel>
         </ScrollViewer>
 

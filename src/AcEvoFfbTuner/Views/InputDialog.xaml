@@ -7,7 +7,7 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="{StaticResource BgDark}"
-        Foreground="{StaticResource TextBrush}">
+        Foreground="{DynamicResource TextBrush}">
     
     <StackPanel Margin="24">
         <TextBlock Text="Enter profile name:" FontSize="16" Margin="0,0,0,12" />

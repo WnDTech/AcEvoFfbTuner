@@ -20,6 +20,7 @@ public sealed class AppSettings
     public string DefaultStartPage { get; set; } = "Home";
     public bool TooltipsEnabled { get; set; } = true;
     public bool AutoProfileUpgrade { get; set; }
+    public string ThemeName { get; set; } = ThemeManager.DefaultTheme;
 
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");

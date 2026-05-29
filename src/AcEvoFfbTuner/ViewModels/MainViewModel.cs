@@ -3762,6 +3762,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _autoProfileUpgrade;
 
+    [ObservableProperty]
+    private string _themeMode = ThemeManager.DefaultTheme;
+
+    partial void OnThemeModeChanged(string value)
+    {
+        ThemeManager.ApplyTheme(value);
+        _appSettings.ThemeName = value;
+        _appSettings.Save();
+    }
+
     private NAudio.Wave.WasapiLoopbackCapture? _loopbackCapture;
     private NAudio.Wave.WaveFileWriter? _waveWriter;
     private string? _recordingTempPath;
@@ -3836,6 +3846,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         IsPerCarAutoLoadEnabled = _appSettings.PerCarAutoLoadEnabled;
         TooltipsEnabled = _appSettings.TooltipsEnabled;
         AutoProfileUpgrade = _appSettings.AutoProfileUpgrade;
+        ThemeMode = _appSettings.ThemeName;
 
         if (Enum.TryParse<NavPage>(_appSettings.DefaultStartPage, out var startPage))
         {

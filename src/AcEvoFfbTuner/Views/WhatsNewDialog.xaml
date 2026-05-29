@@ -9,7 +9,7 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
         Background="{StaticResource BgDark}"
-        Foreground="{StaticResource TextBrush}"
+        Foreground="{DynamicResource TextBrush}"
         ShowInTaskbar="False"
         Loaded="OnLoaded">
 
