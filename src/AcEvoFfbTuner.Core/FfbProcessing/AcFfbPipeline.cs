@@ -101,7 +101,8 @@ public sealed class AcFfbPipeline : FfbPipeline
                         + raw.AbsVibrations * VibrationMixer.AbsGain;
         vibration *= VibrationMixer.MasterGain;
 
-        float finalOutput = coreOutput;
+        float eqOutput = Equalizer.Process(coreOutput);
+        float finalOutput = eqOutput;
 
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
 
