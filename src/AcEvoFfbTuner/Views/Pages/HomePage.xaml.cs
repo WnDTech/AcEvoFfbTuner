@@ -20,10 +20,10 @@ public sealed partial class HomePage : UserControl
         "pack://application:,,,/Resources/splash-wheels/G27.png",
     ];
 
-    private const double GForceDotCenterX = 44;
-    private const double GForceDotCenterY = 44;
+    private const double GForceDotCenterX = 50;
+    private const double GForceDotCenterY = 50;
     private const double GForceDotHalf = 5;
-    private const double GForceRadius = 36;
+    private const double GForceRadius = 41;
     private const double GForceMaxG = 2.0;
 
     private static readonly Brush ForceNormalBrush = new SolidColorBrush(Color.FromRgb(240, 136, 62));

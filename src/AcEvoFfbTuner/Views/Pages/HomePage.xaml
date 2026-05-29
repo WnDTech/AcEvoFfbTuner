@@ -109,39 +109,43 @@
                             </Style>
                         </Grid.Resources>
 
-                        <!-- LEFT: G-Force instrument -->
+                        <!-- LEFT: G-Force instrument (fills the box) -->
                         <Border Grid.Column="0" Style="{StaticResource PanelBorder}" Margin="0,0,6,0">
-                            <StackPanel>
-                                <TextBlock Text="G" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,10"
-                                           HorizontalAlignment="Center" />
-                                <Grid Width="88" Height="88" Margin="0,0,0,10">
-                                    <Line X1="44" Y1="4" X2="44" Y2="84" Stroke="#FF21262D" StrokeThickness="1" />
-                                    <Line X1="4" Y1="44" X2="84" Y2="44" Stroke="#FF21262D" StrokeThickness="1" />
-                                    <Ellipse Width="72" Height="72" Stroke="#FF21262D" StrokeThickness="1" />
-                                    <TextBlock Text="G" FontSize="11" Foreground="#FF484F58"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <Ellipse x:Name="GForceDot" Width="10" Height="10" Fill="#FF79C0FF"
-                                             HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                    <Ellipse Width="14" Height="14" Stroke="#3379C0FF" StrokeThickness="2"
-                                             HorizontalAlignment="Left" VerticalAlignment="Top"
-                                             Margin="37,37,0,0" IsHitTestVisible="False" />
-                                </Grid>
-                                <StackPanel HorizontalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
-                                        <TextBlock Text="LAT" FontSize="9" Foreground="#FF8B949E" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Viewbox Grid.Row="0" Stretch="Uniform" MaxWidth="160" Margin="0,0,0,8">
+                                    <Grid Width="100" Height="100">
+                                        <Line X1="50" Y1="4" X2="50" Y2="96" Stroke="#FF21262D" StrokeThickness="1" />
+                                        <Line X1="4" Y1="50" X2="96" Y2="50" Stroke="#FF21262D" StrokeThickness="1" />
+                                        <Ellipse Width="82" Height="82" Stroke="#FF21262D" StrokeThickness="1" />
+                                        <TextBlock Text="G" FontSize="12" Foreground="#FF484F58"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <Ellipse x:Name="GForceDot" Width="10" Height="10" Fill="#FF79C0FF"
+                                                 HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                        <Ellipse Width="14" Height="14" Stroke="#3379C0FF" StrokeThickness="2"
+                                                 HorizontalAlignment="Left" VerticalAlignment="Top"
+                                                 Margin="43,43,0,0" IsHitTestVisible="False" />
+                                    </Grid>
+                                </Viewbox>
+                                <StackPanel Grid.Row="1" HorizontalAlignment="Center" Orientation="Horizontal">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                        <TextBlock Text="LAT" FontSize="9" Foreground="#FF8B949E" Margin="0,0,4,0" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding LatG, StringFormat='{}{0:F2}'}" FontSize="12" Foreground="#FF79C0FF" VerticalAlignment="Center" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="LNG" FontSize="9" Foreground="#FF8B949E" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="LNG" FontSize="9" Foreground="#FF8B949E" Margin="0,0,4,0" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding LongG, StringFormat='{}{0:F2}'}" FontSize="12" Foreground="#FF79C0FF" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </StackPanel>
-                            </StackPanel>
+                            </Grid>
                         </Border>
 
-                        <!-- CENTER: Force instrument (primary) -->
+                        <!-- CENTER: Force instrument (vertically centered) -->
                         <Border Grid.Column="1" Style="{StaticResource PanelBorder}" Margin="3,0">
-                            <Grid>
+                            <Grid VerticalAlignment="Center">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
@@ -149,14 +153,14 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <TextBlock Grid.Row="0" Text="FORCE" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E"
-                                           HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4">
+                                           HorizontalAlignment="Center" Margin="0,0,0,10" />
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
                                     <TextBlock Text="{Binding CurrentForceOutput, StringFormat='{}{0:F2}'}"
-                                               FontSize="36" FontWeight="Black" Foreground="#FFE6EDF3" />
-                                    <TextBlock Text="Nm" FontSize="14" Foreground="#FF8B949E" Margin="6,10,0,0" />
+                                               FontSize="44" FontWeight="Black" Foreground="#FFE6EDF3" />
+                                    <TextBlock Text="Nm" FontSize="16" Foreground="#FF8B949E" Margin="6,12,0,0" />
                                 </StackPanel>
                                 <Border Grid.Row="2" Background="#FF161B22" CornerRadius="3"
-                                        Height="16" Margin="0,0,0,8" BorderThickness="1" BorderBrush="#FF21262D">
+                                        Height="20" Margin="0,0,0,10" BorderThickness="1" BorderBrush="#FF21262D">
                                     <Border x:Name="ForceBarFill" Background="#F0883E" CornerRadius="3"
                                             HorizontalAlignment="Left" Width="0" />
                                 </Border>
@@ -167,9 +171,36 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="{Binding CurrentRawForce, StringFormat='raw {0:F2}'}"
-                                               FontSize="10" Foreground="#FF8B949E" HorizontalAlignment="Left" />
-                                    <TextBlock Grid.Column="2" Text="{Binding DeviceName}"
-                                               FontSize="10" Foreground="#FF8B949E" HorizontalAlignment="Right" />
+                                               FontSize="11" Foreground="#FF8B949E" HorizontalAlignment="Left" />
+                                    <Ellipse Grid.Column="1" Width="4" Height="4" Fill="#FF30363D" Margin="4,0" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Ellipse Width="6" Height="6" Margin="0,0,4,0" VerticalAlignment="Center">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Fill" Value="#FF484F58" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsClipping}" Value="True">
+                                                            <Setter Property="Fill" Value="#FFFF7B72" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <TextBlock FontSize="11" Foreground="#FF8B949E" VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="OK" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsClipping}" Value="True">
+                                                            <Setter Property="Text" Value="CLIP" />
+                                                            <Setter Property="Foreground" Value="#FFFF7B72" />
+                                                            <Setter Property="FontWeight" Value="Bold" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
                                 </Grid>
                             </Grid>
                         </Border>
