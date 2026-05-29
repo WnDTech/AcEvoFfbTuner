@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -11,6 +13,12 @@ namespace AcEvoFfbTuner.Views.Pages;
 public partial class ProfilesPage : UserControl
 {
     private MainViewModel? _vm;
+    private string _filterGame = "";
+    private string _filterSearch = "";
+    private readonly Dictionary<string, bool> _groupCollapsedState = new();
+    private static readonly string AppDataPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
+    private static readonly string StateFilePath = Path.Combine(AppDataPath, "browser_state.json");
 
     private static readonly SolidColorBrush BrushAccent = new(System.Windows.Media.Color.FromRgb(0xF0, 0x88, 0x3E));
     private static readonly SolidColorBrush BrushAccentFaint = new(System.Windows.Media.Color.FromArgb(0x30, 0xF0, 0x88, 0x3E));
@@ -40,6 +48,7 @@ public partial class ProfilesPage : UserControl
 
         if (_vm != null)
         {
+            LoadCollapsedState();
             _vm.Profiles.CollectionChanged += OnProfilesChanged;
             _vm.PropertyChanged += OnVmPropertyChanged;
             RebuildBrowser();
@@ -54,6 +63,8 @@ public partial class ProfilesPage : UserControl
 
     private void OnProfilesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
+        _groupCollapsedState.Clear();
+        SaveCollapsedState();
         RebuildBrowser();
     }
 
@@ -69,6 +80,47 @@ public partial class ProfilesPage : UserControl
             _vm.ProfileOrganisationMode = 2;
 
         RebuildBrowser();
+    }
+
+    private void OnGameFilterChanged(object sender, RoutedEventArgs e)
+    {
+        if (ReferenceEquals(sender, GameFilterAll))
+            _filterGame = "";
+        else if (ReferenceEquals(sender, GameFilterAcEvo))
+            _filterGame = "AC EVO";
+        else if (ReferenceEquals(sender, GameFilterRaceroom))
+            _filterGame = "RaceRoom";
+        else if (ReferenceEquals(sender, GameFilterAssettoCorsa))
+            _filterGame = "Assetto Corsa";
+
+        RebuildBrowser();
+    }
+
+    private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+    {
+        _filterSearch = SearchBox.Text.Trim();
+        RebuildBrowser();
+    }
+
+    private IEnumerable<FfbProfile> GetFilteredProfiles()
+    {
+        var profiles = _vm!.Profiles.AsEnumerable();
+
+        if (!string.IsNullOrEmpty(_filterGame))
+        {
+            if (_filterGame == "AC EVO")
+                profiles = profiles.Where(p => string.IsNullOrEmpty(p.GameMatch) || p.GameMatch == "AC EVO");
+            else
+                profiles = profiles.Where(p => p.GameMatch == _filterGame);
+        }
+
+        if (!string.IsNullOrEmpty(_filterSearch))
+        {
+            var search = _filterSearch.ToLowerInvariant();
+            profiles = profiles.Where(p => p.Name.ToLowerInvariant().Contains(search));
+        }
+
+        return profiles;
     }
 
     private void RebuildBrowser()
@@ -87,16 +139,17 @@ public partial class ProfilesPage : UserControl
 
     private void BuildFlatList()
     {
-        foreach (var profile in _vm!.Profiles)
+        var filtered = GetFilteredProfiles().ToList();
+        foreach (var profile in filtered)
             ProfileBrowserPanel.Children.Add(CreateProfileItem(profile));
 
-        if (_vm.Profiles.Count == 0)
-            ProfileBrowserPanel.Children.Add(CreateEmptyMessage("No profiles found."));
+        if (filtered.Count == 0)
+            ProfileBrowserPanel.Children.Add(CreateEmptyMessage("No profiles match your filters."));
     }
 
     private void BuildGroupedList(bool groupByTrack)
     {
-        var profiles = _vm!.Profiles;
+        var profiles = GetFilteredProfiles();
 
         IOrderedEnumerable<IGrouping<string, FfbProfile>> groups;
         if (groupByTrack)
@@ -127,13 +180,14 @@ public partial class ProfilesPage : UserControl
 
             var groupIcon = new TextBlock
             {
-                Text = groupByTrack ? "\uE8C4" : "\uE804",
-                FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets"),
+                Text = groupByTrack ? "\u2394" : "\uE804",
                 FontSize = 13,
                 Foreground = BrushAccent,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 6, 0)
             };
+            if (!groupByTrack)
+                groupIcon.FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets");
 
             var headerText = new TextBlock
             {
@@ -176,17 +230,61 @@ public partial class ProfilesPage : UserControl
 
             ProfileBrowserPanel.Children.Add(childrenPanel);
 
-            bool collapsed = false;
+            var stateKey = $"{(groupByTrack ? "track" : "car")}::{group.Key}";
+            bool collapsed = _groupCollapsedState.TryGetValue(stateKey, out var saved) && saved;
+            if (collapsed)
+            {
+                childrenPanel.Visibility = Visibility.Collapsed;
+                chevron.RenderTransform = new RotateTransform(0);
+            }
+
             headerBorder.MouseLeftButtonUp += (_, _) =>
             {
                 collapsed = !collapsed;
                 childrenPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
                 chevron.RenderTransform = new RotateTransform(collapsed ? 0 : 90);
+                _groupCollapsedState[stateKey] = collapsed;
+                SaveCollapsedState();
             };
         }
 
         if (!hasItems)
-            ProfileBrowserPanel.Children.Add(CreateEmptyMessage("No profiles found."));
+            ProfileBrowserPanel.Children.Add(CreateEmptyMessage("No profiles match your filters."));
+    }
+
+    private void LoadCollapsedState()
+    {
+        try
+        {
+            if (File.Exists(StateFilePath))
+            {
+                var json = File.ReadAllText(StateFilePath);
+                var loaded = JsonSerializer.Deserialize<Dictionary<string, bool>>(json);
+                if (loaded != null)
+                {
+                    _groupCollapsedState.Clear();
+                    foreach (var kv in loaded)
+                        _groupCollapsedState[kv.Key] = kv.Value;
+                }
+            }
+        }
+        catch
+        {
+            _groupCollapsedState.Clear();
+        }
+    }
+
+    private void SaveCollapsedState()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppDataPath);
+            var json = JsonSerializer.Serialize(_groupCollapsedState);
+            File.WriteAllText(StateFilePath, json);
+        }
+        catch
+        {
+        }
     }
 
     private Border CreateProfileItem(FfbProfile profile, bool isNested = false)
