@@ -92,18 +92,25 @@
                     <Border Grid.Row="1" Grid.RowSpan="2" VerticalAlignment="Top" HorizontalAlignment="Stretch"
                             Height="1" Background="#FF21262D" Margin="0,0,0,12" />
 
-                    <!-- Main 3-column instrument panel -->
+                    <!-- Main 3-column instrument panel (equal widths) -->
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" MinWidth="200" />
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
+                        <Grid.Resources>
+                            <Style TargetType="Border" x:Key="PanelBorder">
+                                <Setter Property="Background" Value="#FF0D1117" />
+                                <Setter Property="BorderBrush" Value="#FF21262D" />
+                                <Setter Property="BorderThickness" Value="1" />
+                                <Setter Property="CornerRadius" Value="6" />
+                                <Setter Property="Padding" Value="16,12" />
+                            </Style>
+                        </Grid.Resources>
 
                         <!-- LEFT: G-Force instrument -->
-                        <Border Grid.Column="0" Background="#FF0D1117" CornerRadius="6"
-                                BorderThickness="1" BorderBrush="#FF21262D" Padding="16,12"
-                                VerticalAlignment="Top">
+                        <Border Grid.Column="0" Style="{StaticResource PanelBorder}" Margin="0,0,6,0">
                             <StackPanel>
                                 <TextBlock Text="G" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,0,10"
                                            HorizontalAlignment="Center" />
@@ -133,9 +140,7 @@
                         </Border>
 
                         <!-- CENTER: Force instrument (primary) -->
-                        <Border Grid.Column="1" Background="#FF0D1117" CornerRadius="6"
-                                BorderThickness="1" BorderBrush="#FF21262D" Padding="24,12"
-                                Margin="12,0" VerticalAlignment="Top">
+                        <Border Grid.Column="1" Style="{StaticResource PanelBorder}" Margin="3,0">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -170,9 +175,7 @@
                         </Border>
 
                         <!-- RIGHT: Steering instrument -->
-                        <Border Grid.Column="2" Background="#FF0D1117" CornerRadius="6"
-                                BorderThickness="1" BorderBrush="#FF21262D" Padding="16,12"
-                                VerticalAlignment="Top" MinWidth="120">
+                        <Border Grid.Column="2" Style="{StaticResource PanelBorder}" Margin="6,0,0,0">
                             <StackPanel>
                                 <TextBlock Text="STEERING" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E"
                                            HorizontalAlignment="Center" Margin="0,0,0,10" />
