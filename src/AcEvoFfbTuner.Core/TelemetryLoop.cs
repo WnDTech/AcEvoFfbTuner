@@ -82,6 +82,16 @@ public sealed class TelemetryLoop : IDisposable
     private long _lastStaticReReadTicks;
     private AcEvoStatus _lastSessionStatus = AcEvoStatus.AcOff;
     private int _lastGfxPacketId = -1;
+    private bool _wasAiControlled;
+    private long _handoverFadeEndTicks;
+    private int _lastHandoverLap;
+    private float _wheelCenterOffset;
+    private bool _wheelCalibrated;
+    private float _latestPhysicalWheelNorm;
+
+
+    public float LatestPhysicalWheelNormalized => _latestPhysicalWheelNorm;
+    public bool IsR3eAiControlled { get; private set; }
 
     public readonly FfbLiveServer LiveServer = new();
 
@@ -386,12 +396,74 @@ public sealed class TelemetryLoop : IDisposable
 
                     _packetCount++;
 
-                    if (_deviceManager.IsDeviceAcquired && !_suppressOutput)
+                    // Read physical wheel position once per tick for the WheelCenter overlay
+                    // and AI centering. Cached in _latestPhysicalWheelNorm so the UI thread
+                    // can read it without concurrent DirectInput polling.
+                    _latestPhysicalWheelNorm = _deviceManager.ReadWheelAxisNormalized();
+
+                    bool isR3eAi = _reader is RaceroomSharedMemoryReader && physics.IsAiControlled != 0;
+                    IsR3eAiControlled = isR3eAi;
+
+                    // AI auto-center: dynamic calibration + centering spring.
+                    // Reads the physical wheel from the Moza R5 hardware sensor (bypasses
+                    // R3E telemetry which zeros during AI). Calibrates center on first run
+                    // so it works regardless of the axis range (0-65535 vs -32768-32767).
+                    if (isR3eAi)
+                    {
+                        float wheelPos = _latestPhysicalWheelNorm;
+                        if (!_wheelCalibrated)
+                        {
+                            _wheelCenterOffset = wheelPos;
+                            _wheelCalibrated = true;
+                        }
+                        float deflection = wheelPos - _wheelCenterOffset;
+                        // Clean float scale: deflection is already -1..+1 decimal.
+                        // Gain 2.5x so a small deflection creates noticeable resistance.
+                        // Hard-capped at 0.25 (25% max torque) to prevent runaway.
+                        float targetForce = -deflection * 15.0f;
+                        float aiCenter = Math.Clamp(targetForce, -0.50f, 0.50f);
+                        Console.Clear();
+                        Console.WriteLine($"[R3E AI-CENTER] WheelPos:{wheelPos:F4} Offset:{_wheelCenterOffset:F4} Defl:{deflection:F4} Force:{aiCenter:F4}");
+                        if (_ffbProvider != null && _ffbProvider.IsInitialized)
+                            _ffbProvider.UpdateTorque(aiCenter);
+                        else
+                            _deviceManager.SendConstantForce(aiCenter);
+                    }
+                    else if (_deviceManager.IsDeviceAcquired && !_suppressOutput)
                     {
                         float stationaryForce = raw.SpeedKmh < 0.5f ? _staticFriction.Compute(raw) : 0f;
                         bool hasStationaryForce = Math.Abs(stationaryForce) > 0.001f;
 
-if (_ffbProvider != null && _ffbProvider.IsInitialized)
+                                                                        // ── Handover fade ────────────────────────────────────────────
+                        // Triggers when IsAiControlled transitions from 1 (AI) to 0 (player).
+                        float handoverFade = 1.0f;
+                        if (_reader is RaceroomSharedMemoryReader)
+                        {
+                            bool isAi = physics.IsAiControlled != 0;
+                            bool handover = _wasAiControlled && !isAi;
+
+                            if (isAi)
+                            {
+                                _wasAiControlled = true;
+                                _handoverFadeEndTicks = 0;
+                            }
+                            else if (handover)
+                            {
+                                _wasAiControlled = false;
+                                _handoverFadeEndTicks = System.Diagnostics.Stopwatch.GetTimestamp() + System.Diagnostics.Stopwatch.Frequency / 2;
+                            }
+
+                            if (_handoverFadeEndTicks > 0)
+                            {
+                                long rem = _handoverFadeEndTicks - System.Diagnostics.Stopwatch.GetTimestamp();
+                                if (rem > 0)
+                                {
+                                    double total = System.Diagnostics.Stopwatch.Frequency / 2.0;
+                                    handoverFade = (float)(1.0 - rem / total);
+                                }
+                                else _handoverFadeEndTicks = 0;
+                            }
+                        }if (_ffbProvider != null && _ffbProvider.IsInitialized)
                         {
                             if (hasStationaryForce)
                             {
@@ -403,7 +475,7 @@ if (_ffbProvider != null && _ffbProvider.IsInitialized)
                             }
                             else
                             {
-                                _ffbProvider.UpdateTorque(processed.MainForce);
+                                _ffbProvider.UpdateTorque(processed.MainForce * handoverFade);
                                 _reusableHapticData.VibrationIntensity = processed.VibrationForce;
                                 _ffbProvider.SetHaptics(_reusableHapticData);
                             }
@@ -421,7 +493,7 @@ if (_ffbProvider != null && _ffbProvider.IsInitialized)
                             }
                             else
                             {
-                                _deviceManager.SendConstantForce(processed.MainForce);
+                                _deviceManager.SendConstantForce(processed.MainForce * handoverFade);
                                 _deviceManager.SetTargetVibration(processed.VibrationForce);
                             }
                         }

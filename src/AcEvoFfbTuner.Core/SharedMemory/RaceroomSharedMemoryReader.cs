@@ -138,6 +138,7 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
                 TyreContactHeading = new StructVector3[4],
                 AbsInAction = 0,
                 IsEngineRunning = 1,
+                IsAiControlled = _lastData.ControlType == 1 ? 1 : 0,
             };
 
             var steeringForce = (float)_lastData.Player.SteeringForce;
@@ -224,6 +225,24 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
                 physics.Fx[i] = physics.SlipRatio[i] * tireLoads[i] * 0.05f;
             }
 
+
+            // AI control: centering spring toward 0° using the same formula structure
+            // as the normal pipeline (so MzFrontGain sign compensation applies correctly).
+            float normalMz = -absForce * steerSign * blend * centeringFactor;
+            if (_lastData.ControlType == 1)
+            {
+                // Use steerNorm as force source with 200x scaling (matches typical SteeringForce magnitude)
+                float absSteerForce = Math.Abs(steerNorm * 200f);
+                float aiCentering = -absSteerForce * steerSign * blend * centeringFactor;
+                physics.Mz[0] = aiCentering;
+                physics.Mz[1] = aiCentering;
+                physics.Fx[0] = physics.Fx[1] = physics.Fx[2] = physics.Fx[3] = 0f;
+                physics.Fy[0] = physics.Fy[1] = physics.Fy[2] = physics.Fy[3] = 0f;
+            }
+
+            LogAiDebug(steerNorm, steeringForce, _lastData.ControlType, _lastData.ControlType == 1,
+                _lastData.ControlType == 1 ? -Math.Abs(steerNorm * 200f) * steerSign * blend * centeringFactor : 0f,
+                normalMz, _lastData.CompletedLaps, _lastData.LapDistanceFraction, carSpeedMs * 3.6f);
             if (_lastData.Player.GForce.X != 0 || _lastData.Player.GForce.Y != 0 || _lastData.Player.GForce.Z != 0)
             {
                 physics.AccG[0] = (float)_lastData.Player.GForce.X;
@@ -431,6 +450,33 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
             Array.Copy(src, dst, copyLen);
         }
         return dst;
+    }
+
+
+    // ── AI debug logging ─────────────────────────────────────────────────
+    private static readonly string AiDebugLogPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "AcEvoFfbTuner", "r3e_ai_debug.log");
+
+    private bool _aiDebugHeaderWritten;
+
+    private void LogAiDebug(float steerNorm, float steeringForce, int controlType, bool isAi,
+        float aiFollowForce, float normalMz, int completedLaps, float lapFrac, float speed)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(AiDebugLogPath);
+            if (dir != null) Directory.CreateDirectory(dir);
+            if (!_aiDebugHeaderWritten)
+            {
+                File.AppendAllText(AiDebugLogPath,
+                    "Time,ControlType,IsAi,SteerNorm,SteeringForce,AiFollowMz,NormalMz,CompletedLaps,LapFrac,SpeedKmh,IsAiControlled\r\n");
+                _aiDebugHeaderWritten = true;
+            }
+            File.AppendAllText(AiDebugLogPath,
+                $"{DateTime.Now:HH:mm:ss.fff},{controlType},{(isAi?1:0)},{steerNorm:F6},{steeringForce:F2},{aiFollowForce:F4},{normalMz:F4},{completedLaps},{lapFrac:F4},{speed:F1},{isAi}\n");
+        }
+        catch { }
     }
 
     public void Dispose()

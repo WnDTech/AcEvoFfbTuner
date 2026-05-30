@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private Hf8MotorTestPopup? _hf8MotorTest;
     private CompactTunerWindow? _compactTuner;
     private SetupWizardOverlay? _setupWizard;
+    private WheelCenterOverlay? _wheelCenterOverlay;
 
     public MainWindow()
     {
@@ -92,6 +93,7 @@ public partial class MainWindow : Window
         _trackMapPopout?.Close();
         _calibrationWizard?.Close();
         _setupWizard?.Close();
+        _wheelCenterOverlay?.Close();
         _iconPreview?.Close();
         _compactTuner?.Close();
         Application.Current.Shutdown();
@@ -105,6 +107,11 @@ public partial class MainWindow : Window
     public void UpdateSetupWizard(float speedKmh, float mainForce, float steerAngle, bool isClipping, float mzFront)
     {
         _setupWizard?.UpdateLiveValues(speedKmh, mainForce, steerAngle, isClipping, mzFront);
+    }
+
+    public void UpdateWheelCenter(float physicalNormalized, float angleDegrees)
+    {
+        _wheelCenterOverlay?.UpdateWheel(physicalNormalized, angleDegrees);
     }
 
     public void UpdateProfiler(float speed, float steerAngle, float forceOut, float rawFF,
@@ -282,6 +289,21 @@ public partial class MainWindow : Window
             MessageBox.Show($"Setup Wizard failed:\n{ex.GetType().Name}: {ex.Message}",
                 "Wizard Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    public void ShowWheelCenterOverlay()
+    {
+        if (_wheelCenterOverlay != null) return;
+        _wheelCenterOverlay = new WheelCenterOverlay();
+        _wheelCenterOverlay.Closed += (_, _) => _wheelCenterOverlay = null;
+        _wheelCenterOverlay.Show();
+    }
+
+    public void CloseWheelCenterOverlay()
+    {
+        if (_wheelCenterOverlay == null) return;
+        _wheelCenterOverlay.Close();
+        _wheelCenterOverlay = null;
     }
 
     private void OnHf8MotorTestRequested(object? sender, EventArgs e)

@@ -90,6 +90,9 @@ public sealed class FfbDeviceManager : IDisposable
     public int ReconnectAttemptCount { get; set; }
     public bool AutoDetectedForceInvert { get; private set; }
 
+    private bool _axisIsUnsigned = true;
+    private bool _axisDetected;
+
     public float ReadWheelAxisNormalized()
     {
         if (_device == null || !_isAcquired) return 0f;
@@ -98,7 +101,19 @@ public sealed class FfbDeviceManager : IDisposable
             _device.Poll();
             var js = _device.GetCurrentState() as DI.JoystickState;
             if (js != null)
-                return Math.Clamp(js.X / 32767f, -1f, 1f);
+            {
+                float x = js.X;
+
+                if (!_axisDetected)
+                {
+                    if (x < 0)
+                        _axisIsUnsigned = false;
+                    _axisDetected = true;
+                }
+
+                float center = _axisIsUnsigned ? 32767f : 0f;
+                return Math.Clamp((x - center) / 32767f, -1f, 1f);
+            }
         }
         catch { }
         return 0f;

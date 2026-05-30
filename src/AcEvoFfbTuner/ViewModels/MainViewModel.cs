@@ -3090,6 +3090,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
                 mw.UpdateCalibrationWizard(raw.SpeedKmh, processed.MainForce, processed.IsClipping);
                 mw.UpdateSetupWizard(raw.SpeedKmh, processed.MainForce, raw.SteerAngle, processed.IsClipping, processed.ChannelMzFront);
+
+                // Auto-show WheelCenter overlay when RaceRoom AI takes control
+                bool r3eAi = _telemetryLoop.IsR3eAiControlled;
+                if (r3eAi)
+                {
+                    float physicalNorm = _telemetryLoop.LatestPhysicalWheelNormalized;
+                    float physicalAngleDeg = physicalNorm * (lockDeg / 2f);
+                    mw.UpdateWheelCenter(physicalNorm, physicalAngleDeg);
+                    mw.ShowWheelCenterOverlay();
+                }
+                else
+                {
+                    mw.CloseWheelCenterOverlay();
+                }
             }
 
             WetWeatherCurrentFactor = processed.WetnessFactor;
