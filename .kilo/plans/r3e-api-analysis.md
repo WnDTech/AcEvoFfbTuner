@@ -20,7 +20,7 @@ Our `R3eSharedStruct.cs` uses `[StructLayout(LayoutKind.Sequential, Pack = 1)]` 
 
 | Field Category | R3E Struct Field | Location | EVO Mapping | Status |
 |----------------|------------------|----------|-------------|--------|
-| **G-Forces** | `Player.LocalGforce` | `r3e_playerdata` | `AccG[3]` | ✓ Complete |
+| **G-Forces** | `Player.GForce` (`g_force` in SDK) | `r3e_playerdata` | `AccG[3]` (X→lat, Z→long, Y→vert) | ✓ Complete |
 | **Angular Velocity** | `Player.AngularVelocity` | `r3e_playerdata` | `LocalAngularVel[3]` | ✓ Complete |
 | **Angular Acceleration** | `Player.AngularAcceleration` | `r3e_playerdata` | NOT mapped | ⚠ Available, not used |
 | **Tire Vertical Load** | `TireLoad` | `r3e_shared` | `WheelLoad[4]` | ✓ Complete |

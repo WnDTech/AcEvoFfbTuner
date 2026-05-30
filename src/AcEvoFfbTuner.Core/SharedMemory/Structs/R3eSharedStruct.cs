@@ -93,7 +93,7 @@ public struct R3ePlayerData
     public R3eVector3d AngularAcceleration;
     public R3eVector3d AngularVelocity;
     public R3eVector3d LocalAngularVelocity;
-    public R3eVector3d LocalGforce;
+    public R3eVector3d GForce;
     public double SteeringForce;
     public double SteeringForcePercentage;
     public double EngineTorque;
