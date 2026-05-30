@@ -21,6 +21,7 @@ public sealed class FfbRawData
     public float[] SlipAngle { get; set; } = new float[4];
     public float[] SuspensionTravel { get; set; } = new float[4];
     public float[] AccG { get; set; } = new float[3];
+    public float[] DisplayAccG { get; set; } = new float[3];
     public float[] LocalAngularVel { get; set; } = new float[3];
     public float SteerAngle { get; set; }
     public float SpeedKmh { get; set; }

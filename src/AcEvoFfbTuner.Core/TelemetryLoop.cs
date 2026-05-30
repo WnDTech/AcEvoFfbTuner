@@ -349,7 +349,10 @@ public sealed class TelemetryLoop : IDisposable
 
                     // Inject R3E tyre grip data (unavailable from AC EVO struct)
                     if (_reader is RaceroomSharedMemoryReader r3e)
+                    {
                         raw.TyreGrip = r3e.TireGrip;
+                        raw.DisplayAccG = r3e.LocalAccelG;
+                    }
 
                     // Inject AC tyre grip data
                     if (_reader is AssettoCorsaSharedMemoryReader ac)

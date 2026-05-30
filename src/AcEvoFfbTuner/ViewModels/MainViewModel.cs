@@ -2995,8 +2995,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CurrentRawForce = processed.RawFinalFf;
             IsClipping = processed.IsClipping;
             SpeedKmh = processed.SpeedKmh;
-            LatG = raw.AccG?.Length > 0 ? raw.AccG[0] : 0f;
-            LongG = raw.AccG?.Length > 1 ? raw.AccG[1] : 0f;
+            var g = raw.DisplayAccG?.Length > 0 && raw.DisplayAccG.Any(v => v != 0) ? raw.DisplayAccG : raw.AccG;
+            LatG = g?.Length > 0 ? g[0] : 0f;
+            LongG = g?.Length > 1 ? g[1] : 0f;
             ActiveLedCount = _deviceManager.ActiveLedCount;
 
             float highFreqHaptics = processed.VibrationForce;

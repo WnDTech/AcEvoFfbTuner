@@ -28,6 +28,10 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
 
     public float[] TireGrip => _mmf != null ? MapTireDataFloat(_lastData.TireGrip) : new float[4];
 
+    public float[] LocalAccelG => _mmf != null
+        ? new[] { (float)_lastData.LocalAcceleration.X, (float)_lastData.LocalAcceleration.Y, (float)_lastData.LocalAcceleration.Z }
+        : new float[3];
+
     public bool TryConnect()
     {
         if (_mmf != null) return true;
@@ -221,9 +225,12 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
                 physics.Fx[i] = physics.SlipRatio[i] * tireLoads[i] * 0.05f;
             }
 
-            physics.AccG[0] = (float)_lastData.LocalAcceleration.X;
-            physics.AccG[1] = (float)_lastData.LocalAcceleration.Y;
-            physics.AccG[2] = (float)_lastData.LocalAcceleration.Z;
+            if (_lastData.Player.LocalGforce.X != 0 || _lastData.Player.LocalGforce.Y != 0 || _lastData.Player.LocalGforce.Z != 0)
+            {
+                physics.AccG[0] = (float)_lastData.Player.LocalGforce.X;
+                physics.AccG[1] = (float)_lastData.Player.LocalGforce.Y;
+                physics.AccG[2] = (float)_lastData.Player.LocalGforce.Z;
+            }
 
             if (_lastData.Player.AngularVelocity.X != 0 || _lastData.Player.AngularVelocity.Y != 0 || _lastData.Player.AngularVelocity.Z != 0)
             {
