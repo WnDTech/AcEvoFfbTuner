@@ -29,7 +29,7 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
     public float[] TireGrip => _mmf != null ? MapTireDataFloat(_lastData.TireGrip) : new float[4];
 
     public float[] LocalAccelG => _mmf != null
-        ? new[] { (float)_lastData.LocalAcceleration.X, (float)_lastData.LocalAcceleration.Y, (float)_lastData.LocalAcceleration.Z }
+        ? new[] { (float)_lastData.LocalAcceleration.X, (float)_lastData.LocalAcceleration.Z, (float)_lastData.LocalAcceleration.Y }
         : new float[3];
 
     public bool TryConnect()
