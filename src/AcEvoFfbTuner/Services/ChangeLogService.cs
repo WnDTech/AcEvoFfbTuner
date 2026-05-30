@@ -50,6 +50,47 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.22.0",
+            Date = new DateTime(2026, 5, 30),
+            Title = "Multi-Game Support: RaceRoom FFB Pipeline, PFD Dashboard & Theme System",
+            Features =
+            [
+                "Redesigned home page to Glass Cockpit PFD layout with G-force circle and equal-width instrument columns",
+                "10-theme system with live switching and Settings page picker",
+                "RaceRoom (R3E) FFB pipeline with adaptive gear shift filter, slip angle synthesis, and grip-loss feel",
+                "Interactive Setup Wizard overlay with R3E auto-config and force polarity detection",
+                "Game filter bar, modern filter bar, and persistent collapsed state on profile browser",
+                "Per-motor source weight sliders for HF8 haptic pad",
+                "Collapsible Devices sidebar with icon-only mode, widened to 200px, expanded RPM thresholds by default",
+                "Redesigned Profiles page with sidebar browser, track/car grouping, and optional auto-upgrade",
+                "Hide game-irrelevant FFB sliders per selected game",
+                "R3E dead-center feel: Center Sharpness + Center Strength sliders and nonlinear slip angle with deadband",
+                "System log persistence to disk with last-entry-only display in bottom bar",
+                "Persistent FFB effects page expand/collapse state across restarts",
+                "Git hash embedded in window title"
+            ],
+            Improvements =
+            [
+                "Scaled G-force circle to fill panel, vertically centered force section",
+                "Improved Haptic Pad page clarity with descriptive labels for motor zones and source sliders",
+                "Reordered Settings page: Startup Effect beside App Options, Debug Tools under System Log"
+            ],
+            Fixes =
+            [
+                "Unified G-force sensor axes per game — LatG from AccG[0], correct LongG mapping for AC EVO vs RaceRoom",
+                "Fixed R3E G-force field name, axis order, and longitudinal G source (LocalAcceleration)",
+                "R3E slip angle: signed slip ratio and LocalVelocity-based calculation",
+                "Fixed Equalizer not being applied in the Assetto Corsa (original) pipeline",
+                "Fixed HF8 slip rumble (cross-game contamination eliminated)",
+                "Fixed physics struct offsets: correct P2pStatus and vibration dump offsets",
+                "Fixed telemetry display: steering angle lock, pipeline field naming, and graph labels",
+                "Filtered diagnostic logs to only include files from current day",
+                "Fixed Test Buzz button readability in hardware section",
+                "AC pipeline: clamped synthesized Fx/Fy, normalized steer, corrected centering multiplier"
+            ]
+        },
+        new ChangeLogEntry
+        {
             Version = "1.21.6",
             Date = new DateTime(2026, 5, 18),
             Title = "Live Telemetry Dashboard Redesign & Stability Fixes",
