@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -36,9 +37,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private TelemetryLoop _telemetryLoop;
     private readonly ProfileManager _profileManager;
     private readonly Services.GameRecordingService _gameRecordingService = new();
+    private readonly Services.VoiceService _voiceService = new();
     private volatile bool _autoAlignInProgress;
     private volatile bool _mapClearedByUser;
     private string? _lastAutoLoadedTrack;
+    private RaceInfoOverlay? _raceInfoOverlay;
+    private readonly RaceInfoProcessor _raceInfoProcessor = new();
+    private readonly DiscordPresenceService _discordPresence = new();
 
     public string AppVersion { get; } =
         System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
@@ -1019,6 +1024,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                         string path = mw3.AutoSaveSnapshot();
                         StatusText = $"Wheel snapshot saved: {Path.GetFileName(path)}";
                         _telemetryLoop.LiveServer.TriggerSnapshot();
+                        _voiceService.Speak("Snapshot saved");
                     }
                 }
             }
@@ -1194,12 +1200,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             IsGameConnected = _telemetryLoop.IsGameConnected;
             if (IsGameConnected)
+            {
                 AddSystemLog($"Game connected ({GameDisplayName})");
+                _voiceService.Speak("Game connected");
+            }
             else
             {
                 _gameRecordingService.StopRecording();
                 IsScreenRecording = false;
                 AddSystemLog("Game disconnected");
+                _voiceService.Speak("Game disconnected");
             }
         });
         _gameRecordingService.RecordingStateChanged += (msg, isRec) => Application.Current?.Dispatcher.Invoke(() =>
@@ -1308,6 +1318,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 LoadProfileValues(match);
                 _profileManager.SetActiveProfile(match);
                 StatusText = $"Auto-loaded profile '{match.Name}' for {carModel}";
+                _voiceService.Speak("Loaded profile for {0}", carModel);
             }
         });
         _telemetryLoop.TrackChanged += newTrackName => Application.Current?.Dispatcher.Invoke(() =>
@@ -1328,7 +1339,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _uiUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
         _uiUpdateTimer.Tick += OnUiUpdate;
 
-         AddSystemLog("Application initialized");
+        _voiceService.Enabled = _appSettings.VoiceEnabled;
+        _voiceService.Volume = _appSettings.VoiceVolume;
+
+        _discordPresence.Initialize();
+        _discordPresence.Attach(_telemetryLoop);
+
+        AddSystemLog("Application initialized");
      }
 
     private static ISharedMemoryReader CreateReader(SupportedGame game) => game switch
@@ -1351,6 +1368,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (wasRunning)
             _telemetryLoop.Stop();
 
+        _discordPresence.Detach();
         _telemetryLoop.Dispose();
         _reader.Dispose();
         _reader = CreateReader(value);
@@ -1429,6 +1447,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             IsTrackMapRecording = false;
             StatusText = $"Track changed to: {newTrackName}";
         });
+        _discordPresence.Attach(newLoop);
     }
 
     private async Task AutoAlignTrackAsync(string trackName)
@@ -1584,6 +1603,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             _appSettings.LastConnectedDeviceInstanceId = SelectedDevice.DeviceInstance.InstanceGuid.ToString();
             _appSettings.Save();
             AddSystemLog($"Device connected: {SelectedDevice.ProductName}");
+            _voiceService.Speak("Wheelbase connected");
         }
         else
         {
@@ -1604,6 +1624,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _appSettings.LastConnectedDeviceInstanceId = null;
         _appSettings.Save();
         AddSystemLog("Device disconnected");
+        _voiceService.Speak("Wheelbase disconnected");
     }
 
     partial void OnSelectedPanicDeviceChanged(FfbDeviceInfo? value)
@@ -1756,6 +1777,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             StatusText = "Running";
             RefreshProviderFeatures();
             AddSystemLog("Telemetry loop started");
+            _voiceService.Speak("Telemetry started");
             _signalLowFreqBuffer.Clear();
             _signalHighFreqBuffer.Clear();
             SignalMonitorLowFreq = new System.Windows.Media.PointCollection();
@@ -1767,6 +1789,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             _uiUpdateTimer.Stop();
             StatusText = "Stopped";
             AddSystemLog("Telemetry loop stopped");
+            _voiceService.Speak("Telemetry stopped");
         }
     }
 
@@ -3104,6 +3127,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 {
                     mw.CloseWheelCenterOverlay();
                 }
+
+
+
+
+
+
+
+
             }
 
             WetWeatherCurrentFactor = processed.WetnessFactor;
@@ -3241,6 +3272,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             }
         }
 
+
+        var racePhysics = _telemetryLoop.LatestPhysicsRaw;
+        var raceGraphics = _telemetryLoop.LatestGraphicsRaw;
+        if (racePhysics != null && raceGraphics != null && _raceInfoOverlay != null)
+        {
+            _raceInfoProcessor.Process(racePhysics.Value, raceGraphics.Value, out var raceInfo);
+            _raceInfoOverlay.UpdateData(raceInfo, racePhysics.Value, raceGraphics.Value);
+        }
         if (IsDeviceConnected || IsAssigningSnapshotButton || IsAssigningPanicButton)
             PollSnapshotButton();
 
@@ -3800,6 +3839,88 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _appSettings.Save();
     }
 
+    [ObservableProperty]
+    private bool _voiceEnabled = true;
+
+    [ObservableProperty]
+    private int _voiceVolume = 75;
+
+    partial void OnVoiceEnabledChanged(bool value)
+    {
+        _voiceService.Enabled = value;
+        _appSettings.VoiceEnabled = value;
+        _appSettings.Save();
+    }
+
+    partial void OnVoiceVolumeChanged(int value)
+    {
+        _voiceService.Volume = value;
+        _appSettings.VoiceVolume = value;
+        _appSettings.Save();
+    }
+
+    [ObservableProperty]
+    private ObservableCollection<string> _availableVoices = new();
+
+    [ObservableProperty]
+    private string? _selectedVoice;
+
+    private bool _voiceInitialized;
+
+    partial void OnSelectedVoiceChanged(string? value)
+    {
+        if (string.IsNullOrEmpty(value) || value == _voiceService.SelectedVoice) return;
+        _voiceService.SelectedVoice = value;
+        _appSettings.VoiceName = value;
+        _appSettings.Save();
+
+        if (_voiceInitialized)
+            _voiceService.Speak("This is {0}", value);
+    }
+
+    [ObservableProperty]
+    private bool _isInstallingVoices;
+
+    [RelayCommand]
+    private void OpenVoiceSettings()
+    {
+        Services.VoiceService.OpenSpeechSettings();
+    }
+
+    [RelayCommand]
+    private async Task InstallNaturalVoicesAsync()
+    {
+        if (IsInstallingVoices) return;
+        IsInstallingVoices = true;
+        try
+        {
+            await Task.Run(() =>
+            {
+                var psi = new ProcessStartInfo("powershell.exe")
+                {
+                    Arguments = "-NoProfile -Command \"Add-WindowsCapability -Online -Name 'Language.Speech.en-US~~~0.0.1.0' -LimitAccess -Source 'WindowsUpdate'\"",
+                    Verb = "runas",
+                    UseShellExecute = true,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+                using var proc = Process.Start(psi);
+                proc?.WaitForExit(120000);
+            });
+            RefreshVoices();
+            if (_voiceService.HasNaturalVoice)
+                _voiceService.Speak("Natural voices installed");
+        }
+        catch (Exception ex)
+        {
+            AddSystemLog($"Voice install failed: {ex.Message}");
+        }
+        finally
+        {
+            IsInstallingVoices = false;
+        }
+    }
+
     private NAudio.Wave.WasapiLoopbackCapture? _loopbackCapture;
     private NAudio.Wave.WaveFileWriter? _waveWriter;
     private string? _recordingTempPath;
@@ -3875,6 +3996,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         TooltipsEnabled = _appSettings.TooltipsEnabled;
         AutoProfileUpgrade = _appSettings.AutoProfileUpgrade;
         ThemeMode = _appSettings.ThemeName;
+        VoiceEnabled = _appSettings.VoiceEnabled;
+        VoiceVolume = _appSettings.VoiceVolume;
 
         if (Enum.TryParse<NavPage>(_appSettings.DefaultStartPage, out var startPage))
         {
@@ -3888,7 +4011,24 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CurrentPage = NavPage.Home;
         }
 
+        RefreshVoices();
+        _voiceInitialized = true;
         RefreshRecordingDevices();
+    }
+
+    private void RefreshVoices()
+    {
+        var current = _voiceService.SelectedVoice;
+        AvailableVoices.Clear();
+        foreach (var v in _voiceService.AvailableVoices)
+            AvailableVoices.Add(v);
+
+        if (!string.IsNullOrEmpty(_appSettings.VoiceName) && AvailableVoices.Contains(_appSettings.VoiceName))
+            SelectedVoice = _appSettings.VoiceName;
+        else if (current != null && AvailableVoices.Contains(current))
+            SelectedVoice = current;
+        else if (AvailableVoices.Count > 0)
+            SelectedVoice = AvailableVoices[0];
     }
 
     public void ApplyStartupActions()
@@ -4346,10 +4486,32 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    [RelayCommand]
+    private void ToggleRaceInfoOverlay()
+    {
+        if (_raceInfoOverlay != null)
+        {
+            _raceInfoOverlay.Close();
+            _raceInfoOverlay = null;
+        }
+        else
+        {
+            if (!_uiUpdateTimer.IsEnabled) _uiUpdateTimer.Start();
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                _raceInfoOverlay = new RaceInfoOverlay();
+                _raceInfoOverlay.Closed += (_, _) => _raceInfoOverlay = null;
+                _raceInfoOverlay.Show();
+            });
+        }
+    }
+
     public void Dispose()
     {
         _uiUpdateTimer.Stop();
+        _voiceService.Dispose();
         _gameRecordingService.Dispose();
+        _discordPresence.Dispose();
         _telemetryLoop.Dispose();
         _deviceManager.Dispose();
         _reader.Dispose();

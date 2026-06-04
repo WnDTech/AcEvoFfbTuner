@@ -116,6 +116,26 @@ public sealed class TelemetryLoop : IDisposable
     public string DetectedTrackName => _lastDetectedTrackName;
     public string DetectedCarModel => _lastDetectedCarModel;
 
+    public SPageFilePhysicsEvo? LatestPhysicsRaw => _latestPhysicsRaw;
+    public SPageFileGraphicEvo? LatestGraphicsRaw => _latestGraphicsRaw;
+    /// <summary>Current lap time in milliseconds (0 if not on track).</summary>
+    public int CurrentLapTimeMs => _latestGraphicsRaw.CurrentLapTimeMs;
+    /// <summary>Last completed lap time in milliseconds (0 if no lap completed).</summary>
+    public int LastLaptimeMs => _latestGraphicsRaw.LastLaptimeMs;
+    /// <summary>Last completed lap time as string from TimingState (e.g. "01:23.456").</summary>
+    public string LastLaptimeString => System.Text.Encoding.ASCII.GetString(_latestGraphicsRaw.TimingState.LastLaptime ?? Array.Empty<byte>()).TrimEnd(char.MinValue, (char)32);
+    /// <summary>Total laps completed.</summary>
+    public int TotalLapCount => _latestGraphicsRaw.TotalLapCount;
+    /// <summary>Normalized track position (0.0–1.0).</summary>
+    public float Npos => _latestGraphicsRaw.Npos;
+    /// <summary>Current sector (1-3) calculated from Npos.</summary>
+    public int CurrentSector => _latestGraphicsRaw.Npos switch
+    {
+        < 0.333f => 1,
+        < 0.667f => 2,
+        _ => 3
+    };
+
     public void SetFfbProvider(IFFBProvider? provider)
     {
         var old = _ffbProvider;
@@ -396,13 +416,13 @@ public sealed class TelemetryLoop : IDisposable
 
                     _packetCount++;
 
-                    // Read physical wheel position once per tick for the WheelCenter overlay
-                    // and AI centering. Cached in _latestPhysicalWheelNorm so the UI thread
-                    // can read it without concurrent DirectInput polling.
-                    _latestPhysicalWheelNorm = _deviceManager.ReadWheelAxisNormalized();
-
+                    // Read physical wheel position only for R3E AI centering.
+                    // EVO and AC don't need this — skipping avoids an extra DirectInput
+                    // Poll() call every tick that could interfere with the FFB output path.
                     bool isR3eAi = _reader is RaceroomSharedMemoryReader && physics.IsAiControlled != 0;
                     IsR3eAiControlled = isR3eAi;
+                    if (isR3eAi)
+                        _latestPhysicalWheelNorm = _deviceManager.ReadWheelAxisNormalized();
 
                     // AI auto-center: dynamic calibration + centering spring.
                     // Reads the physical wheel from the Moza R5 hardware sensor (bypasses

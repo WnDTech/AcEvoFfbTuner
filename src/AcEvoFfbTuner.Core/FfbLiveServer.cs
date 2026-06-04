@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
 
 namespace AcEvoFfbTuner.Core;
@@ -42,8 +43,8 @@ public sealed class FfbLiveServer : IDisposable
     {
         if (_listener != null) return;
         _listener = new HttpListener();
-        _listener.Prefixes.Add($"http://localhost:{Port}/");
-        _listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
+        _listener.Prefixes.Add("http://localhost:8321/");
+        _listener.Prefixes.Add("http://127.0.0.1:8321/");
         try
         {
             _listener.Start();
@@ -305,9 +306,41 @@ public sealed class FfbLiveServer : IDisposable
         _sb.Append(']');
     }
 
+    // ── OBS Overlay Options ──────────────────────────────────────────────
+
+    public struct OverlayOptions
+    {
+        public string Theme { get; set; }  // "dark", "transparent", "compact", "clipping"
+        public string Charts { get; set; } // "all", "none"
+        public string Stats { get; set; }  // "all", "none"
+    }
+
+    private static OverlayOptions ParseOptions(string query)
+    {
+        var opts = new OverlayOptions { Theme = "dark", Charts = "all", Stats = "all" };
+        if (string.IsNullOrEmpty(query)) return opts;
+
+        var q = query.TrimStart('?');
+        foreach (var part in q.Split('&'))
+        {
+            var kv = part.Split('=');
+            if (kv.Length != 2) continue;
+            switch (kv[0].ToLowerInvariant())
+            {
+                case "theme": opts.Theme = kv[1].ToLowerInvariant(); break;
+                case "charts": opts.Charts = kv[1].ToLowerInvariant(); break;
+                case "stats": opts.Stats = kv[1].ToLowerInvariant(); break;
+            }
+        }
+        return opts;
+    }
+
+    // ── HTML Serving ─────────────────────────────────────────────────────
+
     private void ServeHtml(HttpListenerContext ctx)
     {
-        var html = Encoding.UTF8.GetBytes(GetHtml());
+        var opts = ParseOptions(ctx.Request.Url?.Query ?? "");
+        var html = Encoding.UTF8.GetBytes(GetHtml(opts));
         ctx.Response.StatusCode = 200;
         ctx.Response.ContentType = "text/html; charset=utf-8";
         ctx.Response.ContentLength64 = html.Length;
@@ -315,7 +348,68 @@ public sealed class FfbLiveServer : IDisposable
         ctx.Response.Close();
     }
 
-    private static string GetHtml() => @"<!DOCTYPE html>
+    private static string GetHtml() => GetHtml(default);
+
+    private static string GetHtml(OverlayOptions opts)
+    {
+        var isTransparent = opts.Theme == "transparent";
+        var isCompact = opts.Theme == "compact";
+        var isClipping = opts.Theme == "clipping";
+        var showCharts = !isCompact && !isClipping && opts.Charts != "none";
+        var showStats = !isClipping && opts.Stats != "none";
+        var bodyClass = $"theme-{opts.Theme} charts-{opts.Charts} stats-{opts.Stats}";
+
+        var extraCss = new StringBuilder();
+        if (isTransparent)
+        {
+            extraCss.Append(@"
+body.theme-transparent{background:transparent!important}
+body.theme-transparent .header{background:rgba(17,17,17,0.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+body.theme-transparent .pane{border-color:rgba(26,26,46,0.3)}
+body.theme-transparent canvas{background:transparent!important}
+body.theme-transparent #freezeOverlay.active{background:rgba(0,0,0,0.4)}
+");
+        }
+        if (isCompact)
+        {
+            extraCss.Append(@"
+body.theme-compact .pane{display:none}
+body.theme-compact .header h1{display:none}
+body.theme-compact .header{border-bottom:none;padding:3px 8px}
+body.theme-compact .stats{font-size:10px}
+body.theme-compact .live{gap:4px;padding:2px 8px}
+body.theme-compact .live .g{min-width:40px}
+body.theme-compact .live .g .vl{font-size:11px}
+body.theme-compact .live .g .lb{font-size:8px}
+");
+        }
+        if (isClipping)
+        {
+            extraCss.Append(@"
+body.theme-clipping .header{display:none}
+body.theme-clipping .live{display:none}
+body.theme-clipping .row{display:none}
+body.theme-clipping #freezeOverlay{display:none!important}
+body.theme-clipping #frozenData{display:none!important}
+#clippingIndicator{display:flex!important}
+");
+        }
+        if (!showCharts)
+        {
+            extraCss.Append(@"
+body.charts-none .pane,.charts-none .row{display:none}
+");
+        }
+        var optsJson = JsonSerializer.Serialize(new
+        {
+            theme = opts.Theme,
+            charts = opts.Charts,
+            stats = opts.Stats,
+            showStats,
+            showCharts
+        });
+
+        return @"<!DOCTYPE html>
 <html><head><meta charset=""utf-8""><title>FFB Live Telemetry</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -345,6 +439,9 @@ canvas{width:100%;flex:1;display:block}
 #freezeOverlay h2{font-size:48px;color:#f44336;text-shadow:0 0 20px #f44336;margin:0}
 #freezeOverlay .ts{font-size:24px;color:#fff;margin-top:8px}
 #freezeOverlay .hint{font-size:14px;color:#888;margin-top:16px}
+#clippingIndicator{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:200;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.7)}
+#clippingIndicator .big{font-size:120px;font-weight:bold;margin:0}
+#clippingIndicator .sub{font-size:20px;color:#888;margin-top:12px}
 #frozenData{display:none;position:fixed;top:50px;left:0;right:0;bottom:0;z-index:99;overflow:auto;background:#0a0a0f;padding:16px;font-size:13px}
 #frozenData.active{display:block}
 #frozenData table{border-collapse:collapse;width:100%}
@@ -355,9 +452,11 @@ canvas{width:100%;flex:1;display:block}
 #frozenData .section{color:#4fc3f7;font-size:14px;font-weight:bold;padding:12px 0 6px 0}
 #frozenData .warn{color:#f44336}
 #frozenData .ok{color:#4caf50}
- </style></head><body>
+" + extraCss + @"
+</style></head><body class=""" + bodyClass + @""">
 <div id=""freezeOverlay""><h2>&#x23F8; FROZEN</h2><div class=""ts"" id=""freezeTs""></div><div class=""hint"">Press SPACE to resume</div></div>
 <div id=""frozenData""></div>
+<div id=""clippingIndicator""><div class=""big"" id=""clipText"">OK</div><div class=""sub"">FFB CLIPPING INDICATOR</div></div>
 <div class=""header"">
   <h1>FFB Live Telemetry</h1>
   <span class=""status"" id=""conn"">Connecting...</span>
@@ -398,6 +497,7 @@ canvas{width:100%;flex:1;display:block}
   </div>
 </div>
 <script>
+        " + "\nconst OPTS=" + optsJson + ";\n" + @"
 const N=600;
 let D={fo:new Float32Array(N),st:new Float32Array(N),sp:new Float32Array(N),mz:new Float32Array(N),fx:new Float32Array(N),fy:new Float32Array(N),ga:new Float32Array(N),br:new Float32Array(N),cp:new Float32Array(N),sl:new Float32Array(N),dm:new Float32Array(N),dy:new Float32Array(N),lu:new Float32Array(N),rm0:new Float32Array(N),rm1:new Float32Array(N),rx0:new Float32Array(N),rx1:new Float32Array(N),ry0:new Float32Array(N),ry1:new Float32Array(N)};
 let idx=0,pkts=0,clips=0,conn=false,fpsT=performance.now(),fpsC=0,dFps=0;
@@ -432,9 +532,6 @@ function buildFrozenTable(){
   const fo=stats(D.fo),st=stats(D.st),sp=stats(D.sp),mz=stats(D.mz),fx=stats(D.fx),fy=stats(D.fy);
   const cp=stats(D.cp),sl=stats(D.sl),dm=stats(D.dm),dy=stats(D.dy),lu=stats(D.lu);
   const rm0=stats(D.rm0),rm1=stats(D.rm1),rx0=stats(D.rx0),rx1=stats(D.rx1),ry0=stats(D.ry0),ry1=stats(D.ry1);
-  const fof=last(D.fo,n);
-  const stf=last(D.st,n);
-  const spf=last(D.sp,n);
   const gaf=last(D.ga,n);
   const brf=last(D.br,n);
   const brk=brf.length?brf[brf.length-1]:0;
@@ -442,10 +539,10 @@ function buildFrozenTable(){
   let h='<div class=""section"">CURRENT STATE</div><table>';
   h+='<tr><th></th><th>Value</th></tr>';
   h+=`<tr><td>Speed</td><td class=""val"">${sp.last.toFixed(1)} km/h</td></tr>`;
-  h+=`<tr><td>Force Output</td><td class=""val ${Math.abs(fo.last)>0.9?'warn':''}"">${fo.last.toFixed(5)}</td></tr>`;
+  h+=`<tr><td>Force Output</td><td class=""val ${Math.abs(fo.last)>0.9?&apos;warn&apos;:&apos;&apos;}"">${fo.last.toFixed(5)}</td></tr>`;
   h+=`<tr><td>Steer Angle</td><td class=""val"">${st.last.toFixed(4)}</td></tr>`;
   h+=`<tr><td>Gas</td><td class=""val"">${gas.toFixed(3)}</td></tr>`;
-  h+=`<tr><td>Brake</td><td class=""val ${brk>0.01?'warn':''}"">${brk.toFixed(3)}</td></tr>`;
+  h+=`<tr><td>Brake</td><td class=""val ${brk>0.01?&apos;warn&apos;:&apos;&apos;}"">${brk.toFixed(3)}</td></tr>`;
   h+='</table>';
   h+='<div class=""section"">FORCE OUTPUT STATS (last 50 frames)</div><table>';
   h+='<tr><th>Metric</th><th>Min</th><th>Max</th><th>Avg |F|</th><th>Zero-Cross</th><th>Status</th></tr>';
@@ -454,7 +551,7 @@ function buildFrozenTable(){
     const clipping=Math.abs(s.max)>0.95;
     let status=oscillating?'<span class=""warn"">OSCILLATING</span>':'<span class=""ok"">OK</span>';
     if(clipping)status+='<br><span class=""warn"">CLIPPING</span>';
-    return`<tr><td>${label}</td><td class=""val"">${s.min.toFixed(5)}</td><td class=""val"">${s.max.toFixed(5)}</td><td class=""val"">${s.avg.toFixed(5)}</td><td class=""val ${oscillating?'warn':''}"">${s.zc}</td><td>${status}</td></tr>`;
+    return`<tr><td>${label}</td><td class=""val"">${s.min.toFixed(5)}</td><td class=""val"">${s.max.toFixed(5)}</td><td class=""val"">${s.avg.toFixed(5)}</td><td class=""val ${oscillating?&apos;warn&apos;:&apos;&apos;}"">${s.zc}</td><td>${status}</td></tr>`;
   };
   h+=frow('Force Out',fo);
   h+=frow('Steer Angle',st);
@@ -482,7 +579,7 @@ function buildFrozenTable(){
   for(let i=fof.length-cnt;i<fof.length;i++){
     const fi=(si+i)%N;
     const foAbs=Math.abs(fof[i]);
-    const cls=foAbs>0.9?'warn':'';
+    const cls=foAbs>0.9?&apos;warn&apos;:&apos;&apos;;
     h+=`<tr><td>${i-(fof.length-cnt)}</td><td>${D.sp[fi].toFixed(1)}</td><td>${D.st[fi].toFixed(4)}</td><td class=""${cls}"">${D.fo[fi].toFixed(5)}</td><td>${D.mz[fi].toFixed(5)}</td><td>${D.fx[fi].toFixed(5)}</td><td>${D.fy[fi].toFixed(5)}</td><td>${D.cp[fi].toFixed(5)}</td><td>${D.ga[fi].toFixed(3)}</td><td>${D.br[fi].toFixed(3)}</td></tr>`;
   }
   h+='</table>';
@@ -506,33 +603,49 @@ es.onmessage=(e)=>{
   push(D.ry0,d.rfy0||0);push(D.ry1,d.rfy1||0);
   idx++;
   const $=id=>document.getElementById(id);
-  $('vSpd').textContent=(d.sp||0).toFixed(0);
-  $('vFo').textContent=(d.fo||0).toFixed(4);
-  $('vFo').style.color=Math.abs(d.fo||0)>0.9?'#f44336':'#fff';
-  $('vSt').textContent=(d.st||0).toFixed(4);
-  $('vMz').textContent=(d.mz||0).toFixed(5);
-  $('vFx').textContent=(d.fx||0).toFixed(5);
-  $('vFy').textContent=(d.fy||0).toFixed(5);
-  $('vWl').textContent=(d.wl0||0).toFixed(0)+'/'+(d.wl1||0).toFixed(0);
-  $('vSr').textContent=(d.sr0||0).toFixed(3)+'/'+(d.sr1||0).toFixed(3);
-  $('vGA').textContent=(d.ga||0).toFixed(2);
-  $('vBR').textContent=(d.br||0).toFixed(2);
-  $('vRMz').textContent=(d.rmz0||0).toFixed(2)+'/'+(d.rmz1||0).toFixed(2);
-  $('vRFx').textContent=(d.rfx0||0).toFixed(0)+'/'+(d.rfx1||0).toFixed(0);
-  $('vRFy').textContent=(d.rfy0||0).toFixed(0)+'/'+(d.rfy1||0).toFixed(0);
-  const ogEl=$('vOG');
-  if(d.og!==undefined){
-    ogEl.textContent=d.og?'OSCILLATING':(d.osf!==undefined?(d.osf<0.95?'CALMING':'STABLE'):'OFF');
-    ogEl.style.color=d.og?'#f44336':(d.osf<0.95?'#ffc107':'#4caf50');
-    document.body.style.borderTop=d.og?'3px solid #f44336':'';
-    document.body.style.boxShadow=d.og?'0 0 20px #f44336 inset':'';
-  } else { ogEl.textContent='OFF'; ogEl.style.color='#888'; }
-  $('pGas').style.height=((d.ga||0)*100)+'%';=((d.ga||0)*100)+'%';
-  $('pBrk').style.height=((d.br||0)*100)+'%';
+
+  // Clipping indicator mode
+  if(OPTS.theme==='clipping'){
+    const ct=$('clipText');
+    if(ct){
+      const isClip=d.cl>0;
+      ct.textContent=isClip?'CLIPPING':'OK';
+      ct.style.color=isClip?'#f44336':'#4caf50';
+      ct.style.textShadow=isClip?'0 0 40px #f44336':'0 0 40px #4caf50';
+    }
+    return;
+  }
+
+  // Stats updates
+  if(OPTS.showStats){
+    $('vSpd').textContent=(d.sp||0).toFixed(0);
+    $('vFo').textContent=(d.fo||0).toFixed(4);
+    $('vFo').style.color=Math.abs(d.fo||0)>0.9?'#f44336':'#fff';
+    $('vSt').textContent=(d.st||0).toFixed(4);
+    $('vMz').textContent=(d.mz||0).toFixed(5);
+    $('vFx').textContent=(d.fx||0).toFixed(5);
+    $('vFy').textContent=(d.fy||0).toFixed(5);
+    $('vWl').textContent=(d.wl0||0).toFixed(0)+'/'+(d.wl1||0).toFixed(0);
+    $('vSr').textContent=(d.sr0||0).toFixed(3)+'/'+(d.sr1||0).toFixed(3);
+    $('vGA').textContent=(d.ga||0).toFixed(2);
+    $('vBR').textContent=(d.br||0).toFixed(2);
+    $('vRMz').textContent=(d.rmz0||0).toFixed(2)+'/'+(d.rmz1||0).toFixed(2);
+    $('vRFx').textContent=(d.rfx0||0).toFixed(0)+'/'+(d.rfx1||0).toFixed(0);
+    $('vRFy').textContent=(d.rfy0||0).toFixed(0)+'/'+(d.rfy1||0).toFixed(0);
+    const ogEl=$('vOG');
+    if(d.og!==undefined){
+      ogEl.textContent=d.og?'OSCILLATING':(d.osf!==undefined?(d.osf<0.95?'CALMING':'STABLE'):'OFF');
+      ogEl.style.color=d.og?'#f44336':(d.osf<0.95?'#ffc107':'#4caf50');
+      document.body.style.borderTop=d.og?'3px solid #f44336':'';
+      document.body.style.boxShadow=d.og?'0 0 20px #f44336 inset':'';
+    } else { ogEl.textContent='OFF'; ogEl.style.color='#888'; }
+    $('pGas').style.height=((d.ga||0)*100)+'%';
+    $('pBrk').style.height=((d.br||0)*100)+'%';
+  }
   $('pkts').textContent=pkts;
   const now=performance.now();
   if(now-fpsT>1000){dFps=fpsC;fpsC=0;fpsT=now;$('fps').textContent=dFps;$('clip').textContent=clips;clips=0;}
-  drawAll();
+  if(OPTS.showCharts) drawAll();
 };
 function drawAll(){
   dc('cMain',[{d:D.fo,c:'#fff',w:1.5},{d:D.st,c:'#ffc107',w:1,s:5},{d:D.sp,c:'#4fc3f7',w:1,div:250}]);
@@ -541,10 +654,12 @@ function drawAll(){
   dc('cPipe',[{d:D.cp,c:'#fff',w:1},{d:D.lu,c:'#ce93d8',w:1},{d:D.sl,c:'#4fc3f7',w:1},{d:D.dm,c:'#ff9800',w:1},{d:D.dy,c:'#e91e63',w:1}]);
 }
 function dc(id,trs){
-  const c=document.getElementById(id),w=c.clientWidth,h=c.clientHeight;
+  const c=document.getElementById(id);
+  if(!c)return;
+  const w=c.clientWidth,h=c.clientHeight;
   if(c.width!==w*devicePixelRatio||c.height!==h*devicePixelRatio){c.width=w*devicePixelRatio;c.height=h*devicePixelRatio;}
   const x=c.getContext('2d');x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
-  x.fillStyle='#0a0a0f';x.fillRect(0,0,w,h);
+  if(OPTS.theme==='transparent'){x.clearRect(0,0,w,h);}else{x.fillStyle='#0a0a0f';x.fillRect(0,0,w,h);}
   x.strokeStyle='#1a1a2e';x.lineWidth=0.5;x.beginPath();x.moveTo(0,h/2);x.lineTo(w,h/2);x.stroke();
   x.strokeStyle='#111';x.setLineDash([2,4]);x.beginPath();x.moveTo(0,h*.25);x.lineTo(w,h*.25);x.moveTo(0,h*.75);x.lineTo(w,h*.75);x.stroke();x.setLineDash([]);
   const n=Math.min(idx,N);if(n<2)return;
@@ -562,6 +677,7 @@ function dc(id,trs){
 addEventListener('resize',drawAll);
 addEventListener('keydown',(e)=>{if(e.code==='Space'){e.preventDefault();toggleFreeze();}});
 </script></body></html>";
+    }
 
     public void Dispose()
     {

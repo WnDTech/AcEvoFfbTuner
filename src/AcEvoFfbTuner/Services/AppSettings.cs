@@ -21,6 +21,9 @@ public sealed class AppSettings
     public bool TooltipsEnabled { get; set; } = true;
     public bool AutoProfileUpgrade { get; set; }
     public string ThemeName { get; set; } = ThemeManager.DefaultTheme;
+    public bool VoiceEnabled { get; set; } = true;
+    public int VoiceVolume { get; set; } = 75;
+    public string? VoiceName { get; set; }
 
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
