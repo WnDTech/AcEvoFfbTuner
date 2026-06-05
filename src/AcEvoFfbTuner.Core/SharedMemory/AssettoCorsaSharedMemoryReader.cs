@@ -653,9 +653,11 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
         // ── Steer-based centering (dead simple proportional) ─────────
         // MOZA convention: positive force = LEFT, negative = RIGHT
         // Mz = +steer * k: steerNeg→MzNeg→RIGHT, steerPos→MzPos→LEFT
+        // Deadzone: only suppress at truly straight (< 1.1°). The 0.15 rad (8.6°) bug
+        // was killing Mz for all normal driving inputs.
         float absSteer = Math.Abs(steerRad);
         float centeringForce;
-        if (absSteer < 0.15f)
+        if (absSteer < 0.02f)
             centeringForce = 0f;
         else
             centeringForce = steerRad * speedFactor * 3f;
@@ -666,13 +668,6 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
         physics.Mz[1] = centeringForce;
         physics.Mz[2] = centeringForce * 0.45f;
         physics.Mz[3] = centeringForce * 0.45f;
-
-        // Zero Fx/Fy out completely during debug
-        for (int i = 0; i < 4; i++)
-        {
-            physics.Fx[i] = 0f;
-            physics.Fy[i] = 0f;
-        }
 
         physics.FinalFf = physics.Mz[0];
     }
