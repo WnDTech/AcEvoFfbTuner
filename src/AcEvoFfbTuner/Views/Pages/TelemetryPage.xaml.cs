@@ -14,6 +14,7 @@ public partial class TelemetryPage : UserControl
     private const int PStatN = 300;
     private const float ProfWindowSeconds = 30f;
     private const float ProfSampleRateHz = 30f;
+    private const int CsvMaxRows = 9000;
 
     private static readonly string[] ProColumns = [
         "Time","SpeedKmh","SteerAngle","ForceOut","RawFF","Compress","LUT","PostDamp","GainOut","Dynamic",
@@ -163,14 +164,18 @@ public partial class TelemetryPage : UserControl
             _profilerOverlay.UpdateData(speed, forceOut, rawFF, steerAngle, gasInput, brakeInput, sClip, sc > 0 ? sMin : 0, sc > 0 ? sMax : 0);
         }
 
+        string csvBase = $"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{postDampCore:F6},{postGainCore:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3}";
         if (rawPhysics != null)
         {
-            _pCsv.Add($"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{postDampCore:F6},{postGainCore:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3},{rawPhysics.SuspensionTravel[0]:F6},{rawPhysics.SuspensionTravel[1]:F6},{rawPhysics.SuspensionTravel[2]:F6},{rawPhysics.SuspensionTravel[3]:F6},{rawPhysics.WheelLoad[0]:F2},{rawPhysics.WheelLoad[1]:F2},{rawPhysics.WheelLoad[2]:F2},{rawPhysics.WheelLoad[3]:F2},{rawPhysics.SlipAngle[0]:F6},{rawPhysics.SlipAngle[1]:F6},{rawPhysics.SlipAngle[2]:F6},{rawPhysics.SlipAngle[3]:F6},{rawPhysics.TyreContactNormalX[0]:F6},{rawPhysics.TyreContactNormalX[1]:F6},{rawPhysics.TyreContactNormalX[2]:F6},{rawPhysics.TyreContactNormalX[3]:F6},{rawPhysics.TyreContactNormalZ[0]:F6},{rawPhysics.TyreContactNormalZ[1]:F6},{rawPhysics.TyreContactNormalZ[2]:F6},{rawPhysics.TyreContactNormalZ[3]:F6},{rawPhysics.TyreContactPointY[0]:F6},{rawPhysics.TyreContactPointY[1]:F6},{rawPhysics.TyreGrip[0]:F3},{rawPhysics.TyreGrip[1]:F3},{rawPhysics.TyreGrip[2]:F3},{rawPhysics.TyreGrip[3]:F3},{rawPhysics.KerbVibration:F6},{rawPhysics.RoadVibrations:F6},{wetness:F4}");
+            _pCsv.Add($"{csvBase},{rawPhysics.SuspensionTravel[0]:F6},{rawPhysics.SuspensionTravel[1]:F6},{rawPhysics.SuspensionTravel[2]:F6},{rawPhysics.SuspensionTravel[3]:F6},{rawPhysics.WheelLoad[0]:F2},{rawPhysics.WheelLoad[1]:F2},{rawPhysics.WheelLoad[2]:F2},{rawPhysics.WheelLoad[3]:F2},{rawPhysics.SlipAngle[0]:F6},{rawPhysics.SlipAngle[1]:F6},{rawPhysics.SlipAngle[2]:F6},{rawPhysics.SlipAngle[3]:F6},{rawPhysics.TyreContactNormalX[0]:F6},{rawPhysics.TyreContactNormalX[1]:F6},{rawPhysics.TyreContactNormalX[2]:F6},{rawPhysics.TyreContactNormalX[3]:F6},{rawPhysics.TyreContactNormalZ[0]:F6},{rawPhysics.TyreContactNormalZ[1]:F6},{rawPhysics.TyreContactNormalZ[2]:F6},{rawPhysics.TyreContactNormalZ[3]:F6},{rawPhysics.TyreContactPointY[0]:F6},{rawPhysics.TyreContactPointY[1]:F6},{rawPhysics.TyreGrip[0]:F3},{rawPhysics.TyreGrip[1]:F3},{rawPhysics.TyreGrip[2]:F3},{rawPhysics.TyreGrip[3]:F3},{rawPhysics.KerbVibration:F6},{rawPhysics.RoadVibrations:F6},{wetness:F4}");
         }
         else
         {
-            _pCsv.Add($"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{postDampCore:F6},{postGainCore:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,{wetness:F4}");
+            _pCsv.Add($"{csvBase},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,{wetness:F4}");
         }
+
+        if (_pCsv.Count > CsvMaxRows)
+            _pCsv.RemoveRange(0, _pCsv.Count - CsvMaxRows);
     }
 
     private void ProfPush(float[] arr, float val)

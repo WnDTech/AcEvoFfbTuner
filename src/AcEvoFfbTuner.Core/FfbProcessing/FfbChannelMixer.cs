@@ -109,10 +109,12 @@ public sealed class FfbChannelMixer
             float normalizedLoad = Math.Clamp(frontLoad / LoadReference, 0.1f, 2.0f);
             float loadFactor = MathF.Sqrt(normalizedLoad);
 
-            rawMzFront = (raw.Mz[0] + raw.Mz[1]) * 0.5f * loadFactor;
+            int mzF = (Math.Abs(raw.Mz[0]) > 1e-7f ? 1 : 0) + (Math.Abs(raw.Mz[1]) > 1e-7f ? 1 : 0);
+            rawMzFront = (mzF > 0 ? (raw.Mz[0] + raw.Mz[1]) / mzF : 0f) * loadFactor;
             rawFxFront = (raw.Fx[0] + raw.Fx[1]) * 0.5f;
             rawFyFront = fySign * (raw.Fy[0] + raw.Fy[1]) * 0.5f;
-            rawMzRear = (raw.Mz[2] + raw.Mz[3]) * 0.5f;
+            int mzR = (Math.Abs(raw.Mz[2]) > 1e-7f ? 1 : 0) + (Math.Abs(raw.Mz[3]) > 1e-7f ? 1 : 0);
+            rawMzRear = mzR > 0 ? (raw.Mz[2] + raw.Mz[3]) / mzR : 0f;
             rawFxRear = (raw.Fx[2] + raw.Fx[3]) * 0.5f;
             rawFyRear = fySign * (raw.Fy[2] + raw.Fy[3]) * 0.5f;
         }
@@ -276,7 +278,9 @@ public sealed class FfbChannelMixer
         float w = WheelLoadWeighting;
         float blended = (1f - w) * 0.5f + w * loadRatio;
 
-        return (forces[idxA] + forces[idxB]) * blended;
+        int nz = (Math.Abs(forces[idxA]) > 1e-7f ? 1 : 0) + (Math.Abs(forces[idxB]) > 1e-7f ? 1 : 0);
+        float sum = forces[idxA] + forces[idxB];
+        return nz > 0 ? (sum / nz) * blended * 2f : 0f;
     }
 
     private float MedianFilter(float sample, float[] buffer)
