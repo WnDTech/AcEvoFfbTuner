@@ -473,6 +473,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _ledShiftLimiterFlashEnabled = true;
 
     [ObservableProperty]
+    private bool _ledPitLimiterFlashEnabled = true;
+
+    [ObservableProperty]
     private int _ledColorSchemeIndex;
 
     [ObservableProperty]
@@ -1881,6 +1884,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 AbsFlashEnabled = LedAbsFlashEnabled,
                 FlagIndicatorsEnabled = LedFlagIndicatorsEnabled,
                 ShiftLimiterFlashEnabled = LedShiftLimiterFlashEnabled,
+                PitLimiterFlashEnabled = LedPitLimiterFlashEnabled,
                 ColorScheme = LedColorSchemeIndex >= 0 && LedColorSchemeIndex <= 4
                     ? (LedColorScheme)LedColorSchemeIndex
                     : LedColorScheme.TrafficLight,
@@ -2848,6 +2852,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnLedAbsFlashEnabledChanged(bool value) => PushLedConfig();
     partial void OnLedFlagIndicatorsEnabledChanged(bool value) => PushLedConfig();
     partial void OnLedShiftLimiterFlashEnabledChanged(bool value) => PushLedConfig();
+    partial void OnLedPitLimiterFlashEnabledChanged(bool value) => PushLedConfig();
     partial void OnLedColorSchemeIndexChanged(int value) => PushLedConfig();
     partial void OnLedRpmPresetIndexChanged(int value)
     {
@@ -3730,6 +3735,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             AbsFlashEnabled = LedAbsFlashEnabled,
             FlagIndicatorsEnabled = LedFlagIndicatorsEnabled,
             ShiftLimiterFlashEnabled = LedShiftLimiterFlashEnabled,
+            PitLimiterFlashEnabled = LedPitLimiterFlashEnabled,
             ColorScheme = colorScheme,
             RpmPreset = rpmPreset,
             RpmThresholds = new[]
@@ -3740,7 +3746,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         };
 
         _deviceManager.LedConfig = config;
-        StatusText = $"LED config applied: brightness={config.Brightness}% flash={config.FlashRateTicks} abs={config.AbsFlashEnabled}";
+        StatusText = $"LED config applied: brightness={config.Brightness}% flash={config.FlashRateTicks} abs={config.AbsFlashEnabled} pit={config.PitLimiterFlashEnabled}";
     }
 
     private void LoadLedValues(LedEffectConfigDto dto)
@@ -3750,6 +3756,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         LedAbsFlashEnabled = dto.AbsFlashEnabled;
         LedFlagIndicatorsEnabled = dto.FlagIndicatorsEnabled;
         LedShiftLimiterFlashEnabled = dto.ShiftLimiterFlashEnabled;
+        LedPitLimiterFlashEnabled = dto.PitLimiterFlashEnabled;
         LedColorSchemeIndex = (int)dto.ColorScheme;
         LedRpmPresetIndex = (int)dto.RpmPreset;
         LoadRpmThresholdValues(dto.RpmThresholds);

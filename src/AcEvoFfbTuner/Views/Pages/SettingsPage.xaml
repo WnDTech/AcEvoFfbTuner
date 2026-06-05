@@ -176,6 +176,36 @@
                     </Border>
                 </StackPanel>
 
+                <!-- VOICE -->
+                <StackPanel Margin="0,0,0,24">
+                    <TextBlock Text="VOICE" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,4" />
+                    <TextBlock Text="Spoken announcements for key events." FontSize="14" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap" />
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="8" Padding="16,14"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                        <StackPanel>
+                            <CheckBox Content="Enable voice announcements" IsChecked="{Binding VoiceEnabled}"
+                                      FontSize="15" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12" />
+                            <TextBlock Text="Voice" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding AvailableVoices}" SelectedItem="{Binding SelectedVoice, Mode=TwoWay}"
+                                      FontSize="14" Padding="6,4" Margin="0,0,0,8"
+                                      IsEnabled="{Binding VoiceEnabled}" />
+                            <StackPanel Margin="0,0,0,12" Visibility="{Binding VoiceEnabled, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="For higher quality voices, install Windows Natural Voices." FontSize="13" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                <Button Content="Open Speech Settings" Command="{Binding OpenVoiceSettingsCommand}"
+                                        Padding="10,6" FontSize="13" Style="{StaticResource OutlinedButton}"
+                                        HorizontalAlignment="Left" />
+                            </StackPanel>
+                            <TextBlock Text="Volume" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
+                            <Slider Minimum="0" Maximum="100" Value="{Binding VoiceVolume, Mode=TwoWay}"
+                                    TickFrequency="10" TickPlacement="BottomRight"
+                                    IsSnapToTickEnabled="True"
+                                    Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding VoiceVolume, StringFormat='{}{0}%'}"
+                                       FontSize="13" Foreground="{DynamicResource TextDimBrush}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
             </StackPanel>
         </ScrollViewer>
 

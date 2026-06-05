@@ -41,6 +41,7 @@ public sealed class FfbRawData
     public int Gear { get; set; }
     public float RpmPercent { get; set; }
     public bool IsRpmLimiterOn { get; set; }
+    public bool IsPitLimiterOn { get; set; }
     public bool IsChangeUpRpm { get; set; }
     public int Flag { get; set; }
     public float[] TyreContactNormalX { get; set; } = new float[4];

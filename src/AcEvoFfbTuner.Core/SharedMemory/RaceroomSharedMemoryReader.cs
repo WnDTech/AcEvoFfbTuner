@@ -129,10 +129,54 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
                 SlipVibrations = 0f,
                 RoadVibrations = 0f,
                 AbsVibrations = 0f,
-                AirTemp = _lastData.EngineTemp,
-                SuspensionDamage = new float[4],
+                AirTemp = 0f, // R3E shared memory does not expose ambient air temperature
+                RoadTemp = 0f, // R3E shared memory does not expose track temperature
                 TyreTemp = new float[4],
                 TyreWear = MapTireDataFloat(_lastData.TireWear),
+                TyreTempI = new float[4]
+                {
+                    _lastData.TireTemp.FrontLeft.CurrentTemp.Left,
+                    _lastData.TireTemp.FrontRight.CurrentTemp.Left,
+                    _lastData.TireTemp.RearLeft.CurrentTemp.Left,
+                    _lastData.TireTemp.RearRight.CurrentTemp.Left,
+                },
+                TyreTempM = new float[4]
+                {
+                    _lastData.TireTemp.FrontLeft.CurrentTemp.Center,
+                    _lastData.TireTemp.FrontRight.CurrentTemp.Center,
+                    _lastData.TireTemp.RearLeft.CurrentTemp.Center,
+                    _lastData.TireTemp.RearRight.CurrentTemp.Center,
+                },
+                TyreTempO = new float[4]
+                {
+                    _lastData.TireTemp.FrontLeft.CurrentTemp.Right,
+                    _lastData.TireTemp.FrontRight.CurrentTemp.Right,
+                    _lastData.TireTemp.RearLeft.CurrentTemp.Right,
+                    _lastData.TireTemp.RearRight.CurrentTemp.Right,
+                },
+                BrakeTemp = new float[4]
+                {
+                    _lastData.BrakeTemp.FrontLeft.CurrentTemp,
+                    _lastData.BrakeTemp.FrontRight.CurrentTemp,
+                    _lastData.BrakeTemp.RearLeft.CurrentTemp,
+                    _lastData.BrakeTemp.RearRight.CurrentTemp,
+                },
+                WaterTemp = _lastData.EngineTemp,
+                SuspensionDamage = new float[4]
+                {
+                    _lastData.CarDamage.Suspension,
+                    _lastData.CarDamage.Suspension,
+                    _lastData.CarDamage.Suspension,
+                    _lastData.CarDamage.Suspension,
+                },
+                CarDamage = new float[5]
+                {
+                    _lastData.CarDamage.Engine,
+                    _lastData.CarDamage.Transmission,
+                    _lastData.CarDamage.Aerodynamics,
+                    _lastData.CarDamage.Suspension,
+                    0f,
+                },
                 TyreContactPoint = new StructVector3[4],
                 TyreContactNormal = new StructVector3[4],
                 TyreContactHeading = new StructVector3[4],
@@ -329,14 +373,54 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
                 PerformanceModeName = new byte[33],
             };
 
+            // ── Overlay fields (race info) ──
+            graphics.GapAhead = d.TimeDeltaFront;
+            graphics.GapBehind = d.TimeDeltaBehind;
+            graphics.CurrentPos = (uint)d.Position;
+            graphics.TotalDrivers = (uint)d.NumCars;
+            graphics.FuelLiterCurrentQuantity = d.FuelLeft;
+            graphics.FuelLiterPerLap = d.FuelPerLap;
+            graphics.LapsPossibleWithFuel = d.FuelPerLap > 0 ? d.FuelLeft / d.FuelPerLap : 0;
+            graphics.TotalLapCount = d.NumberOfLaps;
+            graphics.IsInPitLane = d.InPitlane != 0;
+            graphics.IsLastLap = d.NumberOfLaps > 0 && d.CompletedLaps >= d.NumberOfLaps;
+            graphics.IsWrongWay = false;
+
+            // Map R3E flags to AcEvoFlagType
+            if (d.Flags.Checkered != 0)
+                graphics.Flag = AcEvoFlagType.AcCheckeredFlag;
+            else if (d.Flags.Yellow != 0)
+                graphics.Flag = AcEvoFlagType.AcYellowFlag;
+            else if (d.Flags.Blue != 0)
+                graphics.Flag = AcEvoFlagType.AcBlueFlag;
+            else if (d.Flags.Black != 0)
+                graphics.Flag = AcEvoFlagType.AcBlackFlag;
+            else if (d.Flags.White != 0)
+                graphics.Flag = AcEvoFlagType.AcWhiteFlag;
+            else if (d.Flags.Green != 0)
+                graphics.Flag = AcEvoFlagType.AcGreenFlag;
+            else
+                graphics.Flag = AcEvoFlagType.AcNoFlag;
+
+            graphics.GlobalFlag = graphics.Flag;
+
+            // Timing
+            graphics.SessionState = new SmevoSessionState
+            {
+                CurrentLap = d.CompletedLaps + 1,
+                TotalLap = d.NumberOfLaps,
+                TimeLeft = System.Text.Encoding.ASCII.GetBytes(d.SessionTimeRemaining > 0 ? $"{d.SessionTimeRemaining:F0}" : ""),
+            };
+
+            graphics.LastLaptimeMs = (int)(d.LapTimePreviousSelf * 1000f);
+            graphics.BestLaptimeMs = (int)(d.LapTimeBestSelf * 1000f);
+
             graphics.CarCoordinates[0] = new StructVector3
             {
                 X = d.CarCgLocation.X,
                 Y = d.CarCgLocation.Y,
                 Z = d.CarCgLocation.Z
             };
-
-            graphics.SessionState = new SmevoSessionState { CurrentLap = d.CompletedLaps + 1 };
 
             return true;
         }

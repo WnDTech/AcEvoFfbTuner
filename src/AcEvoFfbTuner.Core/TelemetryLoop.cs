@@ -521,7 +521,7 @@ public sealed class TelemetryLoop : IDisposable
 
                     if (_deviceManager.IsDeviceAcquired && !_suppressOutput)
                     {
-                        _deviceManager.UpdateWheelLeds(raw.RpmPercent, raw.IsChangeUpRpm, raw.IsRpmLimiterOn, raw.Flag, raw.AbsVibrations > 0.001f);
+                        _deviceManager.UpdateWheelLeds(raw.RpmPercent, raw.IsChangeUpRpm, raw.IsRpmLimiterOn, raw.Flag, raw.AbsVibrations > 0.001f, raw.IsPitLimiterOn);
 
                         if (_deviceManager.IsHf8Connected)
                         {
@@ -984,6 +984,7 @@ public sealed class TelemetryLoop : IDisposable
             Gear = physics.Gear,
             RpmPercent = graphics.RpmPercent,
             IsRpmLimiterOn = graphics.IsRpmLimiterOn,
+            IsPitLimiterOn = physics.PitLimiterOn != 0,
             IsChangeUpRpm = graphics.IsChangeUpRpm,
             Flag = (int)graphics.Flag,
             CarX = GetCarX(graphics, physics),

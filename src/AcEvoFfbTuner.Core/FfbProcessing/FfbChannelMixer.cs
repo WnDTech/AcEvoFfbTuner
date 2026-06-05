@@ -41,8 +41,10 @@ public sealed class FfbChannelMixer
     private float _smMzFront, _smFxFront, _smFyFront;
     private float _smMzRear, _smFxRear, _smFyRear;
 
-    // Center blend zone: below this steering angle (degrees), Fy is suppressed
-    // in favor of the cleaner Mz signal. Removes the grainy Fy buzz at center.
+    // Center blend zone: below this steering angle (degrees), both Fx and Fy are
+    // suppressed in favor of the cleaner Mz signal. Removes channel noise (Fy buzz,
+    // Fx snap from longitudinal oscillations) when driving straight.
+    // Fades in smoothly via SmoothStep as steer angle increases.
     public float CenterBlendDegrees { get; set; } = 1.0f;
 
     // Per-channel smoothing: higher alpha = more responsive, more noise.
@@ -161,10 +163,17 @@ public sealed class FfbChannelMixer
         float fyRear = FyRearEnabled ? SoftClamp(Normalize(rawFyRear, effectiveFyScale) * FyRearGain) : 0f;
 
         // Center blend zone (uses raw steer angle — no latency)
+        // Applied to both Fy (lateral) and Fx (longitudinal) channels.
+        // Fy is suppressed near center because lateral forces should be near zero
+        // when driving straight — any oscillation is noise.
+        // Fx is suppressed near center because longitudinal force oscillations
+        // (throttle/brake modulation, bumps) create unnatural snap on DD wheels
+        // when straight. Real cars filter this through steering compliance/hydraulic
+        // assist. Fx blends back in during turns where it contributes steering feel.
         float maxDeg = 450f;
         float absSteerDeg = Math.Abs(raw.SteerAngle * maxDeg);
         float bt = Math.Clamp(absSteerDeg / Math.Max(CenterBlendDegrees, 0.1f), 0f, 1f);
-        float fyBlend = bt * bt * (3f - 2f * bt);
+        float centerBlend = bt * bt * (3f - 2f * bt);
 
         // ═══════════════════════════════════════════════════════════════
         // CORE PATH: zero-latency with ABS-aware Fx smoothing
@@ -206,10 +215,12 @@ public sealed class FfbChannelMixer
             _smCoreFxRear = fxRear;
         }
 
-        float coreBlendedFyFront = fyFront * fyBlend;
-        float coreBlendedFyRear = fyRear * fyBlend;
-        float rawCoreForce = mzFront + coreFxFront + coreBlendedFyFront
-                           + mzRear + coreFxRear + coreBlendedFyRear;
+        float coreBlendedFxFront = coreFxFront * centerBlend;
+        float coreBlendedFxRear = coreFxRear * centerBlend;
+        float coreBlendedFyFront = fyFront * centerBlend;
+        float coreBlendedFyRear = fyRear * centerBlend;
+        float rawCoreForce = mzFront + coreBlendedFxFront + coreBlendedFyFront
+                           + mzRear + coreBlendedFxRear + coreBlendedFyRear;
 
         // ═══════════════════════════════════════════════════════════════
         // DETAIL PATH: EMA-smoothed channels (for diagnostics & detail extraction)
@@ -231,18 +242,20 @@ public sealed class FfbChannelMixer
         _smFxRear = _smFxRear * (1f - fxRearAlphaS) + fxRear * fxRearAlphaS;
         _smFyRear = _smFyRear * (1f - fyAlphaS) + fyRear * fyAlphaS;
 
-        float blendedFyFront = _smFyFront * fyBlend;
-        float blendedFyRear = _smFyRear * fyBlend;
+        float blendedFxFront = _smFxFront * centerBlend;
+        float blendedFxRear = _smFxRear * centerBlend;
+        float blendedFyFront = _smFyFront * centerBlend;
+        float blendedFyRear = _smFyRear * centerBlend;
 
         float finalFf = FinalFfEnabled ? raw.FinalFf * FinalFfGain : 0f;
 
         channels = new FfbChannelOutputs
         {
             MzFront = _smMzFront,
-            FxFront = _smFxFront,
+            FxFront = blendedFxFront,
             FyFront = blendedFyFront,
             MzRear = _smMzRear,
-            FxRear = _smFxRear,
+            FxRear = blendedFxRear,
             FyRear = blendedFyRear,
             FinalFf = finalFf,
             RawCoreForce = rawCoreForce
@@ -250,8 +263,8 @@ public sealed class FfbChannelMixer
 
         float mixed = MixMode switch
         {
-            FfbMixMode.Replace => _smMzFront + _smFxFront + blendedFyFront + _smMzRear + _smFxRear + blendedFyRear,
-            FfbMixMode.Overlay => raw.FinalFf + _smMzFront + _smFxFront + blendedFyFront + _smMzRear + _smFxRear + blendedFyRear,
+            FfbMixMode.Replace => _smMzFront + blendedFxFront + blendedFyFront + _smMzRear + blendedFxRear + blendedFyRear,
+            FfbMixMode.Overlay => raw.FinalFf + _smMzFront + blendedFxFront + blendedFyFront + _smMzRear + blendedFxRear + blendedFyRear,
             _ => raw.FinalFf
         };
 

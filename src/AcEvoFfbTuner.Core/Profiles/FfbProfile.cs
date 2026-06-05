@@ -1180,6 +1180,7 @@ public sealed class LedEffectConfigDto
     public bool AbsFlashEnabled { get; set; } = true;
     public bool FlagIndicatorsEnabled { get; set; } = true;
     public bool ShiftLimiterFlashEnabled { get; set; } = true;
+    public bool PitLimiterFlashEnabled { get; set; } = true;
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public LedColorScheme ColorScheme { get; set; } = LedColorScheme.TrafficLight;
@@ -1199,6 +1200,7 @@ public sealed class LedEffectConfigDto
             AbsFlashEnabled = AbsFlashEnabled,
             FlagIndicatorsEnabled = FlagIndicatorsEnabled,
             ShiftLimiterFlashEnabled = ShiftLimiterFlashEnabled,
+            PitLimiterFlashEnabled = PitLimiterFlashEnabled,
             ColorScheme = ColorScheme,
             RpmPreset = RpmPreset,
             RpmThresholds = RpmThresholds,
@@ -1215,6 +1217,7 @@ public sealed class LedEffectConfigDto
             AbsFlashEnabled = config.AbsFlashEnabled,
             FlagIndicatorsEnabled = config.FlagIndicatorsEnabled,
             ShiftLimiterFlashEnabled = config.ShiftLimiterFlashEnabled,
+            PitLimiterFlashEnabled = config.PitLimiterFlashEnabled,
             ColorScheme = config.ColorScheme,
             RpmPreset = config.RpmPreset,
             RpmThresholds = config.RpmThresholds,

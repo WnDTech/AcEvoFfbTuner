@@ -271,6 +271,7 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
         p.CamberRad = CopyArr(ac.CamberRad, 4);
         p.SuspensionTravel = CopyArr(ac.SuspensionTravel, 4);
         p.Abs = ac.Abs;
+        p.PitLimiterOn = ac.PitLimiterOn;
         p.AutoShifterOn = ac.AutoShifterOn;
         p.RideHeight = CopyArr(ac.RideHeight, 2);
         p.TurboBoost = ac.TurboBoost;
@@ -431,6 +432,8 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
             TyreCoreTemperature = new[] { BitConverter.ToSingle(b, 152), BitConverter.ToSingle(b, 156), BitConverter.ToSingle(b, 160), BitConverter.ToSingle(b, 164) },
             CamberRad = new[] { BitConverter.ToSingle(b, 168), BitConverter.ToSingle(b, 172), BitConverter.ToSingle(b, 176), BitConverter.ToSingle(b, 180) },
             SuspensionTravel = new[] { BitConverter.ToSingle(b, 184), BitConverter.ToSingle(b, 188), BitConverter.ToSingle(b, 192), BitConverter.ToSingle(b, 196) },
+            NumberOfTyresOut = BitConverter.ToInt32(b, 216),
+            PitLimiterOn = BitConverter.ToInt32(b, 220),
             Abs = BitConverter.ToSingle(b, 224),
             AutoShifterOn = BitConverter.ToInt32(b, 236),
             RideHeight = new[] { BitConverter.ToSingle(b, 240), BitConverter.ToSingle(b, 244) },

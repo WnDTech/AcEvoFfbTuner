@@ -269,7 +269,8 @@ public partial class MainWindow : Window
 
         try
         {
-            File.AppendAllText(@"C:\Users\paul_\AppData\Roaming\AcEvoFfbTuner\wiz_dbg.log", $"[{DateTime.Now:HH:mm:ss.fff}] Creating wizard...\n");
+            var wizLog = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner", "wiz_dbg.log");
+            File.AppendAllText(wizLog, $"[{DateTime.Now:HH:mm:ss.fff}] Creating wizard...\n");
             var wizard = new SetupWizardOverlay(
                 vm.Pipeline,
                 vm.DeviceManager,
@@ -277,10 +278,10 @@ public partial class MainWindow : Window
                 vm,
                 (name, scope) => vm.WizardSaveProfile(name, scope));
 
-            File.AppendAllText(@"C:\Users\paul_\AppData\Roaming\AcEvoFfbTuner\wiz_dbg.log", $"[{DateTime.Now:HH:mm:ss.fff}] Wizard created, showing...\n");
+            File.AppendAllText(wizLog, $"[{DateTime.Now:HH:mm:ss.fff}] Wizard created, showing...\n");
             wizard.Closed += (_, _) => _setupWizard = null;
             wizard.Show();
-            File.AppendAllText(@"C:\Users\paul_\AppData\Roaming\AcEvoFfbTuner\wiz_dbg.log", $"[{DateTime.Now:HH:mm:ss.fff}] Show() returned\n");
+            File.AppendAllText(wizLog, $"[{DateTime.Now:HH:mm:ss.fff}] Show() returned\n");
             _setupWizard = wizard;
         }
         catch (Exception ex)
@@ -428,6 +429,17 @@ public partial class MainWindow : Window
     private void OnDonateClick(object sender, RoutedEventArgs e)
     {
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://paypal.me/willndad") { UseShellExecute = true });
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Key == Key.R && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+        {
+            if (DataContext is ViewModels.MainViewModel vm)
+                vm.ToggleRaceInfoOverlayCommand.Execute(null);
+            e.Handled = true;
+        }
     }
 
     private void OnCompactViewClick(object sender, RoutedEventArgs e)

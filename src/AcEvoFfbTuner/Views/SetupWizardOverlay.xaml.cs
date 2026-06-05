@@ -24,7 +24,7 @@ public partial class SetupWizardOverlay : Window
 
     private static void Log(string msg)
     {
-        try { File.AppendAllText(@"C:\Users\paul_\AppData\Roaming\AcEvoFfbTuner\setupwizard.log",
+        try { File.AppendAllText(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner", "setupwizard.log"),
             $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n"); } catch { }
     }
 

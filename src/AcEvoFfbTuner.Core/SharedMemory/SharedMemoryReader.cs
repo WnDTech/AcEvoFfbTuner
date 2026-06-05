@@ -102,6 +102,8 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
             if (buffer.Length >= 32)
                 physics.SpeedKmh = BitConverter.ToSingle(buffer, 28);
 
+            SanitizePhysicsFields(ref physics);
+
             if (physics.PacketId % 200 == 0 || physics.PacketId <= 1)
                 DumpPhysicsBytes(buffer, physics);
 
@@ -111,6 +113,38 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
         catch
         {
             return false;
+        }
+    }
+
+    private static void SanitizePhysicsFields(ref SPageFilePhysicsEvo physics)
+    {
+        SanitizeArr4(ref physics.Mz, 0f, 5000f);
+        SanitizeArr4(ref physics.Fx, -15000f, 15000f);
+        SanitizeArr4(ref physics.Fy, -15000f, 15000f);
+        SanitizeArr4(ref physics.SlipRatio, -5f, 5f);
+        SanitizeArr4(ref physics.SlipAngle, -1f, 1f);
+        SanitizeArr4(ref physics.WheelLoad, 0f, 30000f);
+        SanitizeArr3(ref physics.AccG, -100f, 100f);
+        SanitizeArr4(ref physics.SuspensionTravel, -1f, 1f);
+    }
+
+    private static void SanitizeArr4(ref float[] arr, float min, float max)
+    {
+        if (arr == null || arr.Length < 4) { arr = [0f, 0f, 0f, 0f]; return; }
+        for (int i = 0; i < 4; i++)
+        {
+            if (float.IsNaN(arr[i]) || float.IsInfinity(arr[i]) || arr[i] < min || arr[i] > max)
+                arr[i] = Math.Clamp(arr[i], min, max);
+        }
+    }
+
+    private static void SanitizeArr3(ref float[] arr, float min, float max)
+    {
+        if (arr == null || arr.Length < 3) { arr = [0f, 0f, 0f]; return; }
+        for (int i = 0; i < 3; i++)
+        {
+            if (float.IsNaN(arr[i]) || float.IsInfinity(arr[i]) || arr[i] < min || arr[i] > max)
+                arr[i] = Math.Clamp(arr[i], min, max);
         }
     }
 

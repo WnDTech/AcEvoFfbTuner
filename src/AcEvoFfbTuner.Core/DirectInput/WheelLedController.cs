@@ -779,7 +779,7 @@ public sealed class WheelLedController : IDisposable
     private int _absLogCount;
     private bool _lastAbsState;
 
-    public void UpdateLeds(float rpmPercent, bool shiftUp, bool limiter, int flag, bool absActive = false)
+    public void UpdateLeds(float rpmPercent, bool shiftUp, bool limiter, int flag, bool absActive = false, bool pitLimiterActive = false)
     {
         if (!IsConnected || _reportBuf == null) return;
 
@@ -791,7 +791,7 @@ public sealed class WheelLedController : IDisposable
         rpm = Math.Clamp(rpm, 0f, 1f);
 
         if (_sendCount <= 3)
-            Log($"UpdateLeds: raw={rpmPercent:F2} norm={rpm:F3} shift={shiftUp} limiter={limiter} flag={flag} abs={absActive} serial={_useSerialPort}");
+            Log($"UpdateLeds: raw={rpmPercent:F2} norm={rpm:F3} shift={shiftUp} limiter={limiter} flag={flag} abs={absActive} pit={pitLimiterActive} serial={_useSerialPort}");
 
         if (absActive != _lastAbsState)
         {
@@ -808,16 +808,16 @@ public sealed class WheelLedController : IDisposable
             switch (_vendor)
             {
                 case WheelVendor.Fanatec:
-                    WriteFanatec(rpm, shiftUp, limiter, flag, absActive);
+                    WriteFanatec(rpm, shiftUp, limiter, flag, absActive, pitLimiterActive);
                     break;
                 case WheelVendor.Moza:
-                    WriteMoza(rpm, shiftUp, limiter, flag, absActive);
+                    WriteMoza(rpm, shiftUp, limiter, flag, absActive, pitLimiterActive);
                     break;
                 case WheelVendor.Logitech:
-                    WriteLogitech(rpm, shiftUp, limiter, flag, absActive);
+                    WriteLogitech(rpm, shiftUp, limiter, flag, absActive, pitLimiterActive);
                     break;
                 case WheelVendor.Simucube:
-                    WriteSimucube(rpm, shiftUp, limiter, flag, absActive);
+                    WriteSimucube(rpm, shiftUp, limiter, flag, absActive, pitLimiterActive);
                     break;
             }
         }
@@ -831,7 +831,7 @@ public sealed class WheelLedController : IDisposable
 
     private const int FanatecLedCount = 9;
 
-    private void WriteFanatec(float rpm, bool shift, bool limiter, int flag, bool absActive)
+    private void WriteFanatec(float rpm, bool shift, bool limiter, int flag, bool absActive, bool pitLimiterActive = false)
     {
         Array.Clear(_reportBuf!);
         _reportBuf![0] = 0x11;
@@ -851,10 +851,29 @@ public sealed class WheelLedController : IDisposable
                 ? (ushort)0x3
                 : (ushort)(3 << (FanatecLedCount - 2));
         }
+        else if (pitLimiterActive && _config.PitLimiterFlashEnabled)
+        {
+            _absFlashTick = 0;
+            _absFlashAlternate = false;
+            _flashTick = 0;
+            _flashOn = false;
+
+            if (++_pitFlashTick >= Math.Max(_config.FlashRateTicks / 2, 2))
+            {
+                _pitFlashTick = 0;
+                _pitFlashAlternate = !_pitFlashAlternate;
+            }
+
+            bits = _pitFlashAlternate
+                ? (ushort)0x3
+                : (ushort)(3 << (FanatecLedCount - 2));
+        }
         else if (flash)
         {
             _absFlashTick = 0;
             _absFlashAlternate = false;
+            _pitFlashTick = 0;
+            _pitFlashAlternate = false;
             if (++_flashTick >= _config.FlashRateTicks) { _flashTick = 0; _flashOn = !_flashOn; }
             bits = _flashOn ? (ushort)((1 << FanatecLedCount) - 1) : (ushort)0;
         }
@@ -862,6 +881,8 @@ public sealed class WheelLedController : IDisposable
         {
             _absFlashTick = 0;
             _absFlashAlternate = false;
+            _pitFlashTick = 0;
+            _pitFlashAlternate = false;
             _flashTick = 0;
             _flashOn = false;
 
@@ -927,7 +948,7 @@ public sealed class WheelLedController : IDisposable
     private const int LogitechLedCount = 5;
     private const byte LogitechLedReportId = 0x03;
 
-    private void WriteLogitech(float rpm, bool shift, bool limiter, int flag, bool absActive)
+    private void WriteLogitech(float rpm, bool shift, bool limiter, int flag, bool absActive, bool pitLimiterActive = false)
     {
         Array.Clear(_reportBuf!);
         _reportBuf![0] = LogitechLedReportId;
@@ -947,10 +968,29 @@ public sealed class WheelLedController : IDisposable
                 ? (ushort)0x3
                 : (ushort)(3 << (LogitechLedCount - 2));
         }
+        else if (pitLimiterActive && _config.PitLimiterFlashEnabled)
+        {
+            _absFlashTick = 0;
+            _absFlashAlternate = false;
+            _flashTick = 0;
+            _flashOn = false;
+
+            if (++_pitFlashTick >= Math.Max(_config.FlashRateTicks / 2, 2))
+            {
+                _pitFlashTick = 0;
+                _pitFlashAlternate = !_pitFlashAlternate;
+            }
+
+            bits = _pitFlashAlternate
+                ? (ushort)0x3
+                : (ushort)(3 << (LogitechLedCount - 2));
+        }
         else if (flash)
         {
             _absFlashTick = 0;
             _absFlashAlternate = false;
+            _pitFlashTick = 0;
+            _pitFlashAlternate = false;
             if (++_flashTick >= _config.FlashRateTicks) { _flashTick = 0; _flashOn = !_flashOn; }
             bits = _flashOn ? (ushort)((1 << LogitechLedCount) - 1) : (ushort)0;
         }
@@ -958,6 +998,8 @@ public sealed class WheelLedController : IDisposable
         {
             _absFlashTick = 0;
             _absFlashAlternate = false;
+            _pitFlashTick = 0;
+            _pitFlashAlternate = false;
             _flashTick = 0;
             _flashOn = false;
 
@@ -975,7 +1017,7 @@ public sealed class WheelLedController : IDisposable
 
     private const int SimucubeLedCount = 10;
 
-    private void WriteSimucube(float rpm, bool shift, bool limiter, int flag, bool absActive)
+    private void WriteSimucube(float rpm, bool shift, bool limiter, int flag, bool absActive, bool pitLimiterActive = false)
     {
         Array.Clear(_reportBuf!);
 
@@ -999,10 +1041,32 @@ public sealed class WheelLedController : IDisposable
                 colorData[i] = isAbsLed ? 0xFFFFAA00u : 0x00000000u;
             }
         }
+        else if (pitLimiterActive && _config.PitLimiterFlashEnabled)
+        {
+            _absFlashTick = 0;
+            _absFlashAlternate = false;
+            _flashTick = 0;
+            _flashOn = false;
+
+            if (++_pitFlashTick >= Math.Max(_config.FlashRateTicks / 2, 2))
+            {
+                _pitFlashTick = 0;
+                _pitFlashAlternate = !_pitFlashAlternate;
+            }
+
+            colorData = new uint[ledCount];
+            for (int i = 0; i < ledCount; i++)
+            {
+                bool isPitLed = _pitFlashAlternate ? i < 2 : i >= ledCount - 2;
+                colorData[i] = isPitLed ? 0xFF0066FFu : 0x00000000u;
+            }
+        }
         else if (flash)
         {
             _absFlashTick = 0;
             _absFlashAlternate = false;
+            _pitFlashTick = 0;
+            _pitFlashAlternate = false;
             if (++_flashTick >= _config.FlashRateTicks) { _flashTick = 0; _flashOn = !_flashOn; }
 
             uint allColor = _flashOn ? 0xFFFF0606u : 0x00000000u;
@@ -1012,6 +1076,8 @@ public sealed class WheelLedController : IDisposable
         {
             _absFlashTick = 0;
             _absFlashAlternate = false;
+            _pitFlashTick = 0;
+            _pitFlashAlternate = false;
             _flashTick = 0;
             _flashOn = false;
 
@@ -1086,25 +1152,27 @@ public sealed class WheelLedController : IDisposable
     private MozaProtocol _mozaProto;
     private int _mozaEnableCount;
 
-    private void WriteMoza(float rpm, bool shift, bool limiter, int flag, bool absActive)
+    private void WriteMoza(float rpm, bool shift, bool limiter, int flag, bool absActive, bool pitLimiterActive = false)
     {
         if (HasDirectControl)
         {
-            WriteMozaSerial(rpm, shift, limiter, flag, absActive);
+            WriteMozaSerial(rpm, shift, limiter, flag, absActive, pitLimiterActive);
             return;
         }
 
         if (_useMozaSdk)
         {
-            WriteMozaSdk(rpm, shift, limiter, flag, absActive);
+            WriteMozaSdk(rpm, shift, limiter, flag, absActive, pitLimiterActive);
             return;
         }
     }
 
     private bool _absFlashAlternate;
     private int _absFlashTick;
+    private bool _pitFlashAlternate;
+    private int _pitFlashTick;
 
-    private void WriteMozaSerial(float rpm, bool shift, bool limiter, int flag, bool absActive)
+    private void WriteMozaSerial(float rpm, bool shift, bool limiter, int flag, bool absActive, bool pitLimiterActive = false)
     {
         if (_mozaProto == MozaProtocol.Unknown)
         {
@@ -1135,6 +1203,28 @@ public sealed class WheelLedController : IDisposable
 
         _absFlashTick = 0;
         _absFlashAlternate = false;
+
+        if (pitLimiterActive && _config.PitLimiterFlashEnabled)
+        {
+            _flashTick = 0;
+            _flashOn = false;
+
+            if (++_pitFlashTick >= Math.Max(_config.FlashRateTicks / 2, 2))
+            {
+                _pitFlashTick = 0;
+                _pitFlashAlternate = !_pitFlashAlternate;
+            }
+
+            int pitBitmask = _pitFlashAlternate
+                ? 0x3
+                : (3 << (MozaLedCount - 2));
+
+            SendMozaBitmask(pitBitmask & 0x3FF);
+            return;
+        }
+
+        _pitFlashTick = 0;
+        _pitFlashAlternate = false;
 
         bool flash = (shift || limiter) && _config.ShiftLimiterFlashEnabled;
 
@@ -1237,7 +1327,7 @@ public sealed class WheelLedController : IDisposable
         SendMozaFrame(0x3F, MozaEsWheelDevice, payload);
     }
 
-    private void WriteMozaSdk(float rpm, bool shift, bool limiter, int flag, bool absActive)
+    private void WriteMozaSdk(float rpm, bool shift, bool limiter, int flag, bool absActive, bool pitLimiterActive = false)
     {
         if (!_mozaSdk.IsAvailable) return;
 
@@ -1270,6 +1360,33 @@ public sealed class WheelLedController : IDisposable
 
         _absFlashTick = 0;
         _absFlashAlternate = false;
+
+        if (pitLimiterActive && _config.PitLimiterFlashEnabled)
+        {
+            _flashTick = 0;
+            _flashOn = false;
+
+            if (++_pitFlashTick >= Math.Max(_config.FlashRateTicks / 2, 2))
+            {
+                _pitFlashTick = 0;
+                _pitFlashAlternate = !_pitFlashAlternate;
+            }
+
+            for (int i = 0; i < ledCount; i++)
+            {
+                bool isPitLed = _pitFlashAlternate
+                    ? i < 2
+                    : i >= ledCount - 2;
+
+                colors[i] = isPitLed ? "#FF0066FF" : "#00000000";
+            }
+
+            _mozaSdk.SetShiftIndicatorColors(colors);
+            return;
+        }
+
+        _pitFlashTick = 0;
+        _pitFlashAlternate = false;
 
         if (flash)
         {

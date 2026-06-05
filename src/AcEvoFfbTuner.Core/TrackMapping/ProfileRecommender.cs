@@ -642,7 +642,7 @@ public sealed class ProfileRecommender
             Unit = "deg",
             Reason = "Oscillations in corners may be from Fy/Mz channel interaction at center. Wider blend zone smooths the crossover.",
             AffectedPipelineStage = "Channel Mixer (Center Blend)",
-            CodeReference = "FfbChannelMixer.cs:183-186 — SmoothStep blend: fyBlend = t²(3-2t) where t = steerDeg/CenterBlendDegrees",
+            CodeReference = "FfbChannelMixer.cs:183-186 — SmoothStep blend: centerBlend = t²(3-2t) where t = steerDeg/CenterBlendDegrees",
             DataBreakdown =
                 $"Corner events:          {s.CornerEventPct:F0}%\n" +
                 $"Total oscillations:      {s.TotalOscillations}\n" +

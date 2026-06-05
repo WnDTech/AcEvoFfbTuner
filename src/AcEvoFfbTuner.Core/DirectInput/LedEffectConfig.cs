@@ -14,6 +14,8 @@ public sealed class LedEffectConfig
 
     public bool ShiftLimiterFlashEnabled { get; set; } = true;
 
+    public bool PitLimiterFlashEnabled { get; set; } = true;
+
     public LedColorScheme ColorScheme { get; set; } = LedColorScheme.TrafficLight;
 
     public LedRpmPreset RpmPreset { get; set; } = LedRpmPreset.Default;
@@ -104,6 +106,7 @@ public sealed class LedEffectConfig
             AbsFlashEnabled = AbsFlashEnabled,
             FlagIndicatorsEnabled = FlagIndicatorsEnabled,
             ShiftLimiterFlashEnabled = ShiftLimiterFlashEnabled,
+            PitLimiterFlashEnabled = PitLimiterFlashEnabled,
             ColorScheme = ColorScheme,
             RpmPreset = RpmPreset,
             RpmThresholds = (int[])RpmThresholds.Clone(),

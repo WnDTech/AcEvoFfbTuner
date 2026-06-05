@@ -91,8 +91,16 @@ public sealed class FfbDeviceManager : IDisposable
     public bool AutoDetectedForceInvert { get; private set; }
 
     private bool _axisIsUnsigned = true;
-    private bool _axisDetected;
+    private bool _axisDetectionStarted;
+    private int _axisDetectionSamples;
 
+    /// <summary>
+    /// Reads the physical wheel axis and returns a normalized -1..+1 value
+    /// (centered at 0). Uses multi-sample auto-detection to determine whether
+    /// the DirectInput axis reports signed (-32768..32767) or unsigned
+    /// (0..65535). After detection is locked, subsequent reads skip polling
+    /// the same frame to avoid interfering with the main FFB output path.
+    /// </summary>
     public float ReadWheelAxisNormalized()
     {
         if (_device == null || !_isAcquired) return 0f;
@@ -104,11 +112,28 @@ public sealed class FfbDeviceManager : IDisposable
             {
                 float x = js.X;
 
-                if (!_axisDetected)
+                // Multi-sample axis type detection
+                if (!_axisDetectionStarted)
                 {
-                    if (x < 0)
+                    if (x > 32767f)
+                    {
+                        // Sample exceeds 32767 — definitely unsigned (0..65535)
+                        _axisIsUnsigned = true;
+                        _axisDetectionStarted = true;
+                    }
+                    else if (x < -10000f)
+                    {
+                        // Sample is clearly negative — definitely signed (-32768..32767)
                         _axisIsUnsigned = false;
-                    _axisDetected = true;
+                        _axisDetectionStarted = true;
+                    }
+                    else
+                    {
+                        _axisDetectionSamples++;
+                        // After 10 samples (≈30ms at 3ms ticks), lock in unsigned as safe default
+                        if (_axisDetectionSamples >= 10)
+                            _axisDetectionStarted = true;
+                    }
                 }
 
                 float center = _axisIsUnsigned ? 32767f : 0f;
@@ -117,6 +142,12 @@ public sealed class FfbDeviceManager : IDisposable
         }
         catch { }
         return 0f;
+    }
+
+    public void ResetAxisDetection()
+    {
+        _axisDetectionStarted = false;
+        _axisDetectionSamples = 0;
     }
 
     public static bool? DetectForceInversionKnown(string productName)
@@ -339,6 +370,7 @@ public sealed class FfbDeviceManager : IDisposable
                 ConnLog("Cooperative level set. Acquiring...");
                 _device.Acquire();
                 _isAcquired = true;
+                ResetAxisDetection();
                 ConnLog("EXCLUSIVE ACQUIRED SUCCESSFULLY");
 
                 DiscoverFfAxes();
@@ -853,6 +885,7 @@ public sealed class FfbDeviceManager : IDisposable
 
             _device.Acquire();
             _isAcquired = true;
+            ResetAxisDetection();
             _consecutiveForceErrors = 0;
             _inlineReacquireCount = 0;
             LastError = null;
@@ -872,9 +905,9 @@ public sealed class FfbDeviceManager : IDisposable
         }
     }
 
-    public void UpdateWheelLeds(float rpmPercent, bool shiftUp, bool limiter, int flag, bool absActive = false)
+    public void UpdateWheelLeds(float rpmPercent, bool shiftUp, bool limiter, int flag, bool absActive = false, bool pitLimiterActive = false)
     {
-        _ledController.UpdateLeds(rpmPercent, shiftUp, limiter, flag, absActive);
+        _ledController.UpdateLeds(rpmPercent, shiftUp, limiter, flag, absActive, pitLimiterActive);
     }
 
     public void ClearWheelLeds()

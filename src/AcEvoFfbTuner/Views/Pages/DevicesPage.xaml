@@ -179,6 +179,12 @@
                                     <TextBlock Text="All LEDs flash at redline" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
 
                                     <DockPanel Margin="0,4">
+                                        <TextBlock Text="Pit Limiter Flash" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" />
+                                        <CheckBox IsChecked="{Binding LedPitLimiterFlashEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <TextBlock Text="Alternating outer LEDs when pit limiter active" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+
+                                    <DockPanel Margin="0,4">
                                         <TextBlock Text="ABS Flash" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" />
                                         <CheckBox IsChecked="{Binding LedAbsFlashEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                     </DockPanel>
