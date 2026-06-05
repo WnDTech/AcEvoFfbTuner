@@ -50,8 +50,8 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
-            Version = "1.22.0",
-            Date = new DateTime(2026, 5, 30),
+            Version = "1.22.5",
+            Date = new DateTime(2026, 6, 5),
             Title = "Multi-Game Support: RaceRoom FFB Pipeline, PFD Dashboard & Theme System",
             Features =
             [
