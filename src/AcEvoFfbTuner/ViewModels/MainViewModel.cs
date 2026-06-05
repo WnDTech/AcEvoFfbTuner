@@ -1354,7 +1354,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private static ISharedMemoryReader CreateReader(SupportedGame game) => game switch
     {
         SupportedGame.Raceroom => new RaceroomSharedMemoryReader(),
-        _ => new AssettoCorsaSharedMemoryReader()
+        SupportedGame.AssettoCorsa => new SharedMemoryReader(),
+        _ => new SharedMemoryReader()
     };
 
     private static FfbPipeline CreatePipeline(SupportedGame game) => game switch
