@@ -171,18 +171,16 @@ public sealed class FfbChannelMixer
         float centerBlend = bt * bt * (3f - 2f * bt);
 
         // ═══════════════════════════════════════════════════════════════
-        // CORE PATH: zero-latency with always-on Fx EMA smoothing
+        // CORE PATH: zero-latency with state-adaptive Fx EMA
         //
         // Mz and Fy go through unfiltered (zero-latency) — these carry
         // the essential self-aligning torque and lateral forces.
         //
-        // Fx (longitudinal) gets a light EMA always, with heavier smoothing
-        // during braking/ABS. This kills the high-frequency Fx oscillations
-        // (throttle modulation, bumps, engine torque pulses) that cause
-        // snap-like behavior on DD wheels, while preserving the low-frequency
-        // braking dive feel. Real steering columns have natural mechanical
-        // lowpass from rubber bushings and hydraulic assist — our EMA
-        // approximates that on the digital path.
+        // Fx (longitudinal) needs contradictory things:
+        //   • Cruising: light EMA to kill snap from bumps/throttle oscillations
+        //   • Braking:  FAST response — braking Fx must reach wheel immediately
+        //   • ABS:      heavy EMA to suppress ABS chatter (12-25Hz pedal oscillation)
+        // We use state-adaptive alpha so each regime gets the right behaviour.
         // ═══════════════════════════════════════════════════════════════
         bool isBrakingHard = raw.BrakeInput > 0.3f;
         bool absActive = raw.AbsInAction != 0;
@@ -190,14 +188,14 @@ public sealed class FfbChannelMixer
         float fxAlpha;
         if (FxFrontEnabled)
         {
-            fxAlpha = isBrakingHard ? (absActive ? 0.08f : 0.15f) : 0.30f;
+            fxAlpha = absActive ? 0.08f : isBrakingHard ? 0.50f : 0.30f;
             _smCoreFxFront = _smCoreFxFront * (1f - fxAlpha) + fxFront * fxAlpha;
         }
         float coreFxFront = FxFrontEnabled ? _smCoreFxFront : 0f;
 
         if (FxRearEnabled)
         {
-            fxAlpha = isBrakingHard ? (absActive ? 0.08f : 0.15f) : 0.30f;
+            fxAlpha = absActive ? 0.08f : isBrakingHard ? 0.50f : 0.30f;
             _smCoreFxRear = _smCoreFxRear * (1f - fxAlpha) + fxRear * fxAlpha;
         }
         float coreFxRear = FxRearEnabled ? _smCoreFxRear : 0f;
