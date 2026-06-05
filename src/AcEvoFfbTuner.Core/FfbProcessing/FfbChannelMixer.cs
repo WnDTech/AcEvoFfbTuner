@@ -163,64 +163,49 @@ public sealed class FfbChannelMixer
         float fyRear = FyRearEnabled ? SoftClamp(Normalize(rawFyRear, effectiveFyScale) * FyRearGain) : 0f;
 
         // Center blend zone (uses raw steer angle — no latency)
-        // Applied to both Fy (lateral) and Fx (longitudinal) channels.
         // Fy is suppressed near center because lateral forces should be near zero
-        // when driving straight — any oscillation is noise.
-        // Fx is suppressed near center because longitudinal force oscillations
-        // (throttle/brake modulation, bumps) create unnatural snap on DD wheels
-        // when straight. Real cars filter this through steering compliance/hydraulic
-        // assist. Fx blends back in during turns where it contributes steering feel.
+        // when driving straight — removes the grainy Fy buzz at center.
         float maxDeg = 450f;
         float absSteerDeg = Math.Abs(raw.SteerAngle * maxDeg);
         float bt = Math.Clamp(absSteerDeg / Math.Max(CenterBlendDegrees, 0.1f), 0f, 1f);
         float centerBlend = bt * bt * (3f - 2f * bt);
 
         // ═══════════════════════════════════════════════════════════════
-        // CORE PATH: zero-latency with ABS-aware Fx smoothing
+        // CORE PATH: zero-latency with always-on Fx EMA smoothing
         //
         // Mz and Fy go through unfiltered (zero-latency) — these carry
         // the essential self-aligning torque and lateral forces.
         //
-        // Fx gets smoothed during ABS/braking to prevent harsh jolts:
-        // Real ABS modulates brake pressure ~12-25Hz, causing Fx to oscillate.
-        // In a real car, the steering column filters this via rubber bushings,
-        // hydraulic assist, and tire carcass compliance. Our median filter alone
-        // isn't enough — we need an EMA on Fx specifically during ABS.
+        // Fx (longitudinal) gets a light EMA always, with heavier smoothing
+        // during braking/ABS. This kills the high-frequency Fx oscillations
+        // (throttle modulation, bumps, engine torque pulses) that cause
+        // snap-like behavior on DD wheels, while preserving the low-frequency
+        // braking dive feel. Real steering columns have natural mechanical
+        // lowpass from rubber bushings and hydraulic assist — our EMA
+        // approximates that on the digital path.
         // ═══════════════════════════════════════════════════════════════
         bool isBrakingHard = raw.BrakeInput > 0.3f;
         bool absActive = raw.AbsInAction != 0;
 
-        float coreFxFront, coreFxRear;
-        if (isBrakingHard && FxFrontEnabled)
+        float fxAlpha;
+        if (FxFrontEnabled)
         {
-            float fxAlpha = absActive ? 0.08f : 0.15f;
+            fxAlpha = isBrakingHard ? (absActive ? 0.08f : 0.15f) : 0.30f;
             _smCoreFxFront = _smCoreFxFront * (1f - fxAlpha) + fxFront * fxAlpha;
-            coreFxFront = _smCoreFxFront;
         }
-        else
-        {
-            coreFxFront = fxFront;
-            _smCoreFxFront = fxFront;
-        }
+        float coreFxFront = FxFrontEnabled ? _smCoreFxFront : 0f;
 
-        if (isBrakingHard && FxRearEnabled)
+        if (FxRearEnabled)
         {
-            float fxAlpha = absActive ? 0.08f : 0.15f;
+            fxAlpha = isBrakingHard ? (absActive ? 0.08f : 0.15f) : 0.30f;
             _smCoreFxRear = _smCoreFxRear * (1f - fxAlpha) + fxRear * fxAlpha;
-            coreFxRear = _smCoreFxRear;
         }
-        else
-        {
-            coreFxRear = fxRear;
-            _smCoreFxRear = fxRear;
-        }
+        float coreFxRear = FxRearEnabled ? _smCoreFxRear : 0f;
 
-        float coreBlendedFxFront = coreFxFront * centerBlend;
-        float coreBlendedFxRear = coreFxRear * centerBlend;
         float coreBlendedFyFront = fyFront * centerBlend;
         float coreBlendedFyRear = fyRear * centerBlend;
-        float rawCoreForce = mzFront + coreBlendedFxFront + coreBlendedFyFront
-                           + mzRear + coreBlendedFxRear + coreBlendedFyRear;
+        float rawCoreForce = mzFront + coreFxFront + coreBlendedFyFront
+                           + mzRear + coreFxRear + coreBlendedFyRear;
 
         // ═══════════════════════════════════════════════════════════════
         // DETAIL PATH: EMA-smoothed channels (for diagnostics & detail extraction)
@@ -242,8 +227,6 @@ public sealed class FfbChannelMixer
         _smFxRear = _smFxRear * (1f - fxRearAlphaS) + fxRear * fxRearAlphaS;
         _smFyRear = _smFyRear * (1f - fyAlphaS) + fyRear * fyAlphaS;
 
-        float blendedFxFront = _smFxFront * centerBlend;
-        float blendedFxRear = _smFxRear * centerBlend;
         float blendedFyFront = _smFyFront * centerBlend;
         float blendedFyRear = _smFyRear * centerBlend;
 
@@ -252,10 +235,10 @@ public sealed class FfbChannelMixer
         channels = new FfbChannelOutputs
         {
             MzFront = _smMzFront,
-            FxFront = blendedFxFront,
+            FxFront = _smFxFront,
             FyFront = blendedFyFront,
             MzRear = _smMzRear,
-            FxRear = blendedFxRear,
+            FxRear = _smFxRear,
             FyRear = blendedFyRear,
             FinalFf = finalFf,
             RawCoreForce = rawCoreForce
@@ -263,8 +246,8 @@ public sealed class FfbChannelMixer
 
         float mixed = MixMode switch
         {
-            FfbMixMode.Replace => _smMzFront + blendedFxFront + blendedFyFront + _smMzRear + blendedFxRear + blendedFyRear,
-            FfbMixMode.Overlay => raw.FinalFf + _smMzFront + blendedFxFront + blendedFyFront + _smMzRear + blendedFxRear + blendedFyRear,
+            FfbMixMode.Replace => _smMzFront + _smFxFront + blendedFyFront + _smMzRear + _smFxRear + blendedFyRear,
+            FfbMixMode.Overlay => raw.FinalFf + _smMzFront + _smFxFront + blendedFyFront + _smMzRear + _smFxRear + blendedFyRear,
             _ => raw.FinalFf
         };
 
