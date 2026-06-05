@@ -9,6 +9,39 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24">
         <StackPanel>
 
+            <!-- Update Available Banner (prominent — top priority) -->
+            <Border Background="#55FFD600" CornerRadius="8" Padding="16,12" Margin="0,0,0,8"
+                    BorderThickness="1" BorderBrush="#88FFD600"
+                    Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BoolToVis}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock FontSize="14" FontWeight="Bold" Foreground="#FFFFD600">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="⏫ Update available" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDownloadingUpdate}" Value="True">
+                                            <Setter Property="Text" Value="⏬ Downloading update..." />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="{Binding UpdateStatusText}" FontSize="12" Foreground="#FFE6EDF3" />
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Content="{Binding LatestVersionText, StringFormat='Install {0}'}"
+                            Command="{Binding DownloadAndInstallUpdateCommand}" Cursor="Hand"
+                            FontSize="13" FontWeight="Bold" Padding="18,8" Margin="12,0,0,0"
+                            Background="#FF0D1117" Foreground="#FFFFD600" BorderThickness="0"
+                            ToolTip="Download the latest version" />
+                </Grid>
+            </Border>
+
             <!-- ═══ GLASS COCKPIT PFD ═══ (seamless instrument panel) -->
             <Border Background="#FF0D1117" CornerRadius="8" Padding="20,16" Margin="0,0,0,16"
                     BorderThickness="1" BorderBrush="#FF30363D">
@@ -526,39 +559,6 @@
                             </Button.Style>
                         </Button>
                     </StackPanel>
-                </Border>
-
-                <!-- Update Available Banner (compact) -->
-                <Border Background="#33FFD600" CornerRadius="8" Padding="16,10" Margin="0,0,0,8"
-                        BorderThickness="1" BorderBrush="#55FFD600"
-                        Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BoolToVis}}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="#FFFFD600">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="⏫ Update available" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsDownloadingUpdate}" Value="True">
-                                                <Setter Property="Text" Value="⏬ Downloading update..." />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            <TextBlock Text="{Binding UpdateStatusText}" FontSize="11" Foreground="#FFE6EDF3" />
-                        </StackPanel>
-                        <Button Grid.Column="1"
-                                Content="{Binding LatestVersionText, StringFormat='Install {0}'}"
-                                Command="{Binding DownloadAndInstallUpdateCommand}" Cursor="Hand"
-                                FontSize="12" FontWeight="Bold" Padding="16,6" Margin="12,0,0,0"
-                                Background="#FFFFD600" Foreground="#FF1C2128" BorderThickness="0"
-                                ToolTip="Download the latest version" />
-                    </Grid>
                 </Border>
 
                 <!-- Status Message -->
