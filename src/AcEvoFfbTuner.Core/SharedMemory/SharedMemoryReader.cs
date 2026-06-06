@@ -99,8 +99,50 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
             if (physics.PacketId == _lastPhysicsPacketId)
                 return false;
 
-            if (buffer.Length >= 32)
+            // Override with manual BitConverter reads at verified offsets
+            // (Marshal.PtrToStructure may read from wrong offsets if game struct changed)
+            if (buffer.Length >= 28)
+            {
+                physics.SteerAngle = BitConverter.ToSingle(buffer, 24);
                 physics.SpeedKmh = BitConverter.ToSingle(buffer, 28);
+            }
+            if (buffer.Length >= 596)
+            {
+                if (physics.Mz == null || physics.Mz.Length < 4)
+                    physics.Mz = new float[4];
+                physics.Mz[0] = BitConverter.ToSingle(buffer, 592);
+                physics.Mz[1] = BitConverter.ToSingle(buffer, 596);
+                if (buffer.Length >= 604)
+                {
+                    physics.Mz[2] = BitConverter.ToSingle(buffer, 600);
+                    physics.Mz[3] = BitConverter.ToSingle(buffer, 604);
+                }
+            }
+            if (buffer.Length >= 624)
+            {
+                if (physics.Fx == null || physics.Fx.Length < 4)
+                    physics.Fx = new float[4];
+                physics.Fx[0] = BitConverter.ToSingle(buffer, 608);
+                physics.Fx[1] = BitConverter.ToSingle(buffer, 612);
+                physics.Fx[2] = BitConverter.ToSingle(buffer, 616);
+                physics.Fx[3] = BitConverter.ToSingle(buffer, 620);
+            }
+            if (buffer.Length >= 640)
+            {
+                if (physics.Fy == null || physics.Fy.Length < 4)
+                    physics.Fy = new float[4];
+                physics.Fy[0] = BitConverter.ToSingle(buffer, 624);
+                physics.Fy[1] = BitConverter.ToSingle(buffer, 628);
+                physics.Fy[2] = BitConverter.ToSingle(buffer, 632);
+                physics.Fy[3] = BitConverter.ToSingle(buffer, 636);
+            }
+            if (buffer.Length >= 796)
+            {
+                physics.KerbVibration = BitConverter.ToSingle(buffer, 784);
+                physics.SlipVibrations = BitConverter.ToSingle(buffer, 788);
+                physics.RoadVibrations = BitConverter.ToSingle(buffer, 792);
+                physics.AbsVibrations = BitConverter.ToSingle(buffer, 796);
+            }
 
             SanitizePhysicsFields(ref physics);
 
@@ -118,7 +160,7 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
 
     private static void SanitizePhysicsFields(ref SPageFilePhysicsEvo physics)
     {
-        SanitizeArr4(ref physics.Mz, 0f, 5000f);
+        SanitizeArr4(ref physics.Mz, -5000f, 5000f);
         SanitizeArr4(ref physics.Fx, -15000f, 15000f);
         SanitizeArr4(ref physics.Fy, -15000f, 15000f);
         SanitizeArr4(ref physics.SlipRatio, -5f, 5f);

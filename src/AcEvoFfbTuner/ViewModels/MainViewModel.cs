@@ -3576,6 +3576,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.CompressionPower = CompressionPower;
         _pipeline.ForceScale = ForceScale;
         _pipeline.SignCorrectionEnabled = SignCorrectionEnabled;
+        _pipeline.ChannelMixer.MzSignCorrection = SignCorrectionEnabled;
         _pipeline.MaxSlewRate = MaxSlewRate;
         _pipeline.CenterSuppressionDegrees = CenterSuppressionDegrees;
         _pipeline.CenterKneePower = CenterKneePower;

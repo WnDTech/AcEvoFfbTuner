@@ -191,6 +191,8 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
 
             // Moza R5 convention: positive force = wheel LEFT (auto-detect confirmed).
             // -absForce * steerSign ensures centering pushes toward center.
+            // NOTE: the leading '-' compensates for Moza auto-detect _invertForce=true,
+            // which negates force at the DirectOutput level. Two inversions cancel.
             float absForce = Math.Abs(steeringForce);
             float steerSign = steerNorm > 0f ? 1f : -1f;
             float absSteer = Math.Abs(steerNorm);

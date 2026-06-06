@@ -48,6 +48,12 @@ public sealed class R3eFfbPipeline : FfbPipeline
 
     public override FfbProcessedData Process(FfbRawData raw)
     {
+        // MzSignCorrection must be false for R3E — the reader produces
+        // correctly-signed Mz that intentionally compensates for Moza's
+        // device-level force inversion (_invertForce=true). The shared
+        // profile's SignCorrectionEnabled=true must not override this.
+        ChannelMixer.MzSignCorrection = false;
+
         // ── Brake weight-transfer boost ─────────────────────────────────
         // When braking: weight shifts to front tyres → more grip → stronger Mz.
         // SteeringForce is proportional to grip, so boost it while braking.
