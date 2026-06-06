@@ -120,15 +120,22 @@ public sealed class RaceInfoProcessor
         float maxDmg = 0f;
         if (physics.SuspensionDamage is { Length: >= 4 })
         {
-            maxDmg = Math.Max(maxDmg, physics.SuspensionDamage[0]);
-            maxDmg = Math.Max(maxDmg, physics.SuspensionDamage[1]);
-            maxDmg = Math.Max(maxDmg, physics.SuspensionDamage[2]);
-            maxDmg = Math.Max(maxDmg, physics.SuspensionDamage[3]);
+            for (int i = 0; i < 4; i++)
+            {
+                float d = physics.SuspensionDamage[i];
+                // Normalize: R3E may report damage as 0-100 percentage instead of 0-1 float
+                if (d > 1f) d /= 100f;
+                maxDmg = Math.Max(maxDmg, Math.Clamp(d, 0f, 1f));
+            }
         }
         if (physics.CarDamage is { Length: >= 5 })
         {
             for (int i = 0; i < 5; i++)
-                maxDmg = Math.Max(maxDmg, physics.CarDamage[i]);
+            {
+                float d = physics.CarDamage[i];
+                if (d > 1f) d /= 100f;
+                maxDmg = Math.Max(maxDmg, Math.Clamp(d, 0f, 1f));
+            }
         }
         output.MaxDamage = maxDmg;
 
