@@ -20,6 +20,7 @@ public static class WheelbaseAutoConfigurator
         ("Default - Moza R9", 9.0f),
         ("Default - Fanatec ClubSport DD", 15.0f),
         ("Default - Simagic Alpha", 15.0f),
+        ("Default - Simagic Alpha Ultimate", 23.0f),
         ("Default - Simucube 2 Pro", 25.0f),
     };
 

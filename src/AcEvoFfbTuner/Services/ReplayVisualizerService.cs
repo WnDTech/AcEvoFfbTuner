@@ -123,10 +123,10 @@ input[type=range]{{flex:1;min-width:200px;accent-color:#58a6ff}}
 <input type=""range"" id=""scrubber"" min=""0"" max=""0"" value=""0"" oninput=""scrubTo(this.value)"">
 <span class=""speed-label"" id=""timeLabel"">0:00.0 / 0:00.0</span>
 <span class=""speed-label"" style=""min-width:40px"">Speed:</span>
-<button class=""btn"" onclick=""setSpeed(0.5)"">0.5x</button>
-<button class=""btn active"" onclick=""setSpeed(1)"">1x</button>
-<button class=""btn"" onclick=""setSpeed(2)"">2x</button>
-<button class=""btn"" onclick=""setSpeed(4)"">4x</button>
+<button class=""btn"" onclick=""setSpeed(0.5,this)"">0.5x</button>
+<button class=""btn active"" onclick=""setSpeed(1,this)"">1x</button>
+<button class=""btn"" onclick=""setSpeed(2,this)"">2x</button>
+<button class=""btn"" onclick=""setSpeed(4,this)"">4x</button>
 </div>
 
 <div class=""chart-section"">
@@ -157,7 +157,9 @@ input[type=range]{{flex:1;min-width:200px;accent-color:#58a6ff}}
 const D={dataJson};
 const COLS={{T:0,SPD:1,STR:2,FO:3,RFF:4,CMP:5,LUT:6,SLP:7,DMP:8,DYN:9,MZ:10,FX:11,FY:12,CLP:13,GAS:14,BRK:15}};
 const N=D.length;
-let idx=0,playing=false,speed=1,animId=null,lastTime=0;
+let idx=0,playing=false,speed=1,animId=null,lastTime=0,accTime=0;
+const rangeCache={{}};
+for(let c=0;c<16;c++){{let mn=Infinity,mx=-Infinity;for(let r=0;r<N;r++){{let v=parseFloat(D[r][c]);if(v<mn)mn=v;if(v>mx)mx=v;}}rangeCache[c]={{mn,mx}};}}
 const TORQUE_NM={torqueNm.ToString("F1",System.Globalization.CultureInfo.InvariantCulture)};
 
 const wheelCanvas=document.getElementById('wheelCanvas');
@@ -168,7 +170,7 @@ const speedCanvas=document.getElementById('speedChart');
 const speedCtx=speedCanvas.getContext('2d');
 
 function parseTime(t){{
-let p=t.split(':');return parseInt(p[0])*60+parseFloat(p[1]);
+let p=t.split(':');return parseInt(p[0])*3600+parseInt(p[1])*60+parseFloat(p[2]);
 }}
 let t0=N>0?parseTime(D[0][COLS.T]):0;
 let tEnd=N>0?parseTime(D[N-1][COLS.T]):0;
@@ -218,8 +220,7 @@ const viewN=viewEnd-viewStart+1;
 function gx(i){{return pad.l+(i-viewStart)/(viewN-1)*cw;}}
 function gy(v,mn,mx){{return pad.t+ch-((v-mn)/(mx-mn||1))*ch;}}
 cols.forEach((col,ci)=>{{
-let mn=Infinity,mx=-Infinity;
-for(let i=viewStart;i<=viewEnd;i++){{let v=parseFloat(D[i][col]);if(v<mn)mn=v;if(v>mx)mx=v;}}
+let mn=rangeCache[col].mn,mx=rangeCache[col].mx;
 let range=mx-mn;if(range<0.01)range=0.01;mn-=range*0.05;mx+=range*0.05;
 ctx.beginPath();ctx.strokeStyle=colors[ci];ctx.lineWidth=2;
 for(let i=viewStart;i<=viewEnd;i++){{let x=gx(i),y=gy(parseFloat(D[i][col]),mn,mx);i===viewStart?ctx.moveTo(x,y):ctx.lineTo(x,y);}}
@@ -233,7 +234,6 @@ if(idx>=viewStart&&idx<=viewEnd){{
 let x=gx(idx);
 ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+ch);
 ctx.strokeStyle='rgba(88,166,255,0.5)';ctx.lineWidth=2;ctx.stroke();
-}}
 }}
 }}
 
@@ -282,8 +282,10 @@ playing=!playing;
 const btn=document.getElementById('playBtn');
 btn.textContent=playing?'⏸ Pause':'▶ Play';
 btn.classList.toggle('active',playing);
-if(playing){{lastTime=performance.now();animate();}}
-else if(animId){{cancelAnimationFrame(animId);animId=null;}}
+if(playing){{
+if(idx>=N-1){{idx=0;accTime=0;}}
+lastTime=performance.now();animate();
+}}else if(animId){{cancelAnimationFrame(animId);animId=null;}}
 }}
 
 function animate(){{
@@ -291,18 +293,18 @@ if(!playing)return;
 let now=performance.now();
 let dt=(now-lastTime)/1000*speed;
 lastTime=now;
-let curTime=parseTime(D[idx][COLS.T]);
-let targetTime=curTime+dt;
+accTime+=dt;
+let targetTime=t0+accTime;
 while(idx<N-1&&parseTime(D[idx+1][COLS.T])<=targetTime)idx++;
 if(idx>=N-1){{idx=N-1;playing=false;document.getElementById('playBtn').textContent='▶ Play';document.getElementById('playBtn').classList.remove('active');update();return;}}
 update();
 animId=requestAnimationFrame(animate);
 }}
 
-function stepBack(){{idx=Math.max(0,idx-30);update();}}
-function stepForward(){{idx=Math.min(N-1,idx+30);update();}}
-function scrubTo(v){{idx=parseInt(v);update();}}
-function setSpeed(s){{speed=s;document.querySelectorAll('.controls .btn').forEach(b=>{{if(b.textContent.includes('x'))b.classList.remove('active');}});event.target.classList.add('active');}}
+function stepBack(){{idx=Math.max(0,idx-30);accTime=parseTime(D[idx][COLS.T])-t0;update();}}
+function stepForward(){{idx=Math.min(N-1,idx+30);accTime=parseTime(D[idx][COLS.T])-t0;update();}}
+function scrubTo(v){{idx=parseInt(v);accTime=parseTime(D[idx][COLS.T])-t0;update();}}
+function setSpeed(s,btn){{speed=s;document.querySelectorAll('.controls .btn').forEach(b=>{{if(b.textContent.includes('x'))b.classList.remove('active');}});btn.classList.add('active');}}
 
 update();
 window.addEventListener('resize',()=>update());

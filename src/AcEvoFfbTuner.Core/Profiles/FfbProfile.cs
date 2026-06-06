@@ -567,6 +567,13 @@ public sealed class FfbProfile
                 vibrationMaster: 0.35f,
                 forceInvert: true),
 
+            // ──── Simagic Alpha Ultimate (23Nm) ────
+            "Default - Simagic Alpha Ultimate" => CreateDefaultWheelbaseProfile("Default - Simagic Alpha Ultimate",
+                maxTorqueNm: 23.0f, outputGain: 0.16f, normalizationScale: 1000f,
+                viscousDamping: 0.30f, speedDamping: 0.50f, friction: 0.17f, inertia: 0.14f,
+                vibrationMaster: 0.32f,
+                forceInvert: true),
+
             // ──── Simucube 2 Pro (25Nm) ────
             "Default - Simucube 2 Pro" => CreateDefaultWheelbaseProfile("Default - Simucube 2 Pro",
                 maxTorqueNm: 25.0f, outputGain: 0.14f, normalizationScale: 1000f,
@@ -700,6 +707,7 @@ public sealed class FfbProfile
         "Default - Moza R9",
         "Default - Fanatec ClubSport DD",
         "Default - Simagic Alpha",
+        "Default - Simagic Alpha Ultimate",
         "Default - Simucube 2 Pro"
     };
 
