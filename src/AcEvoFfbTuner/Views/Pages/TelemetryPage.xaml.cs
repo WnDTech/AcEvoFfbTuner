@@ -346,7 +346,7 @@ public partial class TelemetryPage : UserControl
                 int dataStart = analysis.IndexOf("Time,", headerEnd);
                 if (dataStart >= 0)
                 {
-                    string header = "Time,SpeedKmh,SteerAngle,ForceOut,RawFF,Compress,LUT,PostDamp,GainOut,Dynamic,MzFront,FxFront,FyFront,Clipping,Gas,Brake\n";
+                    string header = string.Join(",", ProColumns) + "\n";
                     csvSection = header + analysis.Substring(dataStart);
                 }
             }

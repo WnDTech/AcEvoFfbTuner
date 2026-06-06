@@ -176,6 +176,12 @@
                                         VerticalAlignment="Center" ValueChanged="OnFyGainChanged" />
                                 <TextBlock x:Name="LblFyGain" Text="0.20" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
                             </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <CheckBox x:Name="ChkFyInverted" IsChecked="True" VerticalAlignment="Center" Margin="0,0,4,0"
+                                          Checked="OnFyInvertedChanged" Unchecked="OnFyInvertedChanged" />
+                                <TextBlock Text="Invert Lateral Force" Width="180" VerticalAlignment="Center" FontSize="13"
+                                           ToolTip="Flips lateral (cornering) force sign. The wheel pulls sideways under braking due to lateral force — toggling this reverses the direction." />
+                            </DockPanel>
                             <TextBlock x:Name="Step2Status" Text="" FontSize="18" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
                         </StackPanel>
 
@@ -338,6 +344,7 @@
                                         <Run Text=" — Mz: " /><Run x:Name="ReviewMzGain" Text="0.00" Foreground="#FFFFD600" />
                                         <Run Text="  Fx: " /><Run x:Name="ReviewFxGain" Text="0.00" Foreground="#FFFFD600" />
                                         <Run Text="  Fy: " /><Run x:Name="ReviewFyGain" Text="0.00" Foreground="#FFFFD600" />
+                                        <Run Text="  LatInv: " /><Run x:Name="ReviewFyInv" Text="Off" Foreground="#FFFFD600" />
                                     </TextBlock>
                                     <TextBlock FontSize="13" Margin="0,1" Foreground="#FF66BB6A">
                                         <Run FontWeight="Bold" Text="Master Output Gain" />

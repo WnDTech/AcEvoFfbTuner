@@ -169,6 +169,7 @@ public partial class SetupWizardOverlay : Window
         ChkMzEnabled.IsChecked = _pipeline.ChannelMixer.MzFrontEnabled;
         ChkFxEnabled.IsChecked = _pipeline.ChannelMixer.FxFrontEnabled;
         ChkFyEnabled.IsChecked = _pipeline.ChannelMixer.FyFrontEnabled;
+        ChkFyInverted.IsChecked = _pipeline.ChannelMixer.FyInverted;
 
         SliderKerbGain.Value = _pipeline.VibrationMixer.KerbGain;
         SliderRoadGain.Value = _pipeline.VibrationMixer.RoadGain;
@@ -378,6 +379,8 @@ public partial class SetupWizardOverlay : Window
             ReviewFxGain.Text = _pipeline.ChannelMixer.FxFrontGain.ToString("F2");
         if (ReviewFyGain != null)
             ReviewFyGain.Text = _pipeline.ChannelMixer.FyFrontGain.ToString("F2");
+        if (ReviewFyInv != null)
+            ReviewFyInv.Text = _pipeline.ChannelMixer.FyInverted ? "On" : "Off";
         if (ReviewOutputGain != null)
             ReviewOutputGain.Text = _pipeline.OutputGain.ToString("F2");
         if (ReviewMasterGain != null)
@@ -1266,6 +1269,11 @@ public partial class SetupWizardOverlay : Window
     private void OnFyEnabledChanged(object sender, RoutedEventArgs e)
     {
         _pipeline.ChannelMixer.FyFrontEnabled = ChkFyEnabled.IsChecked == true;
+    }
+
+    private void OnFyInvertedChanged(object sender, RoutedEventArgs e)
+    {
+        _pipeline.ChannelMixer.FyInverted = ChkFyInverted.IsChecked == true;
     }
 
     // ─── Step 5 slider handlers ───

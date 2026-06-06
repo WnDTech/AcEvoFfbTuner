@@ -129,7 +129,6 @@ public sealed class FfbProfile
         pipeline.OutputGain = OutputGain;
         pipeline.CompressionPower = CompressionPower;
         pipeline.SignCorrectionEnabled = SignCorrectionEnabled;
-        pipeline.ChannelMixer.MzSignCorrection = SignCorrectionEnabled;
         pipeline.OutputClipper.SoftClipThreshold = SoftClipThreshold;
 
         if (LutCurve.OutputValues.Length == FfbLutCurve.DefaultPointCount)

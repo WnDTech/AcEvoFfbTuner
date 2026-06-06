@@ -123,20 +123,26 @@
                         SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,2" />
 
                     <Border Background="{DynamicResource BgCard}" CornerRadius="3" Padding="6,4" Margin="0,4,0,8">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <DockPanel Grid.Column="0">
-                                <TextBlock Text="Sign Correction" FontSize="12" VerticalAlignment="Center" />
-                                <CheckBox IsChecked="{Binding SignCorrectionEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <DockPanel Grid.Column="0">
+                                    <TextBlock Text="Sign Correction" FontSize="12" VerticalAlignment="Center" />
+                                    <CheckBox IsChecked="{Binding SignCorrectionEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <DockPanel Grid.Column="1" Margin="12,0,0,0">
+                                    <TextBlock Text="Invert" FontSize="12" VerticalAlignment="Center" />
+                                    <CheckBox IsChecked="{Binding ForceInvertEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                </DockPanel>
+                            </Grid>
+                            <DockPanel Margin="0,4,0,0">
+                                <TextBlock Text="Invert Lateral" FontSize="12" VerticalAlignment="Center" ToolTip="Flips lateral (cornering) force sign. Toggle if car pulls to one side under braking." />
+                                <CheckBox IsChecked="{Binding FyInverted}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
-                            <DockPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Text="Invert" FontSize="12" VerticalAlignment="Center" />
-                                <CheckBox IsChecked="{Binding ForceInvertEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                            </DockPanel>
-                        </Grid>
+                        </StackPanel>
                     </Border>
 
                     <!-- TYRE FORCES -->

@@ -13,7 +13,6 @@ public sealed class FfbChannelMixer
     public bool MzFrontEnabled { get; set; } = true;
     public float MzRearGain { get; set; } = 0.0f;
     public bool MzRearEnabled { get; set; } = false;
-    public bool MzSignCorrection { get; set; } = false;
 
     public float FxFrontGain { get; set; } = 0.0f;
     public bool FxFrontEnabled { get; set; } = false;
@@ -128,16 +127,6 @@ public sealed class FfbChannelMixer
         rawMzRear = MedianFilter(rawMzRear, _medMzRear);
         rawFxRear = MedianFilter(rawFxRear, _medFxRear);
         rawFyRear = MedianFilter(rawFyRear, _medFyRear);
-
-        // Mz sign correction: game may output Mz as magnitude (always positive).
-        // Apply steer direction sign so centering always opposes the turn.
-        if (MzSignCorrection)
-        {
-            float steerSign = raw.SteerAngle >= 0.001f ? 1f :
-                              raw.SteerAngle <= -0.001f ? -1f : 0f;
-            rawMzFront *= -steerSign;
-            rawMzRear *= -steerSign;
-        }
 
         // ═══════════════════════════════════════════════════════════════
         // Adaptive auto-normalization (post-median, pre-EMA)

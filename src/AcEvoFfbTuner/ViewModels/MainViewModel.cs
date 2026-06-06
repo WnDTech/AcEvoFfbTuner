@@ -396,6 +396,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _signCorrectionEnabled = true;
 
     [ObservableProperty]
+    private bool _fyInverted = true;
+
+    [ObservableProperty]
     private float _maxSlewRate = 0.40f;
 
     [ObservableProperty]
@@ -2803,6 +2806,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnSteeringLockDegreesChanged(int value) { }
     partial void OnCompressionPowerChanged(float value) => _pipeline.CompressionPower = value;
     partial void OnSignCorrectionEnabledChanged(bool value) => _pipeline.SignCorrectionEnabled = value;
+    partial void OnFyInvertedChanged(bool value) => _pipeline.ChannelMixer.FyInverted = value;
     partial void OnMaxSlewRateChanged(float value) => _pipeline.MaxSlewRate = value;
     partial void OnCenterSuppressionDegreesChanged(float value) => _pipeline.CenterSuppressionDegrees = value;
     partial void OnCenterKneePowerChanged(float value) => _pipeline.CenterKneePower = value;
@@ -3368,6 +3372,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         SteeringLockDegrees = profile.SteeringLockDegrees;
         ForceScale = profile.ForceScale;
         SignCorrectionEnabled = profile.SignCorrectionEnabled;
+        FyInverted = profile.FyInverted;
         ForceInvertEnabled = profile.ForceInvertEnabled;
         MaxSlewRate = profile.Advanced.MaxSlewRate;
         CenterSuppressionDegrees = profile.Advanced.CenterSuppressionDegrees;
@@ -3576,7 +3581,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline.CompressionPower = CompressionPower;
         _pipeline.ForceScale = ForceScale;
         _pipeline.SignCorrectionEnabled = SignCorrectionEnabled;
-        _pipeline.ChannelMixer.MzSignCorrection = SignCorrectionEnabled;
+        _pipeline.ChannelMixer.FyInverted = FyInverted;
         _pipeline.MaxSlewRate = MaxSlewRate;
         _pipeline.CenterSuppressionDegrees = CenterSuppressionDegrees;
         _pipeline.CenterKneePower = CenterKneePower;

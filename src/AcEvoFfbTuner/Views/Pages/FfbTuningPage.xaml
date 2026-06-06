@@ -972,6 +972,12 @@
                                     <CheckBox IsChecked="{Binding ForceInvertEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                 </DockPanel>
                                 <TextBlock Text="Flips all forces at the wheel" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,0" />
+
+                                <DockPanel Margin="0,2">
+                                    <TextBlock Text="Invert Lateral Force" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" ToolTip="Flips the sign of lateral (cornering) tire forces. The wheel pulls sideways under braking due to lateral force — toggling this reverses the direction." />
+                                    <CheckBox IsChecked="{Binding FyInverted}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <TextBlock Text="Fixes left/right pull under braking from lateral force sign" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,0" />
                             </StackPanel>
                         </Border>
 
