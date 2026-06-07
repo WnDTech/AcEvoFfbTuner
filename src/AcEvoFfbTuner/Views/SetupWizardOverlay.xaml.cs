@@ -15,6 +15,7 @@ public partial class SetupWizardOverlay : Window
 {
     private bool _isTransparent;
     private bool _isCompact;
+    private bool _suppressSliderEvents;
     private int _currentStep;
     private const int MaxSteps = 8;
     private bool _isStrongWheelbase;
@@ -28,6 +29,11 @@ public partial class SetupWizardOverlay : Window
             $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n"); } catch { }
     }
 
+    private void Speak(string text)
+    {
+        _viewModel?.VoiceService?.Speak(text);
+    }
+
     // Auto-centering + cornering state for Step 1 — 3 phases
     private enum CenterPhase { PolarityDetect, Warmup, StraightDetect, CornerDetect, FinalTune }
     private CenterPhase _centerPhase = CenterPhase.Warmup;
@@ -38,7 +44,6 @@ public partial class SetupWizardOverlay : Window
     private float _straightDetectResult;
     private float _straightBiasSum; // signed sum to detect DC offset direction
     private float _totalCenterSuppressAdjust; // cumulative cap
-    private int _liveRunawayFrames;
 
     // Corner detection uses ratio of |force| / |steer| across all turns
     private const int CornerSampleCount = 600;
@@ -158,8 +163,10 @@ public partial class SetupWizardOverlay : Window
         Top = 20;
 
         // Initialize sliders from current pipeline state
+        // Suppress ValueChanged events to prevent pipeline state cascade on startup.
+        _suppressSliderEvents = true;
         SliderOutputGain.Value = _pipeline.OutputGain;
-        SliderMasterGain.Value = _pipeline.MasterGain;
+        SliderMasterGain.Value = _pipeline.OutputClipper.SoftClipThreshold;
         SliderFriction.Value = _pipeline.Damping.FrictionLevel;
         SliderDamping.Value = _pipeline.Damping.SpeedDampingCoefficient;
         
@@ -175,6 +182,8 @@ public partial class SetupWizardOverlay : Window
         SliderRoadGain.Value = _pipeline.VibrationMixer.RoadGain;
         SliderSlipGain.Value = _pipeline.SlipEnhancer.SlipRatioGain;
         SliderAbsGain.Value = _pipeline.VibrationMixer.AbsGain;
+        SliderVibMaster.Value = _pipeline.VibrationMixer.MasterGain;
+        _suppressSliderEvents = false;
 
         SliderCenterSuppress.Value = _pipeline.CenterSuppressionDegrees;
         // Initialize LutCurve to match current CenterSuppressionDegrees for non-R3E pipelines.
@@ -234,13 +243,14 @@ public partial class SetupWizardOverlay : Window
 
         UpdateLabels();
         UpdateScopeDetectedInfo();
+        Speak("Setup wizard loaded. Drive safely and follow the on screen instructions.");
         Log($"OnLoaded: done OG={_pipeline.OutputGain:F3} Mz={_pipeline.ChannelMixer.MzFrontGain:F3} inv={needsInvert}");
     }
 
     private void UpdateLabels()
     {
         if (LblOutputGain != null) LblOutputGain.Text = _pipeline.OutputGain.ToString("F2");
-        if (LblMasterGain != null) LblMasterGain.Text = _pipeline.VibrationMixer.MasterGain.ToString("F2");
+        if (LblMasterGain != null) LblMasterGain.Text = _pipeline.OutputClipper.SoftClipThreshold.ToString("F2");
         if (LblFriction != null) LblFriction.Text = _pipeline.Damping.FrictionLevel.ToString("F2");
         if (LblDamping != null) LblDamping.Text = _pipeline.Damping.SpeedDampingCoefficient.ToString("F2");
         
@@ -252,6 +262,7 @@ public partial class SetupWizardOverlay : Window
         if (LblRoadGain != null) LblRoadGain.Text = _pipeline.VibrationMixer.RoadGain.ToString("F2");
         if (LblSlipGain != null) LblSlipGain.Text = _pipeline.SlipEnhancer.SlipRatioGain.ToString("F2");
         if (LblAbsGain != null) LblAbsGain.Text = _pipeline.VibrationMixer.AbsGain.ToString("F2");
+        if (LblVibMaster != null) LblVibMaster.Text = _pipeline.VibrationMixer.MasterGain.ToString("F2");
 
         if (LblCenterSuppress != null) LblCenterSuppress.Text = _pipeline.CenterSuppressionDegrees.ToString("F1") + "°";
         if (LblSlewRate != null) LblSlewRate.Text = _pipeline.MaxSlewRate.ToString("F2");
@@ -363,6 +374,13 @@ public partial class SetupWizardOverlay : Window
         }
 
         UpdateSafetyBannerVisibility();
+
+        // Voice notification for the new step (skip Step 0 — already announced on load)
+        if (stepIndex > 0)
+        {
+            string stepName = _stepTitles[stepIndex];
+            Speak($"Step {stepIndex + 1}. {stepName}.");
+        }
     }
 
     private void PopulateReviewValues()
@@ -384,7 +402,9 @@ public partial class SetupWizardOverlay : Window
         if (ReviewOutputGain != null)
             ReviewOutputGain.Text = _pipeline.OutputGain.ToString("F2");
         if (ReviewMasterGain != null)
-            ReviewMasterGain.Text = _pipeline.VibrationMixer.MasterGain.ToString("F2");
+            ReviewMasterGain.Text = _pipeline.OutputClipper.SoftClipThreshold.ToString("F2");
+        if (ReviewVibMasterGain != null)
+            ReviewVibMasterGain.Text = _pipeline.VibrationMixer.MasterGain.ToString("F2");
         if (ReviewDamping != null)
             ReviewDamping.Text = _pipeline.Damping.SpeedDampingCoefficient.ToString("F1");
         if (ReviewFriction != null)
@@ -466,6 +486,7 @@ public partial class SetupWizardOverlay : Window
         float vmFy = _viewModel?.FyFrontGain ?? float.NaN;
         Log($"SAVE: pipeline MzFront={pipeMz:F3}  viewModel MzFront={vmMz:F3} FxFront={vmFx:F3} FyFront={vmFy:F3}");
         _saveCallback(name, scope);
+        Speak("Profile saved. Setup complete.");
         Close();
     }
 
@@ -529,33 +550,6 @@ public partial class SetupWizardOverlay : Window
         float runCheck = (_viewModel?.ForceInvertEnabled == true || _pipeline is not R3eFfbPipeline)
             ? mainForce
             : -mainForce;
-
-        // Live Safety & Polarity Guard: detect active inverted runaway across all phases before getting stuck
-        if (speedKmh > 15f && Math.Abs(steerAngle) > 0.05f)
-        {
-            if (runCheck * steerAngle > 0.01f) // Force is pulling the wheel away from center into full lock
-            {
-                _liveRunawayFrames++;
-                if (_liveRunawayFrames >= 40) // Sustained runaway for 40 frames (~0.4 seconds)
-                {
-                    _pipeline.ChannelMixer.MzFrontGain *= -1f;
-                    _pipeline.ChannelMixer.FyFrontGain *= -1f;
-                    _liveRunawayFrames = 0;
-                    _centerSampleIndex = 0;
-                    _straightBiasSum = 0f;
-                    _centerPhase = CenterPhase.Warmup; // Reset back to warmup with corrected alignment
-                    return;
-                }
-            }
-            else
-            {
-                if (_liveRunawayFrames > 0) _liveRunawayFrames--;
-            }
-        }
-        else
-        {
-            _liveRunawayFrames = 0;
-        }
 
         switch (_centerPhase)
         {
@@ -638,6 +632,7 @@ public partial class SetupWizardOverlay : Window
                     _straightBiasSum = 0f;
                     Step3Status.Text = "Sampling straight-line force — keep driving straight...";
                     Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+                    Speak("Phase 1 of 3. Drive straight and hold the wheel steady.");
                 }
                 else
                 {
@@ -705,6 +700,7 @@ public partial class SetupWizardOverlay : Window
                     _wasTurning = false;
                     _totalCenterSuppressAdjust = 0f;
                     _centerPhase = CenterPhase.CornerDetect;
+                    Speak("Phase 2 of 3. Drive through turns normally.");
                 }
                 break;
 
@@ -808,6 +804,7 @@ public partial class SetupWizardOverlay : Window
                     _centerPhase = CenterPhase.FinalTune;
                     _lutApplied = false;
                     EnableCenteringSliders(true);
+                    Speak("Phase 3 of 3. Fine tuning center response.");
 
                     string invertedMsg = forcesAreInverted
                         ? $"FFB inverted! Gains flipped (runaway {runawayRatio * 100f:F0}%)"
@@ -911,7 +908,8 @@ public partial class SetupWizardOverlay : Window
                     Step3Status.Text = $"✓ Auto-tune complete. CS={_pipeline.CenterSuppressionDegrees:F1}° Mz={_pipeline.ChannelMixer.MzFrontGain:F2}";
                     Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
                     _advanceStep = _currentStep;
-                    _advanceStepDelay = 90; // 1.5s delay so user sees final values
+                    _advanceStepDelay = 90;
+                    Speak("Centering auto tune complete.");
                 }
                 break;
         }
@@ -1081,6 +1079,7 @@ public partial class SetupWizardOverlay : Window
                         _advanceStepDelay = 90;
                         Step2Status.Text = $"Core forces tuned — MzG: {_pipeline.ChannelMixer.MzFrontGain:F2} (avg {runAvg * 1000f:F0}mNm, ch {mzFront:F3})";
                         Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+                        Speak("Core tyre forces tuned.");
                     }
                 }
                 break;
@@ -1138,6 +1137,7 @@ public partial class SetupWizardOverlay : Window
                     _advanceStepDelay = 90;
                     Step5Status.Text = $"Damping set to {finalDamp:F1} — tapping Next";
                     Step5Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+                    Speak("Damping and friction tuning complete.");
                 }
                 break;
         }
@@ -1173,6 +1173,7 @@ public partial class SetupWizardOverlay : Window
                         Step4Status.Text = $"Forces low — Output Gain boosted to {_pipeline.OutputGain:F2}";
                     }
                     else Step4Status.Text = $"Peak force {maxF * 100f:F0}% — Output Gain kept at {_pipeline.OutputGain:F2}";
+                    Speak("Force level calibrated.");
                     _step4Phase = AutoPhase.Manual; EnableStepSliders(4, true);
                     _advanceStep = _currentStep;
                     _advanceStepDelay = 90; // 1.5s delay so user sees final value
@@ -1200,6 +1201,7 @@ public partial class SetupWizardOverlay : Window
                     _step5Phase = AutoPhase.Manual; EnableStepSliders(5, true);
                     _advanceStep = _currentStep;
                     Step6Status.Text = "Vibration levels sampled — tapping Next"; Step6Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+                    Speak("Vibration levels sampled.");
                 }
                 break;
         }
@@ -1207,6 +1209,7 @@ public partial class SetupWizardOverlay : Window
 
     private void OnOutputGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.OutputGain = val;
         if (LblOutputGain != null) LblOutputGain.Text = val.ToString("F2");
@@ -1214,14 +1217,24 @@ public partial class SetupWizardOverlay : Window
 
     private void OnMasterGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
+        float val = (float)Math.Round(e.NewValue, 2);
+        _pipeline.OutputClipper.SoftClipThreshold = val;
+        if (LblMasterGain != null) LblMasterGain.Text = val.ToString("F2");
+    }
+
+    private void OnVibMasterGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.VibrationMixer.MasterGain = val;
-        if (LblMasterGain != null) LblMasterGain.Text = val.ToString("F2");
+        if (LblVibMaster != null) LblVibMaster.Text = val.ToString("F2");
     }
 
     // ─── Step 3 slider handlers ───
     private void OnFrictionChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.Damping.FrictionLevel = val;
         if (LblFriction != null) LblFriction.Text = val.ToString("F2");
@@ -1229,6 +1242,7 @@ public partial class SetupWizardOverlay : Window
 
     private void OnDampingChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.Damping.SpeedDampingCoefficient = val;
         if (LblDamping != null) LblDamping.Text = val.ToString("F2");
@@ -1237,6 +1251,7 @@ public partial class SetupWizardOverlay : Window
     // ─── Step 4 slider/checkbox handlers ───
     private void OnMzGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.ChannelMixer.MzFrontGain = val;
         if (LblMzGain != null) LblMzGain.Text = val.ToString("F2");
@@ -1244,6 +1259,7 @@ public partial class SetupWizardOverlay : Window
 
     private void OnFxGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.ChannelMixer.FxFrontGain = val;
         if (LblFxGain != null) LblFxGain.Text = val.ToString("F2");
@@ -1251,6 +1267,7 @@ public partial class SetupWizardOverlay : Window
 
     private void OnFyGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.ChannelMixer.FyFrontGain = val;
         if (LblFyGain != null) LblFyGain.Text = val.ToString("F2");
@@ -1258,27 +1275,32 @@ public partial class SetupWizardOverlay : Window
 
     private void OnMzEnabledChanged(object sender, RoutedEventArgs e)
     {
+        if (_suppressSliderEvents) return;
         _pipeline.ChannelMixer.MzFrontEnabled = ChkMzEnabled.IsChecked == true;
     }
 
     private void OnFxEnabledChanged(object sender, RoutedEventArgs e)
     {
+        if (_suppressSliderEvents) return;
         _pipeline.ChannelMixer.FxFrontEnabled = ChkFxEnabled.IsChecked == true;
     }
 
     private void OnFyEnabledChanged(object sender, RoutedEventArgs e)
     {
+        if (_suppressSliderEvents) return;
         _pipeline.ChannelMixer.FyFrontEnabled = ChkFyEnabled.IsChecked == true;
     }
 
     private void OnFyInvertedChanged(object sender, RoutedEventArgs e)
     {
+        if (_suppressSliderEvents) return;
         _pipeline.ChannelMixer.FyInverted = ChkFyInverted.IsChecked == true;
     }
 
     // ─── Step 5 slider handlers ───
     private void OnKerbGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.VibrationMixer.KerbGain = val;
         if (LblKerbGain != null) LblKerbGain.Text = val.ToString("F2");
@@ -1286,6 +1308,7 @@ public partial class SetupWizardOverlay : Window
 
     private void OnRoadGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.VibrationMixer.RoadGain = val;
         if (LblRoadGain != null) LblRoadGain.Text = val.ToString("F2");
@@ -1293,6 +1316,7 @@ public partial class SetupWizardOverlay : Window
 
     private void OnSlipGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.SlipEnhancer.SlipRatioGain = val;
         if (LblSlipGain != null) LblSlipGain.Text = val.ToString("F2");
@@ -1300,6 +1324,7 @@ public partial class SetupWizardOverlay : Window
 
     private void OnAbsGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.VibrationMixer.AbsGain = val;
         if (LblAbsGain != null) LblAbsGain.Text = val.ToString("F2");
@@ -1308,11 +1333,10 @@ public partial class SetupWizardOverlay : Window
     // ─── Step 5 slider handlers ───
     private void OnCenterSuppressChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 1);
         _pipeline.CenterSuppressionDegrees = val;
         if (LblCenterSuppress != null) LblCenterSuppress.Text = val.ToString("F1") + "°";
-        // Apply center suppression via LUT curve for non-R3E pipelines.
-        // R3E has its own ApplyCenteringOverride that consumes CenterSuppressionDegrees directly.
         if (_pipeline is not R3eFfbPipeline)
         {
             float power = 1.0f + (val / 30f) * 3.0f;
@@ -1322,6 +1346,7 @@ public partial class SetupWizardOverlay : Window
 
     private void OnSlewRateChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
         _pipeline.MaxSlewRate = val;
         if (LblSlewRate != null) LblSlewRate.Text = val.ToString("F2");

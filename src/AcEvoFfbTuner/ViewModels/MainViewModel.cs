@@ -38,6 +38,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly ProfileManager _profileManager;
     private readonly Services.GameRecordingService _gameRecordingService = new();
     private readonly Services.VoiceService _voiceService = new();
+    public Services.VoiceService VoiceService => _voiceService;
     private volatile bool _autoAlignInProgress;
     private volatile bool _mapClearedByUser;
     private string? _lastAutoLoadedTrack;

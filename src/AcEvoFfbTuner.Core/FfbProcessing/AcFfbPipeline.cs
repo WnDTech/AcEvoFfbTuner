@@ -12,6 +12,7 @@ public sealed class AcFfbPipeline : FfbPipeline
     private float _dcBlockSmooth;
     private int _processCallCount;
     private float _prevCoreOutput;
+    private int _startupFadeFrames;
 
     private bool _gearChangeMuteEnabled;
     public bool GearChangeMuteEnabled
@@ -61,9 +62,6 @@ public sealed class AcFfbPipeline : FfbPipeline
         ChannelMixer.FxScale = acBaseFxScale * userFxFactor;
         ChannelMixer.FxFrontGain = acBaseFxgain * userFxFactor;
         ChannelMixer.FyScale = acBaseFyScale * userFyFactor;
-        ChannelMixer.FyFrontGain = 0.0f;
-        ChannelMixer.FyFrontEnabled = false;
-        Damping.FrictionLevel = 0.02f;
 
         float mixedForce = ChannelMixer.Mix(raw, out var channels);
 
@@ -87,7 +85,7 @@ public sealed class AcFfbPipeline : FfbPipeline
 
         float coreDamped = Damping.Apply(corePostLut, raw.SpeedKmh, raw.SteerAngle);
         float coreOutput = coreDamped * OutputGain;
-        coreOutput = _prevCoreOutput * 0.8f + coreOutput * 0.2f;
+        coreOutput = _prevCoreOutput * 0.5f + coreOutput * 0.5f;
         _prevCoreOutput = coreOutput;
 
         if (raw.SpeedKmh < 0.5f)
@@ -102,7 +100,16 @@ public sealed class AcFfbPipeline : FfbPipeline
         vibration *= VibrationMixer.MasterGain;
 
         float eqOutput = Equalizer.Process(coreOutput);
-        float finalOutput = eqOutput;
+        float finalOutput = eqOutput + vibration;
+
+        // Startup fade-in: ramp output over first 20 frames (~333ms) to prevent
+        // sudden force jolts when the pipeline first activates.
+        if (_startupFadeFrames < 20)
+        {
+            float fadeIn = (_startupFadeFrames + 1) / 20f;
+            finalOutput *= fadeIn;
+            _startupFadeFrames++;
+        }
 
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
 
@@ -141,10 +148,4 @@ public sealed class AcFfbPipeline : FfbPipeline
             IsClipping = isClipping,
             GearShiftMuteGain = 1f,
         };
-    }
-
-    protected override void OnDetailForceProcessed(float coreOutput, ref float detailForce)
-    {
-        detailForce = 0f;
-    }
-}
+    }}
