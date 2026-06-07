@@ -165,39 +165,50 @@ public sealed class FfbChannelMixer
         float fyRear = FyRearEnabled ? SoftClamp(Normalize(rawFyRear, effectiveFyScale) * FyRearGain) : 0f;
 
         // Center blend zone (uses raw steer angle — no latency)
-        // Fy is suppressed near center because lateral forces should be near zero
-        // when driving straight — removes the grainy Fy buzz at center.
+        // Fy is suppressed near center to remove grainy lateral buzz when
+        // driving straight. A 15% floor is retained so natural counter-steering
+        // (road crown, weight transfer under braking) still passes through.
+        // Without this floor, Mz/Fx imbalances during straight braking cause
+        // a pull with no Fy to counteract it.
         float maxDeg = 450f;
         float absSteerDeg = Math.Abs(raw.SteerAngle * maxDeg);
         float bt = Math.Clamp(absSteerDeg / Math.Max(CenterBlendDegrees, 0.1f), 0f, 1f);
-        float centerBlend = bt * bt * (3f - 2f * bt);
+        float centerBlend = 0.15f + bt * bt * (3f - 2f * bt) * 0.85f;
 
         // ═══════════════════════════════════════════════════════════════
-        // CORE PATH: zero-latency with state-adaptive Fx EMA
+        // CORE PATH: zero-latency with adaptive Fx EMA
         //
         // Mz and Fy go through unfiltered (zero-latency) — these carry
         // the essential self-aligning torque and lateral forces.
         //
-        // Fx (longitudinal) needs contradictory things:
-        //   • Cruising: light EMA to kill snap from bumps/throttle oscillations
-        //   • Braking:  FAST response — braking Fx must reach wheel immediately
-        //   • ABS:      heavy EMA to suppress ABS chatter (12-25Hz pedal oscillation)
-        // We use state-adaptive alpha so each regime gets the right behaviour.
+        // Fx (longitudinal) uses a state-adaptive EMA:
+        //   • Steady-state: light EMA (0.30) kills snap from bumps/throttle
+        //   • Braking:      fast (0.50) transmits brake dive immediately
+        //   • ABS:          heavy (0.08) suppresses 12-25Hz ABS chatter
+        //   • Transitions:  automatic speed-up — when the EMA state diverges
+        //     from the raw signal (e.g. braking→coasting or vice versa),
+        //     alpha scales up to 0.90 so the state converges in ~1 frame.
+        //     This prevents residual wind-up that causes snap-back.
         // ═══════════════════════════════════════════════════════════════
         bool isBrakingHard = raw.BrakeInput > 0.3f;
         bool absActive = raw.AbsInAction != 0;
 
-        float fxAlpha;
         if (FxFrontEnabled)
         {
-            fxAlpha = absActive ? 0.08f : isBrakingHard ? 0.50f : 0.30f;
+            float baseAlpha = absActive ? 0.08f : isBrakingHard ? 0.50f : 0.30f;
+            float deviation = Math.Abs(fxFront - _smCoreFxFront);
+            float transitionBoost = Math.Clamp(deviation / 0.05f, 0f, 1f) * 0.60f;
+            float fxAlpha = Math.Min(baseAlpha + transitionBoost, 0.90f);
             _smCoreFxFront = _smCoreFxFront * (1f - fxAlpha) + fxFront * fxAlpha;
         }
         float coreFxFront = FxFrontEnabled ? _smCoreFxFront : 0f;
 
         if (FxRearEnabled)
         {
-            fxAlpha = absActive ? 0.08f : isBrakingHard ? 0.50f : 0.30f;
+            float baseAlpha = absActive ? 0.08f : isBrakingHard ? 0.50f : 0.30f;
+            float deviation = Math.Abs(fxRear - _smCoreFxRear);
+            float transitionBoost = Math.Clamp(deviation / 0.05f, 0f, 1f) * 0.60f;
+            float fxAlpha = Math.Min(baseAlpha + transitionBoost, 0.90f);
             _smCoreFxRear = _smCoreFxRear * (1f - fxAlpha) + fxRear * fxAlpha;
         }
         float coreFxRear = FxRearEnabled ? _smCoreFxRear : 0f;
