@@ -24,6 +24,8 @@ public sealed class AppSettings
     public bool VoiceEnabled { get; set; } = true;
     public int VoiceVolume { get; set; } = 75;
     public string? VoiceName { get; set; }
+    public bool UseEdgeTts { get; set; } = true;
+    public string GoogleTtsLanguage { get; set; } = "en";
 
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");

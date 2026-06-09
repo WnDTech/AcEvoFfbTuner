@@ -1348,6 +1348,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         _voiceService.Enabled = _appSettings.VoiceEnabled;
         _voiceService.Volume = _appSettings.VoiceVolume;
+        _voiceService.LogMessage += msg => Application.Current?.Dispatcher.Invoke(() => AddSystemLog(msg));
 
         _discordPresence.Initialize();
         _discordPresence.Attach(_telemetryLoop);
@@ -3873,6 +3874,33 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _appSettings.Save();
     }
 
+    public string VoiceEngine => _voiceService.ActiveEngine;
+
+    public bool VoicePackReady => _voiceService.IsCacheReady;
+
+    public string VoiceCacheStatus => _voiceService.IsCacheReady
+        ? $"{_voiceService.CachedCount}/{_voiceService.TotalPhrases} phrases cached"
+        : "Voice pack not found. Place MP3 files in:\n" + GetVoiceCachePath();
+
+    [RelayCommand]
+    private void OpenVoiceCacheFolder()
+    {
+        try
+        {
+            var dir = GetVoiceCachePath();
+            Directory.CreateDirectory(dir);
+            Process.Start(new ProcessStartInfo("explorer.exe", dir) { UseShellExecute = true });
+        }
+        catch { }
+    }
+
+    private static string GetVoiceCachePath()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "AcEvoFfbTuner", "voice-cache");
+    }
+
     [ObservableProperty]
     private ObservableCollection<string> _availableVoices = new();
 
@@ -4012,7 +4040,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         ThemeMode = _appSettings.ThemeName;
         VoiceEnabled = _appSettings.VoiceEnabled;
         VoiceVolume = _appSettings.VoiceVolume;
-
         if (Enum.TryParse<NavPage>(_appSettings.DefaultStartPage, out var startPage))
         {
             var pages = Enum.GetValues<NavPage>();

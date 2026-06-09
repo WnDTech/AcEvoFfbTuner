@@ -330,45 +330,70 @@
 
                         <!-- STEP 6: Review & Confirm -->
                         <StackPanel x:Name="PanelStep6" Visibility="Collapsed">
-                            <TextBlock TextWrapping="Wrap" FontSize="14" Margin="0,0,0,8"
-                                        Text="You've configured the essential FFB settings. Here's what was tuned:" />
-                            <Border Background="#FF161B22" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                            <Border Background="#FF1A2233" CornerRadius="4" Padding="10,8" Margin="0,0,0,6">
                                 <StackPanel>
-                                    <TextBlock FontSize="13" Margin="0,1" Foreground="#FF66BB6A">
+                                    <TextBlock TextWrapping="Wrap" FontSize="15" Foreground="#FFFFD600" Margin="0,0,0,4"
+                                            Text="Try a corner. How does it feel?" />
+                                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FFCCCCCC" Margin="0,0,0,4"
+                                            Text="Drive through a turn and adjust the sliders below to your preference:" />
+
+                                    <!-- Master Gain -->
+                                    <TextBlock FontSize="13" Foreground="#FF66BB6A" Margin="0,6,0,0" Text="When turning, are the forces strong enough?" />
+                                    <DockPanel LastChildFill="True" Margin="0,2,0,0">
+                                        <TextBlock Text="Force Strength" FontSize="12" Foreground="#FFCCCCCC" VerticalAlignment="Center" Margin="0,0,6,0" MinWidth="90" />
+                                        <TextBlock x:Name="ReviewMasterGain" Text="1.00" Width="50" FontSize="14" VerticalAlignment="Center" Foreground="#FFFFD600" DockPanel.Dock="Right" TextAlignment="Right" Margin="4,0" />
+                                        <Button x:Name="BtnReviewResetMaster" Content="R" Width="24" Height="24" FontSize="11"
+                                                Background="#FF332211" Foreground="#FFFFD600" BorderThickness="0"
+                                                Click="OnReviewResetMasterGain" Margin="4,0" DockPanel.Dock="Right" />
+                                        <Slider x:Name="SliderReviewMasterGain" Minimum="0.1" Maximum="5.0" TickFrequency="0.1" Value="1.0"
+                                                ValueChanged="OnReviewMasterGainChanged" VerticalAlignment="Center" />
+                                    </DockPanel>
+
+                                    <!-- Mz Front Gain -->
+                                    <TextBlock FontSize="13" Foreground="#FF66BB6A" Margin="0,6,0,0" Text="Does the wheel center naturally?" />
+                                    <DockPanel LastChildFill="True" Margin="0,2,0,0">
+                                        <TextBlock Text="Centering Force" FontSize="12" Foreground="#FFCCCCCC" VerticalAlignment="Center" Margin="0,0,6,0" MinWidth="90" />
+                                        <TextBlock x:Name="ReviewMzGain" Text="0.50" Width="50" FontSize="14" VerticalAlignment="Center" Foreground="#FFFFD600" DockPanel.Dock="Right" TextAlignment="Right" Margin="4,0" />
+                                        <Slider x:Name="SliderReviewMzGain" Minimum="-2.0" Maximum="6.0" TickFrequency="0.05" Value="0.5"
+                                                ValueChanged="OnReviewMzGainChanged" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Summary of all values -->
+                            <Border Background="#FF161B22" CornerRadius="4" Padding="10,8" Margin="0,0,0,6">
+                                <StackPanel>
+                                    <TextBlock FontSize="12" Foreground="#FF888888" Margin="0,0,0,4" Text="All settings for reference:" />
+                                    <TextBlock FontSize="12" Margin="0,1" Foreground="#FF66BB6A">
                                         <Run FontWeight="Bold" Text="Wheel Centering" />
-                                        <Run Text=" — Center Suppress: " /><Run x:Name="ReviewCenterSuppress" Text="0.0°" Foreground="#FFFFD600" />
-                                        <Run Text="  |  Slew Rate: " /><Run x:Name="ReviewSlewRate" Text="0.00" Foreground="#FFFFD600" />
+                                        <Run Text=" - CS: " /><Run x:Name="ReviewCenterSuppress" Text="0.0�" Foreground="#FFFFD600" FontSize="12" />
+                                        <Run Text="  |  SR: " /><Run x:Name="ReviewSlewRate" Text="0.00" Foreground="#FFFFD600" FontSize="12" />
                                     </TextBlock>
-                                    <TextBlock FontSize="13" Margin="0,1" Foreground="#FF66BB6A">
-                                        <Run FontWeight="Bold" Text="Core Tyre Forces" />
-                                        <Run Text=" — Mz: " /><Run x:Name="ReviewMzGain" Text="0.00" Foreground="#FFFFD600" />
-                                        <Run Text="  Fx: " /><Run x:Name="ReviewFxGain" Text="0.00" Foreground="#FFFFD600" />
-                                        <Run Text="  Fy: " /><Run x:Name="ReviewFyGain" Text="0.00" Foreground="#FFFFD600" />
-                                        <Run Text="  LatInv: " /><Run x:Name="ReviewFyInv" Text="Off" Foreground="#FFFFD600" />
+                                    <TextBlock FontSize="12" Margin="0,1" Foreground="#FF66BB6A">
+                                        <Run FontWeight="Bold" Text="Channels" />
+                                        <Run Text=" - Fx: " /><Run x:Name="ReviewFxGain" Text="0.00" Foreground="#FFFFD600" FontSize="12" />
+                                        <Run Text="  Fy: " /><Run x:Name="ReviewFyGain" Text="0.00" Foreground="#FFFFD600" FontSize="12" />
+                                        <Run Text="  LatInv: " /><Run x:Name="ReviewFyInv" Text="Off" Foreground="#FFFFD600" FontSize="12" />
                                     </TextBlock>
-                                    <TextBlock FontSize="13" Margin="0,1" Foreground="#FF66BB6A">
-                                        <Run FontWeight="Bold" Text="Master Output Gain" />
-                                        <Run Text=" — Output: " /><Run x:Name="ReviewOutputGain" Text="0.00" Foreground="#FFFFD600" />
-                                        <Run Text="  Master: " /><Run x:Name="ReviewMasterGain" Text="0.00" Foreground="#FFFFD600" />
+                                    <TextBlock FontSize="12" Margin="0,1" Foreground="#FF66BB6A">
+                                        <Run FontWeight="Bold" Text="Output / Damping" />
+                                        <Run Text=" - Out: " /><Run x:Name="ReviewOutputGain" Text="0.00" Foreground="#FFFFD600" FontSize="12" />
+                                        <Run Text="  Damp: " /><Run x:Name="ReviewDamping" Text="0.0" Foreground="#FFFFD600" FontSize="12" />
+                                        <Run Text="  Fric: " /><Run x:Name="ReviewFriction" Text="0.00" Foreground="#FFFFD600" FontSize="12" />
                                     </TextBlock>
-                                    <TextBlock FontSize="13" Margin="0,1" Foreground="#FF66BB6A">
-                                        <Run FontWeight="Bold" Text="Damping &amp; Friction" />
-                                        <Run Text=" — Damping: " /><Run x:Name="ReviewDamping" Text="0.0" Foreground="#FFFFD600" />
-                                        <Run Text="  Friction: " /><Run x:Name="ReviewFriction" Text="0.00" Foreground="#FFFFD600" />
-                                    </TextBlock>
-                                    <TextBlock FontSize="13" Margin="0,1" Foreground="#FF66BB6A">
-                                        <Run FontWeight="Bold" Text="Curb &amp; Vibration" />
-                                        <Run Text=" — VibM: " /><Run x:Name="ReviewVibMasterGain" Text="0.00" Foreground="#FFFFD600" />
-                                        <Run Text="  Kerb: " /><Run x:Name="ReviewKerbGain" Text="0.00" Foreground="#FFFFD600" />
-                                        <Run Text="  Road: " /><Run x:Name="ReviewRoadGain" Text="0.00" Foreground="#FFFFD600" />
-                                        <Run Text="  Slip: " /><Run x:Name="ReviewSlipGain" Text="0.00" Foreground="#FFFFD600" />
-                                        <Run Text="  ABS: " /><Run x:Name="ReviewAbsGain" Text="0.00" Foreground="#FFFFD600" />
+                                    <TextBlock FontSize="12" Margin="0,1" Foreground="#FF66BB6A">
+                                        <Run FontWeight="Bold" Text="Vibrations" />
+                                        <Run Text=" - Kerb: " /><Run x:Name="ReviewKerbGain" Text="0.00" Foreground="#FFFFD600" FontSize="12" />
+                                        <Run Text="  Road: " /><Run x:Name="ReviewRoadGain" Text="0.00" Foreground="#FFFFD600" FontSize="12" />
+                                        <Run Text="  Slip: " /><Run x:Name="ReviewSlipGain" Text="0.00" Foreground="#FFFFD600" FontSize="12" />
+                                        <Run Text="  ABS: " /><Run x:Name="ReviewAbsGain" Text="0.00" Foreground="#FFFFD600" FontSize="12" />
                                     </TextBlock>
                                 </StackPanel>
                             </Border>
+
                             <Border Background="#FF332211" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
                                 <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FFFFD600"
-                                        Text="Review the values above. Click Next to save as a named profile, or Back to adjust any step." />
+                                        Text="Drive and adjust the sliders above. Click Next when it feels good." />
                             </Border>
                             <TextBlock x:Name="Step7Status" Text="" FontSize="18" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
                         </StackPanel>

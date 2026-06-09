@@ -185,7 +185,17 @@
                         <StackPanel>
                             <CheckBox Content="Enable voice announcements" IsChecked="{Binding VoiceEnabled}"
                                       FontSize="15" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12" />
-                            <TextBlock Text="Voice" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
+
+                            <TextBlock Text="Engine" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding VoiceEngine}" FontSize="13" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" />
+
+                            <TextBlock Text="Voice Pack" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding VoiceCacheStatus}" FontSize="13" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <Button Content="Open Voice Pack Folder" Command="{Binding OpenVoiceCacheFolderCommand}"
+                                    Padding="10,6" FontSize="13" Style="{StaticResource OutlinedButton}"
+                                    HorizontalAlignment="Left" Margin="0,0,0,12" />
+
+                            <TextBlock Text="Voice (SAPI)" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
                             <ComboBox ItemsSource="{Binding AvailableVoices}" SelectedItem="{Binding SelectedVoice, Mode=TwoWay}"
                                       FontSize="14" Padding="6,4" Margin="0,0,0,8"
                                       IsEnabled="{Binding VoiceEnabled}" />

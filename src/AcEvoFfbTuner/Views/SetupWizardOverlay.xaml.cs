@@ -392,7 +392,11 @@ public partial class SetupWizardOverlay : Window
         if (ReviewSlewRate != null)
             ReviewSlewRate.Text = _pipeline.MaxSlewRate.ToString("F2");
         if (ReviewMzGain != null)
+        {
             ReviewMzGain.Text = _pipeline.ChannelMixer.MzFrontGain.ToString("F2");
+            if (SliderReviewMzGain != null)
+                SliderReviewMzGain.Value = _pipeline.ChannelMixer.MzFrontGain;
+        }
         if (ReviewFxGain != null)
             ReviewFxGain.Text = _pipeline.ChannelMixer.FxFrontGain.ToString("F2");
         if (ReviewFyGain != null)
@@ -402,9 +406,11 @@ public partial class SetupWizardOverlay : Window
         if (ReviewOutputGain != null)
             ReviewOutputGain.Text = _pipeline.OutputGain.ToString("F2");
         if (ReviewMasterGain != null)
-            ReviewMasterGain.Text = _pipeline.OutputClipper.SoftClipThreshold.ToString("F2");
-        if (ReviewVibMasterGain != null)
-            ReviewVibMasterGain.Text = _pipeline.VibrationMixer.MasterGain.ToString("F2");
+        {
+            ReviewMasterGain.Text = _pipeline.MasterGain.ToString("F2");
+            if (SliderReviewMasterGain != null)
+                SliderReviewMasterGain.Value = _pipeline.MasterGain;
+        }
         if (ReviewDamping != null)
             ReviewDamping.Text = _pipeline.Damping.SpeedDampingCoefficient.ToString("F1");
         if (ReviewFriction != null)
@@ -763,48 +769,29 @@ public partial class SetupWizardOverlay : Window
                         _pipeline.ChannelMixer.FyFrontGain *= -1f;
                     }
 
-                    // Only apply straight-line and corner corrections when force direction is correct
-                    if (!forcesAreInverted)
+                    // For R3E: set CSD for V-shape suppression, then advance immediately.
+                    // For AC EVO/ACC: CSD does nothing in base pipeline (ApplyCenteringOverride is no-op).
+                    // Don't touch LUT curve either — it's a global shaper, not center-specific.
+                    if (_pipeline is R3eFfbPipeline)
                     {
-                        if (_pipeline is R3eFfbPipeline)
-                        {
-                            // R3E: Set CenterSuppressionDegrees to mid-range (5.25°) directly.
-                            // The V-shape quadratic suppression kills low-speed snap.
-                            // Skip FinalTune — the value is already final.
-                            float targetCs = 2.0f;
-                            _pipeline.CenterSuppressionDegrees = targetCs;
-                            SliderCenterSuppress.Value = targetCs;
-                            LblCenterSuppress.Text = targetCs.ToString("F1") + "\u00B0";
-                            _centerPhase = CenterPhase.FinalTune;
-                            Log($"R3E: CenterSuppression set to {targetCs:F1}\u00B0 — immediate advance");
-                            // Jump straight to auto-advance (skip FinalTune monitoring)
-                            _advanceStep = _currentStep;
-                            _advanceStepDelay = 60;
-                        }
-                        else if (_straightDetectResult > pullForceThreshold)
-                        {
-                            float adjust = Math.Clamp(_straightDetectResult * 60f, 0.5f, 8f);
-                            _pipeline.CenterSuppressionDegrees += adjust;
-                            SliderCenterSuppress.Value = _pipeline.CenterSuppressionDegrees;
-                            LblCenterSuppress.Text = _pipeline.CenterSuppressionDegrees.ToString("F1") + "\u00B0";
-                            _centerPhase = CenterPhase.FinalTune;
-                            _finalTuneCleanSamples = 0; _finalTuneTotalFrames = 0;
-                            Log($"CenterSuppression increased by {adjust:F1}\u00B0 (straight pull) — CS now {_pipeline.CenterSuppressionDegrees:F1}");
-                        }
-                        else if (cornerHasFight && avgRatio > 0.1f)
-                        {
-                            float adjust = Math.Clamp(avgRatio * 8f, 0.5f, 10f);
-                            if (runawayRatio > 0.5f) adjust *= 1.3f;
-                            _pipeline.CenterSuppressionDegrees += adjust;
-                            SliderCenterSuppress.Value = _pipeline.CenterSuppressionDegrees;
-                            LblCenterSuppress.Text = _pipeline.CenterSuppressionDegrees.ToString("F1") + "\u00B0";
-                        }
+                        float targetCs = 2.0f;
+                        _pipeline.CenterSuppressionDegrees = targetCs;
+                        SliderCenterSuppress.Value = targetCs;
+                        LblCenterSuppress.Text = targetCs.ToString("F1") + "\u00B0";
+                        Log($"R3E: CenterSuppression set to {targetCs:F1}\u00B0 — immediate advance");
+                    }
+                    else
+                    {
+                        Log($"AC Evo: Centering detect complete — no CSD/LUT adjustment needed");
                     }
 
+                    // Always advance immediately for all games
                     _centerPhase = CenterPhase.FinalTune;
                     _lutApplied = false;
                     EnableCenteringSliders(true);
-                    Speak("Phase 3 of 3. Fine tuning center response.");
+                    _advanceStep = _currentStep;
+                    _advanceStepDelay = 60;
+                    Speak("Centering auto tune complete.");
 
                     string invertedMsg = forcesAreInverted
                         ? $"FFB inverted! Gains flipped (runaway {runawayRatio * 100f:F0}%)"
@@ -1219,7 +1206,7 @@ public partial class SetupWizardOverlay : Window
     {
         if (_suppressSliderEvents) return;
         float val = (float)Math.Round(e.NewValue, 2);
-        _pipeline.OutputClipper.SoftClipThreshold = val;
+        _pipeline.MasterGain = val;
         if (LblMasterGain != null) LblMasterGain.Text = val.ToString("F2");
     }
 
@@ -1330,6 +1317,29 @@ public partial class SetupWizardOverlay : Window
         if (LblAbsGain != null) LblAbsGain.Text = val.ToString("F2");
     }
 
+    private void OnReviewMasterGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_suppressSliderEvents) return;
+        float val = (float)Math.Round(e.NewValue, 2);
+        _pipeline.MasterGain = val;
+        if (ReviewMasterGain != null) ReviewMasterGain.Text = val.ToString("F2");
+    }
+
+    private void OnReviewMzGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_suppressSliderEvents) return;
+        float val = (float)Math.Round(e.NewValue, 2);
+        _pipeline.ChannelMixer.MzFrontGain = val;
+        if (ReviewMzGain != null) ReviewMzGain.Text = val.ToString("F2");
+    }
+
+    private void OnReviewResetMasterGain(object sender, RoutedEventArgs e)
+    {
+        _pipeline.MasterGain = 1.0f;
+        if (SliderReviewMasterGain != null) SliderReviewMasterGain.Value = 1.0f;
+        if (ReviewMasterGain != null) ReviewMasterGain.Text = "1.00";
+    }
+
     // ─── Step 5 slider handlers ───
     private void OnCenterSuppressChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -1352,3 +1362,9 @@ public partial class SetupWizardOverlay : Window
         if (LblSlewRate != null) LblSlewRate.Text = val.ToString("F2");
     }
 }
+
+
+
+
+
+

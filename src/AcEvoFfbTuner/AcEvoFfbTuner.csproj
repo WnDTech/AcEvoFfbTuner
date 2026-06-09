@@ -54,4 +54,8 @@
     <Resource Include="Resources\splash-wheels\*.png" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="VoicePack\*.mp3" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
  </Project>
