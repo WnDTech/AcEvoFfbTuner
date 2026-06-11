@@ -9,6 +9,11 @@ When making changes, ALWAYS explicitly state whether you are:
 
 Our goal is to **fix the code** so we can establish a reliable baseline profile that works for all users of this car (BMW GT3 with Moza R5).
 
+### Git — Do NOT Commit or Push Unless Asked
+- **Never commit or push unless the user explicitly asks.** No exceptions.
+- Only stage files and run builds during the iterative coding loop.
+- Wait for the user to say "commit and push" before touching git for commits/pushes.
+
 ### Build & Verify
 - Build command: `dotnet build AcEvoFfbTuner.slnx -c Release`
 - **Always run a FULL clean build after any edit:** `dotnet clean AcEvoFfbTuner.slnx -c Release -q 2>&1; dotnet build AcEvoFfbTuner.slnx -c Release`

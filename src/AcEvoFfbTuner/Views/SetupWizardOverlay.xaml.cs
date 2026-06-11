@@ -17,7 +17,7 @@ public partial class SetupWizardOverlay : Window
     private bool _isCompact;
     private bool _suppressSliderEvents;
     private int _currentStep;
-    private const int MaxSteps = 8;
+    private const int MaxSteps = 4;
     private bool _isStrongWheelbase;
     private string _detectedGame = "";
     private string _detectedCar = "";
@@ -37,7 +37,14 @@ public partial class SetupWizardOverlay : Window
     // Auto-centering + cornering state for Step 1 — 3 phases
     private enum CenterPhase { PolarityDetect, Warmup, StraightDetect, CornerDetect, FinalTune }
     private CenterPhase _centerPhase = CenterPhase.Warmup;
+    private bool _calibrationComplete; // true when strength calibration data collection is done
+    private bool _polarityDetermined; // true after user answers the polarity question
     private int _polarityResultCooldown;
+    private float _calibratedMasterGain = 1.0f; // Stores the pure 92% peak target from Step 2
+    private float _intensityMultiplier = 1.0f; // Slider/Preset modifier (0.5 to 1.2)
+    private float _polarityFlipTarget; // target MzFrontGain for gradual flip
+    private float _polarityFlipStep;   // per-frame increment
+    private int _polarityFlipFrames;   // frames remaining in gradual flip
     private const int CenterSampleCount = 600;
     private int _centerSampleIndex;
     private float[] _centerForceSamples = new float[CenterSampleCount];
@@ -65,24 +72,14 @@ public partial class SetupWizardOverlay : Window
     // Auto-detect state for steps 2-5
     private enum AutoPhase { Warmup, Sampling, Applied, Manual }
     private AutoPhase _step2Phase = AutoPhase.Warmup;
-    private AutoPhase _step3Phase = AutoPhase.Warmup;
-    private AutoPhase _step4Phase = AutoPhase.Warmup;
-    private AutoPhase _step5Phase = AutoPhase.Warmup;
     private float _step2RunningSum;
     private float _step2PeakForce; // R3E: peak |mainForce| for anti-clipping routine
     private float _step2MzSum; // running sum of |mzFront| for stable averaging
-    private float _step3RunningSum;
-    private float _step4RunningMax;
     private const int AutoSampleCount = 1200;
     private float[] _step2Samples = new float[AutoSampleCount];
-    private float[] _step3Samples = new float[AutoSampleCount];
-    private float[] _step4Samples = new float[AutoSampleCount];
-    private float[] _step5Samples = new float[AutoSampleCount];
-    private int _step2Idx, _step3Idx, _step4Idx, _step5Idx;
+    private int _step2Idx;
     private int _advanceStep = -1;
     private int _advanceStepDelay; // frames to wait before auto-advancing (~60 = 1s at 60fps)
-    private int _step2PolarityFlips; // inversion detection counter during Step 1 sampling
-    private int _step2PolarityMsgCooldown; // frames to show polarity message before returning to normal
     private int _logFrame;
 
     private readonly FfbPipeline _pipeline;
@@ -94,25 +91,17 @@ public partial class SetupWizardOverlay : Window
     private readonly string[] _stepTitles =
     [
         "Welcome & Safety",
-        "Wheel Centering",
-        "Core Tyre Forces",
-        "Master Output Gain",
-        "Damping & Friction",
-        "Curb & Vibration",
-        "Review & Confirm",
+        "Drive & Calibrate",
+        "Intensity Preference",
         "Save Profile"
     ];
 
     private readonly string[] _panelNames =
     [
-        nameof(PanelStep0),
-        nameof(PanelStep2),     // Wheel Centering (was PanelStep1)
-        nameof(PanelStep1),     // Core Tyre Forces (was PanelStep2)
-        nameof(PanelStep3),
-        nameof(PanelStep4),
-        nameof(PanelStep5),
-        nameof(PanelStep6),
-        nameof(PanelStep7)
+        nameof(PanelStep0),     // Step 1: Welcome
+        nameof(PanelStep2),     // Step 2: Drive & Calibrate
+        nameof(PanelStep3),     // Step 3: Intensity Preference
+        nameof(PanelStep7)      // Step 4: Save Profile
     ];
 
     public SetupWizardOverlay(
@@ -165,8 +154,6 @@ public partial class SetupWizardOverlay : Window
         // Initialize sliders from current pipeline state
         // Suppress ValueChanged events to prevent pipeline state cascade on startup.
         _suppressSliderEvents = true;
-        SliderOutputGain.Value = _pipeline.OutputGain;
-        SliderMasterGain.Value = _pipeline.OutputClipper.SoftClipThreshold;
         SliderFriction.Value = _pipeline.Damping.FrictionLevel;
         SliderDamping.Value = _pipeline.Damping.SpeedDampingCoefficient;
         
@@ -185,7 +172,6 @@ public partial class SetupWizardOverlay : Window
         SliderVibMaster.Value = _pipeline.VibrationMixer.MasterGain;
         _suppressSliderEvents = false;
 
-        SliderCenterSuppress.Value = _pipeline.CenterSuppressionDegrees;
         // Initialize LutCurve to match current CenterSuppressionDegrees for non-R3E pipelines.
         // R3E uses its own ApplyCenteringOverride with CenterSuppressionDegrees directly.
         if (_pipeline is not R3eFfbPipeline)
@@ -193,7 +179,6 @@ public partial class SetupWizardOverlay : Window
             float initPower = 1.0f + (_pipeline.CenterSuppressionDegrees / 30f) * 3.0f;
             _pipeline.LutCurve.SetProgressive(initPower);
         }
-        SliderSlewRate.Value = _pipeline.MaxSlewRate;
 
         // Apply ForceInvertEnabled from wheelbase connection test to Mz/Fy signs
         bool needsInvert = _viewModel?.ForceInvertEnabled == true;
@@ -237,20 +222,26 @@ public partial class SetupWizardOverlay : Window
                 _viewModel.SelectedProfile.FxFront.Gain = 0.0f;
                 _viewModel.SelectedProfile.FyFront.Gain = 0.0f;
             }
-            _centerPhase = CenterPhase.PolarityDetect;
-            Log($"R3E OnLoaded: MzFrontGain left at {_pipeline.ChannelMixer.MzFrontGain:F2} — PolarityDetect will determine sign");
+        }
+        _centerPhase = CenterPhase.PolarityDetect;
+
+        // Populate detected game/car/track from viewmodel
+        if (_viewModel != null)
+        {
+            _detectedGame = _viewModel.GameDisplayName ?? "";
+            if (!string.IsNullOrEmpty(_viewModel.DetectedCarModel))
+                _detectedCar = _viewModel.DetectedCarModel;
+            if (!string.IsNullOrEmpty(_viewModel.DetectedTrackName))
+                _detectedTrack = _viewModel.DetectedTrackName;
         }
 
         UpdateLabels();
         UpdateScopeDetectedInfo();
-        Speak("Setup wizard loaded. Drive safely and follow the on screen instructions.");
         Log($"OnLoaded: done OG={_pipeline.OutputGain:F3} Mz={_pipeline.ChannelMixer.MzFrontGain:F3} inv={needsInvert}");
     }
 
     private void UpdateLabels()
     {
-        if (LblOutputGain != null) LblOutputGain.Text = _pipeline.OutputGain.ToString("F2");
-        if (LblMasterGain != null) LblMasterGain.Text = _pipeline.OutputClipper.SoftClipThreshold.ToString("F2");
         if (LblFriction != null) LblFriction.Text = _pipeline.Damping.FrictionLevel.ToString("F2");
         if (LblDamping != null) LblDamping.Text = _pipeline.Damping.SpeedDampingCoefficient.ToString("F2");
         
@@ -264,14 +255,12 @@ public partial class SetupWizardOverlay : Window
         if (LblAbsGain != null) LblAbsGain.Text = _pipeline.VibrationMixer.AbsGain.ToString("F2");
         if (LblVibMaster != null) LblVibMaster.Text = _pipeline.VibrationMixer.MasterGain.ToString("F2");
 
-        if (LblCenterSuppress != null) LblCenterSuppress.Text = _pipeline.CenterSuppressionDegrees.ToString("F1") + "°";
-        if (LblSlewRate != null) LblSlewRate.Text = _pipeline.MaxSlewRate.ToString("F2");
+
     }
 
     private void EnableCenteringSliders(bool enable)
     {
-        SliderCenterSuppress.IsEnabled = enable;
-        SliderSlewRate.IsEnabled = enable;
+        // Centering sliders removed from Drive step — kept as no-op for call compatibility
     }
 
     private void OnDeactivated(object sender, EventArgs e)
@@ -319,6 +308,92 @@ public partial class SetupWizardOverlay : Window
         ShowStep(_currentStep);
     }
 
+    private void OnPolarityYes(object sender, RoutedEventArgs e)
+    {
+        _polarityDetermined = true;
+
+        // Start gradual flip over 30 frames (~0.5s) instead of instant reversal
+        float currentMz = _pipeline.ChannelMixer.MzFrontGain;
+        _polarityFlipTarget = -currentMz;
+        _polarityFlipFrames = 30;
+        _polarityFlipStep = (_polarityFlipTarget - currentMz) / _polarityFlipFrames;
+        _calibratedMasterGain = _pipeline.MasterGain;
+
+        // Commit final target to profile data model
+        if (_viewModel?.SelectedProfile != null)
+        {
+            _viewModel.SelectedProfile.MzFront.Gain = _polarityFlipTarget;
+            _viewModel.SelectedProfile.FyFront.Gain = -_pipeline.ChannelMixer.FyFrontGain;
+        }
+
+        // Hide question, show result
+        PolarityQuestionPanel.Visibility = Visibility.Collapsed;
+        SetPhaseBanner("\u2713 CENTERING FIXING", "Adjusting centering direction gradually...", "#FF66BB6A");
+        Step3Status.Text = $"\u2713 Reversing centering direction smoothly \u2014 hold the wheel...";
+        Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+        Log($"User polarity: Gradual flip from {currentMz:F2} to {_polarityFlipTarget:F2} over {_polarityFlipFrames} frames");
+        
+        // Auto-advance after the gradual flip completes
+        _polarityResultCooldown = 60;
+        _advanceStep = _currentStep;
+        _advanceStepDelay = 30;
+    }
+
+    private void OnPolarityNo(object sender, RoutedEventArgs e)
+    {
+        _polarityDetermined = true;
+        // User confirmed polarity is correct
+        PolarityQuestionPanel.Visibility = Visibility.Collapsed;
+        SetPhaseBanner("✓ CENTERING OK", "Centering direction is correct — continuing calibration", "#FF66BB6A");
+        Step3Status.Text = "✓ Centering direction is correct — driving to calibrate force strength...";
+        Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+        _polarityResultCooldown = 60;
+        _advanceStep = _currentStep;
+        _advanceStepDelay = 30;
+        Log($"User polarity: MzFrontGain confirmed at {_pipeline.ChannelMixer.MzFrontGain:F2}");
+    }
+
+    private void OnCloseWizard(object sender, RoutedEventArgs e)
+    {
+        Log("Wizard closed by user");
+        Close();
+    }
+
+    private void OnIntensitySliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_suppressSliderEvents) return;
+        float sliderPercent = (float)Math.Round(e.NewValue, 0);
+        ApplyIntensity(sliderPercent);
+    }
+
+    private void ApplyIntensity(float sliderPercent)
+    {
+        _intensityMultiplier = sliderPercent / 100f;
+        float dynamicGain = _calibratedMasterGain * _intensityMultiplier;
+        _pipeline.MasterGain = Math.Clamp(dynamicGain, 0.1f, 5.0f);
+        if (LblIntensityPercent != null) LblIntensityPercent.Text = $"{sliderPercent:F0}%";
+        if (Step3IntensityStatus != null)
+        {
+            Step3IntensityStatus.Text = $"Force strength: {(int)sliderPercent}% — {(sliderPercent < 75 ? "Light feel" : sliderPercent < 95 ? "Balanced feel" : "Full dynamic range")}";
+            Step3IntensityStatus.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+        }
+    }
+
+    private void OnIntensityPresetLight(object sender, RoutedEventArgs e)
+    {
+        if (SliderIntensity != null) SliderIntensity.Value = 65;
+    }
+
+    private void OnIntensityPresetBalanced(object sender, RoutedEventArgs e)
+    {
+        if (SliderIntensity != null) SliderIntensity.Value = 85;
+    }
+
+    private void OnIntensityPresetMax(object sender, RoutedEventArgs e)
+    {
+        if (SliderIntensity != null) SliderIntensity.Value = 100;
+    }
+
     private void ShowStep(int stepIndex)
     {
         Log($"ShowStep: step={stepIndex} title={_stepTitles[stepIndex]}");
@@ -336,6 +411,22 @@ public partial class SetupWizardOverlay : Window
         if (stepIndex == 2 && _pipeline is R3eFfbPipeline)
             title = "Force Strength Calibration";
         StepTitleText.Text = $"Step {stepIndex + 1}: {title}";
+        // Voice prompts for each step
+        switch (stepIndex)
+        {
+            case 0:
+                Speak("Welcome. When you are ready, drive onto the track and click next.");
+                break;
+            case 1:
+                Speak("Drive through a few corners. I will check your centering direction and set your force strength.");
+                break;
+            case 2:
+                Speak("Calibration complete. Choose how heavy or light you want this car to feel, then click next.");
+                break;
+            case 3:
+                Speak("Save Profile. Give your profile a name and click save and finish.");
+                break;
+        }
         StepProgressText.Text = $"{stepIndex + 1} / {MaxSteps}";
         ProgressBar.Value = stepIndex + 1;
 
@@ -501,6 +592,50 @@ public partial class SetupWizardOverlay : Window
         if (++_logFrame % 100 == 0)
             Log($"ULV: step={_currentStep} speed={speedKmh:F1} force={mainForce:F4}");
 
+        // Gradual polarity flip: apply in small increments over 30 frames (~0.5s)
+        // to prevent sudden force reversals that could rip the wheel from the user's hands.
+        if (_polarityFlipFrames > 0)
+        {
+            _polarityFlipFrames--;
+            float oldMz = _pipeline.ChannelMixer.MzFrontGain;
+            float newMz = oldMz + _polarityFlipStep;
+            // Check if crossing the target this frame
+            if ((_polarityFlipStep > 0f && newMz >= _polarityFlipTarget) ||
+                (_polarityFlipStep < 0f && newMz <= _polarityFlipTarget))
+            {
+                newMz = _polarityFlipTarget;
+                _polarityFlipFrames = 0;
+            }
+            _pipeline.ChannelMixer.MzFrontGain = newMz;
+            _pipeline.ChannelMixer.FyFrontGain += _polarityFlipStep; // same step for Fy
+            // Sync viewmodel for save
+            if (_viewModel != null)
+            {
+                _viewModel.MzFrontGain = newMz;
+                _viewModel.FyFrontGain = _pipeline.ChannelMixer.FyFrontGain;
+            }
+        }
+
+        // Welcome step: keep checking device connection so the Next button
+        // enables once the user connects their wheel
+        if (_currentStep == 0)
+        {
+            bool connected = _deviceManager.IsDeviceAcquired;
+            if (connected != BtnNext.IsEnabled)
+            {
+                BtnNext.IsEnabled = connected;
+                Step0Status.Text = connected
+                    ? $"Wheel connected: {_deviceManager.ConnectedDevice?.ProductName ?? "Unknown"}"
+                    : "Waiting for wheel connection...";
+            }
+        }
+
+        // Wait for gradual flip to complete before advancing
+        if (_advanceStep >= 0 && _polarityFlipFrames > 0)
+        {
+            // Flip still in progress — don't advance yet
+        }
+        else
         // Auto-advance: when an auto-detect step completes, transition to next
         if (_advanceStep >= 0 && _advanceStep == _currentStep)
         {
@@ -520,23 +655,12 @@ public partial class SetupWizardOverlay : Window
 
         if (_currentStep == 1)
         {
-            UpdateAutoCentering(speedKmh, mainForce, steerAngle);
-        }
-        else if (_currentStep == 2)
-        {
+            // Step 2: Drive & Calibrate
+            // Run centering detection only until polarity is determined (user answered question)
+            if (!_polarityDetermined)
+                UpdateAutoCentering(speedKmh, mainForce, steerAngle);
+            // Strength calibration always runs — it auto-advances when data collection completes
             UpdateAutoTyreForces(speedKmh, mainForce, steerAngle, mzFront);
-        }
-        else if (_currentStep == 3)
-        {
-            UpdateAutoOutputGain(speedKmh, mainForce, isClipping);
-        }
-        else if (_currentStep == 4)
-        {
-            UpdateAutoDamping(speedKmh, mainForce, steerAngle);
-        }
-        else if (_currentStep == 5)
-        {
-            UpdateAutoVibration(speedKmh, mainForce, steerAngle);
         }
     }
 
@@ -551,106 +675,75 @@ public partial class SetupWizardOverlay : Window
         const float maxCenterSuppressCumulative = 15f; // hard cap: don't add more than this total
 
         // Moza (inv=False) reverses centering polarity: correct centering produces
-        // mainForce × steerAngle > 0 (same sign). Negate for Moza on R3E so all
-        // three polarity checks below work correctly with the standard convention.
-        float runCheck = (_viewModel?.ForceInvertEnabled == true || _pipeline is not R3eFfbPipeline)
-            ? mainForce
-            : -mainForce;
+        // mainForce × steerAngle > 0 (same sign). Negate for ALL games when inv=False
+        // so the three polarity checks below work with the standard convention.
+        float runCheck = _viewModel?.ForceInvertEnabled == true ? mainForce : -mainForce;
 
-        switch (_centerPhase)
+        // Only run centering phases until polarity is determined
+        if (_polarityDetermined)
         {
-            case CenterPhase.PolarityDetect:
-                // If we just detected polarity, show result for ~1s then advance to Warmup
-                if (_polarityResultCooldown > 0)
+            // User already answered the question -- no centering phases needed
+            if (_centerPhase >= CenterPhase.Warmup)
+            {
+                // Skip all legacy centering phases
+                _centerPhase = CenterPhase.PolarityDetect;
+            }
+            // Keep running PolarityDetect for status text display only
+            if (_centerPhase == CenterPhase.PolarityDetect)
+            {
+                // Show calibration progress
+                if (speedKmh > 15f)
                 {
-                    _polarityResultCooldown--;
-                    if (_polarityResultCooldown == 0)
-                    {
-                        // Skip Warmup — user is already driving. Transition straight
-                        // to StraightDetect to sample centering pull.
-                        _centerPhase = CenterPhase.StraightDetect;
-                        _centerSampleIndex = 0;
-                        _straightDetectResult = 0f;
-                        _straightBiasSum = 0f;
-                        Step3Status.Text = "Sampling straight-line force — keep driving straight...";
-                        Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
-                    }
-                    break;
-                }
-                SetPhaseBanner("POLARITY TEST", "Drive 15+ km/h, STEER LEFT or RIGHT — detects centering direction", "#FFAA00");
-        // Skip runaway guard during PolarityDetect — the polarity test handles
-        // the sign determination, and the guard would reset to Warmup before
-        // the test can complete.
-        if (_centerPhase != CenterPhase.PolarityDetect && speedKmh > 15f && Math.Abs(steerAngle) > 0.05f)
-                {
-                    // User is turning (either direction). Determine correct polarity by checking
-                    // force direction relative to steer. Works for both left and right turns.
-                    // Moza convention (inv=False, positive=LEFT) has inverted polarity vs
-                    // standard (inv=True, positive=RIGHT).
-                    bool isInvHw = _viewModel?.ForceInvertEnabled == true;
-                    float polarityCheck = (isInvHw ? mainForce : -mainForce) * steerAngle;
-                    if (polarityCheck > 0.005f)
-                    {
-                        _pipeline.ChannelMixer.MzFrontGain *= -1f;
-                        _pipeline.ChannelMixer.FyFrontGain *= -1f;
-                        // Commit corrected polarity to profile data model so profile
-                        // reloads don't revert it (ApplyToPipeline would restore old value).
-                        if (_viewModel?.SelectedProfile != null)
-                        {
-                            _viewModel.SelectedProfile.MzFront.Gain = _pipeline.ChannelMixer.MzFrontGain;
-                            _viewModel.SelectedProfile.FyFront.Gain = _pipeline.ChannelMixer.FyFrontGain;
-                        }
-                        // Also sync to viewmodel properties so PushValuesToPipeline
-                        // reads the corrected values when saving the profile.
-                        if (_viewModel != null)
-                        {
-                            _viewModel.MzFrontGain = _pipeline.ChannelMixer.MzFrontGain;
-                            _viewModel.FyFrontGain = _pipeline.ChannelMixer.FyFrontGain;
-                        }
-                        SetPhaseBanner("✓ POLARITY FIXED", $"MzFrontGain flipped to {_pipeline.ChannelMixer.MzFrontGain:F2} — force now centers", "#FF66BB6A");
-                        Step3Status.Text = $"✓ Inverted! Flipped to {_pipeline.ChannelMixer.MzFrontGain:F2} — auto-advancing...";
-                        Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                        Log($"R3E PolarityDetect: MzFrontGain flipped to {_pipeline.ChannelMixer.MzFrontGain:F2}");
-                    }
-                    else
-                    {
-                        SetPhaseBanner("✓ POLARITY CORRECT", $"MzFrontGain stays at {_pipeline.ChannelMixer.MzFrontGain:F2} — centering fine", "#FF66BB6A");
-                        Step3Status.Text = $"✓ Polarity correct at {_pipeline.ChannelMixer.MzFrontGain:F2} — auto-advancing...";
-                        Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                        Log($"R3E PolarityDetect: MzFrontGain correct at {_pipeline.ChannelMixer.MzFrontGain:F2}");
-                    }
-                    _polarityResultCooldown = 60; // Show result for ~1s before advancing
+                    Step3Status.Text = _calibrationComplete
+                        ? "Calibration complete -- see question above"
+                        : $"Calibrating force strength... drive through corners";
                 }
                 else
                 {
-                    Step3Status.Text = "DRIVE 15+ km/h, then tilt STEER LEFT or RIGHT ~30° — I'll detect centering direction";
-                    Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+                    Step3Status.Text = speedKmh > 5f
+                        ? $"Speed: {speedKmh:F0} km/h -- drive through a corner"
+                        : "Drive to 20+ km/h and steer through a corner";
                 }
-                break;
+                Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+            }
+            return;
+        }
 
+        // --- Legacy centering detection (only runs until polarity is determined) ---
+        switch (_centerPhase)
+        {
+            case CenterPhase.PolarityDetect:
+                // Polarity question is shown after calibration completes (in strength calibration end).
+                // Just wait here - don't show any question early.
+                if (speedKmh > 15f)
+                {
+                    Step3Status.Text = _calibrationComplete
+                        ? "Calibration complete - see question above"
+                        : $"Calibrating force strength... drive through corners";
+                }
+                else
+                {
+                    Step3Status.Text = speedKmh > 5f
+                        ? $"Speed: {speedKmh:F0} km/h - drive through a corner"
+                        : "Drive to 20+ km/h and steer through a corner";
+                }
+                Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+                break;
             case CenterPhase.Warmup:
-                SetPhaseBanner("PHASE 1/3", "Drive straight at 20+ km/h — detecting centering pull", "#FFF0883E");
                 if (speedKmh >= minSpeedForDetection)
                 {
                     _centerPhase = CenterPhase.StraightDetect;
                     _centerSampleIndex = 0;
                     _straightDetectResult = 0f;
                     _straightBiasSum = 0f;
-                    Step3Status.Text = "Sampling straight-line force — keep driving straight...";
-                    Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
-                    Speak("Phase 1 of 3. Drive straight and hold the wheel steady.");
                 }
-                else
-                {
-                    Step3Status.Text = speedKmh > 5f
-                        ? $"Speed: {speedKmh:F0} km/h — accelerate to 20+ km/h"
-                        : "Drive forward — auto-tune starts at 20+ km/h";
-                    Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                }
+                Step3Status.Text = speedKmh > 5f
+                    ? $"Speed: {speedKmh:F0} km/h — calibrating centering and strength"
+                    : "Drive forward — calibration starts at 20+ km/h";
+                Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
                 break;
 
             case CenterPhase.StraightDetect:
-                SetPhaseBanner("PHASE 1/3", "Drive straight — sampling centering pull", "#FFF0883E");
                 if (speedKmh < minSpeedForDetection * 0.7f)
                 {
                     _centerPhase = CenterPhase.Warmup;
@@ -666,7 +759,7 @@ public partial class SetupWizardOverlay : Window
                 }
 
                 float pct = (float)_centerSampleIndex / CenterSampleCount * 100f;
-                Step3Status.Text = $"Sampling straight-line force... {_centerSampleIndex}/{CenterSampleCount} ({pct:F0}%)";
+                Step3Status.Text = $"Calibrating — drive normally through corners";
                 Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
 
                 if (_centerSampleIndex >= CenterSampleCount)
@@ -706,12 +799,10 @@ public partial class SetupWizardOverlay : Window
                     _wasTurning = false;
                     _totalCenterSuppressAdjust = 0f;
                     _centerPhase = CenterPhase.CornerDetect;
-                    Speak("Phase 2 of 3. Drive through turns normally.");
                 }
                 break;
 
             case CenterPhase.CornerDetect:
-                SetPhaseBanner("PHASE 2/3", "Drive through turns — detecting corner fight", "#FF56D4A0");
                 bool isTurning = Math.Abs(steerAngle) > steerCornerThreshold;
 
                 _cornerTotalFrames++;
@@ -762,11 +853,13 @@ public partial class SetupWizardOverlay : Window
                     bool forcesAreInverted = runawayRatio > 0.60f;
                     bool cornerHasFight = !forcesAreInverted && fightRatio > fightThreshold && avgRatio > 0.1f;
 
-                    // If FFB is inverted, flip the sign alignment so centering returns to normal
+                    // If FFB is inverted, the PolarityDetect at start already handled the sign.
+                    // Do NOT flip mid-corner — that reverses force direction while driving,
+                    // causing the wheel to suddenly pull the opposite way (dangerous).
+                    // Just log it so the user can correct on the FFB tuning page.
                     if (forcesAreInverted)
                     {
-                        _pipeline.ChannelMixer.MzFrontGain *= -1f;
-                        _pipeline.ChannelMixer.FyFrontGain *= -1f;
+                        Log($"WARNING: CornerDetect detected inverted forces ({runawayRatio*100f:F0}% runaway). Centering sign may need adjustment in FFB tuning page.");
                     }
 
                     // For R3E: set CSD for V-shape suppression, then advance immediately.
@@ -776,8 +869,7 @@ public partial class SetupWizardOverlay : Window
                     {
                         float targetCs = 2.0f;
                         _pipeline.CenterSuppressionDegrees = targetCs;
-                        SliderCenterSuppress.Value = targetCs;
-                        LblCenterSuppress.Text = targetCs.ToString("F1") + "\u00B0";
+                        // Centering slider removed — CSD set on pipeline directly
                         Log($"R3E: CenterSuppression set to {targetCs:F1}\u00B0 — immediate advance");
                     }
                     else
@@ -789,9 +881,7 @@ public partial class SetupWizardOverlay : Window
                     _centerPhase = CenterPhase.FinalTune;
                     _lutApplied = false;
                     EnableCenteringSliders(true);
-                    _advanceStep = _currentStep;
-                    _advanceStepDelay = 60;
-                    Speak("Centering auto tune complete.");
+                    // Auto-advance removed — only strength calibration advances
 
                     string invertedMsg = forcesAreInverted
                         ? $"FFB inverted! Gains flipped (runaway {runawayRatio * 100f:F0}%)"
@@ -819,8 +909,7 @@ public partial class SetupWizardOverlay : Window
                         float previewAdjust = Math.Clamp(runRatio * 8f, 0.5f, 10f);
                         if (runFight > 0.5f) previewAdjust *= 1.3f;
                         float previewCS = Math.Min(_pipeline.CenterSuppressionDegrees + previewAdjust, 30f);
-                        SliderCenterSuppress.Value = previewCS;
-                        LblCenterSuppress.Text = previewCS.ToString("F1") + "\u00B0";
+                        // Centering slider preview removed — value stays on pipeline
                     }
 
                     Step3Status.Text = isTurning
@@ -831,33 +920,15 @@ public partial class SetupWizardOverlay : Window
                 break;
 
             case CenterPhase.FinalTune:
-                SetPhaseBanner("PHASE 3/3", "Auto-tuning center response — drive normally", "#FF56D4A0");
 
                 if (!_lutApplied)
                 {
-                    float cs = _pipeline.CenterSuppressionDegrees;
-                    // LUT-based center suppression only for non-R3E pipelines.
-                    // R3E uses ApplyCenteringOverride with CenterSuppressionDegrees directly.
-                    if (_pipeline is not R3eFfbPipeline)
-                    {
-                        float power = 1.0f + (cs / 30f) * 3.0f;
-                        _pipeline.LutCurve.SetProgressive(power);
-                    }
-                    if (_pipeline.NoiseFloor < 0.005f)
-                        _pipeline.NoiseFloor = 0.005f;
-                    // MzFrontGain clamp only for AC EVO/ACC — R3E centering comes from
-                    // CenterSuppressionDegrees via ApplyCenteringOverride, and Mz gain
-                    // may legitimately be negative or outside the 0.4-1.2 range.
-                    if (_pipeline is not R3eFfbPipeline)
-                    {
-                        if (_pipeline.ChannelMixer.MzFrontGain < 0.4f || _pipeline.ChannelMixer.MzFrontGain > 1.2f)
-                            _pipeline.ChannelMixer.MzFrontGain = 0.5f;
-                    }
+                    // FinalTune init: do NOT touch LUT curve, NoiseFloor, or MzFrontGain.
+                    // These are the main app's responsibility, not the wizard's.
 
                     _lutApplied = true;
                     _finalTuneCleanSamples = 0;
                     _finalTuneTotalFrames = 0;
-                    EnableCenteringSliders(false);
                     Step3Status.Text = "Soft Center applied. Continuing auto-tune: drive normally to verify center feel.";
                     Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
                 }
@@ -890,13 +961,7 @@ public partial class SetupWizardOverlay : Window
 
                 if (_finalTuneCleanSamples >= FinalTuneSampleCount || _finalTuneTotalFrames >= FinalTuneFrameTimeout)
                 {
-                    EnableCenteringSliders(true);
-                    SetPhaseBanner("✓ COMPLETE", "Auto-tune finished — tapping Next", "#FF66BB6A");
-                    Step3Status.Text = $"✓ Auto-tune complete. CS={_pipeline.CenterSuppressionDegrees:F1}° Mz={_pipeline.ChannelMixer.MzFrontGain:F2}";
-                    Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                    _advanceStep = _currentStep;
-                    _advanceStepDelay = 90;
-                    Speak("Centering auto tune complete.");
+                    // FinalTune auto-advance removed — only strength calibration advances
                 }
                 break;
         }
@@ -920,10 +985,6 @@ public partial class SetupWizardOverlay : Window
         {
             case 2: SliderMzGain.IsEnabled = enabled; SliderFxGain.IsEnabled = enabled;
                     SliderFyGain.IsEnabled = enabled; break;
-            case 3: SliderDamping.IsEnabled = enabled; SliderFriction.IsEnabled = enabled; break;
-            case 4: SliderOutputGain.IsEnabled = enabled; SliderMasterGain.IsEnabled = enabled; break;
-            case 5: SliderKerbGain.IsEnabled = enabled; SliderRoadGain.IsEnabled = enabled;
-                    SliderSlipGain.IsEnabled = enabled; SliderAbsGain.IsEnabled = enabled; break;
         }
     }
 
@@ -934,7 +995,7 @@ public partial class SetupWizardOverlay : Window
             case AutoPhase.Warmup:
                 Step2Status.Text = speedKmh > 5f ? "Drive to 20+ km/h — app reads force levels" : "Drive forward — app reads forces at 20+ km/h";
                 Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                if (speedKmh >= 20f) { _step2Phase = AutoPhase.Sampling; _step2Idx = 0; _step2RunningSum = 0f; _step2MzSum = 0f; _step2PolarityFlips = 0; _step2PolarityMsgCooldown = 0; _step2PeakForce = 0f; }
+                if (speedKmh >= 20f) { _step2Phase = AutoPhase.Sampling; _step2Idx = 0; _step2RunningSum = 0f; _step2MzSum = 0f; _step2PeakForce = 0f; }
                 break;
             case AutoPhase.Sampling:
                 if (_pipeline is R3eFfbPipeline)
@@ -961,14 +1022,13 @@ public partial class SetupWizardOverlay : Window
                                 // properly scales from the existing baseline, not a fixed 1.0.
                                 float liveGain = Math.Min(_pipeline.MasterGain * (0.92f / _step2PeakForce), 5.0f);
                                 _pipeline.MasterGain = liveGain;
-                                SliderMasterGain.Value = liveGain;
-                                LblMasterGain.Text = liveGain.ToString("F2");
                             }
                         }
                         _step2Idx++;
                         // Show live peak as percentage
                         float pct = _step2PeakForce * 100f;
-                        Step2Status.Text = $"Peak force: {pct:F0}% — {_step2Idx}/{r3eMaxSamples}  |  MasterGain: {_pipeline.MasterGain:F2}";
+                        Step2Status.Text = $"Peak force: {pct:F0}% - {_step2Idx}/{r3eMaxSamples}  |  MasterGain: {_pipeline.MasterGain:F2}";
+                        Step3Status.Text = $"Peak force: {pct:F0}% - {_step2Idx}/{r3eMaxSamples}";
                         Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
                     }
                     if (_step2Idx >= r3eMaxSamples)
@@ -980,25 +1040,28 @@ public partial class SetupWizardOverlay : Window
                         {
                             float newMasterGain = Math.Min(currentMasterGain * (targetUtilization / peak), 5.0f);
                             _pipeline.MasterGain = newMasterGain;
-                            SliderMasterGain.Value = newMasterGain;
-                            LblMasterGain.Text = newMasterGain.ToString("F2");
-                            Step2Status.Text = $"Peak {peak * 100f:F0}% → MasterGain boosted to {newMasterGain:F2} (targeting 92%)";
-                            Log($"R3E anti-clip: peak={peak*100f:F1}% OG changed {currentMasterGain:F2}→{newMasterGain:F2}");
+                            Step2Status.Text = $"Peak {peak * 100f:F0}%  -> MasterGain boosted to {newMasterGain:F2} (targeting 92%)";
+                            Log($"R3E anti-clip: peak={peak*100f:F1}% OG changed {currentMasterGain:F2} -> {newMasterGain:F2}");
                         }
                         else if (peak >= targetUtilization)
                         {
-                            Step2Status.Text = $"Peak {peak * 100f:F0}% — already utilising wheelbase well — MasterGain kept at {currentMasterGain:F2}";
-                            Log($"R3E anti-clip: peak={peak*100f:F1}% ≥92% — MasterGain unchanged at {currentMasterGain:F2}");
+                            Step2Status.Text = $"Peak {peak * 100f:F0}% - already utilising wheelbase well - MasterGain kept at {currentMasterGain:F2}";
+                            Log($"R3E anti-clip: peak={peak*100f:F1}% >=92% - MasterGain unchanged at {currentMasterGain:F2}");
                         }
                         else
                         {
-                            Step2Status.Text = $"Peak {peak * 100f:F0}% — very low force at wheel";
-                            Log($"R3E anti-clip: peak={peak*100f:F1}% <1% — very low force, MasterGain unchanged");
+                            Step2Status.Text = $"Peak {peak * 100f:F0}% - very low force at wheel";
+                            Log($"R3E anti-clip: peak={peak*100f:F1}% <1% - very low force, MasterGain unchanged");
                         }
                         _step2Phase = AutoPhase.Manual;
-                        _advanceStep = _currentStep;
-                        _advanceStepDelay = 90;
+                        _calibrationComplete = true;
+                        _calibratedMasterGain = _pipeline.MasterGain;
                         Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+                        // Show polarity question
+                        if (PolarityQuestionPanel != null)
+                            PolarityQuestionPanel.Visibility = Visibility.Visible;
+                        Step3Status.Text = "Calibration done! Did the wheel pull away from center when turning?";
+                        Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
                     }
                 }
                 else
@@ -1025,190 +1088,52 @@ public partial class SetupWizardOverlay : Window
                         SliderMzGain.Value = targetMz;
                         LblMzGain.Text = targetMz.ToString("F2");
                     }
-                    // Polarity check: if force pulls same direction as steer (away from center),
-                    // the Mz sign is inverted. Flip Mz/Fy when consistently detected during turns.
-                    if (_step2Idx > 50 && speedKmh > 20f && Math.Abs(steerAngle) > 0.08f)
-                    {
-                        if (mainForce * steerAngle > 0.005f)
-                        {
-                            _step2PolarityFlips++;
-                            if (_step2PolarityFlips >= 30)
-                            {
-                                _pipeline.ChannelMixer.MzFrontGain *= -1f;
-                                _pipeline.ChannelMixer.FyFrontGain *= -1f;
-                                _step2PolarityFlips = 0;
-                                _step2PolarityMsgCooldown = 60;
-                            }
-                        }
-                    }
-                    else if (Math.Abs(steerAngle) < 0.03f)
-                    {
-                        _step2PolarityFlips = 0;
-                    }
-
-                    // Show polarity message during cooldown, then resume normal status
-                    if (_step2PolarityMsgCooldown > 0)
-                    {
-                        _step2PolarityMsgCooldown--;
-                        Step2Status.Text = $"Polarity inverted! Mz/Fy flipped — Mz: {_pipeline.ChannelMixer.MzFrontGain:F2} — {_step2Idx}/{AutoSampleCount}";
-                        Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
-                    }
-                    else
-                    {
-                        Step2Status.Text = $"Avg: {runAvg * 1000f:F0}mNm | MzG: {_pipeline.ChannelMixer.MzFrontGain:F2} mzCh: {mzFront:F3} — {_step2Idx}/{AutoSampleCount}";
-                        Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
-                    }
+                    Step2Status.Text = $"Calibrating force strength... {_step2Idx}/{AutoSampleCount}";
                     Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
                     if (_step2Idx >= AutoSampleCount)
                     {
-                        _step2Phase = AutoPhase.Manual; EnableStepSliders(2, true);
-                        _advanceStep = _currentStep;
-                        _advanceStepDelay = 90;
-                        Step2Status.Text = $"Core forces tuned — MzG: {_pipeline.ChannelMixer.MzFrontGain:F2} (avg {runAvg * 1000f:F0}mNm, ch {mzFront:F3})";
+                        // MzFrontGain magnitude is NOT auto-adjusted for AC EVO/ACC.
+                        // The 0.4/avgMzChan formula targets 40% of average Mz channel level,
+                        // but the average is dominated by straight-line driving (Mz ~ 0),
+                        // producing absurd values (e.g. -5.95) or wildly inconsistent results.
+                        // Polarity (sign) was already corrected by Step 2's CornerDetect.
+                        // Safe-range clamp: if MzFrontGain is outside reasonable bounds
+                        // (e.g. -5.95 from a previous corrupted session), reset to 0.5.
+                        // Preserve the mathematical sign -- if user had -5.95, keep it negative
+                        float safeMzStart = _pipeline.ChannelMixer.MzFrontGain;
+                        if (Math.Abs(safeMzStart) < 0.01f || Math.Abs(safeMzStart) > 2.0f)
+                        {
+                            float sign = MathF.Sign(safeMzStart);
+                            if (MathF.Abs(sign) < 0.001f) sign = 1f;
+                            float corrected = 0.5f * sign;
+                            _pipeline.ChannelMixer.MzFrontGain = corrected;
+                            SliderMzGain.Value = corrected;
+                            LblMzGain.Text = corrected.ToString("F2");
+                            Step2Status.Text = $"MzG reset to {corrected:F2} (was {safeMzStart:F2}) -- preserving sign";
+                        }
+                        else
+                        {
+                            Step2Status.Text = $"MzG stays at {safeMzStart:F2} — within safe range";
+                        }
+                        _step2Phase = AutoPhase.Manual;
+                        _calibrationComplete = true;
+                        _calibratedMasterGain = _pipeline.MasterGain;
+                        Step2Status.Text = "Calibration complete - did the centering feel right?";
                         Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                        Speak("Core tyre forces tuned.");
+                        // Show polarity question
+                        if (PolarityQuestionPanel != null)
+                            PolarityQuestionPanel.Visibility = Visibility.Visible;
+                        Step3Status.Text = "Calibration done! Did the wheel pull away from center when turning?";
+                        Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
                     }
                 }
                 break;
         }
     }
 
-    private void UpdateAutoDamping(float speedKmh, float mainForce, float steerAngle)
-    {
-        switch (_step3Phase)
-        {
-            case AutoPhase.Warmup:
-                Step5Status.Text = speedKmh > 5f ? "Drive to 20+ km/h — app sets damping baseline" : "Drive forward — app reads damping at 20+ km/h";
-                Step5Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                if (speedKmh >= 20f) { _step3Phase = AutoPhase.Sampling; _step3Idx = 0; _step3RunningSum = 0f; }
-                break;
-            case AutoPhase.Sampling:
-                if (speedKmh > 10f)
-                {
-                    _step3Samples[_step3Idx] = Math.Abs(mainForce);
-                    _step3RunningSum += _step3Samples[_step3Idx];
-                    _step3Idx++;
-                }
-                // Live real-time: compute running average and apply slider + pipeline every frame
-                if (_step3Idx > 0)
-                {
-                    float avg = _step3RunningSum / _step3Idx;
-                    float targetDamp = _pipeline is R3eFfbPipeline
-                        ? Math.Clamp(avg * 15f, 0.5f, 2.0f)
-                        : Math.Clamp(avg * 40f, 3f, 6f);
-                    _pipeline.Damping.SpeedDampingCoefficient = targetDamp;
-                    SliderDamping.Value = targetDamp;
-                    LblDamping.Text = targetDamp.ToString("F1");
-                    Step5Status.Text = $"Damping: {targetDamp:F1} — {_step3Idx}/{AutoSampleCount}";
-                }
-                else
-                {
-                    Step5Status.Text = $"Monitoring damping... {_step3Idx}/{AutoSampleCount}";
-                }
-                Step5Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
-                if (_step3Idx >= AutoSampleCount)
-                {
-                    float finalAvg = _step3RunningSum / AutoSampleCount;
-                    // R3E uses a gentler damping curve (factor ×15 instead of ×40, range 0.5-2.0)
-                    // because its SpeedDampingCoefficient directly scales gyroscopic force.
-                    // The 3-6 range was designed for AC EVO and creates 10-20× excessive
-                    // damping at high speed, making the wheel feel dead.
-                    float finalDamp = _pipeline is R3eFfbPipeline
-                        ? Math.Clamp(finalAvg * 15f, 0.5f, 2.0f)
-                        : Math.Clamp(finalAvg * 40f, 3f, 6f);
-                    _pipeline.Damping.SpeedDampingCoefficient = finalDamp;
-                    SliderDamping.Value = finalDamp;
-                    LblDamping.Text = finalDamp.ToString("F1");
-                    _step3Phase = AutoPhase.Manual; EnableStepSliders(3, true);
-                    _advanceStep = _currentStep;
-                    _advanceStepDelay = 90;
-                    Step5Status.Text = $"Damping set to {finalDamp:F1} — tapping Next";
-                    Step5Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                    Speak("Damping and friction tuning complete.");
-                }
-                break;
-        }
-    }
 
-    private void UpdateAutoOutputGain(float speedKmh, float mainForce, bool isClipping)
-    {
-        switch (_step4Phase)
-        {
-            case AutoPhase.Warmup:
-                Step4Status.Text = "Drive hard — app monitors force levels";
-                Step4Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                if (speedKmh >= 30f) { _step4Phase = AutoPhase.Sampling; _step4Idx = 0; _step4RunningMax = 0f; }
-                break;
-            case AutoPhase.Sampling:
-                if (speedKmh > 10f)
-                {
-                    _step4Samples[_step4Idx] = mainForce;
-                    _step4RunningMax = Math.Max(_step4RunningMax, Math.Abs(mainForce));
-                    _step4Idx++;
-                }
-                Step4Status.Text = isClipping
-                    ? $"CLIPPING! Peak: {_step4RunningMax * 100f:F0}% — {_step4Idx}/{AutoSampleCount}"
-                    : $"Peak force: {_step4RunningMax * 100f:F0}% — {_step4Idx}/{AutoSampleCount}";
-                Step4Status.Foreground = isClipping ? new SolidColorBrush(Color.FromRgb(0xFF, 0x17, 0x44)) : new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
-                if (_step4Idx >= AutoSampleCount)
-                {
-                    float maxF = _step4RunningMax;
-                    if (maxF < 0.65f)
-                    {
-                        _pipeline.OutputGain = Math.Min(_pipeline.OutputGain * 1.25f, 2.0f);
-                        SliderOutputGain.Value = _pipeline.OutputGain; LblOutputGain.Text = _pipeline.OutputGain.ToString("F2");
-                        Step4Status.Text = $"Forces low — Output Gain boosted to {_pipeline.OutputGain:F2}";
-                    }
-                    else Step4Status.Text = $"Peak force {maxF * 100f:F0}% — Output Gain kept at {_pipeline.OutputGain:F2}";
-                    Speak("Force level calibrated.");
-                    _step4Phase = AutoPhase.Manual; EnableStepSliders(4, true);
-                    _advanceStep = _currentStep;
-                    _advanceStepDelay = 90; // 1.5s delay so user sees final value
-                    Step4Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                }
-                break;
-        }
-    }
 
-    private void UpdateAutoVibration(float speedKmh, float mainForce, float steerAngle)
-    {
-        switch (_step5Phase)
-        {
-            case AutoPhase.Warmup:
-                Step6Status.Text = speedKmh > 5f ? "Drive to 20+ km/h — app reads vibration" : "Drive forward — app reads vibration at 20+ km/h";
-                Step6Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                if (speedKmh >= 20f) { _step5Phase = AutoPhase.Sampling; _step5Idx = 0; }
-                break;
-            case AutoPhase.Sampling:
-                if (speedKmh > 10f) _step5Samples[_step5Idx++] = Math.Abs(mainForce);
-                Step6Status.Text = $"Monitoring surface feel... {_step5Idx}/{AutoSampleCount}";
-                Step6Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
-                if (_step5Idx >= AutoSampleCount)
-                {
-                    _step5Phase = AutoPhase.Manual; EnableStepSliders(5, true);
-                    _advanceStep = _currentStep;
-                    Step6Status.Text = "Vibration levels sampled — tapping Next"; Step6Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                    Speak("Vibration levels sampled.");
-                }
-                break;
-        }
-    }
 
-    private void OnOutputGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_suppressSliderEvents) return;
-        float val = (float)Math.Round(e.NewValue, 2);
-        _pipeline.OutputGain = val;
-        if (LblOutputGain != null) LblOutputGain.Text = val.ToString("F2");
-    }
-
-    private void OnMasterGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_suppressSliderEvents) return;
-        float val = (float)Math.Round(e.NewValue, 2);
-        _pipeline.MasterGain = val;
-        if (LblMasterGain != null) LblMasterGain.Text = val.ToString("F2");
-    }
 
     private void OnVibMasterGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -1341,27 +1266,11 @@ public partial class SetupWizardOverlay : Window
     }
 
     // ─── Step 5 slider handlers ───
-    private void OnCenterSuppressChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_suppressSliderEvents) return;
-        float val = (float)Math.Round(e.NewValue, 1);
-        _pipeline.CenterSuppressionDegrees = val;
-        if (LblCenterSuppress != null) LblCenterSuppress.Text = val.ToString("F1") + "°";
-        if (_pipeline is not R3eFfbPipeline)
-        {
-            float power = 1.0f + (val / 30f) * 3.0f;
-            _pipeline.LutCurve.SetProgressive(power);
-        }
-    }
 
-    private void OnSlewRateChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_suppressSliderEvents) return;
-        float val = (float)Math.Round(e.NewValue, 2);
-        _pipeline.MaxSlewRate = val;
-        if (LblSlewRate != null) LblSlewRate.Text = val.ToString("F2");
-    }
+
 }
+
+
 
 
 

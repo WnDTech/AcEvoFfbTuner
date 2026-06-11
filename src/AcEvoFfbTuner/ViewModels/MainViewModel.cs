@@ -3876,9 +3876,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public string VoiceEngine => _voiceService.ActiveEngine;
 
-    public bool VoicePackReady => _voiceService.IsCacheReady;
+    public bool VoicePackReady => VoiceService.IsCacheReady;
 
-    public string VoiceCacheStatus => _voiceService.IsCacheReady
+    public string VoiceCacheStatus => VoiceService.IsCacheReady
         ? $"{_voiceService.CachedCount}/{_voiceService.TotalPhrases} phrases cached"
         : "Voice pack not found. Place MP3 files in:\n" + GetVoiceCachePath();
 
