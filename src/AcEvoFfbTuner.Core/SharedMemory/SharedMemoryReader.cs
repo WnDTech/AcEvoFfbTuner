@@ -136,6 +136,9 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
                 physics.Fy[2] = BitConverter.ToSingle(buffer, 632);
                 physics.Fy[3] = BitConverter.ToSingle(buffer, 636);
             }
+            // PitLimiterOn at offset 248 (int, verified from hex dump)
+            if (buffer.Length >= 252)
+                physics.PitLimiterOn = BitConverter.ToInt32(buffer, 248);
             if (buffer.Length >= 796)
             {
                 physics.KerbVibration = BitConverter.ToSingle(buffer, 784);
@@ -240,6 +243,7 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
             sb.AppendLine($"Offset    168: AccG@override = X:{BitConverter.ToSingle(buffer, 168):F3} Y:{BitConverter.ToSingle(buffer, 172):F3} Z:{BitConverter.ToSingle(buffer, 176):F3}");
             sb.AppendLine($"Offset    168: CamberRad    = FL:{BitConverter.ToSingle(buffer, 168):F4} FR:{BitConverter.ToSingle(buffer, 172):F4} RL:{BitConverter.ToSingle(buffer, 176):F4} RR:{BitConverter.ToSingle(buffer, 180):F4}");
             sb.AppendLine($"Offset   308: FinalFf       = {BitConverter.ToSingle(buffer, 308):F6}");
+            sb.AppendLine($"Offset   248: PitLimiterOn  = {BitConverter.ToInt32(buffer, 248)}");
             sb.AppendLine($"Offset   580: P2pActivations= {BitConverter.ToInt32(buffer, 580)}");
             sb.AppendLine($"Offset   584: P2pStatus     = {BitConverter.ToInt32(buffer, 584)}");
             sb.AppendLine($"Offset   588: CurrentMaxRpm = {BitConverter.ToInt32(buffer, 588)}");
@@ -316,6 +320,8 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
                 graphics.FfbStrength = BitConverter.ToSingle(buffer, 96);
                 graphics.CarFfbMultiplier = BitConverter.ToSingle(buffer, 100);
             }
+
+
 
             if (graphics.CarCoordinates == null || graphics.CarCoordinates.Length < 60)
                 graphics.CarCoordinates = new StructVector3[60];

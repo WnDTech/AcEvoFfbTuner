@@ -184,10 +184,8 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
 
         try
         {
-            int acSize = Marshal.SizeOf<SPageFileGraphicAC>();
-            int evoSize = Marshal.SizeOf<SPageFileGraphicEvo>();
-            int readSize = Math.Min(Math.Max(acSize, evoSize), (int)_graphicsView.Capacity);
-            byte[] buffer = new byte[readSize];
+            int size = Marshal.SizeOf<SPageFileGraphicAC>();
+            byte[] buffer = new byte[Math.Min(size, (int)_graphicsView.Capacity)];
             _graphicsView.ReadArray(0, buffer, 0, buffer.Length);
 
             var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
@@ -199,16 +197,6 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
                 _lastGraphicsPacketId = ac.PacketId;
 
                 graphics = MapGraphics(ac);
-
-                // Try to read IsPitlimiterOn from the EVO extended data in the buffer.
-                // AC EVO writes its own format; the first part is AC1-compatible.
-                // If the buffer is large enough, read the electronics sub-struct.
-                int elecOff = (int)Marshal.OffsetOf<SPageFileGraphicEvo>("Electronics");
-                int pitBitOff = (int)Marshal.OffsetOf<SmevoElectronics>("IsPitlimiterOn");
-                int totalOff = elecOff + pitBitOff;
-                if (totalOff + 1 <= buffer.Length)
-                    graphics.Electronics.IsPitlimiterOn = buffer[totalOff] != 0;
-
                 return true;
             }
             finally { handle.Free(); }
@@ -389,7 +377,7 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
             var sb = new System.Text.StringBuilder();
             sb.AppendLine($"=== AC1 Diag PacketId={p.PacketId} BufLen={buf.Length} ===");
             sb.AppendLine($"  SpeedKmh={p.SpeedKmh:F2} Steer={p.SteerAngle:F6} FinalFf={p.FinalFf:F6}");
-            sb.AppendLine($"  Gas={p.Gas:F3} Brake={p.Brake:F3} Gear={p.Gear} Rpm={p.Rpms}");
+            sb.AppendLine($"  Gas={p.Gas:F3} Brake={p.Brake:F3} Gear={p.Gear} Rpm={p.Rpms} PitLimiterOn={p.PitLimiterOn}");
             sb.AppendLine($"  SlipRatio=[{p.SlipRatio[0]:F4} {p.SlipRatio[1]:F4} {p.SlipRatio[2]:F4} {p.SlipRatio[3]:F4}]");
             sb.AppendLine($"  SlipAngle=[{p.SlipAngle[0]:F4} {p.SlipAngle[1]:F4} {p.SlipAngle[2]:F4} {p.SlipAngle[3]:F4}]");
             sb.AppendLine($"  Mz=[{p.Mz[0]:F3} {p.Mz[1]:F3} {p.Mz[2]:F3} {p.Mz[3]:F3}]");
@@ -444,7 +432,6 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
             TyreCoreTemperature = new[] { BitConverter.ToSingle(b, 152), BitConverter.ToSingle(b, 156), BitConverter.ToSingle(b, 160), BitConverter.ToSingle(b, 164) },
             CamberRad = new[] { BitConverter.ToSingle(b, 168), BitConverter.ToSingle(b, 172), BitConverter.ToSingle(b, 176), BitConverter.ToSingle(b, 180) },
             SuspensionTravel = new[] { BitConverter.ToSingle(b, 184), BitConverter.ToSingle(b, 188), BitConverter.ToSingle(b, 192), BitConverter.ToSingle(b, 196) },
-            NumberOfTyresOut = BitConverter.ToInt32(b, 216),
             PitLimiterOn = BitConverter.ToInt32(b, 220),
             Abs = BitConverter.ToSingle(b, 224),
             AutoShifterOn = BitConverter.ToInt32(b, 236),

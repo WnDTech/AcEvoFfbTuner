@@ -88,6 +88,7 @@ public sealed class TelemetryLoop : IDisposable
     private float _wheelCenterOffset;
     private bool _wheelCalibrated;
     private float _latestPhysicalWheelNorm;
+    private int _pitLimiterLatch;
 
 
     public float LatestPhysicalWheelNormalized => _latestPhysicalWheelNorm;
@@ -521,7 +522,16 @@ public sealed class TelemetryLoop : IDisposable
 
                     if (_deviceManager.IsDeviceAcquired && !_suppressOutput)
                     {
-                        _deviceManager.UpdateWheelLeds(raw.RpmPercent, raw.IsChangeUpRpm, raw.IsRpmLimiterOn, raw.Flag, raw.AbsVibrations > 0.001f, raw.IsPitLimiterOn);
+                        // Pit limiter persistence latch:
+                        // PitLimiterOn only goes to 1 when the car exceeds pit speed (actively limiting).
+                        // Latch it so the LEDs keep flashing for ~5s after the last active-limit event.
+                        bool pitActive = raw.IsPitLimiterOn || _pitLimiterLatch > 0;
+                        if (raw.IsPitLimiterOn)
+                            _pitLimiterLatch = 300;
+                        else if (_pitLimiterLatch > 0)
+                            _pitLimiterLatch--;
+
+                        _deviceManager.UpdateWheelLeds(raw.RpmPercent, raw.IsChangeUpRpm, raw.IsRpmLimiterOn, raw.Flag, raw.AbsVibrations > 0.001f, pitActive);
 
                         if (_deviceManager.IsHf8Connected)
                         {
@@ -984,7 +994,7 @@ public sealed class TelemetryLoop : IDisposable
             Gear = physics.Gear,
             RpmPercent = graphics.RpmPercent,
             IsRpmLimiterOn = graphics.IsRpmLimiterOn,
-            IsPitLimiterOn = physics.PitLimiterOn != 0 || graphics.Electronics.IsPitlimiterOn,
+            IsPitLimiterOn = physics.PitLimiterOn != 0,
             IsChangeUpRpm = graphics.IsChangeUpRpm,
             Flag = (int)graphics.Flag,
             CarX = GetCarX(graphics, physics),

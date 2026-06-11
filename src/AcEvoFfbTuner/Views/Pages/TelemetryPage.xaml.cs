@@ -26,7 +26,8 @@ public partial class TelemetryPage : UserControl
         "NormalZFL","NormalZFR","NormalZRL","NormalZRR",
         "CpYFL","CpYFR",
         "TireGripFL","TireGripFR","TireGripRL","TireGripRR",
-        "KerbVib","RoadVib","Wetness"
+        "KerbVib","RoadVib","Wetness",
+        "PitLmt"
     ];
 
     private readonly float[] _pOut = new float[PMax];
@@ -165,13 +166,14 @@ public partial class TelemetryPage : UserControl
         }
 
         string csvBase = $"{DateTime.Now:HH:mm:ss.fff},{speed:F1},{steerAngle:F4},{forceOut:F6},{rawFF:F6},{compress:F6},{lut:F6},{postDampCore:F6},{postGainCore:F6},{dynEff:F6},{mzFront:F6},{fxFront:F6},{fyFront:F6},{clipping},{gasInput:F3},{brakeInput:F3}";
+        int pit = rawPhysics?.IsPitLimiterOn == true ? 1 : 0;
         if (rawPhysics != null)
         {
-            _pCsv.Add($"{csvBase},{rawPhysics.SuspensionTravel[0]:F6},{rawPhysics.SuspensionTravel[1]:F6},{rawPhysics.SuspensionTravel[2]:F6},{rawPhysics.SuspensionTravel[3]:F6},{rawPhysics.WheelLoad[0]:F2},{rawPhysics.WheelLoad[1]:F2},{rawPhysics.WheelLoad[2]:F2},{rawPhysics.WheelLoad[3]:F2},{rawPhysics.SlipAngle[0]:F6},{rawPhysics.SlipAngle[1]:F6},{rawPhysics.SlipAngle[2]:F6},{rawPhysics.SlipAngle[3]:F6},{rawPhysics.TyreContactNormalX[0]:F6},{rawPhysics.TyreContactNormalX[1]:F6},{rawPhysics.TyreContactNormalX[2]:F6},{rawPhysics.TyreContactNormalX[3]:F6},{rawPhysics.TyreContactNormalZ[0]:F6},{rawPhysics.TyreContactNormalZ[1]:F6},{rawPhysics.TyreContactNormalZ[2]:F6},{rawPhysics.TyreContactNormalZ[3]:F6},{rawPhysics.TyreContactPointY[0]:F6},{rawPhysics.TyreContactPointY[1]:F6},{rawPhysics.TyreGrip[0]:F3},{rawPhysics.TyreGrip[1]:F3},{rawPhysics.TyreGrip[2]:F3},{rawPhysics.TyreGrip[3]:F3},{rawPhysics.KerbVibration:F6},{rawPhysics.RoadVibrations:F6},{wetness:F4}");
+            _pCsv.Add($"{csvBase},{rawPhysics.SuspensionTravel[0]:F6},{rawPhysics.SuspensionTravel[1]:F6},{rawPhysics.SuspensionTravel[2]:F6},{rawPhysics.SuspensionTravel[3]:F6},{rawPhysics.WheelLoad[0]:F2},{rawPhysics.WheelLoad[1]:F2},{rawPhysics.WheelLoad[2]:F2},{rawPhysics.WheelLoad[3]:F2},{rawPhysics.SlipAngle[0]:F6},{rawPhysics.SlipAngle[1]:F6},{rawPhysics.SlipAngle[2]:F6},{rawPhysics.SlipAngle[3]:F6},{rawPhysics.TyreContactNormalX[0]:F6},{rawPhysics.TyreContactNormalX[1]:F6},{rawPhysics.TyreContactNormalX[2]:F6},{rawPhysics.TyreContactNormalX[3]:F6},{rawPhysics.TyreContactNormalZ[0]:F6},{rawPhysics.TyreContactNormalZ[1]:F6},{rawPhysics.TyreContactNormalZ[2]:F6},{rawPhysics.TyreContactNormalZ[3]:F6},{rawPhysics.TyreContactPointY[0]:F6},{rawPhysics.TyreContactPointY[1]:F6},{rawPhysics.TyreGrip[0]:F3},{rawPhysics.TyreGrip[1]:F3},{rawPhysics.TyreGrip[2]:F3},{rawPhysics.TyreGrip[3]:F3},{rawPhysics.KerbVibration:F6},{rawPhysics.RoadVibrations:F6},{wetness:F4},{pit}");
         }
         else
         {
-            _pCsv.Add($"{csvBase},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,{wetness:F4}");
+            _pCsv.Add($"{csvBase},0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,{wetness:F4},{pit}");
         }
 
         if (_pCsv.Count > CsvMaxRows)
