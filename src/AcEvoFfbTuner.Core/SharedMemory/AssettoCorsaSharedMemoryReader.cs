@@ -184,8 +184,10 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
 
         try
         {
-            int size = Marshal.SizeOf<SPageFileGraphicAC>();
-            byte[] buffer = new byte[Math.Min(size, (int)_graphicsView.Capacity)];
+            int acSize = Marshal.SizeOf<SPageFileGraphicAC>();
+            int evoSize = Marshal.SizeOf<SPageFileGraphicEvo>();
+            int readSize = Math.Min(Math.Max(acSize, evoSize), (int)_graphicsView.Capacity);
+            byte[] buffer = new byte[readSize];
             _graphicsView.ReadArray(0, buffer, 0, buffer.Length);
 
             var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
@@ -197,6 +199,16 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
                 _lastGraphicsPacketId = ac.PacketId;
 
                 graphics = MapGraphics(ac);
+
+                // Try to read IsPitlimiterOn from the EVO extended data in the buffer.
+                // AC EVO writes its own format; the first part is AC1-compatible.
+                // If the buffer is large enough, read the electronics sub-struct.
+                int elecOff = (int)Marshal.OffsetOf<SPageFileGraphicEvo>("Electronics");
+                int pitBitOff = (int)Marshal.OffsetOf<SmevoElectronics>("IsPitlimiterOn");
+                int totalOff = elecOff + pitBitOff;
+                if (totalOff + 1 <= buffer.Length)
+                    graphics.Electronics.IsPitlimiterOn = buffer[totalOff] != 0;
+
                 return true;
             }
             finally { handle.Free(); }

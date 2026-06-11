@@ -984,7 +984,7 @@ public sealed class TelemetryLoop : IDisposable
             Gear = physics.Gear,
             RpmPercent = graphics.RpmPercent,
             IsRpmLimiterOn = graphics.IsRpmLimiterOn,
-            IsPitLimiterOn = physics.PitLimiterOn != 0,
+            IsPitLimiterOn = physics.PitLimiterOn != 0 || graphics.Electronics.IsPitlimiterOn,
             IsChangeUpRpm = graphics.IsChangeUpRpm,
             Flag = (int)graphics.Flag,
             CarX = GetCarX(graphics, physics),
