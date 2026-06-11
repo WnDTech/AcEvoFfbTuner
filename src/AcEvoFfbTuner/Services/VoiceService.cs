@@ -24,45 +24,32 @@ public sealed class VoiceService : IDisposable
 
     private static readonly Dictionary<string, string> PhraseFiles = new()
     {
-        { "wheelbase connected", "wheelbase-connected.wav" },
-        { "wheelbase disconnected", "wheelbase-disconnected.wav" },
-        { "game connected", "game-connected.wav" },
-        { "game disconnected", "game-disconnected.wav" },
-        { "snapshot saved", "snapshot-saved.wav" },
-        { "telemetry started", "telemetry-started.wav" },
-        { "telemetry stopped", "telemetry-stopped.wav" },
-        { "natural voices installed", "natural-voices-installed.wav" },
+        // Event announcements
+        { "wheelbase connected", "wheelbase-connected.mp3" },
+        { "wheelbase disconnected", "wheelbase-disconnected.mp3" },
+        { "game connected", "game-connected.mp3" },
+        { "game disconnected", "game-disconnected.mp3" },
+        { "snapshot saved", "snapshot-saved.mp3" },
+        { "telemetry started", "telemetry-started.mp3" },
+        { "telemetry stopped", "telemetry-stopped.mp3" },
+        { "natural voices installed", "natural-voices-installed.mp3" },
 
-        { "setup wizard loaded. drive safely and follow the on screen instructions.", "setup-wizard-loaded.wav" },
-        { "profile saved. setup complete.", "profile-saved.wav" },
-        { "phase 1 of 3. drive straight and hold the wheel steady.", "phase-1-of-3.wav" },
-        { "phase 2 of 3. drive through turns normally.", "phase-2-of-3.wav" },
-        { "phase 3 of 3. fine tuning center response.", "phase-3-of-3.wav" },
-        { "centering auto tune complete.", "centering-autotune-complete.wav" },
-        { "core tyre forces tuned.", "core-tyre-forces-tuned.wav" },
-        { "damping and friction tuning complete.", "damping-tuning-complete.wav" },
-        { "force level calibrated.", "force-calibrated.wav" },
-        { "vibration levels sampled.", "vibration-sampled.wav" },
+        // Wizard step announcements (dynamic $"Step {n}. {title}")
+        { "step 1. welcome & safety.", "step-1-welcome-safety.mp3" },
+        { "step 2. wheel centering.", "step-2-wheel-centering.mp3" },
+        { "step 3. core tyre forces.", "step-3-core-tyre-forces.mp3" },
+        { "step 4. master output gain.", "step-4-master-output-gain.mp3" },
+        { "step 5. damping & friction.", "step-5-damping-friction.mp3" },
+        { "step 6. curb & vibration.", "step-6-curb-vibration.mp3" },
+        { "step 7. review & confirm.", "step-7-review-confirm.mp3" },
+        { "step 8. save profile.", "step-8-save-profile.mp3" },
 
-        { "step 1. welcome & safety.", "step-1-welcome-safety.wav" },
-        { "step 2. wheel centering.", "step-2-wheel-centering.wav" },
-        { "step 3. core tyre forces.", "step-3-core-tyre-forces.wav" },
-        { "step 4. master output gain.", "step-4-master-output-gain.wav" },
-        { "step 5. damping & friction.", "step-5-damping-friction.wav" },
-        { "step 6. curb & vibration.", "step-6-curb-vibration.wav" },
-        { "step 7. review & confirm.", "step-7-review-confirm.wav" },
-        { "step 8. save profile.", "step-8-save-profile.wav" },
-
-        // Setup wizard voice-over prompts
-        { "welcome. make sure your wheel is connected and you are in the car.", "wiz-welcome.wav" },
-        { "wheel centering. drive straight at 15 plus kilometers per hour, then gently steer left or right to check the centering direction.", "wiz-wheel-centering.wav" },
-        { "force strength calibration. drive through several corners at racing speed so i can measure your peak forces.", "wiz-force-strength.wav" },
-        { "core tyre forces. drive through a few turns so i can sample your force levels.", "wiz-core-tyre.wav" },
-        { "master output gain. this step is automatic.", "wiz-master-gain.wav" },
-        { "damping and friction. this step is automatic.", "wiz-damping.wav" },
-        { "curb and vibration. this step is automatic.", "wiz-vibration.wav" },
-        { "review and confirm. drive a corner and adjust the sliders to your preference.", "wiz-review.wav" },
-        { "save profile. give your profile a name and click save and finish.", "wiz-save-profile.wav" },
+        // Wizard voice prompts
+        { "welcome. when you are ready, drive onto the track and click next.", "wiz-welcome.mp3" },
+        { "drive through a few corners. i will check your centering direction and set your force strength.", "wiz-centering-detect.mp3" },
+        { "calibration complete. choose how heavy or light you want this car to feel, then click next.", "wiz-force-strength-done.mp3" },
+        { "save profile. give your profile a name and click save and finish.", "wiz-save-profile.mp3" },
+        { "profile saved. setup complete.", "profile-saved.mp3" },
     };
 
     private static readonly string InstallPackDir = Path.Combine(
