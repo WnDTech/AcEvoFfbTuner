@@ -23,21 +23,18 @@ var phrases = new Dictionary<string, string>
     { "natural voices installed", "natural-voices-installed.mp3" },
 
     // Wizard step announcements
-    { "step 1. welcome & safety.", "step-1-welcome-safety.mp3" },
-    { "step 2. wheel centering.", "step-2-wheel-centering.mp3" },
-    { "step 3. core tyre forces.", "step-3-core-tyre-forces.mp3" },
-    { "step 4. master output gain.", "step-4-master-output-gain.mp3" },
-    { "step 5. damping & friction.", "step-5-damping-friction.mp3" },
-    { "step 6. curb & vibration.", "step-6-curb-vibration.mp3" },
-    { "step 7. review & confirm.", "step-7-review-confirm.mp3" },
-    { "step 8. save profile.", "step-8-save-profile.mp3" },
+        { "step 1. welcome & safety.", "step-1-welcome-safety.mp3" },
+        { "step 2. drive & calibrate.", "step-2-drive-calibrate.mp3" },
+        { "step 3. intensity preference.", "step-3-intensity-preference.mp3" },
+        { "step 4. save profile.", "step-4-save-profile.mp3" },
 
     // Wizard voice prompts
     { "welcome. when you are ready, drive onto the track and click next.", "wiz-welcome.mp3" },
     { "drive through a few corners. i will check your centering direction and set your force strength.", "wiz-centering-detect.mp3" },
     { "calibration complete. choose how heavy or light you want this car to feel, then click next.", "wiz-force-strength-done.mp3" },
     { "save profile. give your profile a name and click save and finish.", "wiz-save-profile.mp3" },
-    { "profile saved. setup complete.", "profile-saved.mp3" },
+        { "profile loaded", "profile-loaded.mp3" },
+        { "profile saved. setup complete.", "profile-saved.mp3" },
 };
 
 Console.WriteLine($"Generating voice pack in:\n  {appDataDir}\n  {projectDir}\n");

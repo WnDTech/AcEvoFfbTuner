@@ -59,6 +59,7 @@ public partial class SetupWizardOverlay : Window
     private int _cornerTotalFrames;       // total frames in CornerDetect (timeout)
     private float _cornerRatioSum;        // sum of |force|/|steer| ratios
     private int _cornerFightFrames;       // frames where force opposes steer direction
+    private float _initialMasterGainSnapshot = -1f;
     private int _cornerInvertedRunawayFrames; // frames where force pulls away from center into lock
     private bool _wasTurning;
     private bool _lutApplied;
@@ -411,20 +412,22 @@ public partial class SetupWizardOverlay : Window
         if (stepIndex == 2 && _pipeline is R3eFfbPipeline)
             title = "Force Strength Calibration";
         StepTitleText.Text = $"Step {stepIndex + 1}: {title}";
-        // Voice prompts for each step
+        // Step number announcement first, then instructions
+        Speak($"Step {stepIndex + 1}. {title}.");
+        // Voice instructions for each step
         switch (stepIndex)
         {
             case 0:
-                Speak("Welcome. When you are ready, drive onto the track and click next.");
+                Speak("When you are ready, drive onto the track and click next.");
                 break;
             case 1:
                 Speak("Drive through a few corners. I will check your centering direction and set your force strength.");
                 break;
             case 2:
-                Speak("Calibration complete. Choose how heavy or light you want this car to feel, then click next.");
+                Speak("Choose how heavy or light you want this car to feel, then click next.");
                 break;
             case 3:
-                Speak("Save Profile. Give your profile a name and click save and finish.");
+                Speak("Give your profile a name and click save and finish.");
                 break;
         }
         StepProgressText.Text = $"{stepIndex + 1} / {MaxSteps}";
@@ -465,13 +468,6 @@ public partial class SetupWizardOverlay : Window
         }
 
         UpdateSafetyBannerVisibility();
-
-        // Voice notification for the new step (skip Step 0 — already announced on load)
-        if (stepIndex > 0)
-        {
-            string stepName = _stepTitles[stepIndex];
-            Speak($"Step {stepIndex + 1}. {stepName}.");
-        }
     }
 
     private void PopulateReviewValues()
@@ -990,150 +986,140 @@ public partial class SetupWizardOverlay : Window
 
     private void UpdateAutoTyreForces(float speedKmh, float mainForce, float steerAngle, float mzFront)
     {
-        switch (_step2Phase)
+        // Take a one-time snapshot of the user's starting MasterGain when sampling begins
+        if (_initialMasterGainSnapshot < 0f)
         {
-            case AutoPhase.Warmup:
-                Step2Status.Text = speedKmh > 5f ? "Drive to 20+ km/h — app reads force levels" : "Drive forward — app reads forces at 20+ km/h";
-                Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                if (speedKmh >= 20f) { _step2Phase = AutoPhase.Sampling; _step2Idx = 0; _step2RunningSum = 0f; _step2MzSum = 0f; _step2PeakForce = 0f; }
-                break;
-            case AutoPhase.Sampling:
-                if (_pipeline is R3eFfbPipeline)
+            _initialMasterGainSnapshot = _pipeline.MasterGain;
+        }
+
+        const float minSpeedForSampling = 15f;
+        int maxSamples = (_pipeline is R3eFfbPipeline) ? 600 : 1200;
+
+        if (_step2Phase == AutoPhase.Warmup)
+        {
+            Step2Status.Text = speedKmh > 5f ? "Accelerate to 20+ km/h to start sampling..." : "Drive forward to start calibration...";
+            Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+            Step3Status.Text = Step2Status.Text;
+            Step3Status.Foreground = Step2Status.Foreground;
+
+            if (speedKmh >= 20f)
+            {
+                _step2Phase = AutoPhase.Sampling;
+                _step2Idx = 0;
+                _step2PeakForce = 0f;
+                _cornerFightFrames = 0;
+                _cornerTurnFrames = 0;
+                _initialMasterGainSnapshot = _pipeline.MasterGain;
+            }
+            return;
+        }
+
+        if (_step2Phase == AutoPhase.Sampling)
+        {
+            if (speedKmh > minSpeedForSampling)
+            {
+                float absF = Math.Abs(mainForce);
+                _step2Idx++;
+
+                // 1. FORCE CALIBRATION: Track absolute peak physics force hit during the run
+                if (absF > _step2PeakForce)
                 {
-                    // ── R3E Anti-Clipping Routine ──
-                    // RaceRoom's SteeringForce is the final physics output.
-                    // No channel balancing needed. Track peak force and scale
-                    // MasterGain so the hardest corner uses ~92% of wheelbase range.
-                    // Use 600 samples (half the standard) since R3E just needs peak tracking.
-                    int r3eMaxSamples = 600;
-                    if (speedKmh > 10f)
+                    _step2PeakForce = absF;
+                }
+
+                // 2. POLARITY DETECTION: Track if force pushes AWAY from center
+                // If user turns right (steer > 0) and force pushes right (mainForce > 0), it's a runaway force.
+                // Normalize convention based on ForceInvertEnabled state
+                float behaviorCheck = _viewModel?.ForceInvertEnabled == true ? mainForce : -mainForce;
+                if (Math.Abs(steerAngle) > 0.05f)
+                {
+                    _cornerTurnFrames++;
+                    if (behaviorCheck * steerAngle > 0.001f) // Same sign = pulling away from center into lock
                     {
-                        float absF = Math.Abs(mainForce);
-                        _step2Samples[_step2Idx] = Math.Max(absF, 0.001f);
-                        _step2RunningSum += _step2Samples[_step2Idx];
-                        if (absF > _step2PeakForce)
-                        {
-                            _step2PeakForce = absF;
-                            // Apply MasterGain live as new peak is detected so the user
-                            // feels the calibration happening in real-time.
-                            if (_step2PeakForce > 0.01f && _step2PeakForce < 0.92f)
-                            {
-                                // Use current MasterGain as reference so the computed gain
-                                // properly scales from the existing baseline, not a fixed 1.0.
-                                float liveGain = Math.Min(_pipeline.MasterGain * (0.92f / _step2PeakForce), 5.0f);
-                                _pipeline.MasterGain = liveGain;
-                            }
-                        }
-                        _step2Idx++;
-                        // Show live peak as percentage
-                        float pct = _step2PeakForce * 100f;
-                        Step2Status.Text = $"Peak force: {pct:F0}% - {_step2Idx}/{r3eMaxSamples}  |  MasterGain: {_pipeline.MasterGain:F2}";
-                        Step3Status.Text = $"Peak force: {pct:F0}% - {_step2Idx}/{r3eMaxSamples}";
-                        Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+                        _cornerFightFrames++;
                     }
-                    if (_step2Idx >= r3eMaxSamples)
-                    {
-                        float peak = _step2PeakForce;
-                        float targetUtilization = 0.92f;
-                        float currentMasterGain = _pipeline.MasterGain;
-                        if (peak > 0.01f && peak < targetUtilization)
-                        {
-                            float newMasterGain = Math.Min(currentMasterGain * (targetUtilization / peak), 5.0f);
-                            _pipeline.MasterGain = newMasterGain;
-                            Step2Status.Text = $"Peak {peak * 100f:F0}%  -> MasterGain boosted to {newMasterGain:F2} (targeting 92%)";
-                            Log($"R3E anti-clip: peak={peak*100f:F1}% OG changed {currentMasterGain:F2} -> {newMasterGain:F2}");
-                        }
-                        else if (peak >= targetUtilization)
-                        {
-                            Step2Status.Text = $"Peak {peak * 100f:F0}% - already utilising wheelbase well - MasterGain kept at {currentMasterGain:F2}";
-                            Log($"R3E anti-clip: peak={peak*100f:F1}% >=92% - MasterGain unchanged at {currentMasterGain:F2}");
-                        }
-                        else
-                        {
-                            Step2Status.Text = $"Peak {peak * 100f:F0}% - very low force at wheel";
-                            Log($"R3E anti-clip: peak={peak*100f:F1}% <1% - very low force, MasterGain unchanged");
-                        }
-                        _step2Phase = AutoPhase.Manual;
-                        _calibrationComplete = true;
-                        _calibratedMasterGain = _pipeline.MasterGain;
-                        Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                        // Show polarity question
-                        if (PolarityQuestionPanel != null)
-                            PolarityQuestionPanel.Visibility = Visibility.Visible;
-                        Step3Status.Text = "Calibration done! Did the wheel pull away from center when turning?";
-                        Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                    }
+                }
+
+                // Live UI Updates
+                float progressPct = ((float)_step2Idx / maxSamples) * 100f;
+                Step2Status.Text = $"Analyzing: {progressPct:F0}% | Peak Force: {(_step2PeakForce * 100f):F0}%";
+                Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+                Step3Status.Text = $"Analyzing: {progressPct:F0}% | Peak Force: {(_step2PeakForce * 100f):F0}%";
+                Step3Status.Foreground = Step2Status.Foreground;
+            }
+
+            // Sampling Complete -> Run the Math Output
+            if (_step2Idx >= maxSamples)
+            {
+                _step2Phase = AutoPhase.Manual;
+                _calibrationComplete = true;
+
+                // --- FORCE ADJUSTMENT MATH ---
+                // Always scale relative to the static initial snapshot to prevent exponential loops
+                float targetUtilization = 0.92f;
+                if (_step2PeakForce > 0.01f)
+                {
+                    float calculatedMG = _initialMasterGainSnapshot * (targetUtilization / _step2PeakForce);
+                    _calibratedMasterGain = Math.Clamp(calculatedMG, 0.2f, 5.0f);
+                    _pipeline.MasterGain = _calibratedMasterGain;
+                    Log($"Strength cal: peak={_step2PeakForce*100f:F1}% MG={_initialMasterGainSnapshot:F2}->{_calibratedMasterGain:F2}");
                 }
                 else
                 {
-                    // ── Standard (AC EVO / ACC) Mz channel balancing ──
-                    if (speedKmh > 10f)
-                    {
-                        _step2Samples[_step2Idx] = Math.Max(Math.Abs(mainForce), 0.001f);
-                        _step2RunningSum += _step2Samples[_step2Idx];
-                        _step2MzSum += Math.Abs(mzFront);
-                        _step2Idx++;
-                    }
-                    float runAvg = _step2Idx > 0 ? _step2RunningSum / _step2Idx : 0f;
-                    // Live Mz magnitude: adjust from raw Mz channel (before LUT/damping/gain).
-                    float avgMzChan = _step2Idx > 0 ? _step2MzSum / _step2Idx : 0f;
-                    if (_step2Idx > 100 && avgMzChan > 0.02f)
-                    {
-                        float absTarget = Math.Clamp(
-                            Math.Abs(_pipeline.ChannelMixer.MzFrontGain) * (0.4f / avgMzChan), 0.1f, 6.0f);
-                        float sign = MathF.Sign(_pipeline.ChannelMixer.MzFrontGain);
-                        if (MathF.Abs(sign) < 0.001f) sign = 1f;
-                        float targetMz = absTarget * sign;
-                        _pipeline.ChannelMixer.MzFrontGain = targetMz;
-                        SliderMzGain.Value = targetMz;
-                        LblMzGain.Text = targetMz.ToString("F2");
-                    }
-                    Step2Status.Text = $"Calibrating force strength... {_step2Idx}/{AutoSampleCount}";
-                    Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
-                    if (_step2Idx >= AutoSampleCount)
-                    {
-                        // MzFrontGain magnitude is NOT auto-adjusted for AC EVO/ACC.
-                        // The 0.4/avgMzChan formula targets 40% of average Mz channel level,
-                        // but the average is dominated by straight-line driving (Mz ~ 0),
-                        // producing absurd values (e.g. -5.95) or wildly inconsistent results.
-                        // Polarity (sign) was already corrected by Step 2's CornerDetect.
-                        // Safe-range clamp: if MzFrontGain is outside reasonable bounds
-                        // (e.g. -5.95 from a previous corrupted session), reset to 0.5.
-                        // Preserve the mathematical sign -- if user had -5.95, keep it negative
-                        float safeMzStart = _pipeline.ChannelMixer.MzFrontGain;
-                        if (Math.Abs(safeMzStart) < 0.01f || Math.Abs(safeMzStart) > 2.0f)
-                        {
-                            float sign = MathF.Sign(safeMzStart);
-                            if (MathF.Abs(sign) < 0.001f) sign = 1f;
-                            float corrected = 0.5f * sign;
-                            _pipeline.ChannelMixer.MzFrontGain = corrected;
-                            SliderMzGain.Value = corrected;
-                            LblMzGain.Text = corrected.ToString("F2");
-                            Step2Status.Text = $"MzG reset to {corrected:F2} (was {safeMzStart:F2}) -- preserving sign";
-                        }
-                        else
-                        {
-                            Step2Status.Text = $"MzG stays at {safeMzStart:F2} — within safe range";
-                        }
-                        _step2Phase = AutoPhase.Manual;
-                        _calibrationComplete = true;
-                        _calibratedMasterGain = _pipeline.MasterGain;
-                        Step2Status.Text = "Calibration complete - did the centering feel right?";
-                        Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                        // Show polarity question
-                        if (PolarityQuestionPanel != null)
-                            PolarityQuestionPanel.Visibility = Visibility.Visible;
-                        Step3Status.Text = "Calibration done! Did the wheel pull away from center when turning?";
-                        Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                    }
+                    _calibratedMasterGain = _initialMasterGainSnapshot;
                 }
-                break;
+
+                // Safe-range clamp for MzFrontGain (preserve sign)
+                float safeMzStart = _pipeline.ChannelMixer.MzFrontGain;
+                if (Math.Abs(safeMzStart) < 0.01f || Math.Abs(safeMzStart) > 2.0f)
+                {
+                    float sign = MathF.Sign(safeMzStart);
+                    if (MathF.Abs(sign) < 0.001f) sign = 1f;
+                    float corrected = 0.5f * sign;
+                    _pipeline.ChannelMixer.MzFrontGain = corrected;
+                    SliderMzGain.Value = corrected;
+                    LblMzGain.Text = corrected.ToString("F2");
+                }
+
+                // --- AUTOMATIC WHEEL CENTERING POLARITY ---
+                float runawayRatio = _cornerTurnFrames > 0 ? (float)_cornerFightFrames / _cornerTurnFrames : 0f;
+
+                if (runawayRatio > 0.55f) // Definite inverted behavior detected
+                {
+                    Log($"Auto-detected INVERTED polarity (Runaway: {runawayRatio * 100f:F0}%). Applying centering correction.");
+
+                    // Automatically invert the target for the gradual correction shift
+                    float currentMz = _pipeline.ChannelMixer.MzFrontGain;
+                    _polarityFlipTarget = -currentMz;
+                    _polarityFlipFrames = 30;
+                    _polarityFlipStep = (_polarityFlipTarget - currentMz) / _polarityFlipFrames;
+
+                    Step2Status.Text = "Inverted forces detected! Auto-correcting centering direction...";
+                    Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x17, 0x44));
+                    Step3Status.Text = Step2Status.Text;
+                    Step3Status.Foreground = Step2Status.Foreground;
+
+                    if (PolarityQuestionPanel != null) PolarityQuestionPanel.Visibility = Visibility.Collapsed;
+                    _polarityDetermined = true;
+                    _advanceStep = _currentStep;
+                    _advanceStepDelay = 35;
+                }
+                else
+                {
+                    Log($"Auto-detected CORRECT polarity (Runaway: {runawayRatio * 100f:F0}%). Wheel centers properly.");
+                    Step2Status.Text = $"Calibration complete! Force aligned (Peak: {(_step2PeakForce * 100f):F0}%) — advancing to intensity tune";
+                    Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+                    Step3Status.Text = $"Calibration complete! Peak force: {(_step2PeakForce * 100f):F0}%";
+                    Step3Status.Foreground = Step2Status.Foreground;
+
+                    if (PolarityQuestionPanel != null) PolarityQuestionPanel.Visibility = Visibility.Collapsed;
+                    _polarityDetermined = true;
+                    _advanceStep = _currentStep;
+                    _advanceStepDelay = 30;
+                }
+            }
         }
     }
-
-
-
-
 
     private void OnVibMasterGainChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {

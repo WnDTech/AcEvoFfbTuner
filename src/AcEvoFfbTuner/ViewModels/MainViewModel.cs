@@ -1325,7 +1325,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 LoadProfileValues(match);
                 _profileManager.SetActiveProfile(match);
                 StatusText = $"Auto-loaded profile '{match.Name}' for {carModel}";
-                _voiceService.Speak("Loaded profile for {0}", carModel);
+                _voiceService.Speak("Profile loaded");
             }
         });
         _telemetryLoop.TrackChanged += newTrackName => Application.Current?.Dispatcher.Invoke(() =>
