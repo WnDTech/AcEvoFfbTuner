@@ -50,6 +50,39 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.23.0",
+            Date = new DateTime(2026, 6, 11),
+            Title = "Voice Wizard, Pit Limiter LED, Braking Pull Fix & Stability",
+            Features =
+            [
+                "Voice announcements with pre-cached Google TTS voice pack for setup wizard guidance and audio cues",
+                "Refactored setup wizard to 4 steps with user-guided force polarity detection and intensity preference",
+                "Pit speed limiter LED flash with alternating outer LEDs and persistence latch",
+                "Snapshot PitLmt column for diagnosing pit limiter activation",
+                "FyInverted UI toggle to correct lateral force direction per wheel",
+                "Struct verifier tool for diagnosing shared memory struct alignment issues"
+            ],
+            Improvements =
+            [
+                "Moved update banner to top of home page for better visibility",
+                "Consolidated UpdateAutoTyreForces: fixed exponential MasterGain loop and auto polarity detection"
+            ],
+            Fixes =
+            [
+                "Fixed braking pull and Fx snap-back: Fy blend floor + adaptive Fx EMA during braking vs cruising",
+                "Fixed EVO shared memory reader: restored per-wheel Mz/Fx/Fy data",
+                "Fixed Mz centering deadzone reduction (1.1°) and removed harmful Fx/Fy zero-out on reverted path",
+                "Fixed Mz sanitization range for consistent self-aligning torque output",
+                "Fixed R3E centering direction regression: isolated MzSignCorrection from R3E pipeline",
+                "Normalized R3E damage values: handle 0-100 percentage format in RaceInfoProcessor",
+                "Fixed snapshot HTML player: parseTime HH:mm:ss, accTime animation, global chart scale, removed extra brace",
+                "Fixed voice pack: .wav->.mp3 extension, removed obsolete phrases, added new wizard prompts",
+                "Fixed pit limiter LED: read IsPitlimiterOn from EVO electronics struct",
+                "Fixed update banner button readability"
+            ]
+        },
+        new ChangeLogEntry
+        {
             Version = "1.22.5",
             Date = new DateTime(2026, 6, 5),
             Title = "Multi-Game Support: RaceRoom FFB Pipeline, PFD Dashboard & Theme System",
