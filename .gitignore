@@ -32,8 +32,40 @@ Desktop.ini
 *.log
 
 ## Publish & installer output
+publish/
 publish-test/
 installer-output/
+
+## User diagnostic data & logs (personal data — never commit)
+User Logs/
+
+## Development reference images / documentation
+Shared Memory images/
+
+## Temporary files
+tmp/
+
+## Tool build artifacts
+tools/**/[Oo]bj/
+tools/**/[Bb]in/
+
+## CMake build output (simucube bridge)
+lib/simucube/sc-bridge/build/
+
+## Source-level backup / cache files
+*.bak
+*.bak2
+*.lscache
+
+## Local backups (per repo workflow)
+backups/
+
+## ffmpeg binary — downloaded at runtime by FfmpegDownloader
+src/AcEvoFfbTuner/ffmpeg.exe
+
+## AI-generated resource images (not app assets)
+src/AcEvoFfbTuner/Resources/ChatGPT*
+src/AcEvoFfbTuner/Resources/Gemini_Generated*
 
 ## Website (deployed separately)
 website/
