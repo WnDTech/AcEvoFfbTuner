@@ -711,78 +711,94 @@ public sealed class FfbDeviceManager : IDisposable
 
             var cf2 = new DI.ConstantForce { Magnitude = magnitude };
 
+            var paramSets = new[]
+            {
+                new { Duration = -1, Gain = 10000, SamplePeriod = -1 },
+                new { Duration = 0x7FFFFFFF, Gain = 10000, SamplePeriod = -1 },
+                new { Duration = -1, Gain = 10000, SamplePeriod = 0 },
+                new { Duration = 10000, Gain = 10000, SamplePeriod = -1 },
+                new { Duration = -1, Gain = 5000, SamplePeriod = -1 },
+            };
+
             var axesConfigs = new[]
             {
                 new { Axes = _ffAxes ?? new int[] { 0 }, Flags = DI.EffectFlags.Cartesian | DI.EffectFlags.ObjectIds },
                 new { Axes = new int[] { 0 }, Flags = DI.EffectFlags.Cartesian | DI.EffectFlags.ObjectIds },
                 new { Axes = _ffAxes ?? new int[] { 0 }, Flags = DI.EffectFlags.Polar | DI.EffectFlags.ObjectIds },
-                new { Axes = new int[] { 0 }, Flags = DI.EffectFlags.Polar },
+                new { Axes = new int[] { 0 }, Flags = DI.EffectFlags.Polar | DI.EffectFlags.ObjectIds },
+                new { Axes = new int[] { 0 }, Flags = DI.EffectFlags.Cartesian },
+                new { Axes = new int[] { 0, 0 }, Flags = DI.EffectFlags.Cartesian | DI.EffectFlags.ObjectIds },
             };
 
             bool effectCreated = false;
-            for (int cfgIdx = 0; cfgIdx < axesConfigs.Length && !effectCreated; cfgIdx++)
+            for (int psIdx = 0; psIdx < paramSets.Length && !effectCreated; psIdx++)
             {
-                var cfg = axesConfigs[cfgIdx];
-                var newParams = new DI.EffectParameters
+                var ps = paramSets[psIdx];
+                for (int cfgIdx = 0; cfgIdx < axesConfigs.Length && !effectCreated; cfgIdx++)
                 {
-                    Duration = -1,
-                    Gain = 10000,
-                    SamplePeriod = -1,
-                    StartDelay = 0,
-                    TriggerButton = -1,
-                    TriggerRepeatInterval = 0,
-                    Flags = cfg.Flags,
-                };
-                var newDirs = new int[cfg.Axes.Length];
-                newParams.SetAxes(cfg.Axes, newDirs);
-                newParams.Parameters = cf2;
+                    var cfg = axesConfigs[cfgIdx];
+                    var newParams = new DI.EffectParameters
+                    {
+                        Duration = ps.Duration,
+                        Gain = ps.Gain,
+                        SamplePeriod = ps.SamplePeriod,
+                        StartDelay = 0,
+                        TriggerButton = -1,
+                        TriggerRepeatInterval = 0,
+                        Flags = cfg.Flags,
+                    };
+                    var newDirs = new int[cfg.Axes.Length];
+                    newParams.SetAxes(cfg.Axes, newDirs);
+                    newParams.Parameters = cf2;
 
-                const int maxCreateAttempts = 2;
-                for (int attempt = 1; attempt <= maxCreateAttempts && !effectCreated; attempt++)
-                {
-                    try
+                    const int maxCreateAttempts = 2;
+                    for (int attempt = 1; attempt <= maxCreateAttempts && !effectCreated; attempt++)
                     {
-                        _constantForceEffect = new DI.Effect(_device, DI.EffectGuid.ConstantForce, newParams);
-
-                        _constantForceEffect.Start(-1, DI.EffectPlayFlags.NoDownload);
-                        _consecutiveForceErrors = 0;
-                        LastError = null;
-                        _isCustomForceFallback = false;
-                        _constantForceUnsupported = false;
-                        effectCreated = true;
-                        if (cfgIdx > 0)
-                            ConnLog($"Effect create succeeded with config #{cfgIdx} (axes=[{string.Join(",", cfg.Axes)}], flags={cfg.Flags})");
-                    }
-                    catch (Exception ex) when (attempt < maxCreateAttempts)
-                    {
-                        ConnLog($"EFFECT CREATE attempt {attempt}/{maxCreateAttempts} config #{cfgIdx} failed: {ex.InnerException?.Message ?? ex.Message}");
-                        DestroyConstantForceEffect();
-                        Thread.Sleep(30);
-                    }
-                    catch (Exception ex)
-                    {
-                        DestroyConstantForceEffect();
-                        if (cfgIdx < axesConfigs.Length - 1)
+                        try
                         {
-                            ConnLog($"EFFECT CREATE config #{cfgIdx} failed, trying next config: {ex.InnerException?.Message ?? ex.Message}");
-                            break;
-                        }
+                            _constantForceEffect = new DI.Effect(_device, DI.EffectGuid.ConstantForce, newParams);
 
-                        ConnLog($"EFFECT CREATE all configs exhausted: {ex.InnerException?.Message ?? ex.Message}");
-
-                        if (TryCreateFallbackEffect(magnitude))
-                        {
+                            _constantForceEffect.Start(-1, DI.EffectPlayFlags.NoDownload);
                             _consecutiveForceErrors = 0;
                             LastError = null;
-                            effectCreated = true;
+                            _isCustomForceFallback = false;
                             _constantForceUnsupported = false;
-                            ConnLog("Fallback CustomForce effect created");
+                            effectCreated = true;
+                            string desc = $"ps#{psIdx}(d={ps.Duration},g={ps.Gain},sp={ps.SamplePeriod}) ax=[{string.Join(",", cfg.Axes)}] fl={cfg.Flags}";
+                            ConnLog($"Effect create succeeded with {desc}");
                         }
-                        else
+                        catch (Exception ex) when (attempt < maxCreateAttempts)
                         {
-                            _constantForceUnsupported = true;
-                            LastError = "ConstantForce/CustomForce not supported by this device";
-                            ConnLog("ConstantForce and CustomForce both unsupported — disabling FFB effects");
+                            ConnLog($"EFFECT CREATE attempt {attempt}/{maxCreateAttempts} ps#{psIdx} cfg#{cfgIdx} failed: {ex.InnerException?.Message ?? ex.Message}");
+                            DestroyConstantForceEffect();
+                            Thread.Sleep(30);
+                        }
+                        catch (Exception ex)
+                        {
+                            DestroyConstantForceEffect();
+                            string desc = $"ps#{psIdx}(d={ps.Duration},g={ps.Gain},sp={ps.SamplePeriod}) cfg#{cfgIdx} ax=[{string.Join(",", cfg.Axes)}] fl={cfg.Flags}";
+                            if (cfgIdx < axesConfigs.Length - 1 || psIdx < paramSets.Length - 1)
+                            {
+                                ConnLog($"EFFECT CREATE {desc} failed, trying next: {ex.InnerException?.Message ?? ex.Message}");
+                                break;
+                            }
+
+                            ConnLog($"EFFECT CREATE all axes+param combos exhausted: {ex.InnerException?.Message ?? ex.Message}");
+
+                            if (TryCreateFallbackEffect(magnitude))
+                            {
+                                _consecutiveForceErrors = 0;
+                                LastError = null;
+                                effectCreated = true;
+                                _constantForceUnsupported = false;
+                                ConnLog("Fallback CustomForce effect created");
+                            }
+                            else
+                            {
+                                _constantForceUnsupported = true;
+                                LastError = "ConstantForce/CustomForce not supported by this device";
+                                ConnLog("ConstantForce and CustomForce both unsupported — disabling FFB effects");
+                            }
                         }
                     }
                 }

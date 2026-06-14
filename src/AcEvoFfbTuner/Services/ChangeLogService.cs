@@ -50,6 +50,17 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.23.61",
+            Date = new DateTime(2026, 6, 14),
+            Title = "CAMMUS C5 FFB fixes + steering angle snap fix",
+            Fixes =
+            [
+                "Fixed CAMMUS C5 ConstantForce effect creation by trying multiple DirectInput parameter sets (Duration/Gain/SamplePeriod combinations) for wider driver compatibility",
+                "Fixed steering angle display snap when raw.SteerDegrees from EVO graphics was mistaken for total lock at >90° — now always uses profile SteeringLockDegrees",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.23.0",
             Date = new DateTime(2026, 6, 11),
             Title = "Voice Wizard, Pit Limiter LED, Braking Pull Fix & Stability",

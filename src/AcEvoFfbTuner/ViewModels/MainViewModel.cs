@@ -3030,8 +3030,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
             if (IsGameConnected && raw.FfbStrength > 0.01f && !ShowGameFfbWarning && _ffbWarningDismissed != true)
                 ShowGameFfbWarning = true;
-            int rawDeg = raw.SteerDegrees;
-            int lockDeg = (rawDeg > 90 && rawDeg <= 1440) ? rawDeg : SteeringLockDegrees;
+            int lockDeg = SteeringLockDegrees;
             if (lockDeg <= 0) lockDeg = 900;
             SteerAngle = (float)raw.SteerAngle * (lockDeg / 2f);
 
