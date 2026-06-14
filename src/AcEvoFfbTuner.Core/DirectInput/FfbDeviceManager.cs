@@ -35,6 +35,7 @@ public sealed class FfbDeviceManager : IDisposable
     private IntPtr _windowHandle;
     private int[]? _ffAxes;
     private bool _invertForce;
+    private bool _isCustomForceFallback;
     private int _consecutiveForceErrors;
     private const int MaxConsecutiveErrors = 10;
     private volatile bool _reconnectRequested;
@@ -488,8 +489,12 @@ public sealed class FfbDeviceManager : IDisposable
             var effects = _device.GetEffects();
             if (effects.Count == 0) return;
 
+            var supportedEffectNames = new List<string>();
             foreach (var ei in effects)
             {
+                string name = ei.Guid.ToString();
+                supportedEffectNames.Add(name);
+
                 if (ei.Guid == DI.EffectGuid.Sine ||
                     ei.Guid == DI.EffectGuid.Square ||
                     ei.Guid == DI.EffectGuid.Triangle ||
@@ -497,9 +502,9 @@ public sealed class FfbDeviceManager : IDisposable
                     ei.Guid == DI.EffectGuid.SawtoothDown)
                 {
                     SupportsPeriodicEffects = true;
-                    break;
                 }
             }
+            ConnLog($"Supported effects: {string.Join(", ", supportedEffectNames)}");
 
             int? primaryAxis = null;
             int? fallbackAxis = null;
@@ -617,10 +622,25 @@ public sealed class FfbDeviceManager : IDisposable
             {
                 try
                 {
-                    var cf = new DI.ConstantForce { Magnitude = magnitude };
-                    var parameters = new DI.EffectParameters();
-                    parameters.Parameters = cf;
+                    int clamped = Math.Clamp(magnitude, -10000, 10000);
+                    DI.TypeSpecificParameters typeSpecificParams;
+                    if (_isCustomForceFallback)
+                    {
+                        typeSpecificParams = new DI.CustomForce
+                        {
+                            ChannelCount = 1,
+                            SamplePeriod = 0,
+                            SampleCount = 1,
+                            ForceData = new int[] { clamped }
+                        };
+                    }
+                    else
+                    {
+                        typeSpecificParams = new DI.ConstantForce { Magnitude = clamped };
+                    }
 
+                    var parameters = new DI.EffectParameters();
+                    parameters.Parameters = typeSpecificParams;
                     _constantForceEffect.SetParameters(parameters,
                         DI.EffectParameterFlags.TypeSpecificParameters |
                         DI.EffectParameterFlags.Start);
@@ -685,6 +705,7 @@ public sealed class FfbDeviceManager : IDisposable
                         _constantForceEffect.Start(-1, DI.EffectPlayFlags.NoDownload);
                         _consecutiveForceErrors = 0;
                         LastError = null;
+                        _isCustomForceFallback = false;
                         effectCreated = true;
                         if (cfgIdx > 0)
                             ConnLog($"Effect create succeeded with config #{cfgIdx} (axes=[{string.Join(",", cfg.Axes)}], flags={cfg.Flags})");
@@ -706,7 +727,17 @@ public sealed class FfbDeviceManager : IDisposable
                         _consecutiveForceErrors++;
                         LastError = $"Create failed ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
                         ConnLog($"EFFECT CREATE FAIL ({_consecutiveForceErrors}) all configs exhausted: {ex.InnerException?.Message ?? ex.Message}");
-                        if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested)
+
+                        // Try fallback effect types (CustomForce) when ConstantForce is unsupported
+                        if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested &&
+                            TryCreateFallbackEffect(magnitude))
+                        {
+                            _consecutiveForceErrors = 0;
+                            LastError = null;
+                            effectCreated = true;
+                            ConnLog("Fallback CustomForce effect created");
+                        }
+                        else if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested)
                         {
                             _reconnectRequested = true;
                             LastError = "Device lost exclusive FFB access. Attempting full reconnect...";
@@ -826,6 +857,67 @@ public sealed class FfbDeviceManager : IDisposable
         {
             DestroyPeriodicEffect();
         }
+    }
+
+    private bool TryCreateFallbackEffect(int magnitude)
+    {
+        if (_device == null) return false;
+
+        try
+        {
+            var allEffects = _device.GetEffects();
+            if (allEffects == null) return false;
+
+            foreach (var ei in allEffects)
+            {
+                if (_constantForceEffect != null) break;
+
+                if (ei.Guid == DI.EffectGuid.CustomForce)
+                {
+                    int clamped = Math.Clamp(magnitude, -10000, 10000);
+                    var customForce = new DI.CustomForce
+                    {
+                        ChannelCount = 1,
+                        SamplePeriod = 0,
+                        SampleCount = 1,
+                        ForceData = new int[] { clamped }
+                    };
+
+                    var newParams = new DI.EffectParameters
+                    {
+                        Duration = -1,
+                        Gain = 10000,
+                        SamplePeriod = -1,
+                        StartDelay = 0,
+                        TriggerButton = -1,
+                        TriggerRepeatInterval = 0,
+                        Flags = DI.EffectFlags.Cartesian | DI.EffectFlags.ObjectIds,
+                    };
+                    newParams.SetAxes(_ffAxes ?? new int[] { 0 }, new int[] { 0, 0 });
+                    newParams.Parameters = customForce;
+
+                    try
+                    {
+                        _constantForceEffect = new DI.Effect(_device, DI.EffectGuid.CustomForce, newParams);
+                        _constantForceEffect.Start(-1, DI.EffectPlayFlags.NoDownload);
+                        _isCustomForceFallback = true;
+                        ConnLog("Fallback CustomForce effect created (ConstantForce not supported by device)");
+                        return true;
+                    }
+                    catch
+                    {
+                        DestroyConstantForceEffect();
+                        ConnLog("Fallback CustomForce creation failed");
+                    }
+                }
+            }
+        }
+        catch
+        {
+            ConnLog("TryCreateFallbackEffect: error checking device effects");
+        }
+
+        return false;
     }
 
     public void ZeroForce()
@@ -1137,6 +1229,7 @@ public sealed class FfbDeviceManager : IDisposable
         catch { }
         _constantForceEffect = null;
         _lastCfMagnitude = int.MinValue;
+        _isCustomForceFallback = false;
     }
 
     private void DestroyPeriodicEffect()
