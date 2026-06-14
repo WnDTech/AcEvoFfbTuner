@@ -156,7 +156,7 @@
 
             <RadioButton x:Name="NavMapBtn" GroupName="SidebarNav" Content="Track Map" Margin="4,1"
                          Tag="{x:Static vm:NavPage.TrackMap}" Click="OnNavClick" Cursor="Hand"
-                         ToolTip="Track Map — record and view track layouts">
+                         ToolTip="Track Map — track layout, FFB diagnostics, and live satellite view with GPS">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
@@ -196,8 +196,8 @@
             </RadioButton>
 
             <RadioButton x:Name="NavLiveMapBtn" GroupName="SidebarNav" Content="Live Map" Margin="4,1"
-                         Tag="{x:Static vm:NavPage.LiveMap}" Click="OnNavClick" Cursor="Hand"
-                         ToolTip="Live Map — satellite view with auto-aligned track overlay">
+                         Tag="{x:Static vm:NavPage.LiveTrackMap}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Live Map — OSM track data with satellite view">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">

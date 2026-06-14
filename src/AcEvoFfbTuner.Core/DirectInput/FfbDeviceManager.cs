@@ -36,6 +36,7 @@ public sealed class FfbDeviceManager : IDisposable
     private int[]? _ffAxes;
     private bool _invertForce;
     private bool _isCustomForceFallback;
+    private volatile bool _constantForceUnsupported;
     private int _consecutiveForceErrors;
     private const int MaxConsecutiveErrors = 10;
     private volatile bool _reconnectRequested;
@@ -192,6 +193,13 @@ public sealed class FfbDeviceManager : IDisposable
             SendConstantForceDirect(0f);
             Thread.Sleep(300);
 
+            if (_constantForceUnsupported)
+            {
+                bool fallback = staticFallback ?? false;
+                ConnLog($"AutoDetect: effects unsupported — using static database → invert={fallback}");
+                return fallback;
+            }
+
             float baseline = AverageAxisX(8, 8);
             if (float.IsNaN(baseline))
             {
@@ -269,6 +277,7 @@ public sealed class FfbDeviceManager : IDisposable
         _consecutiveForceErrors = 0;
         _reconnectRequested = false;
         _inlineReacquireCount = 0;
+        _constantForceUnsupported = false;
     }
 
     private readonly WheelLedController _ledController = new();
@@ -606,7 +615,7 @@ public sealed class FfbDeviceManager : IDisposable
     {
         if (_device == null || !_isAcquired) return;
 
-        if (_consecutiveForceErrors >= MaxConsecutiveErrors)
+        if (_constantForceUnsupported || _consecutiveForceErrors >= MaxConsecutiveErrors)
             return;
 
         try
@@ -645,6 +654,7 @@ public sealed class FfbDeviceManager : IDisposable
                         DI.EffectParameterFlags.TypeSpecificParameters |
                         DI.EffectParameterFlags.Start);
                     _consecutiveForceErrors = 0;
+                    _constantForceUnsupported = false;
                     return;
                 }
                 catch (Exception ex)
@@ -657,13 +667,45 @@ public sealed class FfbDeviceManager : IDisposable
                         TryReacquireDevice();
                         return;
                     }
+
+                    _constantForceUnsupported = true;
+                    ConnLog("ConstantForce marked as unsupported after SetParameters failure");
+                    return;
                 }
             }
 
             var allEffects = _device.GetEffects();
             if (allEffects.Count == 0)
             {
+                _constantForceUnsupported = true;
                 LastError = "No FFB effects supported by device";
+                return;
+            }
+
+            bool supportsConstant = false;
+            foreach (var ei in allEffects)
+            {
+                if (ei.Guid == DI.EffectGuid.ConstantForce)
+                {
+                    supportsConstant = true;
+                    break;
+                }
+            }
+
+            if (!supportsConstant)
+            {
+                if (TryCreateFallbackEffect(magnitude))
+                {
+                    _consecutiveForceErrors = 0;
+                    LastError = null;
+                    _constantForceUnsupported = false;
+                    ConnLog("Fallback CustomForce effect created (ConstantForce not supported by device)");
+                    return;
+                }
+
+                _constantForceUnsupported = true;
+                LastError = "ConstantForce not supported; no fallback available";
+                ConnLog("ConstantForce unsupported and no fallback — disabling");
                 return;
             }
 
@@ -706,6 +748,7 @@ public sealed class FfbDeviceManager : IDisposable
                         _consecutiveForceErrors = 0;
                         LastError = null;
                         _isCustomForceFallback = false;
+                        _constantForceUnsupported = false;
                         effectCreated = true;
                         if (cfgIdx > 0)
                             ConnLog($"Effect create succeeded with config #{cfgIdx} (axes=[{string.Join(",", cfg.Axes)}], flags={cfg.Flags})");
@@ -724,25 +767,22 @@ public sealed class FfbDeviceManager : IDisposable
                             ConnLog($"EFFECT CREATE config #{cfgIdx} failed, trying next config: {ex.InnerException?.Message ?? ex.Message}");
                             break;
                         }
-                        _consecutiveForceErrors++;
-                        LastError = $"Create failed ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
-                        ConnLog($"EFFECT CREATE FAIL ({_consecutiveForceErrors}) all configs exhausted: {ex.InnerException?.Message ?? ex.Message}");
 
-                        // Try fallback effect types (CustomForce) when ConstantForce is unsupported
-                        if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested &&
-                            TryCreateFallbackEffect(magnitude))
+                        ConnLog($"EFFECT CREATE all configs exhausted: {ex.InnerException?.Message ?? ex.Message}");
+
+                        if (TryCreateFallbackEffect(magnitude))
                         {
                             _consecutiveForceErrors = 0;
                             LastError = null;
                             effectCreated = true;
+                            _constantForceUnsupported = false;
                             ConnLog("Fallback CustomForce effect created");
                         }
-                        else if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested)
+                        else
                         {
-                            _reconnectRequested = true;
-                            LastError = "Device lost exclusive FFB access. Attempting full reconnect...";
-                            ConnLog("DEVICE LOST — requesting full reconnect from ViewModel");
-                            DeviceRequiresReconnect?.Invoke();
+                            _constantForceUnsupported = true;
+                            LastError = "ConstantForce/CustomForce not supported by this device";
+                            ConnLog("ConstantForce and CustomForce both unsupported — disabling FFB effects");
                         }
                     }
                 }
@@ -750,17 +790,10 @@ public sealed class FfbDeviceManager : IDisposable
         }
         catch (Exception ex)
         {
-            _consecutiveForceErrors++;
-            LastError = $"FFB error ({_consecutiveForceErrors}/{MaxConsecutiveErrors}): {ex.InnerException?.Message ?? ex.Message}";
-            ConnLog($"FFB OUTER ERROR ({_consecutiveForceErrors}): {ex.InnerException?.Message ?? ex.Message}");
+            ConnLog($"FFB OUTER ERROR: {ex.InnerException?.Message ?? ex.Message}");
+            LastError = $"FFB error: {ex.InnerException?.Message ?? ex.Message}";
             DestroyConstantForceEffect();
-            if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested)
-            {
-                _reconnectRequested = true;
-                LastError = "Device lost exclusive FFB access. Attempting full reconnect...";
-                ConnLog("DEVICE LOST — requesting full reconnect from ViewModel");
-                DeviceRequiresReconnect?.Invoke();
-            }
+            _constantForceUnsupported = true;
         }
     }
 

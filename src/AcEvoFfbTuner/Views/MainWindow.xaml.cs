@@ -76,7 +76,7 @@ public partial class MainWindow : Window
         FfbTuningPageCtrl.Visibility = vm.CurrentPage == NavPage.FfbTuning ? Visibility.Visible : Visibility.Collapsed;
         EqualizerPageCtrl.Visibility = vm.CurrentPage == NavPage.Equalizer ? Visibility.Visible : Visibility.Collapsed;
         TrackMapPageCtrl.Visibility = vm.CurrentPage == NavPage.TrackMap ? Visibility.Visible : Visibility.Collapsed;
-        LiveMapPageCtrl.Visibility = vm.CurrentPage == NavPage.LiveMap ? Visibility.Visible : Visibility.Collapsed;
+        LiveTrackMapPageCtrl.Visibility = vm.CurrentPage == NavPage.LiveTrackMap ? Visibility.Visible : Visibility.Collapsed;
         TelemetryPageCtrl.Visibility = vm.CurrentPage == NavPage.Telemetry ? Visibility.Visible : Visibility.Collapsed;
         DevicesPageCtrl.Visibility = vm.CurrentPage == NavPage.Devices ? Visibility.Visible : Visibility.Collapsed;
         ProfilesPageCtrl.Visibility = vm.CurrentPage == NavPage.Profiles ? Visibility.Visible : Visibility.Collapsed;
@@ -145,15 +145,17 @@ public partial class MainWindow : Window
             currentMap, forceHeatmap, showHeatmap,
             showTrackEdges, diagnosticHeatmap, showDiagnostics,
             trackLatitude, trackLongitude, trackRotation);
-    }
 
-    public void UpdateLiveMap(string trackName, TrackMap? currentMap,
-        float carX, float carZ, float heading, float speedKmh, bool isOnTrack)
-    {
-        LiveMapPageCtrl.SetTrackName(trackName);
-        if (currentMap != null)
-            LiveMapPageCtrl.SetTrackMap(currentMap);
-        LiveMapPageCtrl.UpdateCarPosition(carX, carZ, heading, speedKmh, isOnTrack);
+        // Also update the new LiveTrackMapPage
+        if (DataContext is ViewModels.MainViewModel lvm && !string.IsNullOrEmpty(lvm.DetectedTrackName))
+        {
+            LiveTrackMapPageCtrl.Initialize();
+            LiveTrackMapPageCtrl.UpdateDisplay(carX, carZ, heading, speedKmh,
+                isOnTrack, hasMap, lvm.DetectedTrackName,
+                trackLatitude, trackLongitude, trackRotation,
+                lvm.CurrentSectorNumber, lvm.CompletedLapCount,
+                showHeatmap ? forceHeatmap : null);
+        }
     }
 
     public string AutoSaveSnapshot()

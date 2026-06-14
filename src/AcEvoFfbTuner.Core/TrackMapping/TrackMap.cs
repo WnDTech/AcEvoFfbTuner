@@ -320,6 +320,41 @@ public sealed class TrackMap
         PitLane.ExitDistanceM = cumDist[exitWaypointIdx];
     }
 
+    public List<(float X, float Z, string PointId, float AngleDeg)> GetAlignedPoints()
+    {
+        var points = new List<(float X, float Z, string PointId, float AngleDeg)>();
+        if (Corners == null || Corners.Count == 0) return points;
+
+        for (int i = 0; i < Corners.Count; i++)
+        {
+            var corner = Corners[i];
+            if (corner.ApexWaypointIndex < 0 || corner.ApexWaypointIndex >= Waypoints.Count) continue;
+            var wp = Waypoints[corner.ApexWaypointIndex];
+            points.Add((wp.X, wp.Z, $"C{corner.CornerNumber}", corner.TotalAngleDeg));
+        }
+        return points;
+    }
+
+    public (float X, float Z)? GetPitEntryPoint()
+    {
+        if (PitLane.IsDetected && PitLane.EntryWaypointIndex >= 0 && PitLane.EntryWaypointIndex < Waypoints.Count)
+        {
+            var wp = Waypoints[PitLane.EntryWaypointIndex];
+            return (wp.X, wp.Z);
+        }
+        return null;
+    }
+
+    public (float X, float Z)? GetPitExitPoint()
+    {
+        if (PitLane.IsDetected && PitLane.ExitWaypointIndex >= 0 && PitLane.ExitWaypointIndex < Waypoints.Count)
+        {
+            var wp = Waypoints[PitLane.ExitWaypointIndex];
+            return (wp.X, wp.Z);
+        }
+        return null;
+    }
+
     private List<TrackSector> BuildSectors(List<TrackCorner> corners)
     {
         var cumDist = GetCumulativeDistances();

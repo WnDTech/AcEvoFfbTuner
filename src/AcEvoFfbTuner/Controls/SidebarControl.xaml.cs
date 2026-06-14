@@ -83,7 +83,7 @@ public partial class SidebarControl : UserControl
         NavTuningBtn.IsChecked = page == NavPage.FfbTuning;
         NavEqBtn.IsChecked = page == NavPage.Equalizer;
         NavMapBtn.IsChecked = page == NavPage.TrackMap;
-        NavLiveMapBtn.IsChecked = page == NavPage.LiveMap;
+        NavLiveMapBtn.IsChecked = page == NavPage.LiveTrackMap;
         NavTelemetryBtn.IsChecked = page == NavPage.Telemetry;
         NavDevicesBtn.IsChecked = page == NavPage.Devices;
         NavProfilesBtn.IsChecked = page == NavPage.Profiles;

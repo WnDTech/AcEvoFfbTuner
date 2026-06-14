@@ -32,7 +32,10 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
+  </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Data\tracks.json" />
   </ItemGroup>
 
 </Project>

@@ -38,6 +38,12 @@ public partial class TrackMapPage : UserControl
     private float _lastKnownLat;
     private float _lastKnownLon;
     private float _lastKnownRotation;
+    private bool _centerOnCarEnabled;
+    private bool _hasMapStatus;
+    private bool _hasOsmTrack;
+    private bool _liveMode;
+    private string? _lastLoadedTrackName;
+    private readonly TrackDataService _trackDataService = new();
 
     public event EventHandler? TrackMapPopoutRequested;
 
@@ -64,6 +70,11 @@ public partial class TrackMapPage : UserControl
         Unloaded += OnUnloaded;
 
         SatelliteMapCtrl.CalibrationSaved += OnCalibrationSaved;
+        _trackDataService.TrackDataUpdated += OnTrackDataUpdated;
+        _trackDataService.StatusMessage += msg => Dispatcher.Invoke(() =>
+        {
+            TrackMapOsmStatus.Text = msg;
+        });
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -166,15 +177,84 @@ public partial class TrackMapPage : UserControl
         float trackLongitude = 0f,
         float trackRotation = 0f)
     {
+        // Skip heavy work when this page is hidden
+        if (Visibility != Visibility.Visible)
+        {
+            // Still update geo-reference so it's ready when we switch back
+            if (trackLatitude != 0 || trackLongitude != 0)
+            {
+                if (_lastKnownLat != trackLatitude || _lastKnownLon != trackLongitude || _lastKnownRotation != trackRotation)
+                    SetGeoData(trackLatitude, trackLongitude, trackRotation);
+            }
+            return;
+        }
+
         if (trackLatitude != 0 || trackLongitude != 0)
         {
             if (_lastKnownLat != trackLatitude || _lastKnownLon != trackLongitude || _lastKnownRotation != trackRotation)
                 SetGeoData(trackLatitude, trackLongitude, trackRotation);
         }
 
+        // Update live data displays
+        TrackMapSpeed.Text = speedKmh > 0f ? $"{speedKmh:F0} km/h" : "--";
+        bool satVisible = SatelliteMapCtrl.Visibility == Visibility.Visible;
+        TrackMapAlignment.Text = satVisible ? $"{_lastKnownRotation:F1}°" : "--";
+
+        // Auto-load OSM track data when track name changes
+        var currentTrack = (DataContext as MainViewModel)?.DetectedTrackName;
+        if (!string.IsNullOrEmpty(currentTrack) && currentTrack != _lastLoadedTrackName && !currentTrack.StartsWith("track_"))
+        {
+            _lastLoadedTrackName = currentTrack;
+            _ = LoadTrackDataAsync(currentTrack);
+        }
+
+        if (_lastKnownLat != 0 && _lastKnownLon != 0)
+        {
+            TrackMapGpsPos.Text = $"{_lastKnownLat:F5}, {_lastKnownLon:F5}";
+        }
+
+        // Update status overlay
+        bool hasStatus = hasMap || isRecording || _hasOsmTrack;
+        if (hasStatus != _hasMapStatus)
+        {
+            _hasMapStatus = hasStatus;
+            MapStatusOverlay.Visibility = hasStatus ? Visibility.Collapsed : Visibility.Visible;
+            if (!hasStatus)
+                MapStatusText.Text = isRecording
+                    ? "Recording track layout... Drive a full lap to complete."
+                    : "No track map available. Drive a full lap to record the layout.";
+        }
+
+        // Update alignment status indicator
+        UpdateAlignmentStatus(hasMap);
+
+        // Auto-center on car in satellite mode
+        if (_centerOnCarEnabled && _satelliteService != null && _satelliteService.HasGeoData)
+
+        // Auto-center on car in satellite mode
+        if (_centerOnCarEnabled && _satelliteService != null && _satelliteService.HasGeoData)
+        {
+            SatelliteMapCtrl.CenterOnTrack();
+        }
+
+        // Update satellite state only if needed (ShowSatelliteMap binding may have changed)
         EnsureSatelliteState();
 
         bool isSatelliteMode = SatelliteMapCtrl.Visibility == Visibility.Visible;
+
+        // Log branch decision
+        string branch;
+        if (isSatelliteMode)
+            branch = "satellite";
+        else if (hasMap && currentMap != null)
+            branch = $"vectormap ways={currentMap.Waypoints.Count}";
+        else if (isRecording)
+            branch = "recording";
+        else if (!hasMap)
+            branch = $"nohasmap osm={_hasOsmTrack} speed={speedKmh:F0}";
+        else
+            branch = "unknown";
+        System.Diagnostics.Debug.WriteLine($"[TrackMapPage] {branch}");
 
         if (isSatelliteMode && hasMap && currentMap != null)
         {
@@ -182,6 +262,11 @@ public partial class TrackMapPage : UserControl
             {
                 _displayedMap = currentMap;
                 SatelliteMapCtrl.SetTrackMap(currentMap);
+                SatelliteMapCtrl.ClearGpsTrackOutline();
+                TryApplySavedAlignment(currentMap);
+                _trackDataService.ApplyCornerNames(_displayedMap.Corners);
+                if (DataContext is MainViewModel vmSat)
+                    vmSat.NotifyCornerNameChanged();
             }
             SatelliteMapCtrl.UpdateCarPosition(carX, carZ, heading, isOnTrack);
             SatelliteMapCtrl.UpdateHeatmapOverlay(currentMap, forceHeatmap, showHeatmap);
@@ -196,6 +281,7 @@ public partial class TrackMapPage : UserControl
             if (DataContext is MainViewModel vmSatellite)
             {
                 TrackMapCorner.Text = vmSatellite.CurrentCornerName;
+                TrackMapCornerName.Text = vmSatellite.CurrentCornerRealName ?? "";
                 TrackMapSector.Text = vmSatellite.CurrentSectorNumber > 0 ? $"S{vmSatellite.CurrentSectorNumber}" : "--";
                 TrackMapSectorStats.Text = vmSatellite.SectorStats;
             }
@@ -214,6 +300,7 @@ public partial class TrackMapPage : UserControl
         if (DataContext is ViewModels.MainViewModel vm)
         {
             TrackMapCorner.Text = vm.CurrentCornerName;
+            TrackMapCornerName.Text = vm.CurrentCornerRealName ?? "";
             TrackMapSector.Text = vm.CurrentSectorNumber > 0 ? $"S{vm.CurrentSectorNumber}" : "--";
             TrackMapSectorStats.Text = vm.SectorStats;
         }
@@ -241,6 +328,10 @@ public partial class TrackMapPage : UserControl
                 _lastDisplayedWaypointCount = currentMap.Waypoints.Count;
                 _lastDisplayedSectorCount = currentMap.Sectors.Count;
                 _lastDisplayedPitDetected = currentMap.PitLane.IsDetected;
+                TryApplySavedAlignment(currentMap);
+                _trackDataService.ApplyCornerNames(_displayedMap.Corners);
+                if (DataContext is MainViewModel vm2)
+                    vm2.NotifyCornerNameChanged();
                 ComputeMapTransform(currentMap, w, h);
                 DrawTrackLine(currentMap, w, h, forceHeatmap, showHeatmap, showTrackEdges,
                     diagnosticHeatmap, showDiagnostics);
@@ -304,13 +395,54 @@ public partial class TrackMapPage : UserControl
         }
         else if (!hasMap)
         {
+            if (_hasOsmTrack && speedKmh > 5f &&
+                (_recordingWorldPts.Count == 0 ||
+                Math.Abs(carX - (float)_recordingWorldPts[^1].X) > 0.5f ||
+                Math.Abs(carZ - (float)_recordingWorldPts[^1].Y) > 0.5f))
+            {
+                _recordingWorldPts.Add(new Point(carX, carZ));
+            }
+
+            if (_recordingWorldPts.Count >= 2)
+            {
+                double padding = 40;
+                float minX = float.MaxValue, maxX = float.MinValue, minZ = float.MaxValue, maxZ = float.MinValue;
+                foreach (var p in _recordingWorldPts)
+                {
+                    if ((float)p.X < minX) minX = (float)p.X;
+                    if ((float)p.X > maxX) maxX = (float)p.X;
+                    if ((float)p.Y < minZ) minZ = (float)p.Y;
+                    if ((float)p.Y > maxZ) maxZ = (float)p.Y;
+                }
+                float rangeX = maxX - minX;
+                float rangeZ = maxZ - minZ;
+                if (rangeX < 1f) rangeX = 1f;
+                if (rangeZ < 1f) rangeZ = 1f;
+                double scaleX = (w - padding * 2) / rangeX;
+                double scaleZ = (h - padding * 2) / rangeZ;
+                double scale = Math.Min(scaleX, scaleZ);
+                double offX = (w - rangeX * scale) / 2;
+                double offY = (h - rangeZ * scale) / 2;
+
+                var displayPts = new PointCollection(_recordingWorldPts.Count);
+                foreach (var p in _recordingWorldPts)
+                    displayPts.Add(new Point((p.X - minX) * scale + offX, (p.Y - minZ) * scale + offY));
+                _recordingTrail.Points = displayPts;
+
+                float cx = (float)((carX - minX) * scale + offX);
+                float cz = (float)((carZ - minZ) * scale + offY);
+                DrawCarDot(cx, cz, heading, isOnTrack);
+            }
+            else
+            {
+                _carDot.Visibility = Visibility.Collapsed;
+                _headingLine.Visibility = Visibility.Collapsed;
+            }
+
             _trackPolyline.Visibility = Visibility.Collapsed;
             _trackFillPolyline.Visibility = Visibility.Collapsed;
             _startDot.Visibility = Visibility.Collapsed;
-            _carDot.Visibility = Visibility.Collapsed;
-            _headingLine.Visibility = Visibility.Collapsed;
-            _recordingTrail.Points = new PointCollection();
-            _recordingWorldPts.Clear();
+            _recordingTrail.Visibility = _recordingWorldPts.Count >= 2 ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 
@@ -744,6 +876,160 @@ public partial class TrackMapPage : UserControl
             vm.TrackLatitude = _lastKnownLat;
             vm.TrackLongitude = _lastKnownLon;
             vm.TrackRotation = _lastKnownRotation;
+
+            // Auto-save alignment to database
+            var trackName = vm.DetectedTrackName;
+            if (!string.IsNullOrEmpty(trackName) && _displayedMap != null && _displayedMap.Corners.Count >= 3)
+            {
+                var alignment = new TrackAlignment
+                {
+                    TrackName = trackName,
+                    Method = "Manual",
+                    CreatedAt = DateTime.UtcNow,
+                };
+                foreach (var cp in _displayedMap.GetAlignedPoints())
+                {
+                    var (lat, lon) = _satelliteService.GameToGps(cp.X, cp.Z);
+                    alignment.Points.Add(new GroundControlPoint
+                    {
+                        GameX = cp.X,
+                        GameZ = cp.Z,
+                        Latitude = lat,
+                        Longitude = lon,
+                        PointId = cp.PointId,
+                    });
+                }
+                TrackAlignmentService.SaveAlignment(alignment);
+            }
         }
+    }
+
+    private void OnCenterOnCar(object sender, RoutedEventArgs e)
+    {
+        _centerOnCarEnabled = !_centerOnCarEnabled;
+        CenterOnCarBtn.Content = _centerOnCarEnabled ? "Free Camera" : "Center on Car";
+        if (_centerOnCarEnabled && SatelliteMapCtrl.Visibility == Visibility.Visible)
+        {
+            SatelliteMapCtrl.CenterOnTrack();
+        }
+    }
+
+    private void TryApplySavedAlignment(TrackMap map)
+    {
+        if (_satelliteService == null) return;
+        var trackName = (DataContext as MainViewModel)?.DetectedTrackName;
+        if (string.IsNullOrEmpty(trackName)) return;
+
+        // Try alignment database first (has corner point data)
+        var alignment = TrackAlignmentService.LoadAlignment(trackName);
+        if (alignment != null && alignment.Points.Count >= 2)
+        {
+            if (TrackAlignmentService.TryComputeRigidTransform(alignment.Points, out var gcX, out var gcZ, out var rotRad))
+            {
+                // Use the first point's GPS as the anchor for the geo-reference
+                var anchor = alignment.Points[0];
+                _satelliteService.SetGeoReference((float)anchor.Latitude, (float)anchor.Longitude, (float)(-rotRad * 180.0 / Math.PI));
+                // Override game center to what the rigid transform computed
+                _satelliteService.ComputeGameToGpsTransform(map);
+                _satelliteService.SetGeoReference((float)anchor.Latitude, (float)anchor.Longitude, (float)(-rotRad * 180.0 / Math.PI));
+                // The game center is set by ComputeGameToGpsTransform (mean), but we need to override it
+                // Since we can't set the private _gameCenterX/Z directly, we adjust by setting the rotation
+                // The actual center will be recomputed on next frame anyway
+                _lastKnownLat = (float)anchor.Latitude;
+                _lastKnownLon = (float)anchor.Longitude;
+                _lastKnownRotation = (float)(-rotRad * 180.0 / Math.PI);
+                if (DataContext is MainViewModel vm)
+                {
+                    vm.TrackLatitude = _lastKnownLat;
+                    vm.TrackLongitude = _lastKnownLon;
+                    vm.TrackRotation = _lastKnownRotation;
+                }
+            }
+        }
+    }
+
+    private void UpdateAlignmentStatus(bool hasMap)
+    {
+        var trackName = (DataContext as MainViewModel)?.DetectedTrackName;
+        if (string.IsNullOrWhiteSpace(trackName))
+        {
+            TrackMapAlignmentStatus.Text = "";
+            return;
+        }
+
+        if (TrackAlignmentService.LoadCalibration(trackName) != null)
+        {
+            TrackMapAlignmentStatus.Text = "Calibrated";
+            TrackMapAlignmentStatus.Foreground = new SolidColorBrush(Color.FromRgb(0x00, 0xE6, 0x76));
+        }
+        else if (_lastKnownLat != 0 || _lastKnownLon != 0)
+        {
+            if (hasMap)
+                TrackMapAlignmentStatus.Text = "GPS";
+            else
+                TrackMapAlignmentStatus.Text = "";
+            TrackMapAlignmentStatus.Foreground = new SolidColorBrush(Color.FromRgb(0x79, 0xC0, 0xFF));
+        }
+        else
+        {
+            TrackMapAlignmentStatus.Text = "";
+        }
+    }
+
+    private void ToggleLiveMode(object sender, RoutedEventArgs e)
+    {
+        _liveMode = !_liveMode;
+
+        if (_liveMode)
+        {
+            // Hide FFB diagnostics panel, recommendations bar
+            FfbDiagnosticsPanel.Visibility = Visibility.Collapsed;
+            RecommendationsPanel.Visibility = Visibility.Collapsed;
+            LiveModeBtn.Content = "Exit Live";
+            LiveModeBtn.Background = new SolidColorBrush(Color.FromRgb(0xC6, 0x28, 0x28));
+        }
+        else
+        {
+            FfbDiagnosticsPanel.Visibility = Visibility.Visible;
+            RecommendationsPanel.Visibility = Visibility.Visible;
+            LiveModeBtn.Content = "Live Mode";
+            LiveModeBtn.Background = new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x32));
+        }
+    }
+
+    private void OnTrackDataUpdated(TrackDetailedInfo data)
+    {
+        // Apply corner names to the currently displayed map
+        if (_displayedMap != null && _displayedMap.Corners.Count > 0)
+        {
+            _trackDataService.ApplyCornerNames(_displayedMap.Corners);
+            if (DataContext is MainViewModel vm)
+                vm.NotifyCornerNameChanged();
+        }
+
+        // Show GPS track outline on the satellite map immediately (no lap required)
+        if (data.TrackLayout != null && data.TrackLayout.Count > 3)
+        {
+            SatelliteMapCtrl.SetGpsTrackOutline(data.TrackLayout, data.Corners);
+
+            // Hide the "drive a lap" status overlay since we have OSM track data
+            _hasOsmTrack = true;
+            _hasMapStatus = true;
+            MapStatusOverlay.Visibility = Visibility.Collapsed;
+
+            // Auto-fit the map to the track bounds
+            SatelliteMapCtrl.CenterOnGps(data.TrackLayout[0].Latitude, data.TrackLayout[0].Longitude, 15);
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[TrackMapPage] OSM loaded: {data.Corners.Count} corners, {data.TrackLayout?.Count ?? 0} pts");
+    }
+
+    private async Task LoadTrackDataAsync(string trackName)
+    {
+        try
+        {
+            await _trackDataService.LoadTrackDataAsync(trackName);
+        }
+        catch { }
     }
 }

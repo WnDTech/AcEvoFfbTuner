@@ -39,7 +39,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly Services.GameRecordingService _gameRecordingService = new();
     private readonly Services.VoiceService _voiceService = new();
     public Services.VoiceService VoiceService => _voiceService;
-    private volatile bool _autoAlignInProgress;
     private volatile bool _mapClearedByUser;
     private string? _lastAutoLoadedTrack;
     private RaceInfoOverlay? _raceInfoOverlay;
@@ -867,10 +866,32 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _carHeading;
 
     [ObservableProperty]
-    private string _currentCornerName = "";
+    private string _currentCornerType = "";
 
     [ObservableProperty]
-    private string _currentCornerType = "";
+    private string _currentCornerName = "";
+
+    private TrackCorner? _lastCurrentCorner;
+
+    partial void OnCurrentCornerNameChanged(string value)
+    {
+        OnPropertyChanged(nameof(CurrentCornerRealName));
+    }
+
+    public string? CurrentCornerRealName
+    {
+        get
+        {
+            return _lastCurrentCorner?.RealName;
+        }
+    }
+
+    public void NotifyCornerNameChanged()
+    {
+        OnPropertyChanged(nameof(CurrentCornerRealName));
+    }
+
+    public int GameSectorIndex => _telemetryLoop?.CurrentSector ?? 0;
 
     private int _sectorStatsCounter;
 
@@ -1242,70 +1263,69 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             IsPitDetected = map.PitLane.IsDetected;
             TrackMapStatus = $"{map.Waypoints.Count} pts | {map.TrackLengthM:F0}m | {map.Corners.Count} corners | {map.Sectors.Count} sectors";
         });
-        _telemetryLoop.StaticDataReceived += (trackName, config, lengthM, latitude, longitude) => Application.Current?.Dispatcher.Invoke(() =>
-        {
-            DetectedTrackName = trackName;
+            _telemetryLoop.StaticDataReceived += (trackName, config, lengthM, latitude, longitude) => Application.Current?.Dispatcher.Invoke(() =>
+            {
+                DetectedTrackName = trackName;
 
-            var calibration = SatelliteMapService.LoadCalibration(trackName);
-            if (calibration != null)
-            {
-                TrackLatitude = calibration.Value.lat;
-                TrackLongitude = calibration.Value.lon;
-                TrackRotation = calibration.Value.rotationDeg;
-            }
-            else if (latitude != 0 || longitude != 0)
-            {
-                TrackLatitude = latitude;
-                TrackLongitude = longitude;
-                TrackRotation = 0f;
-            }
-            else
-            {
-                var lookup = SatelliteMapService.LookupTrackLocation(trackName);
-                if (lookup != null)
+                var calibration = SatelliteMapService.LoadCalibration(trackName);
+                if (calibration != null)
                 {
-                    TrackLatitude = lookup.Value.lat;
-                    TrackLongitude = lookup.Value.lon;
+                    TrackLatitude = calibration.Value.lat;
+                    TrackLongitude = calibration.Value.lon;
+                    TrackRotation = calibration.Value.rotationDeg;
+                }
+                else if (latitude != 0 || longitude != 0)
+                {
+                    TrackLatitude = latitude;
+                    TrackLongitude = longitude;
+                    TrackRotation = 0f;
+                }
+                else
+                {
+                    var lookup = SatelliteMapService.LookupTrackLocation(trackName);
+                    if (lookup != null)
+                    {
+                        TrackLatitude = lookup.Value.lat;
+                        TrackLongitude = lookup.Value.lon;
+                    }
+
+                    var rotation = SatelliteMapService.LookupTrackRotation(trackName);
+                    TrackRotation = rotation ?? 0f;
                 }
 
-                var rotation = SatelliteMapService.LookupTrackRotation(trackName);
-                TrackRotation = rotation ?? 0f;
-
-                if (!_autoAlignInProgress && SatelliteMapService.LoadCalibration(trackName) == null)
-                    _ = AutoAlignTrackAsync(trackName);
-            }
-
-            if (!string.IsNullOrEmpty(trackName))
-                StatusText = $"Connected — Track: {trackName} ({config}) {lengthM:F0}m";
-
-            if (!_telemetryLoop.MapBuilder.HasCompleteMap && !string.IsNullOrEmpty(trackName) && !_mapClearedByUser && _lastAutoLoadedTrack != trackName)
-            {
-                var savedMap = TrackMap.Load(trackName);
-                if (savedMap != null && savedMap.Waypoints.Count >= 10)
+                if (!string.IsNullOrEmpty(trackName))
                 {
-                    savedMap.InvalidateCache();
-                    savedMap.GetCumulativeDistances();
-                    if (savedMap.Corners.Count == 0) savedMap.Analyze();
-
-                    _lastAutoLoadedTrack = trackName;
-                    _telemetryLoop.MapBuilder.SetImportedMap(savedMap);
-                    _telemetryLoop.PositionDetector.SetMap(savedMap);
-                    _telemetryLoop.ForceHeatmap.Initialize(savedMap.Waypoints.Count);
-                    _telemetryLoop.LapRecorder.Initialize(savedMap.Waypoints.Count);
-                    _telemetryLoop.DiagnosticHeatmap.Initialize(savedMap.Waypoints.Count);
-                    _telemetryLoop.RealignToMap();
-
-                    IsTrackMapAvailable = true;
-                    TrackLengthM = savedMap.TrackLengthM;
-                    TrackWaypointCount = savedMap.Waypoints.Count;
-                    CornerCount = savedMap.Corners.Count;
-                    SectorCount = savedMap.Sectors.Count;
-                    IsPitDetected = savedMap.PitLane.IsDetected;
-                    TrackMapStatus = $"Auto-loaded: {savedMap.Waypoints.Count} pts | {savedMap.TrackLengthM:F0}m | {savedMap.Corners.Count} corners | {savedMap.Sectors.Count} sectors";
-                    StatusText = $"Auto-loaded track map: {trackName} ({savedMap.Waypoints.Count} pts, {savedMap.Corners.Count} corners)";
+                    StatusText = $"Connected — Track: {trackName} ({config}) {lengthM:F0}m";
                 }
-            }
-        });
+
+                if (!_telemetryLoop.MapBuilder.HasCompleteMap && !string.IsNullOrEmpty(trackName) && !_mapClearedByUser && _lastAutoLoadedTrack != trackName)
+                {
+                    var savedMap = TrackMap.Load(trackName);
+                    if (savedMap != null && savedMap.Waypoints.Count >= 10)
+                    {
+                        savedMap.InvalidateCache();
+                        savedMap.GetCumulativeDistances();
+                        if (savedMap.Corners.Count == 0) savedMap.Analyze();
+
+                        _lastAutoLoadedTrack = trackName;
+                        _telemetryLoop.MapBuilder.SetImportedMap(savedMap);
+                        _telemetryLoop.PositionDetector.SetMap(savedMap);
+                        _telemetryLoop.ForceHeatmap.Initialize(savedMap.Waypoints.Count);
+                        _telemetryLoop.LapRecorder.Initialize(savedMap.Waypoints.Count);
+                        _telemetryLoop.DiagnosticHeatmap.Initialize(savedMap.Waypoints.Count);
+                        _telemetryLoop.RealignToMap();
+
+                        IsTrackMapAvailable = true;
+                        TrackLengthM = savedMap.TrackLengthM;
+                        TrackWaypointCount = savedMap.Waypoints.Count;
+                        CornerCount = savedMap.Corners.Count;
+                        SectorCount = savedMap.Sectors.Count;
+                        IsPitDetected = savedMap.PitLane.IsDetected;
+                        TrackMapStatus = $"Auto-loaded: {savedMap.Waypoints.Count} pts | {savedMap.TrackLengthM:F0}m | {savedMap.Corners.Count} corners | {savedMap.Sectors.Count} sectors";
+                        StatusText = $"Auto-loaded track map: {trackName} ({savedMap.Waypoints.Count} pts, {savedMap.Corners.Count} corners)";
+                    }
+                }
+            });
         _telemetryLoop.CarModelChanged += carModel => Application.Current?.Dispatcher.Invoke(() =>
         {
             DetectedCarModel = carModel;
@@ -1456,38 +1476,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             StatusText = $"Track changed to: {newTrackName}";
         });
         _discordPresence.Attach(newLoop);
-    }
-
-    private async Task AutoAlignTrackAsync(string trackName)
-    {
-        _autoAlignInProgress = true;
-        try
-        {
-            await Task.Delay(2000);
-
-            var map = _telemetryLoop.MapBuilder.CurrentMap ?? TrackMap.Load(trackName);
-            if (map == null || map.Waypoints.Count < 10) return;
-
-            if (SatelliteMapService.LoadCalibration(trackName) != null) return;
-
-            var alignment = await TrackAlignmentService.ComputeAlignmentAsync(trackName, map.Waypoints);
-            if (alignment == null) return;
-
-            SatelliteMapService.SaveCalibration(trackName,
-                (float)alignment.CenterLat, (float)alignment.CenterLon, (float)alignment.RotationDeg);
-
-            Application.Current?.Dispatcher.Invoke(() =>
-            {
-                TrackLatitude = (float)alignment.CenterLat;
-                TrackLongitude = (float)alignment.CenterLon;
-                TrackRotation = (float)alignment.RotationDeg;
-            });
-        }
-        catch { }
-        finally
-        {
-            _autoAlignInProgress = false;
-        }
     }
 
     public void Initialize()
@@ -3168,11 +3156,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
                     if (pos.CurrentCorner != null)
                     {
+                        _lastCurrentCorner = pos.CurrentCorner;
                         CurrentCornerName = pos.CurrentCorner.DisplayName;
                         CurrentCornerType = pos.CurrentCorner.TypeName;
                     }
                     else
                     {
+                        _lastCurrentCorner = null;
                         CurrentCornerName = "Straight";
                         CurrentCornerType = "";
                     }
@@ -3271,15 +3261,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     TrackLatitude,
                     TrackLongitude,
                     TrackRotation);
-            }
-
-            if (Application.Current?.MainWindow is MainWindow mw3)
-            {
-                mw3.UpdateLiveMap(
-                    DetectedTrackName ?? "",
-                    _telemetryLoop.MapBuilder.CurrentMap,
-                    raw.CarX, raw.CarZ, raw.Heading, raw.SpeedKmh,
-                    IsOnTrackMap);
             }
         }
 

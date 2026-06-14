@@ -427,6 +427,7 @@
                             </ControlTemplate>
                         </Button.Template>
                     </Button>
+                    <Button Content="PANIC" Command="{Binding PanicStopCommand}" Style="{StaticResource PanicButton}" Margin="0,0,8,0" Padding="16,6" FontSize="14" ToolTip="Immediately zero all FFB output" />
                     <ToggleButton IsChecked="{Binding IsRunning}" Command="{Binding ToggleTelemetryCommand}"
                                   Margin="0,0,8,0" x:Name="StartStopToggle"
                                   ToolTip="Start or stop FFB telemetry processing">
@@ -466,7 +467,6 @@
                             </Style>
                         </ToggleButton.Style>
                     </ToggleButton>
-                    <Button Content="PANIC" Command="{Binding PanicStopCommand}" Style="{StaticResource PanicButton}" Padding="16,6" FontSize="14" ToolTip="Immediately zero all FFB output" />
                 </StackPanel>
             </Grid>
             </Viewbox>
@@ -486,7 +486,7 @@
                 <pages:FfbTuningPage x:Name="FfbTuningPageCtrl" Visibility="Collapsed" />
                 <pages:EqualizerPage x:Name="EqualizerPageCtrl" Visibility="Collapsed" />
                 <pages:TrackMapPage x:Name="TrackMapPageCtrl" Visibility="Collapsed" />
-                <pages:LiveMapPage x:Name="LiveMapPageCtrl" Visibility="Collapsed" />
+                <pages:LiveTrackMapPage x:Name="LiveTrackMapPageCtrl" Visibility="Collapsed" />
                 <pages:TelemetryPage x:Name="TelemetryPageCtrl" Visibility="Collapsed" />
                 <pages:DevicesPage x:Name="DevicesPageCtrl" Visibility="Collapsed" />
                 <pages:ProfilesPage x:Name="ProfilesPageCtrl" Visibility="Collapsed" />

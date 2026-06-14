@@ -2,76 +2,25 @@ namespace AcEvoFfbTuner.Core.TrackMapping;
 
 public sealed class SatelliteMapService : IDisposable
 {
-    private readonly record struct TrackGeo(float Lat, float Lon, float RotationDeg);
-
     private static readonly string CalibrationDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "AcEvoFfbTuner", "TrackCalibration");
 
-    private static readonly Dictionary<string, TrackGeo> KnownTrackLocations = new(StringComparer.OrdinalIgnoreCase)
+    private static (float lat, float lon)? LookupTrackGeo(string trackName)
     {
-        { "nurburgring", new(50.3296f, 6.9399f, 0f) },
-        { "nürburgring", new(50.3296f, 6.9399f, 0f) },
-        { "nuerburgring", new(50.3296f, 6.9399f, 0f) },
-        { "spa", new(50.4369f, 5.9705f, 1f) },
-        { "circuit de spa", new(50.4369f, 5.9705f, 1f) },
-        { "spa francorchamps", new(50.4369f, 5.9705f, 1f) },
-        { "imola", new(44.3410f, 11.7119f, 0f) },
-        { "brands hatch", new(51.3575f, 0.2600f, 0f) },
-        { "donington", new(52.8299f, -1.3779f, 0f) },
-        { "donington park", new(52.8299f, -1.3779f, 0f) },
-        { "silverstone", new(52.0718f, -1.0143f, 0f) },
-        { "monza", new(45.6191f, 9.2826f, 0f) },
-        { "laguna seca", new(36.5875f, -121.7556f, 0f) },
-        { "suzuka", new(34.8431f, 136.5396f, 0f) },
-        { "fuji", new(35.3717f, 138.9272f, 0f) },
-        { "mount panorama", new(-33.4597f, 149.5547f, 0f) },
-        { "bathurst", new(-33.4597f, 149.5547f, 0f) },
-        { "daytona", new(29.1919f, -81.0717f, 0f) },
-        { "kyalami", new(-25.9881f, 28.0697f, 0f) },
-        { "barcelona", new(41.5697f, 2.2586f, 0f) },
-        { "catalunya", new(41.5697f, 2.2586f, 0f) },
-        { "monaco", new(43.7342f, 7.4206f, 0f) },
-        { "interlagos", new(-23.7036f, -46.6997f, 0f) },
-        { "hockenheim", new(49.3283f, 8.5761f, 0f) },
-        { "zandvoort", new(52.3888f, 4.5409f, 0f) },
-        { "red bull ring", new(47.2217f, 14.7647f, 0f) },
-        { "spielberg", new(47.2217f, 14.7647f, 0f) },
-        { "oval", new(29.1919f, -81.0717f, 0f) },
-        { "valencia", new(39.4664f, -0.3281f, 0f) },
-        { "ricard", new(43.2497f, 5.7878f, 0f) },
-        { "paul ricard", new(43.2497f, 5.7878f, 0f) },
-        { "oschersleben", new(52.0289f, 11.2781f, 0f) },
-        { "misano", new(43.9578f, 12.6836f, 0f) },
-        { "phillip island", new(-38.5031f, 145.1861f, 0f) },
-        { "road america", new(43.8022f, -87.9892f, 0f) },
-    };
-
-    private static TrackGeo? LookupTrackGeo(string trackName)
-    {
-        if (string.IsNullOrWhiteSpace(trackName)) return null;
-
-        if (KnownTrackLocations.TryGetValue(trackName, out var loc))
-            return loc;
-
-        foreach (var kvp in KnownTrackLocations)
-        {
-            if (trackName.Contains(kvp.Key, StringComparison.OrdinalIgnoreCase))
-                return kvp.Value;
-        }
-
-        return null;
+        return TrackDatabase.LookupTrackLocation(trackName);
     }
 
     public static (float lat, float lon)? LookupTrackLocation(string trackName)
     {
-        var geo = LookupTrackGeo(trackName);
-        return geo.HasValue ? (geo.Value.Lat, geo.Value.Lon) : null;
+        return TrackDatabase.LookupTrackLocation(trackName);
     }
 
     public static float? LookupTrackRotation(string trackName)
     {
-        return LookupTrackGeo(trackName)?.RotationDeg;
+        // Rotation is game-coordinate-system dependent and stored per-user via calibration.
+        // Return null to let the caller use PCA or manual calibration.
+        return null;
     }
 
     public static (float lat, float lon, float rotationDeg)? LoadCalibration(string trackName)
@@ -149,6 +98,7 @@ public sealed class SatelliteMapService : IDisposable
         TrackCenterLatitude = latitude;
         TrackCenterLongitude = longitude;
         _rotationRad = rotationDeg * Math.PI / 180.0;
+        _transformComputed = true;
     }
 
     public void AdjustCalibration(double dLat, double dLon, double dRotDeg)
@@ -164,19 +114,15 @@ public sealed class SatelliteMapService : IDisposable
     {
         if (map.Waypoints.Count < 3) return;
 
-        float minX = float.MaxValue, maxX = float.MinValue;
-        float minZ = float.MaxValue, maxZ = float.MinValue;
-
+        float sumX = 0f, sumZ = 0f;
         foreach (var wp in map.Waypoints)
         {
-            if (wp.X < minX) minX = wp.X;
-            if (wp.X > maxX) maxX = wp.X;
-            if (wp.Z < minZ) minZ = wp.Z;
-            if (wp.Z > maxZ) maxZ = wp.Z;
+            sumX += wp.X;
+            sumZ += wp.Z;
         }
 
-        _gameCenterX = (minX + maxX) / 2f;
-        _gameCenterZ = (minZ + maxZ) / 2f;
+        _gameCenterX = sumX / map.Waypoints.Count;
+        _gameCenterZ = sumZ / map.Waypoints.Count;
         _transformComputed = true;
     }
 
@@ -199,6 +145,25 @@ public sealed class SatelliteMapService : IDisposable
         return (lat, lon);
     }
 
+    public (float gameX, float gameZ) GpsToGame(double latitude, double longitude)
+    {
+        if (!_transformComputed || !HasGeoData)
+            return (0, 0);
+
+        double dLat = latitude - TrackCenterLatitude;
+        double dLon = longitude - TrackCenterLongitude;
+
+        double northMeters = dLat * 111320.0;
+        double eastMeters = dLon * 111320.0 * Math.Cos(TrackCenterLatitude * Math.PI / 180.0);
+
+        double cosR = Math.Cos(_rotationRad);
+        double sinR = Math.Sin(_rotationRad);
+        double dx = eastMeters * cosR - northMeters * sinR;
+        double dz = eastMeters * sinR + northMeters * cosR;
+
+        return ((float)(dx + _gameCenterX), (float)(_gameCenterZ - dz));
+    }
+
     public static (int tileX, int tileY) LatLonToTile(double lat, double lon, int zoom)
     {
         int n = 1 << zoom;
@@ -214,7 +179,7 @@ public sealed class SatelliteMapService : IDisposable
     {
         int n = 1 << zoom;
         double lon = (double)tileX / n * 360.0 - 180.0;
-        double latRad = Math.Atan(Math.Sinh(Math.PI * (1 - 2.0 * tileY / n)));
+        double latRad = Math.Atan(Math.Sinh(Math.PI * (1.0 - 2.0 * tileY / n)));
         double lat = latRad * 180.0 / Math.PI;
         return (lat, lon);
     }

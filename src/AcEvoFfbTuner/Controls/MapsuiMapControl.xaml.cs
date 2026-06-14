@@ -26,6 +26,7 @@ public partial class MapsuiMapControl : UserControl
 
     private readonly Map _map;
     private MemoryLayer _trackLayer;
+    private MemoryLayer _gpsOutlineLayer;
     private MemoryLayer _carLayer;
     private MemoryLayer _cornerLayer;
     private MemoryLayer _diagLayer;
@@ -36,24 +37,11 @@ public partial class MapsuiMapControl : UserControl
     private bool _isDragging;
     private bool _autoFitDone;
 
-    private readonly PointFeature _carFeature = new(0, 0);
-    private readonly SymbolStyle _carOnTrackStyle = new()
-    {
-        SymbolType = SymbolType.Ellipse,
-        SymbolScale = 0.6,
-        Fill = new Brush { Color = Color.FromRgba(0xFF, 0x45, 0x00, 0xE0) },
-        Outline = new Pen { Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0x80), Width = 1 }
-    };
-    private readonly SymbolStyle _carOffTrackStyle = new()
-    {
-        SymbolType = SymbolType.Ellipse,
-        SymbolScale = 0.6,
-        Fill = new Brush { Color = Color.FromRgba(0xFF, 0x00, 0x00, 0xE0) },
-        Outline = new Pen { Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0x80), Width = 1 }
-    };
-    private readonly GeometryFeature _headingFeature = new() { Geometry = new LineString(new[] { new Coordinate(0, 0), new Coordinate(0, 0) }) };
-    private readonly VectorStyle _headingStyle = new() { Line = new Pen { Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0xE0), Width = 2.5 } };
-    private readonly List<IFeature> _carFeatures;
+    // WPF overlay markers — created once, positioned on viewport change
+    private readonly List<(double lat, double lon, string text, double offsetX, double offsetY)> _overlayLabels = new();
+    private readonly List<(double lat, double lon, string text, double offsetX, double offsetY)> _overlaySymbols = new();
+    private DateTime _lastOverlayUpdate = DateTime.MinValue;
+    private bool _overlayViewportSubscribed;
 
     public event EventHandler? CalibrationSaved;
 
@@ -68,17 +56,16 @@ public partial class MapsuiMapControl : UserControl
         _trackLayer = new MemoryLayer("Track") { Features = [] };
         _map.Layers.Add(_trackLayer);
 
+        _gpsOutlineLayer = new MemoryLayer("GPS Outline") { Features = [] };
+        _map.Layers.Add(_gpsOutlineLayer);
+
         _cornerLayer = new MemoryLayer("Corners") { Features = [] };
         _map.Layers.Add(_cornerLayer);
 
         _diagLayer = new MemoryLayer("Diagnostics") { Features = [] };
         _map.Layers.Add(_diagLayer);
 
-        _carFeature.Styles.Add(_carOnTrackStyle);
-        _headingFeature.Styles.Add(_headingStyle);
-        _carFeatures = [_carFeature, _headingFeature];
-
-        _carLayer = new MemoryLayer("Car") { Features = _carFeatures };
+        _carLayer = new MemoryLayer("Car") { Features = [] };
         _map.Layers.Add(_carLayer);
 
         MapCtrl.Map = _map;
@@ -161,6 +148,227 @@ public partial class MapsuiMapControl : UserControl
         NoGeoOverlay.Visibility = Visibility.Visible;
     }
 
+    public void SetGpsTrackOutline(List<TrackPoint> gpsPoints, List<TrackCornerInfo> corners)
+    {
+        var features = new List<IFeature>();
+
+        // Draw the track outline from GPS points directly
+        if (gpsPoints != null && gpsPoints.Count > 3)
+        {
+            int step = Math.Max(1, gpsPoints.Count / 500);
+            var coords = new List<Coordinate>();
+            for (int i = 0; i < gpsPoints.Count; i += step)
+            {
+                var merc = ToMercator(gpsPoints[i].Longitude, gpsPoints[i].Latitude);
+                coords.Add(new Coordinate(merc.X, merc.Y));
+            }
+            if (coords.Count > 0)
+                coords.Add(new Coordinate(coords[0].X, coords[0].Y));
+
+            var lineString = new LineString(coords.ToArray());
+            var feature = new GeometryFeature { Geometry = lineString };
+            feature.Styles.Add(new VectorStyle
+            {
+                Line = new Pen { Color = Color.FromRgba(0x00, 0xE6, 0x76, 0x60), Width = 1.5 },
+                Outline = new Pen { Color = Color.FromRgba(0x00, 0xE6, 0x76, 0x20), Width = 3 }
+            });
+            features.Add(feature);
+        }
+
+        // Corner labels via overlay (not Mapsui LabelStyle — better appearance)
+        if (corners != null)
+        {
+            foreach (var corner in corners)
+                _overlayLabels.Add((corner.Latitude, corner.Longitude, corner.Number.ToString(), 0, 0));
+        }
+
+        _gpsOutlineLayer.Features = features;
+        _gpsOutlineLayer.FeaturesWereModified();
+        BuildOverlay();
+    }
+
+    public void ClearGpsTrackOutline()
+    {
+        _gpsOutlineLayer.Features = [];
+        _gpsOutlineLayer.FeaturesWereModified();
+        _overlayLabels.Clear();
+        _overlaySymbols.Clear();
+        MarkerOverlay.Children.Clear();
+    }
+
+    public void AddOverlayLabel(double lat, double lon, string text, string colorHex)
+    {
+        _overlayLabels.Add((lat, lon, text, 0, 0));
+    }
+
+    public void AddOverlaySymbol(double lat, double lon, string text)
+    {
+        _overlaySymbols.Add((lat, lon, text, 0, 0));
+    }
+
+    public void BuildOverlay()
+    {
+        MarkerOverlay.Children.Clear();
+        double halfChar = 5.5; // ~half of 11px font for centering
+
+        foreach (var m in _overlayLabels)
+        {
+            var tb = new TextBlock
+            {
+                Text = m.text,
+                FontSize = 11,
+                FontWeight = FontWeights.Bold,
+                FontFamily = new System.Windows.Media.FontFamily("Segoe UI"),
+                Foreground = System.Windows.Media.Brushes.Gold,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = System.Windows.Media.Colors.Black,
+                    Opacity = 0.8,
+                    ShadowDepth = 1,
+                    BlurRadius = 2
+                }
+            };
+            tb.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            double ox = m.text.Length > 1 ? halfChar * m.text.Length : halfChar;
+            MarkerOverlay.Children.Add(tb);
+            int idx = MarkerOverlay.Children.Count - 1;
+            // Store offset in Tag for position update
+            tb.Tag = new System.Windows.Point(ox, halfChar);
+        }
+
+        foreach (var s in _overlaySymbols)
+        {
+            var brush = s.text == "🏁" ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Gold;
+
+            var tb = new TextBlock
+            {
+                Text = s.text,
+                FontSize = s.text == "\U0001F3C1" ? 18 : 14,
+                FontWeight = FontWeights.Bold,
+                FontFamily = new System.Windows.Media.FontFamily("Segoe UI"),
+                TextAlignment = TextAlignment.Center,
+                Foreground = brush,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = System.Windows.Media.Colors.Black,
+                    Opacity = 0.9,
+                    ShadowDepth = 1,
+                    BlurRadius = 2
+                }
+            };
+            tb.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            double ox = tb.DesiredSize.Width / 2;
+            double oy = tb.DesiredSize.Height / 2;
+            MarkerOverlay.Children.Add(tb);
+        }
+
+        _lastOverlayUpdate = DateTime.MinValue; // force first update
+        UpdateOverlayPositions();
+
+        // Subscribe to viewport changes — reposition overlays only when map moves
+        if (!_overlayViewportSubscribed)
+        {
+            _overlayViewportSubscribed = true;
+            _map.Navigator.ViewportChanged += (_, _) =>
+                Dispatcher.BeginInvoke(new Action(UpdateOverlayPositions), System.Windows.Threading.DispatcherPriority.Input);
+        }
+    }
+
+    public void UpdateOverlayPositions()
+    {
+        if (_overlayLabels.Count == 0 && _overlaySymbols.Count == 0) return;
+
+        int idx = 0;
+        foreach (var m in _overlayLabels)
+        {
+            if (idx >= MarkerOverlay.Children.Count) break;
+            var merc = ToMercator(m.lon, m.lat);
+            var screen = _map.Navigator.Viewport.WorldToScreen(merc);
+            var tb = MarkerOverlay.Children[idx] as TextBlock;
+            if (tb == null) { idx++; continue; }
+
+            if (screen.X < -200 || screen.X > ActualWidth + 200 ||
+                screen.Y < -200 || screen.Y > ActualHeight + 200)
+            { tb.Visibility = Visibility.Collapsed; idx++; continue; }
+
+            tb.Visibility = Visibility.Visible;
+            var off = tb.Tag is System.Windows.Point p ? p : new System.Windows.Point(8, 6);
+            Canvas.SetLeft(tb, screen.X - off.X);
+            Canvas.SetTop(tb, screen.Y - off.Y);
+            idx++;
+        }
+
+        foreach (var s in _overlaySymbols)
+        {
+            if (idx >= MarkerOverlay.Children.Count) break;
+            var merc = ToMercator(s.lon, s.lat);
+            var screen = _map.Navigator.Viewport.WorldToScreen(merc);
+            var tb = MarkerOverlay.Children[idx] as TextBlock;
+            if (tb == null) { idx++; continue; }
+
+            if (screen.X < -200 || screen.X > ActualWidth + 200 ||
+                screen.Y < -200 || screen.Y > ActualHeight + 200)
+            { tb.Visibility = Visibility.Collapsed; idx++; continue; }
+
+            tb.Visibility = Visibility.Visible;
+            Canvas.SetLeft(tb, screen.X - 9);
+            Canvas.SetTop(tb, screen.Y - 9);
+            idx++;
+        }
+    }
+
+    public void AddPitMarkers(TrackPitInfo? pit)
+    {
+        if (pit == null) return;
+
+        var existing = _gpsOutlineLayer.Features.ToList();
+
+        // Pit lane line (dashed yellow, keep on outline layer)
+        if (pit.Layout != null && pit.Layout.Count > 0)
+        {
+            var coords = new List<Coordinate>();
+            foreach (var pt in pit.Layout)
+            {
+                var merc = ToMercator(pt.Longitude, pt.Latitude);
+                coords.Add(new Coordinate(merc.X, merc.Y));
+            }
+            var lineString = new LineString(coords.ToArray());
+            var lineFeature = new GeometryFeature { Geometry = lineString };
+            lineFeature.Styles.Add(new VectorStyle
+            {
+                Line = new Pen
+                {
+                    Color = Mapsui.Styles.Color.FromRgba(0xFF, 0xFF, 0x00, 0xCC),
+                    Width = 2,
+                    PenStyle = PenStyle.Dash
+                }
+            });
+            existing.Add(lineFeature);
+        }
+
+        // Entry/exit labels via overlay
+        _overlaySymbols.Add((pit.EntryLatitude, pit.EntryLongitude, "\u25BC", 0, 0));
+        _overlaySymbols.Add((pit.ExitLatitude, pit.ExitLongitude, "\u25B2", 0, 0));
+
+        _gpsOutlineLayer.Features = existing;
+        _gpsOutlineLayer.FeaturesWereModified();
+        BuildOverlay();
+    }
+
+    public void AddStartFinishMarker(TrackPoint? sf)
+    {
+        if (sf == null) return;
+        _overlaySymbols.Add((sf.Latitude, sf.Longitude, "\U0001F3C1", 0, 0));
+        BuildOverlay();
+    }
+
+    public void CenterOnGps(double latitude, double longitude, int zoom = 16)
+    {
+        var merc = ToMercator(longitude, latitude);
+        _map.Navigator.CenterOn(merc.X, merc.Y);
+        _map.Navigator.ZoomTo(zoom);
+    }
+
     private void AutoFitTrack()
     {
         if (_mapService == null || _trackMap == null || !_mapService.HasGeoData || _autoFitDone) return;
@@ -191,30 +399,56 @@ public partial class MapsuiMapControl : UserControl
     public void UpdateCarPosition(float gameX, float gameZ, float heading, bool isOnTrack)
     {
         if (_mapService == null || !_mapService.HasGeoData) return;
-
         var (lat, lon) = _mapService.GameToGps(gameX, gameZ);
-        var merc = ToMercator(lon, lat);
+        RenderCarDot(lon, lat, heading);
+    }
+
+    public void UpdateCarGpsPosition(double longitude, double latitude, double heading)
+    {
+        RenderCarDot(longitude, latitude, heading);
+    }
+
+    private void RenderCarDot(double longitude, double latitude, double heading)
+    {
+        var merc = ToMercator(longitude, latitude);
 
         var vp = _map.Navigator.Viewport;
         double headingLen = vp.Resolution * 28;
         double rad = heading;
 
-        _carFeature.Point.X = merc.X;
-        _carFeature.Point.Y = merc.Y;
-        _carFeature.Styles.Clear();
-        _carFeature.Styles.Add(isOnTrack ? _carOnTrackStyle : _carOffTrackStyle);
+        // Create fresh car dot feature
+        var carPt = new PointFeature(merc.X, merc.Y);
+        carPt.Styles.Add(new SymbolStyle
+        {
+            SymbolType = SymbolType.Ellipse,
+            SymbolScale = 1.0,
+            Fill = new Brush { Color = Color.FromRgba(0x00, 0xFF, 0x00, 0xFF) },
+            Outline = new Pen { Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF), Width = 2 }
+        });
 
+        // Create fresh heading line
         var headX = merc.X + Math.Sin(rad) * headingLen;
         var headY = merc.Y - Math.Cos(rad) * headingLen;
+        var headingLine = new GeometryFeature
+        {
+            Geometry = new LineString(new[]
+            {
+                new Coordinate(merc.X, merc.Y),
+                new Coordinate(headX, headY)
+            })
+        };
+        headingLine.Styles.Add(new VectorStyle
+        {
+            Line = new Pen
+            {
+                Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0xE0),
+                Width = 3
+            }
+        });
 
-        var geom = (LineString)_headingFeature.Geometry!;
-        geom.CoordinateSequence.SetOrdinate(0, 0, merc.X);
-        geom.CoordinateSequence.SetOrdinate(0, 1, merc.Y);
-        geom.CoordinateSequence.SetOrdinate(1, 0, headX);
-        geom.CoordinateSequence.SetOrdinate(1, 1, headY);
-        _headingFeature.Geometry = geom;
-
+        _carLayer.Features = [carPt, headingLine];
         _carLayer.FeaturesWereModified();
+        MapCtrl.Refresh();
     }
 
     private void RebuildTrackLayer()

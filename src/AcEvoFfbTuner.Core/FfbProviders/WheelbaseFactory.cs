@@ -14,6 +14,7 @@ public enum WheelbaseVendor
     Thrustmaster,
     Asetek,
     VNM,
+    Cammus,
     GenericDirectInput
 }
 
@@ -31,6 +32,7 @@ public sealed class WheelbaseFactory
     private const string ThrustmasterVendorId = "044F";
     private const string AsetekVendorId = "2433";
     private const string VnmVendorId = "0483";
+    private const string CammusVendorId = "3480";
 
     private static readonly Dictionary<string, WheelbaseVendor> VendorIdMap = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -41,6 +43,7 @@ public sealed class WheelbaseFactory
         [SimagicVendorId] = WheelbaseVendor.Simagic,
         [ThrustmasterVendorId] = WheelbaseVendor.Thrustmaster,
         [AsetekVendorId] = WheelbaseVendor.Asetek,
+        [CammusVendorId] = WheelbaseVendor.Cammus,
     };
 
     private static readonly HashSet<string> AmbiguousStmVendorIds = new(StringComparer.OrdinalIgnoreCase)
@@ -61,6 +64,7 @@ public sealed class WheelbaseFactory
         if (n.Contains("THRUSTMASTER") || n.Contains("T300") || n.Contains("T150") || n.Contains("TX ")) return WheelbaseVendor.Thrustmaster;
         if (n.Contains("ASETEK") || n.Contains("FORTE") || n.Contains("INVICTA") || n.Contains("LA PRIMA")) return WheelbaseVendor.Asetek;
         if (n.Contains("VNM")) return WheelbaseVendor.VNM;
+        if (n.Contains("CAMMUS")) return WheelbaseVendor.Cammus;
 
         return WheelbaseVendor.Unknown;
     }
@@ -161,6 +165,7 @@ public sealed class WheelbaseFactory
             WheelbaseVendor.Asetek => new AsetekProvider(),
             WheelbaseVendor.Fanatec => new FanatecProvider(deviceManager),
             WheelbaseVendor.VNM => new VnmProvider(),
+            WheelbaseVendor.Cammus => new CammusProvider(deviceManager),
             _ => new GenericDirectInputProvider(deviceManager),
         };
     }

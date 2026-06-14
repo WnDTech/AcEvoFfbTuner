@@ -20,6 +20,7 @@ public sealed class TrackCorner
     public float Curvature { get; set; }
     public float LengthM { get; set; }
     public float TotalAngleDeg { get; set; }
+    public string? RealName { get; set; }
 
     public string DisplayName => $"T{CornerNumber}";
     public string TypeName => Type.ToString();
