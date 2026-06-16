@@ -44,6 +44,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private RaceInfoOverlay? _raceInfoOverlay;
     private readonly RaceInfoProcessor _raceInfoProcessor = new();
     private readonly DiscordPresenceService _discordPresence = new();
+    private FfbCoachService _coachService;
+
+    private float _profilerMinOut = float.MaxValue;
+    private float _profilerMaxOut = float.MinValue;
+    private float _profilerSumOut;
+    private int _profilerFrames;
+    private int _profilerClips;
+    private float _profilerPeakMz;
+    private float _profilerPeakFx;
+    private float _profilerPeakFy;
+    private const int ProfilerStatsWindow = 300;
 
     public string AppVersion { get; } =
         System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
@@ -1162,6 +1173,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _buttonDetectionText = "";
 
+    [ObservableProperty]
+    private CoachSessionState _coachSessionState = Services.CoachSessionState.Idle;
+
+    [ObservableProperty]
+    private string _coachDataSourceLabel = "";
+
+    [ObservableProperty]
+    private string _coachCurrentProfileName = "";
+
+    [ObservableProperty]
+    private bool _coachIsBusy;
+
+    public ObservableCollection<CoachMessage> CoachMessages { get; } = [];
+
     public int PanicButtonIndex => PanicButtonComboIndex <= 0 ? -1 : PanicButtonComboIndex - 1;
     public int PanicDeviceButtonCount => _deviceManager.SecondaryButtonCount;
 
@@ -1169,6 +1194,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public FfbDeviceManager DeviceManager => _deviceManager;
     public TelemetryLoop TelemetryLoop => _telemetryLoop;
     public int DeviceButtonCount => _deviceManager.ButtonCount;
+    public FfbCoachService CoachService => _coachService;
 
     private readonly DispatcherTimer _uiUpdateTimer;
 
@@ -1179,6 +1205,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _deviceManager = new FfbDeviceManager();
         _telemetryLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
         _profileManager = new ProfileManager();
+        _coachService = new FfbCoachService(_profileManager, _pipeline);
 
         _deviceManager.DeviceRequiresReconnect += () => Application.Current?.Dispatcher.BeginInvoke(() =>
         {
@@ -3097,6 +3124,27 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 }
             }
 
+            _profilerMinOut = Math.Min(_profilerMinOut, processed.MainForce);
+            _profilerMaxOut = Math.Max(_profilerMaxOut, processed.MainForce);
+            _profilerSumOut += processed.MainForce;
+            _profilerFrames++;
+            if (processed.IsClipping) _profilerClips++;
+            _profilerPeakMz = Math.Max(_profilerPeakMz, Math.Abs(processed.ChannelMzFront));
+            _profilerPeakFx = Math.Max(_profilerPeakFx, Math.Abs(processed.ChannelFxFront));
+            _profilerPeakFy = Math.Max(_profilerPeakFy, Math.Abs(processed.ChannelFyFront));
+
+            if (_profilerFrames >= ProfilerStatsWindow)
+            {
+                _profilerMinOut = float.MaxValue;
+                _profilerMaxOut = float.MinValue;
+                _profilerSumOut = 0f;
+                _profilerFrames = 0;
+                _profilerClips = 0;
+                _profilerPeakMz = 0f;
+                _profilerPeakFx = 0f;
+                _profilerPeakFy = 0f;
+            }
+
             if (Application.Current?.MainWindow is MainWindow mw)
             {
                 mw.UpdateProfiler(
@@ -4525,6 +4573,199 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 _raceInfoOverlay.Show();
             });
         }
+    }
+
+    private void CoachLoadSnapshotFile(string filePath)
+    {
+        CoachIsBusy = true;
+        try
+        {
+            CoachMessages.Clear();
+            var csvData = SnapshotFileLoader.ParseCsvData(filePath);
+            if (csvData == null)
+            {
+                CoachMessages.Add(new CoachMessage { Text = "Could not parse snapshot file.", Icon = "⚠️" });
+                return;
+            }
+
+            CoachSessionState = CoachSessionState.Analyzing;
+            var result = _coachService.AnalyzeSnapshot(csvData);
+            CoachSessionState = result.State;
+            CoachDataSourceLabel = _coachService.DataSourceLabel;
+            CoachCurrentProfileName = _coachService.CurrentProfileName;
+
+            foreach (var msg in result.Messages)
+                CoachMessages.Add(msg);
+        }
+        finally
+        {
+            CoachIsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CoachUseLatestSnapshot()
+    {
+        CoachIsBusy = true;
+        try
+        {
+            CoachMessages.Clear();
+            var files = SnapshotFileLoader.LoadSnapshotFiles();
+            if (files.Count == 0)
+            {
+                CoachMessages.Add(new CoachMessage { Text = "No saved snapshots found. Take a snapshot first (wheel button or Telemetry page), or use live data.", Icon = "📭" });
+                return;
+            }
+
+            var csvData = SnapshotFileLoader.ParseCsvData(files[0].FilePath);
+            if (csvData == null)
+            {
+                CoachMessages.Add(new CoachMessage { Text = "Could not parse the snapshot file.", Icon = "⚠️" });
+                return;
+            }
+
+            CoachSessionState = CoachSessionState.Analyzing;
+            var result = _coachService.AnalyzeSnapshot(csvData);
+            CoachSessionState = result.State;
+            CoachDataSourceLabel = _coachService.DataSourceLabel;
+            CoachCurrentProfileName = _coachService.CurrentProfileName;
+
+            foreach (var msg in result.Messages)
+                CoachMessages.Add(msg);
+        }
+        finally
+        {
+            CoachIsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CoachUseLiveData()
+    {
+        CoachIsBusy = true;
+        try
+        {
+            CoachMessages.Clear();
+
+            if (_profilerFrames < 30)
+            {
+                CoachMessages.Add(new CoachMessage { Text = "Not enough live telemetry data yet. Make sure the game is running with FFB output active, then try again after a few seconds of driving.", Icon = "📡" });
+                return;
+            }
+
+            int frames = _profilerFrames;
+            var stats = new LiveProfilerStats
+            {
+                OutputMin = _profilerMinOut,
+                OutputMax = _profilerMaxOut,
+                OutputAvg = _profilerSumOut / frames,
+                ClippingPercent = (float)_profilerClips / frames * 100f,
+                PeakMz = _profilerPeakMz,
+                PeakFx = _profilerPeakFx,
+                PeakFy = _profilerPeakFy,
+                FrameCount = frames,
+                ClipCount = _profilerClips
+            };
+
+            CoachSessionState = CoachSessionState.Analyzing;
+            var result = _coachService.AnalyzeLiveData(stats, SelectedProfile?.Name ?? "Live");
+            CoachSessionState = result.State;
+            CoachDataSourceLabel = _coachService.DataSourceLabel;
+            CoachCurrentProfileName = _coachService.CurrentProfileName;
+
+            foreach (var msg in result.Messages)
+                CoachMessages.Add(msg);
+        }
+        finally
+        {
+            CoachIsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CoachAnswer(string answerId)
+    {
+        if (answerId == "source_latest")
+        {
+            CoachUseLatestSnapshot();
+            return;
+        }
+        if (answerId == "source_live")
+        {
+            CoachUseLiveData();
+            return;
+        }
+        if (answerId == "source_pick")
+        {
+            ShowSnapshotPicker();
+            return;
+        }
+        if (answerId == "go_back")
+        {
+            CoachRestart();
+            return;
+        }
+        if (answerId.StartsWith("snap_"))
+        {
+            CoachLoadSnapshotFile(answerId["snap_".Length..]);
+            return;
+        }
+
+        CoachIsBusy = true;
+        try
+        {
+            var result = _coachService.ProcessAnswer(answerId);
+            CoachSessionState = result.State;
+            foreach (var msg in result.Messages)
+                CoachMessages.Add(msg);
+        }
+        finally
+        {
+            CoachIsBusy = false;
+        }
+    }
+
+    private void ShowSnapshotPicker()
+    {
+        var files = SnapshotFileLoader.LoadSnapshotFiles();
+        if (files.Count == 0)
+        {
+            CoachMessages.Add(new CoachMessage { Text = "No saved snapshots found. Take a snapshot first (wheel button or Telemetry page), or use live data.", Icon = "📭" });
+            return;
+        }
+
+        CoachSessionState = CoachSessionState.SelectingSource;
+        List<CoachAnswer> answers = [];
+        foreach (var f in files.Take(20))
+        {
+            answers.Add(new CoachAnswer
+            {
+                Id = "snap_" + f.FilePath,
+                Label = f.Timestamp.ToString("MMM dd, HH:mm:ss"),
+                Description = f.ProfileName
+            });
+        }
+        answers.Add(new CoachAnswer { Id = "go_back", Label = "← Back to options" });
+
+        CoachMessages.Add(new CoachMessage
+        {
+            Text = $"Found {files.Count} snapshot{(files.Count > 1 ? "s" : "")}. Select one to analyze:",
+            Answers = answers
+        });
+    }
+
+    [RelayCommand]
+    private void CoachRestart()
+    {
+        CoachMessages.Clear();
+        _coachService.Reset();
+        CoachSessionState = CoachSessionState.Idle;
+        CoachDataSourceLabel = "";
+        CoachCurrentProfileName = "";
+
+        foreach (var msg in _coachService.BuildWelcomeMessages())
+            CoachMessages.Add(msg);
+        CoachSessionState = CoachSessionState.SelectingSource;
     }
 
     public void Dispose()

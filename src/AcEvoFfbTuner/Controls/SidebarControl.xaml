@@ -277,6 +277,47 @@
                 </RadioButton.Style>
             </RadioButton>
 
+            <!-- Nav: FFB Coach -->
+            <RadioButton x:Name="NavCoachBtn" GroupName="SidebarNav" Content="FFB Coach" Margin="4,1"
+                         Tag="{x:Static vm:NavPage.FfbCoach}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="FFB Coach — interactive tuning assistant using telemetry data">
+                <RadioButton.Template>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 L22,22 L22,12 C22,6.48 17.52,2 12,2 Z M12,18 C11.45,18 11,17.55 11,17 C11,16.45 11.45,16 12,16 C12.55,16 13,16.45 13,17 C13,17.55 12.55,18 12,18 Z M13,14 L11,14 L11,8 L13,8 L13,14 Z"
+                                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </RadioButton.Template>
+                <RadioButton.Style>
+                    <Style TargetType="RadioButton">
+                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="#FFF0883E" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </RadioButton.Style>
+            </RadioButton>
+
             <RadioButton x:Name="NavDevicesBtn" GroupName="SidebarNav" Content="Devices" Margin="4,1"
                          Tag="{x:Static vm:NavPage.Devices}" Click="OnNavClick" Cursor="Hand"
                          ToolTip="Devices — LED effects, haptic pad, button assignments">

@@ -78,6 +78,7 @@ public partial class MainWindow : Window
         TrackMapPageCtrl.Visibility = vm.CurrentPage == NavPage.TrackMap ? Visibility.Visible : Visibility.Collapsed;
         LiveTrackMapPageCtrl.Visibility = vm.CurrentPage == NavPage.LiveTrackMap ? Visibility.Visible : Visibility.Collapsed;
         TelemetryPageCtrl.Visibility = vm.CurrentPage == NavPage.Telemetry ? Visibility.Visible : Visibility.Collapsed;
+        FFBCoachPageCtrl.Visibility = vm.CurrentPage == NavPage.FfbCoach ? Visibility.Visible : Visibility.Collapsed;
         DevicesPageCtrl.Visibility = vm.CurrentPage == NavPage.Devices ? Visibility.Visible : Visibility.Collapsed;
         ProfilesPageCtrl.Visibility = vm.CurrentPage == NavPage.Profiles ? Visibility.Visible : Visibility.Collapsed;
         SettingsPageCtrl.Visibility = vm.CurrentPage == NavPage.Settings ? Visibility.Visible : Visibility.Collapsed;

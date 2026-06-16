@@ -1,0 +1,151 @@
+<UserControl x:Class="AcEvoFfbTuner.Views.Pages.FFBCoachPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:AcEvoFfbTuner.Converters"
+             xmlns:svc="clr-namespace:AcEvoFfbTuner.Services"
+             Background="{DynamicResource BgDark}">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <converters:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis" />
+        <Style x:Key="CoachActionBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#FF8B949E" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#FF30363D" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Margin" Value="0,3" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="6" BorderThickness="{TemplateBinding BorderThickness}"
+                                BorderBrush="{TemplateBinding BorderBrush}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1AF0883E" />
+                                <Setter Property="Foreground" Value="#FFF0883E" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#30F0883E" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CoachPrimaryBtn" TargetType="Button" BasedOn="{StaticResource CoachActionBtn}">
+            <Setter Property="Background" Value="#1AF0883E" />
+            <Setter Property="Foreground" Value="#FFF0883E" />
+            <Setter Property="BorderBrush" Value="#88F0883E" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Chat Area -->
+        <ScrollViewer Grid.Column="0" x:Name="ChatScrollViewer"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Padding="24,16">
+            <StackPanel>
+                <TextBlock Text="FFB Coach" FontSize="28" FontWeight="Bold"
+                           Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding CoachDataSourceLabel}"
+                           FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,16"
+                           Visibility="{Binding CoachDataSourceLabel, Converter={StaticResource NotEmptyToVis}}" />
+
+                <!-- Loading -->
+                <Border Background="#1AF0883E" CornerRadius="8" Padding="14,10" Margin="0,0,0,8"
+                        Visibility="{Binding CoachIsBusy, Converter={StaticResource BoolToVis}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="⏳" FontSize="16" Margin="0,0,8,0" />
+                        <TextBlock Text="Analyzing your data..." FontSize="14" Foreground="#FFE6EDF3" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Chat messages container -->
+                <StackPanel x:Name="MessageContainer" />
+
+                <!-- Empty state -->
+                <Border x:Name="EmptyState" Background="#1AFFFFFF" CornerRadius="8" Padding="24,20" Margin="0,8,0,0">
+                    <StackPanel HorizontalAlignment="Center" Margin="0,30">
+                        <TextBlock Text="🤖" FontSize="48" HorizontalAlignment="Center" />
+                        <TextBlock Text="Welcome to FFB Coach!" FontSize="20" FontWeight="Bold"
+                                   Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,12,0,6" />
+                        <TextBlock Text="I'll help you tune your FFB profile using telemetry data."
+                                   FontSize="14" Foreground="#FF8B949E" HorizontalAlignment="Center"
+                                   Margin="0,0,0,20" />
+                        <Button Content="📂  Analyze Latest Snapshot"
+                                Click="OnUseLatestSnapshot"
+                                Style="{StaticResource CoachPrimaryBtn}" Margin="0,4" Width="300" />
+                        <Button Content="📡  Use Live Profiler Data"
+                                Click="OnUseLiveData"
+                                Style="{StaticResource CoachActionBtn}" Margin="0,4" Width="300" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Info Panel -->
+        <Border Grid.Column="1" Width="280" Background="#FF151B23"
+                BorderThickness="1,0,0,0" BorderBrush="#FF30363D">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="16">
+                <TextBlock Text="SESSION INFO" FontSize="11" FontWeight="Bold"
+                           Foreground="#FF8B949E" Margin="0,0,0,4" />
+
+                <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Active Profile" FontSize="11" Foreground="#FF6B7682" />
+                        <TextBlock x:Name="InfoProfileName"
+                                   Text="{Binding SelectedProfile.Name, FallbackValue='No profile selected'}"
+                                   FontSize="15" FontWeight="SemiBold" Foreground="#FFE6EDF3"
+                                   TextWrapping="Wrap" Margin="0,2,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Data Source" FontSize="11" Foreground="#FF6B7682" />
+                        <TextBlock x:Name="InfoDataSource"
+                                   Text="Not started"
+                                   FontSize="13" Foreground="#FFE6EDF3" TextWrapping="Wrap"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Session State" FontSize="11" Foreground="#FF6B7682" />
+                        <TextBlock x:Name="InfoSessionState" Text="Idle" FontSize="13"
+                                   Foreground="#FF8B949E" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Controls" FontSize="11" Foreground="#FF6B7682" Margin="0,0,0,6" />
+                        <Button Content="🔄  Restart Session"
+                                Click="OnRestartSession"
+                                Style="{StaticResource CoachActionBtn}" Margin="0,3" />
+                        <Button Content="📋  Show Summary"
+                                Click="OnShowSummary"
+                                Style="{StaticResource CoachActionBtn}" Margin="0,3" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>
