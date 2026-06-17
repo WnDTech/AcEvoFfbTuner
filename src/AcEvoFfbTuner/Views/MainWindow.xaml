@@ -15,10 +15,6 @@
         UseLayoutRounding="True"
         ToolTipService.IsEnabled="{Binding TooltipsEnabled}">
 
-    <Window.DataContext>
-        <vm:MainViewModel />
-    </Window.DataContext>
-
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <converters:EnumToBoolConverter x:Key="EnumToBoolConverter" />
@@ -183,7 +179,7 @@
                 <!-- Game Pill -->
                 <Button Grid.Column="4" x:Name="GamePill" Click="OnGamePillClick"
                         Cursor="Hand" VerticalAlignment="Center"
-                        ToolTip="Switch between AC EVO, RaceRoom, and Assetto Corsa">
+                        ToolTip="Switch between AC EVO, RaceRoom, Assetto Corsa, and Le Mans Ultimate">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="PillBd" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderBrush}"

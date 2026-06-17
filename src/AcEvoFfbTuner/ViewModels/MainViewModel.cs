@@ -26,7 +26,8 @@ public enum SupportedGame
 {
     AcEvo,
     Raceroom,
-    AssettoCorsa
+    AssettoCorsa,
+    LeMansUltimate
 }
 
 public sealed partial class MainViewModel : ObservableObject, IDisposable
@@ -66,12 +67,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         SupportedGame.Raceroom => "RaceRoom",
         SupportedGame.AssettoCorsa => "Assetto Corsa",
+        SupportedGame.LeMansUltimate => "Le Mans Ultimate",
         _ => "AC EVO"
     };
 
     public bool IsAcEvo => SelectedGame == SupportedGame.AcEvo;
     public bool IsRaceroom => SelectedGame == SupportedGame.Raceroom;
     public bool IsAssettoCorsa => SelectedGame == SupportedGame.AssettoCorsa;
+    public bool IsLeMansUltimate => SelectedGame == SupportedGame.LeMansUltimate;
+    public bool IsColumnForceGame => SelectedGame is SupportedGame.Raceroom or SupportedGame.LeMansUltimate;
 
     public int SelectedGameIndex
     {
@@ -1407,6 +1411,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         SupportedGame.Raceroom => new RaceroomSharedMemoryReader(),
         SupportedGame.AssettoCorsa => new SharedMemoryReader(),
+        SupportedGame.LeMansUltimate => new LmuSharedMemoryReader(),
         _ => new SharedMemoryReader()
     };
 
@@ -1414,6 +1419,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         SupportedGame.Raceroom => new R3eFfbPipeline(),
         SupportedGame.AssettoCorsa => new AcFfbPipeline(),
+        SupportedGame.LeMansUltimate => new LmuFfbPipeline(),
         _ => new FfbPipeline()
     };
 
@@ -1432,6 +1438,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsAcEvo));
         OnPropertyChanged(nameof(IsRaceroom));
         OnPropertyChanged(nameof(IsAssettoCorsa));
+        OnPropertyChanged(nameof(IsLeMansUltimate));
+        OnPropertyChanged(nameof(IsColumnForceGame));
 
         // Re-apply active profile settings to the new pipeline
         if (_profileManager.ActiveProfile != null)
@@ -3399,7 +3407,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         LfeSpeedScaling = profile.Lfe.SpeedScaling;
         LfeRpmDrive = profile.Lfe.RpmDrive;
         CompressionPower = profile.CompressionPower;
-        SteeringLockDegrees = profile.SteeringLockDegrees;
+        SteeringLockDegrees = Math.Clamp(profile.SteeringLockDegrees, 180, 1080);
         ForceScale = profile.ForceScale;
         SignCorrectionEnabled = profile.SignCorrectionEnabled;
         FyInverted = profile.FyInverted;

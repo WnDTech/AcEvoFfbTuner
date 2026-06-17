@@ -170,6 +170,15 @@ public sealed class FfbProfile
             ac.BrakeBoostThreshold = Slip.BrakeBoostThreshold;
         }
 
+        if (pipeline is LmuFfbPipeline lmu)
+        {
+            lmu.GearChangeMuteEnabled = Slip.GearChangeMuteEnabled;
+            lmu.GearSpikeThreshold = Slip.GearSpikeThreshold;
+            lmu.BrakeBoostGain = Slip.BrakeBoostGain;
+            lmu.BrakeBoostThreshold = Slip.BrakeBoostThreshold;
+            lmu.CoreForceMultiplier = Slip.CoreForceMultiplier;
+        }
+
         pipeline.DynamicEffects.LateralGGain = Dynamic.LateralGGain;
         pipeline.DynamicEffects.LongitudinalGGain = Dynamic.LongitudinalGGain;
         pipeline.DynamicEffects.SuspensionGain = Dynamic.SuspensionGain;
@@ -337,16 +346,20 @@ public sealed class FfbProfile
             SlipThreshold = pipeline.SlipEnhancer.SlipThreshold,
             UseFrontOnly = pipeline.SlipEnhancer.UseFrontOnly,
             GearChangeMuteEnabled = (pipeline as R3eFfbPipeline)?.GearChangeMuteEnabled
+                                  ?? (pipeline as LmuFfbPipeline)?.GearChangeMuteEnabled
                                   ?? (pipeline as AcFfbPipeline)?.GearChangeMuteEnabled
                                   ?? pipeline.GearShiftFilterEnabled,
             GearChangeMuteFrames = 20,
             GearSpikeThreshold = (pipeline as R3eFfbPipeline)?.GearSpikeThreshold
+                               ?? (pipeline as LmuFfbPipeline)?.GearSpikeThreshold
                                ?? (pipeline as AcFfbPipeline)?.GearSpikeThreshold
                                ?? 3000f,
             BrakeBoostGain = (pipeline as R3eFfbPipeline)?.BrakeBoostGain
+                           ?? (pipeline as LmuFfbPipeline)?.BrakeBoostGain
                            ?? (pipeline as AcFfbPipeline)?.BrakeBoostGain
                            ?? 0.4f,
             BrakeBoostThreshold = (pipeline as R3eFfbPipeline)?.BrakeBoostThreshold
+                                ?? (pipeline as LmuFfbPipeline)?.BrakeBoostThreshold
                                 ?? (pipeline as AcFfbPipeline)?.BrakeBoostThreshold
                                 ?? 0.1f
         };

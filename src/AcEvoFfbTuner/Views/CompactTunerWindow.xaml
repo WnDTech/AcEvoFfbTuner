@@ -205,11 +205,11 @@
                         Label="Center Suppress" StringFormat="{}{0:F1}" Suffix="°"
                         SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding CenterSharpnessDegrees, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.5"
-                        Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}"
+                        Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
                         Label="Center Sharp" StringFormat="{}{0:F1}" Suffix="°"
                         SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.5"
-                        Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}"
+                        Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
                         Label="Center Str" StringFormat="{}{0:F1}" Suffix="x"
                         SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,8" />
 

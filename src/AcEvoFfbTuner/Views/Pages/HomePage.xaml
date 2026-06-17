@@ -412,7 +412,7 @@
 
                     <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="SETUP WIZARD" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,2" />
-                        <TextBlock Text="Guided FFB Tuning for AC EVO, RaceRoom &amp; Assetto Corsa" FontSize="20" FontWeight="Black" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                        <TextBlock Text="Guided FFB Tuning for AC EVO, RaceRoom, Assetto Corsa &amp; Le Mans Ultimate" FontSize="20" FontWeight="Black" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
                         <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" MaxWidth="400">
                             Step-by-step wheel setup · Works with your game running · Tune, test, and save profiles
                         </TextBlock>

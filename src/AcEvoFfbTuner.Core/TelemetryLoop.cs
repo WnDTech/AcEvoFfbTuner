@@ -389,6 +389,13 @@ public sealed class TelemetryLoop : IDisposable
                     if (_reader is AssettoCorsaSharedMemoryReader ac)
                         raw.TyreGrip = ac.TireGrip;
 
+                    // Inject LMU tyre grip and local acceleration
+                    if (_reader is LmuSharedMemoryReader lmu)
+                    {
+                        raw.TyreGrip = lmu.TireGrip;
+                        raw.DisplayAccG = lmu.LocalAccelG;
+                    }
+
                     IntegratePosition(raw, physics);
 
                     var processed = _pipeline.Process(raw);
@@ -452,10 +459,11 @@ public sealed class TelemetryLoop : IDisposable
                     }
                     else if (_deviceManager.IsDeviceAcquired && !_suppressOutput)
                     {
+
                         float stationaryForce = raw.SpeedKmh < 0.5f ? _staticFriction.Compute(raw) : 0f;
                         bool hasStationaryForce = Math.Abs(stationaryForce) > 0.001f;
 
-                                                                        // ── Handover fade ────────────────────────────────────────────
+                        // ── Handover fade ────────────────────────────────────────────
                         // Triggers when IsAiControlled transitions from 1 (AI) to 0 (player).
                         float handoverFade = 1.0f;
                         if (_reader is RaceroomSharedMemoryReader)
@@ -484,7 +492,8 @@ public sealed class TelemetryLoop : IDisposable
                                 }
                                 else _handoverFadeEndTicks = 0;
                             }
-                        }if (_ffbProvider != null && _ffbProvider.IsInitialized)
+                        }
+                        if (_ffbProvider != null && _ffbProvider.IsInitialized)
                         {
                             if (hasStationaryForce)
                             {
@@ -958,6 +967,9 @@ public sealed class TelemetryLoop : IDisposable
         return bestIdx;
     }
 
+    private static float[] Arr4(float[]? arr) => arr ?? [0, 0, 0, 0];
+    private static float[] Arr3(float[]? arr) => arr ?? [0, 0, 0];
+
     private static FfbRawData MapRawData(SPageFilePhysicsEvo physics, SPageFileGraphicEvo graphics)
     {
         return new FfbRawData
@@ -978,19 +990,19 @@ public sealed class TelemetryLoop : IDisposable
             FfbStrength = graphics.FfbStrength,
             CarFfbMultiplier = graphics.CarFfbMultiplier,
             SteerDegrees = graphics.SteerDegrees,
-            Mz = new float[] { physics.Mz[0], physics.Mz[1], physics.Mz[2], physics.Mz[3] },
-            Fx = new float[] { physics.Fx[0], physics.Fx[1], physics.Fx[2], physics.Fx[3] },
-            Fy = new float[] { physics.Fy[0], physics.Fy[1], physics.Fy[2], physics.Fy[3] },
-            WheelLoad = new float[] { physics.WheelLoad[0], physics.WheelLoad[1], physics.WheelLoad[2], physics.WheelLoad[3] },
-            SlipRatio = new float[] { physics.SlipRatio[0], physics.SlipRatio[1], physics.SlipRatio[2], physics.SlipRatio[3] },
-            SlipAngle = new float[] { physics.SlipAngle[0], physics.SlipAngle[1], physics.SlipAngle[2], physics.SlipAngle[3] },
-            TyreContactNormalX = new float[] { physics.TyreContactNormal[0].X, physics.TyreContactNormal[1].X, physics.TyreContactNormal[2].X, physics.TyreContactNormal[3].X },
-            TyreContactNormalY = new float[] { physics.TyreContactNormal[0].Y, physics.TyreContactNormal[1].Y, physics.TyreContactNormal[2].Y, physics.TyreContactNormal[3].Y },
-            TyreContactNormalZ = new float[] { physics.TyreContactNormal[0].Z, physics.TyreContactNormal[1].Z, physics.TyreContactNormal[2].Z, physics.TyreContactNormal[3].Z },
-            TyreContactPointY = new float[] { physics.TyreContactPoint[0].Y, physics.TyreContactPoint[1].Y, physics.TyreContactPoint[2].Y, physics.TyreContactPoint[3].Y },
-            SuspensionTravel = new float[] { physics.SuspensionTravel[0], physics.SuspensionTravel[1], physics.SuspensionTravel[2], physics.SuspensionTravel[3] },
-            AccG = new float[] { physics.AccG[0], physics.AccG[1], physics.AccG[2] },
-            LocalAngularVel = new float[] { physics.LocalAngularVel[0], physics.LocalAngularVel[1], physics.LocalAngularVel[2] },
+            Mz = Arr4(physics.Mz),
+            Fx = Arr4(physics.Fx),
+            Fy = Arr4(physics.Fy),
+            WheelLoad = Arr4(physics.WheelLoad),
+            SlipRatio = Arr4(physics.SlipRatio),
+            SlipAngle = Arr4(physics.SlipAngle),
+            TyreContactNormalX = physics.TyreContactNormal != null ? [physics.TyreContactNormal[0].X, physics.TyreContactNormal[1].X, physics.TyreContactNormal[2].X, physics.TyreContactNormal[3].X] : [0, 0, 0, 0],
+            TyreContactNormalY = physics.TyreContactNormal != null ? [physics.TyreContactNormal[0].Y, physics.TyreContactNormal[1].Y, physics.TyreContactNormal[2].Y, physics.TyreContactNormal[3].Y] : [0, 0, 0, 0],
+            TyreContactNormalZ = physics.TyreContactNormal != null ? [physics.TyreContactNormal[0].Z, physics.TyreContactNormal[1].Z, physics.TyreContactNormal[2].Z, physics.TyreContactNormal[3].Z] : [0, 0, 0, 0],
+            TyreContactPointY = physics.TyreContactPoint != null ? [physics.TyreContactPoint[0].Y, physics.TyreContactPoint[1].Y, physics.TyreContactPoint[2].Y, physics.TyreContactPoint[3].Y] : [0, 0, 0, 0],
+            SuspensionTravel = Arr4(physics.SuspensionTravel),
+            AccG = Arr3(physics.AccG),
+            LocalAngularVel = Arr3(physics.LocalAngularVel),
             Gear = physics.Gear,
             RpmPercent = graphics.RpmPercent,
             IsRpmLimiterOn = graphics.IsRpmLimiterOn,
@@ -1014,11 +1026,11 @@ public sealed class TelemetryLoop : IDisposable
             TyreCompoundFront = DecodeString(graphics.TyreLf.TyreCompoundFront),
             TyreCompoundRear = DecodeString(graphics.TyreLr.TyreCompoundRear),
             UseSingleCompound = graphics.UseSingleCompound,
-            WheelsPressure = new float[] { physics.WheelsPressure[0], physics.WheelsPressure[1], physics.WheelsPressure[2], physics.WheelsPressure[3] },
-            SuspensionDamage = new float[] { physics.SuspensionDamage[0], physics.SuspensionDamage[1], physics.SuspensionDamage[2], physics.SuspensionDamage[3] },
+            WheelsPressure = Arr4(physics.WheelsPressure),
+            SuspensionDamage = Arr4(physics.SuspensionDamage),
             AirTemp = physics.AirTemp,
             RoadTemp = physics.RoadTemp,
-            TyreDirtyLevel = new float[] { physics.TyreDirtyLevel[0], physics.TyreDirtyLevel[1], physics.TyreDirtyLevel[2], physics.TyreDirtyLevel[3] }
+            TyreDirtyLevel = Arr4(physics.TyreDirtyLevel)
         };
     }
 
@@ -1026,6 +1038,7 @@ public sealed class TelemetryLoop : IDisposable
     {
         if (graphics.CarCoordinates is { Length: > 0 })
             return graphics.CarCoordinates[0].X;
+        if (physics.TyreContactPoint == null) return 0f;
         return (physics.TyreContactPoint[0].X + physics.TyreContactPoint[1].X +
                 physics.TyreContactPoint[2].X + physics.TyreContactPoint[3].X) * 0.25f;
     }
@@ -1034,6 +1047,7 @@ public sealed class TelemetryLoop : IDisposable
     {
         if (graphics.CarCoordinates is { Length: > 0 })
             return graphics.CarCoordinates[0].Y;
+        if (physics.TyreContactPoint == null) return 0f;
         return (physics.TyreContactPoint[0].Y + physics.TyreContactPoint[1].Y +
                 physics.TyreContactPoint[2].Y + physics.TyreContactPoint[3].Y) * 0.25f;
     }
@@ -1042,6 +1056,7 @@ public sealed class TelemetryLoop : IDisposable
     {
         if (graphics.CarCoordinates is { Length: > 0 })
             return graphics.CarCoordinates[0].Z;
+        if (physics.TyreContactPoint == null) return 0f;
         return (physics.TyreContactPoint[0].Z + physics.TyreContactPoint[1].Z +
                 physics.TyreContactPoint[2].Z + physics.TyreContactPoint[3].Z) * 0.25f;
     }

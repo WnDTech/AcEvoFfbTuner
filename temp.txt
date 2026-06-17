@@ -1,0 +1,403 @@
+<Window x:Class="AcEvoFfbTuner.Views.SetupWizardOverlay"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FFB Tuner — Setup Wizard"
+        Width="520"
+        Height="740"
+        MinWidth="380"
+        MinHeight="500"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        Loaded="OnLoaded"
+        Deactivated="OnDeactivated">
+
+    <Window.Resources>
+        <Style TargetType="Border">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style x:Key="WizardButton" TargetType="Button">
+            <Setter Property="Background" Value="#FF333355" />
+            <Setter Property="Foreground" Value="#FFE6EDF3" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FFE6EDF3" />
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder" CornerRadius="8" Padding="1"
+            Background="#FF1C2128"
+            MouseDown="Window_MouseDown"
+            MouseWheel="Window_MouseWheel">
+
+        <Border x:Name="ContentBorder" CornerRadius="7" Background="#DD0D0D0D">
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- ═══ HEADER + PROGRESS ═══ -->
+                <Border Grid.Row="0" Background="#FF161B22" Padding="12,8" MouseDown="Window_MouseDown">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                         <TextBlock Grid.Column="0" Text="SETUP WIZARD" FontSize="18" FontWeight="Black" Foreground="White" VerticalAlignment="Center" />
+                         <TextBlock Grid.Column="1" x:Name="StepProgressText" Text="1 / 8" FontSize="14" Foreground="#FFB0B0B0" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- ═══ PROGRESS BAR + TITLE + PHASE BADGE ═══ -->
+                <Border Grid.Row="1" Background="#FF111122" Padding="12,6">
+                    <StackPanel>
+                         <ProgressBar x:Name="ProgressBar" Minimum="1" Maximum="8" Value="1" Height="14" Foreground="#FF4CAF50" Background="#FF2A2A40" BorderThickness="0" Margin="0,0,0,6" />
+                         <TextBlock x:Name="StepTitleText" Text="Step 1: Welcome &amp; Safety" FontSize="18" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" />
+                         <Border x:Name="PhaseBadgeBorder" Background="#FF1A1C23" CornerRadius="4" Padding="6,3" Margin="0,4,0,0" Visibility="Collapsed">
+                             <Grid>
+                                 <Grid.ColumnDefinitions>
+                                     <ColumnDefinition Width="Auto" />
+                                     <ColumnDefinition Width="*" />
+                                 </Grid.ColumnDefinitions>
+                                 <TextBlock x:Name="PhaseBadge" Grid.Column="0" Text="PHASE" FontSize="11" FontWeight="Black" Foreground="Black" Margin="0,0,8,0" />
+                                <TextBlock x:Name="PhaseInstruction" Grid.Column="1" Text="" FontSize="12" FontWeight="SemiBold" Foreground="#FFE6EDF3" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- ═══ SAFETY BANNER (shown on force-adjusting steps for strong wheelbases) ═══ -->
+                <Border x:Name="SafetyBanner" Grid.Row="1" Background="#CC552200" BorderBrush="#FFFF1744"
+                        BorderThickness="1" CornerRadius="4" Padding="12,8" Margin="12,42,12,0"
+                        Visibility="Collapsed" VerticalAlignment="Top" Panel.ZIndex="10">
+                    <StackPanel>
+                        <TextBlock x:Name="SafetyTitle" Text="&#x26A0; STRONG WHEELBASE DETECTED" FontSize="13"
+                                   FontWeight="Black" Foreground="#FFFF1744" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="SafetyText" TextWrapping="Wrap" FontSize="12" Foreground="#FFFFD600"
+                                   HorizontalAlignment="Center" TextAlignment="Center" Margin="0,4,0,0">
+                            HOLD THE WHEEL FIRMLY during adjustments. Keep hands and face clear of moving parts.
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- ═══ CONTENT SCROLL (Step Panels) ═══ -->
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="12,10">
+                    <StackPanel>
+
+                        <!-- STEP 0: Welcome & Safety -->
+                        <StackPanel x:Name="PanelStep0">
+                            <TextBlock TextWrapping="Wrap" FontSize="16" Margin="0,0,0,8"
+                                       Text="Welcome to the FFB Setup Wizard! We will auto-configure your force feedback step by step. Keep your game running — the app will guide you through each step with live telemetry. Each step samples your driving and auto-tunes the settings." />
+                            <Border Background="#FF161B22" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock FontSize="15" Margin="0,1" Foreground="#FF00E676" Text="&#x2713; Close other wheel software (Pit House, G HUB, Fanatec, etc.)" />
+                                    <TextBlock FontSize="15" Margin="0,1" Foreground="#FF00E676" Text="&#x2713; Set in-game FFB to 0, restart the game" />
+                                    <TextBlock FontSize="15" Margin="0,1" Foreground="#FF00E676" Text="&#x2713; Select a car, any track, Practice mode" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="Step0SafetyBox" Background="#332211" CornerRadius="4" Padding="10,8" Margin="0,0,0,8"
+                                    Visibility="Collapsed">
+                                <TextBlock x:Name="Step0SafetyText" TextWrapping="Wrap" FontSize="14" Foreground="#FFFF1744" FontWeight="Bold">
+                                    &#x26A0; Your wheelbase is rated at <Run x:Name="Step0TorqueText" Text="0" /> Nm — this can produce injurious forces.
+                                    Always HOLD THE WHEEL FIRMLY when the app is running and force adjustments are being made.
+                                </TextBlock>
+                            </Border>
+                            <TextBlock x:Name="Step0Status" Text="Checking device connection..." FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- STEP 1: Wheel Centering -->
+                        <StackPanel x:Name="PanelStep1" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="15" Margin="0,0,0,8"
+                                       Text="CENTERING — This step makes sure your wheel returns to center naturally. Phase 1 detects if the wheel pulls to one side when driving straight. Phase 2 checks cornering feel. Phase 3 fine-tunes. Just drive normally." />
+                            <Border Background="#FF161B22" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap" Foreground="#FFFFD600">
+                                        <Run FontWeight="Bold" Text="&#x26A0; HOLD THE WHEEL" /><Run Text=" — keep driving normally, the app samples in the background." />
+                                    </TextBlock>
+                                    <TextBlock FontSize="13" Foreground="#FF8B949E" Margin="0,2" TextWrapping="Wrap">
+                                        <Run FontStyle="Italic" Text="Phase 1 drives straight. Phase 2 detects fight through any turn — gentle sweepers to hairpins." />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Center Suppress" Width="120" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderCenterSuppress" Minimum="0" Maximum="30" TickFrequency="0.5" Value="1.5" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnCenterSuppressChanged" />
+                                <TextBlock x:Name="LblCenterSuppress" Text="1.5°" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Slew Rate" Width="120" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderSlewRate" Minimum="0.03" Maximum="0.50" TickFrequency="0.01" Value="0.25" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnSlewRateChanged" />
+                                <TextBlock x:Name="LblSlewRate" Text="0.25" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#FF8B949E" Margin="0,4">
+                                <Run Text="Phase 1: straight-line force (20s). Phase 2: turn response across all corners. Sliders unlock after both complete." />
+                            </TextBlock>
+                            <TextBlock x:Name="Step1Status" Text="" FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- STEP 2: Review & Confirm -->
+                        <StackPanel x:Name="PanelStep2" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="14" Margin="0,0,0,8"
+                                        Text="You've configured the essential FFB settings. Here's what was tuned:" />
+                            <Border Background="#FF161B22" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock FontSize="14" Margin="0,1" Foreground="#FF66BB6A">
+                                        <Run Text="&#x2713; " /><Run FontWeight="Bold" Text="Wheel Centering" /><Run Text=" — neutral center feel" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="14" Margin="0,1" Foreground="#FF66BB6A">
+                                        <Run Text="&#x2713; " /><Run FontWeight="Bold" Text="Curb &amp; Vibration" /><Run Text=" — texture effects tuned" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="14" Margin="0,1" Foreground="#FF66BB6A">
+                                        <Run Text="&#x2713; " /><Run FontWeight="Bold" Text="Output Gain" /><Run Text=" — force strength calibrated" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="14" Margin="0,1" Foreground="#FF66BB6A">
+                                        <Run Text="&#x2713; " /><Run FontWeight="Bold" Text="Damping &amp; Friction" /><Run Text=" — cornering feel tuned" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="14" Margin="0,1" Foreground="#FF66BB6A">
+                                        <Run Text="&#x2713; " /><Run FontWeight="Bold" Text="Core Tyre Forces" /><Run Text=" — Mz, Fx, Fy channels configured" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="#FF332211" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FFFFD600">
+                                    <Run Text="Each step below will auto-configure its settings. Tap Next to proceed through each one." />
+                                </TextBlock>
+                            </Border>
+                            <TextBlock x:Name="Step2Status" Text="" FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- STEP 3: Curb & Vibration -->
+                        <StackPanel x:Name="PanelStep3" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="15" Margin="0,0,0,8"
+                                        Text="MASTER OUTPUT GAIN — This controls the overall force strength from your wheel. Output Gain sets the max force level. Master Gain scales the raw game forces before they enter the pipeline. The app will auto-tune these while you drive." />
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Output Gain" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderOutputGain" Minimum="0" Maximum="20" TickFrequency="0.01" Value="1.0" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnOutputGainChanged" />
+                                <TextBlock x:Name="LblOutputGain" Text="0.62" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Master Gain" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderMasterGain" Minimum="0" Maximum="2.0" TickFrequency="0.05" Value="0.5" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnMasterGainChanged" />
+                                <TextBlock x:Name="LblMasterGain" Text="0.50" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <TextBlock x:Name="Step3Status" Text="Auto-detecting optimum gain..." FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- STEP 4: Damping & Friction -->
+                        <StackPanel x:Name="PanelStep4" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="15" Margin="0,0,0,8"
+                                        Text="DAMPING &amp; FRICTION — Speed Damping adds weight at high speed so the wheel feels stable, not twitchy. Friction adds a mechanical resistance feel like a real steering rack. The app auto-tunes these based on your driving." />
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Speed Damping" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderDamping" Minimum="0" Maximum="25" TickFrequency="0.1" Value="10" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnDampingChanged" />
+                                <TextBlock x:Name="LblDamping" Text="10.0" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Friction" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderFriction" Minimum="0" Maximum="20" TickFrequency="0.1" Value="0.05" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnFrictionChanged" />
+                                <TextBlock x:Name="LblFriction" Text="0.05" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <TextBlock x:Name="Step4Status" Text="Auto-detecting damping..." FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- STEP 5: Core Tyre Forces -->
+                        <StackPanel x:Name="PanelStep5" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="15" Margin="0,0,0,8"
+                                        Text="CORE TYRE FORCES — Mz (self-aligning torque) is the main force that returns the wheel to center when you turn. Fx adds braking/acceleration weight shift. Fy adds cornering load feel. The Dynamic Force slider adds extra cornering weight transfer for a more connected feel." />
+                            <DockPanel Margin="0,4">
+                                <CheckBox x:Name="ChkMzEnabled" IsChecked="True" VerticalAlignment="Center" Margin="0,0,4,0" Checked="OnMzEnabledChanged" Unchecked="OnMzEnabledChanged" />
+                                <TextBlock Text="Mz Self-Align" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderMzGain" Minimum="-10" Maximum="10" TickFrequency="0.05" Value="0.42" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnMzGainChanged" />
+                                <TextBlock x:Name="LblMzGain" Text="0.42" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <CheckBox x:Name="ChkFxEnabled" IsChecked="True" VerticalAlignment="Center" Margin="0,0,4,0" Checked="OnFxEnabledChanged" Unchecked="OnFxEnabledChanged" />
+                                <TextBlock Text="Fx Longitudinal" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderFxGain" Minimum="-10" Maximum="10" TickFrequency="0.05" Value="0.15" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnFxGainChanged" />
+                                <TextBlock x:Name="LblFxGain" Text="0.15" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <CheckBox x:Name="ChkFyEnabled" IsChecked="True" VerticalAlignment="Center" Margin="0,0,4,0" Checked="OnFyEnabledChanged" Unchecked="OnFyEnabledChanged" />
+                                <TextBlock Text="Fy Lateral" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderFyGain" Minimum="-10" Maximum="10" TickFrequency="0.05" Value="0.20" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnFyGainChanged" />
+                                <TextBlock x:Name="LblFyGain" Text="0.20" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Cornering Force" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderDynamicForce" Minimum="0" Maximum="5" TickFrequency="0.05" Value="1.0" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnDynamicForceChanged" />
+                                <TextBlock x:Name="LblDynamicForce" Text="1.00" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <TextBlock x:Name="Step5Status" Text="" FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- STEP 6: Curb & Vibration -->
+                        <StackPanel x:Name="PanelStep6" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="15" Margin="0,0,0,8"
+                                        Text="TEXTURE &amp; VIBRATION — Kerb = rumble strips. Road = surface texture. Slip = tire slip vibration. ABS = braking pulse. Vibration Master controls overall volume." />
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Vib Master" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderVibMaster" Minimum="0" Maximum="10" TickFrequency="0.05" Value="1.0" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnVibMasterChanged" />
+                                <TextBlock x:Name="LblVibMaster" Text="1.00" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Kerb Gain" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderKerbGain" Minimum="0" Maximum="10" TickFrequency="0.05" Value="1.0" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnKerbGainChanged" />
+                                <TextBlock x:Name="LblKerbGain" Text="1.00" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Road Gain" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderRoadGain" Minimum="0" Maximum="10" TickFrequency="0.05" Value="0.5" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnRoadGainChanged" />
+                                <TextBlock x:Name="LblRoadGain" Text="0.50" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="Slip Gain" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderSlipGain" Minimum="0" Maximum="10" TickFrequency="0.05" Value="0.8" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnSlipGainChanged" />
+                                <TextBlock x:Name="LblSlipGain" Text="0.80" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4">
+                                <TextBlock Text="ABS Gain" Width="110" VerticalAlignment="Center" FontSize="14" />
+                                <Slider x:Name="SliderAbsGain" Minimum="0" Maximum="10" TickFrequency="0.05" Value="1.0" Width="200"
+                                        VerticalAlignment="Center" IsEnabled="False" ValueChanged="OnAbsGainChanged" />
+                                <TextBlock x:Name="LblAbsGain" Text="1.00" Width="50" VerticalAlignment="Center" FontSize="14" Margin="4,0" Foreground="#FFFFD600" />
+                            </DockPanel>
+                            <TextBlock x:Name="Step6Status" Text="" FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- STEP 7: Save Profile -->
+                        <StackPanel x:Name="PanelStep7" Visibility="Collapsed">
+                            <TextBlock TextWrapping="Wrap" FontSize="14" Margin="0,0,0,8"
+                                       Text="You're done! Your settings are LIVE right now. Give them a name and choose how this profile should be applied." />
+                            <Border Background="#FF1A3A1A" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock FontSize="15" Foreground="#FF66BB6A" FontWeight="Bold" Margin="0,1">
+                                        <Run Text="&#x2713; Output gain calibrated" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="15" Foreground="#FF66BB6A" FontWeight="Bold" Margin="0,1">
+                                        <Run Text="&#x2713; Damping &amp; friction adjusted" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="15" Foreground="#FF66BB6A" FontWeight="Bold" Margin="0,1">
+                                        <Run Text="&#x2713; Core tyre forces tuned" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="15" Foreground="#FF66BB6A" FontWeight="Bold" Margin="0,1">
+                                        <Run Text="&#x2713; Curb &amp; vibration effects tuned" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="15" Foreground="#FF66BB6A" FontWeight="Bold" Margin="0,1">
+                                        <Run Text="&#x2713; Signal shaping configured" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Profile Name -->
+                            <Border Background="#FF161B22" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Profile Name:" FontSize="14" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="TxtProfileName"
+                                             FontSize="14" Padding="6,4" Background="#FF21262D"
+                                             Foreground="#FFE6EDF3" BorderBrush="#FF30363D" BorderThickness="1"
+                                             Text="My Setup v1" />
+                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="Give your profile a descriptive name"
+                                               FontSize="11" Foreground="#FF8B949E" Margin="0,4,0,0" />
+                                </Grid>
+                            </Border>
+
+                            <!-- Scope Selection -->
+                            <Border Background="#FF161B22" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock Text="Profile Scope:" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                    <RadioButton x:Name="ScopeGeneral" GroupName="ProfileScope" Content="&#x1F310; General — works for any game, car, or track" FontSize="13" Margin="0,2" IsChecked="True" />
+                                    <RadioButton x:Name="ScopePerGame" GroupName="ProfileScope" Content="&#x1F3AE; Per Game — auto-loads for this game only" FontSize="13" Margin="0,2" />
+                                    <RadioButton x:Name="ScopePerCar" GroupName="ProfileScope" Content="&#x1F697; Per Car — auto-loads for this car model" FontSize="13" Margin="0,2" />
+                                    <RadioButton x:Name="ScopePerTrack" GroupName="ProfileScope" Content="&#x1F3C1; Per Track — auto-loads for this track" FontSize="13" Margin="0,2" />
+                                    <RadioButton x:Name="ScopePerCarAndTrack" GroupName="ProfileScope" Content="&#x1F3C1;&#x1F697; Per Car + Track — auto-loads for this specific combo" FontSize="13" Margin="0,2" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Detected Info -->
+                            <Border x:Name="ScopeDetectedBox" Background="#FF111122" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <TextBlock x:Name="ScopeDetectedText" FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap" />
+                            </Border>
+
+                            <Border Background="#FF332211" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                <TextBlock TextWrapping="Wrap" FontSize="14" Foreground="#FFFFD600">
+                                    <Run FontWeight="Bold" Text="Your changes are LIVE but NOT saved yet." />
+                                    <Run Text=" Click 'Save &amp; Finish' below to persist them, or 'Back' to keep adjusting." />
+                                </TextBlock>
+                            </Border>
+
+                            <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,4"
+                                       Text="You can re-run this wizard at any time from the home screen." />
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- ═══ FOOTER ═══ -->
+                <Border Grid.Row="3" Background="#FF161B22" Padding="10,8">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                            <TextBlock x:Name="FooterStatus" FontSize="13" Foreground="#FF666666" VerticalAlignment="Center">
+                                <Run Text="Drag to move  |  Scroll to resize" />
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="BtnBack" Style="{StaticResource WizardButton}" Content="Back" Click="OnBack" Margin="0,0,8,0" />
+                            <Button x:Name="BtnNext" Style="{StaticResource WizardButton}" Content="Next" Click="OnNext" Background="#FF445566" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+            </Grid>
+        </Border>
+    </Border>
+</Window>
+

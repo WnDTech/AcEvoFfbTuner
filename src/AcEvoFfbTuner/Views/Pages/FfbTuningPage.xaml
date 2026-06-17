@@ -229,12 +229,12 @@
                                                 <TextBlock Text="Front Wheels Only" FontSize="15" />
                                             </StackPanel>
                                         </DockPanel>
-                                        <DockPanel Margin="0,6" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}">
+                                        <DockPanel Margin="0,6" Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}">
                                             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
                                                 <CheckBox IsChecked="{Binding GearChangeMuteEnabled}" Margin="0,0,12,0" />
-                                                <TextBlock Text="Mute Gear Change FFB (R3E)" FontSize="15" Foreground="#FFE6EDF3" />
+                                                <TextBlock Text="Mute Gear Change FFB" FontSize="15" Foreground="#FFE6EDF3" />
                                             </StackPanel>
-                                            <TextBlock Text="Suppresses force spikes during gear shifts in RaceRoom." FontSize="12" Foreground="#FF8B949E" Margin="28,4,0,0" TextWrapping="Wrap" />
+                                            <TextBlock Text="Suppresses force spikes during gear shifts in RaceRoom and Le Mans Ultimate." FontSize="12" Foreground="#FF8B949E" Margin="28,4,0,0" TextWrapping="Wrap" />
                                         </DockPanel>
                                     </StackPanel>
                                 </Expander>
@@ -244,7 +244,7 @@
 
                     <!-- TIRE GRIP FEEL -->
                     <controls:SectionCard Title="TIRE GRIP FEEL"
-                                          Visibility="{Binding IsRaceroom, Converter={StaticResource InverseBoolToVis}}"
+                                          Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
                                           SectionBrush="{StaticResource SectionGripFeel}"
                                           IsExpanded="False">
                         <controls:SectionCard.SummaryContent>
@@ -732,9 +732,9 @@
                                     SectionColor="{StaticResource SectionSignal}" />
 
                                 <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                    Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}"
+                                    Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
                                     Label="Center Strength (x)" LabelWidth="185" StringFormat="{}{0:F1}"
-                                    Description="Scales centering/core force magnitude at ALL speeds. R3E default 3.0x. Higher = stronger centering feel."
+                                    Description="Scales centering/core force magnitude at ALL speeds. R3E/LMU default 3.0x. Higher = stronger centering feel."
                                     DefaultValue="{Binding BuiltInDefaults.Advanced.CoreForceMultiplier}"
                                     SectionColor="{StaticResource SectionSignal}" />
 
@@ -756,9 +756,9 @@
                                             DefaultValue="{Binding BuiltInDefaults.Advanced.CenterBlendDegrees}"
                                             SectionColor="{StaticResource SectionSignal}" />
                                         <controls:LabeledSlider Value="{Binding CenterSharpnessDegrees, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                            Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}"
+                                            Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
                                             Label="Center Sharpness (deg)" LabelWidth="185" StringFormat="{}{0:F1}"
-                                            Description="R3E: steering angle where centering force reaches full via smoothstep. Lower = sharper/crisper on-center feel. 0 = disabled (crispest)."
+                                            Description="Steering angle where centering force reaches full via smoothstep. Lower = sharper/crisper on-center feel. 0 = disabled (crispest)."
                                             DefaultValue="{Binding BuiltInDefaults.Advanced.CenterSharpnessDegrees}"
                                             SectionColor="{StaticResource SectionSignal}" />
 
@@ -818,7 +818,7 @@
 
                     <!-- WET WEATHER -->
                     <controls:SectionCard Title="WET WEATHER"
-                                          Visibility="{Binding IsRaceroom, Converter={StaticResource InverseBoolToVis}}"
+                                          Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
                                           SectionBrush="{StaticResource SectionWetWeather}"
                                           IsExpanded="False">
                         <controls:SectionCard.SummaryContent>
@@ -1003,7 +1003,7 @@
                                     Description="Divides the mixed signal to normalize it. Works with Force Sensitivity."
                                     DefaultValue="{Binding BuiltInDefaults.ForceScale}"
                                     SectionColor="{StaticResource SectionOutput}" />
-                                <controls:LabeledSlider Value="{Binding SteeringLockDegrees, Mode=TwoWay}" Minimum="180" Maximum="1080" TickFrequency="10"
+                                 <controls:LabeledSlider Value="{Binding SteeringLockDegrees, Mode=TwoWay}" Minimum="180" Maximum="3600" TickFrequency="10"
                                     Label="Steering Lock" StringFormat="{}{0}" IsLogarithmic="True" LabelAbove="True"
                                     Description="Your wheel's total rotation in degrees."
                                     DefaultValue="{Binding BuiltInDefaults.SteeringLockDegrees}"

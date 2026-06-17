@@ -92,6 +92,8 @@ public partial class ProfilesPage : UserControl
             _filterGame = "RaceRoom";
         else if (ReferenceEquals(sender, GameFilterAssettoCorsa))
             _filterGame = "Assetto Corsa";
+        else if (ReferenceEquals(sender, GameFilterLeMansUltimate))
+            _filterGame = "Le Mans Ultimate";
 
         RebuildBrowser();
     }

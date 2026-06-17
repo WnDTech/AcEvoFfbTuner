@@ -127,6 +127,7 @@ public sealed class DiscordPresenceService : IDisposable
         {
             RaceroomSharedMemoryReader => "RaceRoom",
             AssettoCorsaSharedMemoryReader => "Assetto Corsa",
+            LmuSharedMemoryReader => "Le Mans Ultimate",
             _ => "AC EVO"
         };
         var car = _loop.DetectedCarModel;

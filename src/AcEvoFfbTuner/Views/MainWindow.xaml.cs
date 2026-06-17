@@ -26,9 +26,9 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        InitializeComponent();
-
         DataContext = App.ViewModel;
+
+        InitializeComponent();
 
         CommandBindings.Add(new CommandBinding(OpenIconPreviewCommand, OpenIconPreview));
 
@@ -412,6 +412,7 @@ public partial class MainWindow : Window
         {
             SupportedGame.AcEvo => SupportedGame.Raceroom,
             SupportedGame.Raceroom => SupportedGame.AssettoCorsa,
+            SupportedGame.AssettoCorsa => SupportedGame.LeMansUltimate,
             _ => SupportedGame.AcEvo
         };
     }

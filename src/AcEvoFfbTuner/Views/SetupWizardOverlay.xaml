@@ -125,7 +125,7 @@
                                         <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" Close other wheel software (Pit House, G HUB, Fanatec, etc.)" />
                                     </TextBlock>
                                     <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
-                                        <Run Foreground="#FF00E676" Text="&#x2713;" /><TextBlock x:Name="Step0FfbInstruction" Text=" Set in-game FFB to 0, then restart the game" />
+                                        <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" Set in-game FFB to 0 in " /><Run Text="{Binding GameDisplayName, Mode=OneWay}" /><Run Text=", then restart the game" />
                                     </TextBlock>
                                     <TextBlock FontSize="14" Margin="0,1" TextWrapping="Wrap">
                                         <Run Foreground="#FF00E676" Text="&#x2713;" /><Run Text=" Select a car, any track, Practice mode" />

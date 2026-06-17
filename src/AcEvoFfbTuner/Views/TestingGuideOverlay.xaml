@@ -126,7 +126,7 @@
                                     <Run Foreground="#FFFF1744" FontWeight="Bold" Text="&#x26A0;" /><Run Text=" Set " /><Run FontWeight="Bold" Foreground="#FFFFD600" Text="FFB Gain to 0" /><Run Text=" in game settings" />
                                 </TextBlock>
                                 <TextBlock FontSize="14" Foreground="#FFFF1744" Margin="0,2,0,0" TextWrapping="Wrap" FontWeight="Bold">
-                                    <Run Text="&#x26A0; Restart AC EVO after changing FFB settings!" />
+                                    <Run Text="&#x26A0; Restart the game after changing FFB settings!" />
                                 </TextBlock>
                                 <TextBlock FontSize="13" Foreground="#FFFF8A65" Margin="0,2,0,0" TextWrapping="Wrap">
                                     <Run FontStyle="Italic" Text="This app replaces the game's FFB. If both are active they fight for wheel control. FFB changes require a game restart." />

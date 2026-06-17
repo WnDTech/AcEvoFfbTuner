@@ -1,0 +1,2 @@
+# Vendored third-party SimuCube library — exclude from language stats
+lib/simucube/** linguist-vendored

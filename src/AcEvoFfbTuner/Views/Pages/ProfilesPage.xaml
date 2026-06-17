@@ -338,6 +338,9 @@
                             <RadioButton x:Name="GameFilterAssettoCorsa" Content="Assetto Corsa" GroupName="GameFilter"
                                          Style="{StaticResource FilterPillStyle}"
                                          Checked="OnGameFilterChanged" />
+                            <RadioButton x:Name="GameFilterLeMansUltimate" Content="Le Mans Ultimate" GroupName="GameFilter"
+                                         Style="{StaticResource FilterPillStyle}"
+                                         Checked="OnGameFilterChanged" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
