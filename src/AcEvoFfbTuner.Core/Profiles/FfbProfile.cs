@@ -160,6 +160,14 @@ public sealed class FfbProfile
             r3e.BrakeBoostGain = Slip.BrakeBoostGain;
             r3e.BrakeBoostThreshold = Slip.BrakeBoostThreshold;
             r3e.CoreForceMultiplier = Slip.CoreForceMultiplier;
+            r3e.TyreGripScale = Slip.TyreGripScale;
+            r3e.FlatspotGain = Slip.FlatspotGain;
+            r3e.SurfaceFeelGain = Slip.SurfaceFeelGain;
+            r3e.EngineTorqueLfeMod = Slip.EngineTorqueLfeMod;
+            r3e.BrakePressureGain = Slip.BrakePressureGain;
+            r3e.TcFeelGain = Slip.TcFeelGain;
+            r3e.CoreSmoothing = Slip.CoreSmoothing;
+            r3e.DetailSmoothing = Slip.DetailSmoothing;
         }
 
         if (pipeline is AcFfbPipeline ac)
@@ -210,7 +218,8 @@ public sealed class FfbProfile
         pipeline.HysteresisWatchdogFrames = Advanced.HysteresisWatchdogFrames;
         pipeline.ChannelMixer.CenterBlendDegrees = Advanced.CenterBlendDegrees;
         pipeline.CenterSharpnessDegrees = Advanced.CenterSharpnessDegrees;
-        pipeline.CoreForceMultiplier = Advanced.CoreForceMultiplier;
+        if (pipeline is not R3eFfbPipeline and not LmuFfbPipeline)
+            pipeline.CoreForceMultiplier = Advanced.CoreForceMultiplier;
         pipeline.Damping.SteerVelocityReference = Advanced.SteerVelocityReference;
         pipeline.Damping.VelocityDeadzone = Advanced.VelocityDeadzone;
         pipeline.ChannelMixer.LowSpeedSmoothKmh = Advanced.LowSpeedSmoothKmh;
@@ -359,9 +368,20 @@ public sealed class FfbProfile
                            ?? (pipeline as AcFfbPipeline)?.BrakeBoostGain
                            ?? 0.4f,
             BrakeBoostThreshold = (pipeline as R3eFfbPipeline)?.BrakeBoostThreshold
-                                ?? (pipeline as LmuFfbPipeline)?.BrakeBoostThreshold
-                                ?? (pipeline as AcFfbPipeline)?.BrakeBoostThreshold
-                                ?? 0.1f
+                                 ?? (pipeline as LmuFfbPipeline)?.BrakeBoostThreshold
+                                 ?? (pipeline as AcFfbPipeline)?.BrakeBoostThreshold
+                                 ?? 0.1f,
+            CoreForceMultiplier = (pipeline as R3eFfbPipeline)?.CoreForceMultiplier
+                                 ?? (pipeline as LmuFfbPipeline)?.CoreForceMultiplier
+                                 ?? 1.0f,
+            TyreGripScale = (pipeline as R3eFfbPipeline)?.TyreGripScale ?? 1.0f,
+            FlatspotGain = (pipeline as R3eFfbPipeline)?.FlatspotGain ?? 1.0f,
+            SurfaceFeelGain = (pipeline as R3eFfbPipeline)?.SurfaceFeelGain ?? 1.0f,
+            EngineTorqueLfeMod = (pipeline as R3eFfbPipeline)?.EngineTorqueLfeMod ?? 1.0f,
+            BrakePressureGain = (pipeline as R3eFfbPipeline)?.BrakePressureGain ?? 1.0f,
+            TcFeelGain = (pipeline as R3eFfbPipeline)?.TcFeelGain ?? 1.0f,
+            CoreSmoothing = (pipeline as R3eFfbPipeline)?.CoreSmoothing ?? 0.0f,
+            DetailSmoothing = (pipeline as R3eFfbPipeline)?.DetailSmoothing ?? 0.0f
         };
         Dynamic = new DynamicConfig
         {
@@ -402,7 +422,9 @@ public sealed class FfbProfile
             HysteresisWatchdogFrames = pipeline.HysteresisWatchdogFrames,
             CenterBlendDegrees = pipeline.ChannelMixer.CenterBlendDegrees,
             CenterSharpnessDegrees = pipeline.CenterSharpnessDegrees,
-            CoreForceMultiplier = pipeline.CoreForceMultiplier,
+            CoreForceMultiplier = pipeline is R3eFfbPipeline or LmuFfbPipeline
+                ? 1.0f
+                : pipeline.CoreForceMultiplier,
             SteerVelocityReference = pipeline.Damping.SteerVelocityReference,
             VelocityDeadzone = pipeline.Damping.VelocityDeadzone,
             LowSpeedSmoothKmh = pipeline.ChannelMixer.LowSpeedSmoothKmh
@@ -497,7 +519,7 @@ public sealed class FfbProfile
                 Name = "Heavy",
                 OutputGain = 0.85f,
                 NormalizationScale = 1000f,
-                MzScale = 30f, FxScale = 4000f, FyScale = 5000f,
+                MzScale = 5f, FxScale = 4000f, FyScale = 5000f,
                 SoftClipThreshold = 0.8f,
                 MzFront = new ChannelConfig { Gain = 0.50f, Enabled = true },
                 FxFront = new ChannelConfig { Gain = 0.15f, Enabled = true },
@@ -513,7 +535,7 @@ public sealed class FfbProfile
                 Name = "Light",
                 OutputGain = 0.45f,
                 NormalizationScale = 1000f,
-                MzScale = 30f, FxScale = 4000f, FyScale = 5000f,
+                MzScale = 5f, FxScale = 4000f, FyScale = 5000f,
                 SoftClipThreshold = 0.8f,
                 MzFront = new ChannelConfig { Gain = 0.35f, Enabled = true },
                 FxFront = new ChannelConfig { Gain = 0.12f, Enabled = true },
@@ -523,6 +545,48 @@ public sealed class FfbProfile
                 Dynamic = new DynamicConfig { SuspensionGain = 0.30f },
                 Vibrations = new VibrationConfig { KerbGain = 0.8f, SlipGain = 0.6f, RoadGain = 0f, AbsGain = 0.8f, MasterGain = 0.40f, ScrubGain = 0.4f, RearSlipGain = 0.5f },
                 Advanced = new AdvancedConfig { MaxSlewRate = 0.85f, NoiseFloor = 0.003f, CenterBlendDegrees = 1.0f }
+            },
+
+            // ACC Test - synthesized Mz, no extras
+            "ACCTEST" => new FfbProfile
+            {
+                Name = "ACCTEST",
+                GameMatch = "AssettoCorsaCompetizione",
+                OutputGain = 0.5f,
+                NormalizationScale = 1000f,
+                ForceScale = 1.0f,
+                SoftClipThreshold = 0.8f,
+                CompressionPower = 1.0f,
+                SignCorrectionEnabled = true,
+                WheelMaxTorqueNm = 5.5f,
+                MzScale = 5f,
+                FxScale = 4000f,
+                FyScale = 5000f,
+                MzFront = new ChannelConfig { Gain = 0.5f, Enabled = true },
+                FxFront = new ChannelConfig { Gain = 0.3f, Enabled = true },
+                FyFront = new ChannelConfig { Gain = 0.3f, Enabled = true },
+                MzRear = new ChannelConfig { Gain = 0f, Enabled = false },
+                FxRear = new ChannelConfig { Gain = 0f, Enabled = false },
+                FyRear = new ChannelConfig { Gain = 0f, Enabled = false },
+                FinalFf = new ChannelConfig { Gain = 0f, Enabled = false },
+                WheelLoadWeighting = 0f,
+                LutCurve = LutCurveDto.Linear(),
+                SteeringLockDegrees = 900,
+                Damping = new DampingConfig { ViscousDamping = 0f, SpeedDamping = 0f, Friction = 0f, Inertia = 0f, MaxSpeedReference = 200f },
+                Slip = new SlipConfig { SlipRatioGain = 0f, SlipAngleGain = 0f, SlipThreshold = 0.10f, UseFrontOnly = true, GearChangeMuteEnabled = false, ForceGain = 2.0f },
+                Dynamic = new DynamicConfig { LateralGGain = 0f, LongitudinalGGain = 0f, SuspensionGain = 0f, YawRateGain = 0f },
+                AutoGain = new AutoGainConfig { Enabled = false, Scale = 1.0f },
+                Vibrations = new VibrationConfig { KerbGain = 0f, SlipGain = 0f, RoadGain = 0f, AbsGain = 0f, MasterGain = 0f, ScrubGain = 0f, RearSlipGain = 0f },
+                Advanced = new AdvancedConfig
+                {
+                    MaxSlewRate = 1.0f,
+                    NoiseFloor = 0f,
+                    CenterBlendDegrees = 0f,
+                    CenterSuppressionDegrees = 0f,
+                    CenterSharpnessDegrees = 0f,
+                    HysteresisThreshold = 0f,
+                    CoreForceMultiplier = 1.0f
+                }
             },
 
             // ──── Moza R5 Baseline (5.5Nm) — tested V2 profile ────
@@ -598,7 +662,7 @@ public sealed class FfbProfile
                 Name = name,
                 OutputGain = 0.621f,
                 NormalizationScale = 1000f,
-                MzScale = 30f, FxScale = 4000f, FyScale = 5000f,
+                MzScale = 5f, FxScale = 4000f, FyScale = 5000f,
                 SoftClipThreshold = 0.8f,
                 MzFront = new ChannelConfig { Gain = 0.42f, Enabled = true },
                 FxFront = new ChannelConfig { Gain = 0.15f, Enabled = true },
@@ -636,7 +700,7 @@ public sealed class FfbProfile
             FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
             FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
             WheelLoadWeighting = 0.0f,
-            MzScale = 30f,
+            MzScale = 5f,
             FxScale = 4000f,
             FyScale = 5000f,
             LutCurve = LutCurveDto.Linear(),
@@ -688,7 +752,7 @@ public sealed class FfbProfile
             FyRear = new ChannelConfig { Gain = 0.0f, Enabled = false },
             FinalFf = new ChannelConfig { Gain = 0.0f, Enabled = false },
             WheelLoadWeighting = 0.0f,
-            MzScale = 30f,
+            MzScale = 5f,
             FxScale = 4000f,
             FyScale = 5000f,
             LutCurve = new LutCurveDto { OutputValues = lutValues },
@@ -711,7 +775,7 @@ public sealed class FfbProfile
     }
     public static string[] AllDefaultNames => new[]
     {
-        "Default", "Heavy", "Light", "Moza R5 - Final Stable Baseline",
+        "Default", "Heavy", "Light", "ACCTEST", "Moza R5 - Final Stable Baseline",
         "Default - Logitech G27",
         "Default - Logitech G29/G920",
         "Default - Thrustmaster T300/TX",
@@ -791,7 +855,7 @@ public sealed class FfbProfile
             }
             else if (Name == "Moza R5 - Connected Baseline")
             {
-                MzScale = 30f;
+                MzScale = 5f;
                 Damping = new DampingConfig
                 {
                     ViscousDamping = 0.15f,
@@ -803,7 +867,7 @@ public sealed class FfbProfile
             }
             else if (Name == "Default")
             {
-                MzScale = 30f;
+                MzScale = 5f;
                 FxScale = 4000f;
                 FyScale = 5000f;
                 FxFront = new ChannelConfig { Gain = 0.15f, Enabled = true };
@@ -903,7 +967,6 @@ public sealed class FfbProfile
                 Vibrations = codeDefault.Vibrations;
             }
         }
-
 
         if (Version < 13)
         {
@@ -1051,9 +1114,18 @@ public sealed class SlipConfig
     public float BrakeBoostGain { get; set; } = 0.4f;
     public float BrakeBoostThreshold { get; set; } = 0.1f;
     public float CoreForceMultiplier { get; set; } = 3.0f;
+    public float ForceGain { get; set; } = 2.5f;
+    public float TyreGripScale { get; set; } = 1.0f;
+    public float FlatspotGain { get; set; } = 1.0f;
+    public float SurfaceFeelGain { get; set; } = 1.0f;
+    public float EngineTorqueLfeMod { get; set; } = 1.0f;
+    public float BrakePressureGain { get; set; } = 1.0f;
+    public float TcFeelGain { get; set; } = 1.0f;
+    public float CoreSmoothing { get; set; } = 0.0f;
+    public float DetailSmoothing { get; set; } = 0.0f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); }
+    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); TyreGripScale = S(TyreGripScale); FlatspotGain = S(FlatspotGain); SurfaceFeelGain = S(SurfaceFeelGain); EngineTorqueLfeMod = S(EngineTorqueLfeMod); BrakePressureGain = S(BrakePressureGain); TcFeelGain = S(TcFeelGain); CoreSmoothing = S(CoreSmoothing); DetailSmoothing = S(DetailSmoothing); }
 }
 
 public sealed class DynamicConfig

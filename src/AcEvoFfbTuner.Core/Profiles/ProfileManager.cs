@@ -247,4 +247,48 @@ public sealed class ProfileManager
         var safeName = string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
         return Path.Combine(ProfilesDirectory, $"{safeName}.json");
     }
+
+    public FfbProfile? FindMatchingProfile(string game, string car, string track)
+    {
+        FfbProfile? perCarAndTrack = null;
+        FfbProfile? perTrack = null;
+        FfbProfile? perCar = null;
+        FfbProfile? perGame = null;
+        FfbProfile? general = null;
+
+        foreach (var p in _profiles)
+        {
+            if (p.Scope == ProfileScope.PerCarAndTrack &&
+                string.Equals(p.GameMatch, game, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(p.CarMatch, car, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(p.TrackMatch, track, StringComparison.OrdinalIgnoreCase))
+                perCarAndTrack = p;
+
+            if (p.Scope == ProfileScope.PerTrack &&
+                string.Equals(p.GameMatch, game, StringComparison.OrdinalIgnoreCase) &&
+                string.IsNullOrEmpty(p.CarMatch) &&
+                string.Equals(p.TrackMatch, track, StringComparison.OrdinalIgnoreCase))
+                perTrack ??= p;
+
+            if (p.Scope == ProfileScope.PerCar &&
+                string.Equals(p.GameMatch, game, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(p.CarMatch, car, StringComparison.OrdinalIgnoreCase) &&
+                string.IsNullOrEmpty(p.TrackMatch))
+                perCar ??= p;
+
+            if (p.Scope == ProfileScope.PerGame &&
+                string.Equals(p.GameMatch, game, StringComparison.OrdinalIgnoreCase) &&
+                string.IsNullOrEmpty(p.CarMatch) &&
+                string.IsNullOrEmpty(p.TrackMatch))
+                perGame ??= p;
+
+            if (p.Scope == ProfileScope.General &&
+                string.IsNullOrEmpty(p.GameMatch) &&
+                string.IsNullOrEmpty(p.CarMatch) &&
+                string.IsNullOrEmpty(p.TrackMatch))
+                general ??= p;
+        }
+
+        return perCarAndTrack ?? perTrack ?? perCar ?? perGame ?? general;
+    }
 }
