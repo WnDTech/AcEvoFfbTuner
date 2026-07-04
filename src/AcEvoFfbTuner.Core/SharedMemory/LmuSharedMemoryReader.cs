@@ -14,9 +14,10 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
     private byte[] _rawBuffer = new byte[524288];
     private int _telemInfoOffset = -1;
     private int _stride = 1888;
-    private int _lockedSlotIndex = -1;
-    private int _connectAttempts;
-    private bool _loggedHeader;
+        private int _lockedSlotIndex = -1;
+        private int _connectAttempts;
+        private bool _loggedHeader;
+
 
     public bool IsConnected => _mmf != null;
 
@@ -28,18 +29,128 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
     public float[] TireGrip => _tireGrip;
     public float[] LocalAccelG { get; private set; } = new float[3];
 
-    private const int TI_GEAR = 352;
-    private const int TI_ENGINE_RPM = 356;
+    private float _prevAccY;
+    private float _prevAccX;
+    private bool _prevAccInitialized;
+
+    // ── LMU-specific extended data for pipeline ──
+    public float[] SuspForces { get; private set; } = new float[4];
+    public float[] BrakePressures { get; private set; } = new float[4];
+    public float[] PatchVelocities { get; private set; } = new float[4];
+    public float[] VerticalTireDeflections { get; private set; } = new float[4];
+    public float[] CamberRad { get; private set; } = new float[4];
+    public float[] TireCarcassTemps { get; private set; } = new float[4];
+    public float[] InnerLayerTemps { get; private set; } = new float[4];
+    public float[] OptimalTemps { get; private set; } = new float[4];
+    public string[] TerrainNames { get; private set; } = new string[4];
+
+    public float FrontDownforce { get; private set; }
+    public float RearDownforce { get; private set; }
+    public float Drag { get; private set; }
+    public float EngineTorque { get; private set; }
+    public float LastImpactMagnitude { get; private set; }
+    public float LastImpactET { get; private set; }
+    public float DentSeverity { get; private set; }
+    public float FrontRideHeight { get; private set; }
+    public float RearRideHeight { get; private set; }
+    public float FrontWingHeight { get; private set; }
+    public float Front3rdDeflection { get; private set; }
+    public float Rear3rdDeflection { get; private set; }
+    public float PhysicalSteeringWheelRange { get; private set; }
+    public float VisualSteeringWheelRange { get; private set; }
+    public float RearBrakeBias { get; private set; }
+    public float TurboBoostPressure { get; private set; }
+    public float ElectricBoostMotorTorque { get; private set; }
+    public float ElectricBoostMotorRPM { get; private set; }
+    public float ElectricBoostMotorTemp { get; private set; }
+    public float Regen { get; private set; }
+    public float Soc { get; private set; }
+    public float BatteryChargeFraction { get; private set; }
+    public float DeltaBest { get; private set; }
+    public int CurrentSector { get; private set; }
+    public int FuelCapacity { get; private set; }
+    public string? FrontTireCompoundName { get; private set; }
+    public string? RearTireCompoundName { get; private set; }
+    public string? VehicleName { get; private set; }
+
     private const int TI_VEHICLE_NAME = 32;
     private const int TI_TRACK_NAME = 96;
+    private const int TI_LAP_NUMBER = 20;
+    private const int TI_LAP_START_ET = 24;
+    private const int TI_DELTA_TIME = 4;
+    private const int TI_ELAPSED_TIME = 12;
+    private const int TI_POS = 160;
     private const int TI_LOCAL_VEL = 184;
     private const int TI_LOCAL_ACCEL = 208;
     private const int TI_LOCAL_ROT = 304;
+    private const int TI_GEAR = 352;
+    private const int TI_ENGINE_RPM = 356;
+    private const int TI_ENGINE_WATER_TEMP = 364;
+    private const int TI_ENGINE_OIL_TEMP = 372;
+    private const int TI_CLUTCH_RPM = 380;
     private const int TI_UNFILTERED_THROTTLE = 388;
     private const int TI_UNFILTERED_BRAKE = 396;
     private const int TI_UNFILTERED_STEERING = 404;
+    private const int TI_UNFILTERED_CLUTCH = 412;
     private const int TI_STEERING_SHAFT_TORQUE = 452;
-    private const int TI_LAP_NUMBER = 20;
+    private const int TI_FRONT_3RD_DEFLECTION = 460;
+    private const int TI_REAR_3RD_DEFLECTION = 468;
+    private const int TI_FRONT_WING_HEIGHT = 476;
+    private const int TI_FRONT_RIDE_HEIGHT = 484;
+    private const int TI_REAR_RIDE_HEIGHT = 492;
+    private const int TI_DRAG = 500;
+    private const int TI_FRONT_DOWNFORCE = 508;
+    private const int TI_REAR_DOWNFORCE = 516;
+    private const int TI_ENGINE_MAX_RPM = 532;
+    private const int TI_DENT_SEVERITY = 544;
+    private const int TI_LAST_IMPACT_ET = 552;
+    private const int TI_LAST_IMPACT_MAGNITUDE = 560;
+    private const int TI_ENGINE_TORQUE = 592;
+    private const int TI_CURRENT_SECTOR = 600;
+    private const int TI_FUEL_CAPACITY = 608;
+    private const int TI_FRONT_TIRE_COMPOUND = 620;
+    private const int TI_REAR_TIRE_COMPOUND = 638;
+    private const int TI_VISUAL_STEER_RANGE = 660;
+    private const int TI_REAR_BRAKE_BIAS = 664;
+    private const int TI_TURBO_BOOST = 672;
+    private const int TI_PHYSICAL_STEER_RANGE = 692;
+    private const int TI_DELTA_BEST = 696;
+    private const int TI_BATTERY_CHARGE = 704;
+    private const int TI_ERS_MOTOR_TORQUE = 712;
+    private const int TI_ERS_MOTOR_RPM = 720;
+    private const int TI_ERS_MOTOR_TEMP = 728;
+    private const int TI_REGEN = 768;
+    private const int TI_SOC = 772;
+    private const int TI_VIRTUAL_ENERGY = 776;
+
+    // Wheel field offsets (from wheel struct start)
+    private const int W_SUSP_DEFLECTION = 0;
+    private const int W_SUSP_FORCE = 16;
+    private const int W_BRAKE_PRESSURE = 32;
+    private const int W_ROTATION = 40;
+    private const int W_LAT_PATCH_VEL = 48;
+    private const int W_LON_PATCH_VEL = 56;
+    private const int W_LAT_GROUND_VEL = 64;
+    private const int W_LON_GROUND_VEL = 72;
+    private const int W_CAMBER = 80;
+    private const int W_LAT_FORCE = 88;
+    private const int W_LON_FORCE = 96;
+    private const int W_TIRE_LOAD = 104;
+    private const int W_GRIP_FRACT = 112;
+    private const int W_PRESSURE = 120;
+    private const int W_TEMP_INNER = 128;
+    private const int W_TEMP_MID = 136;
+    private const int W_TEMP_OUTER = 144;
+    private const int W_WEAR = 152;
+    private const int W_TERRAIN_NAME = 160;
+    private const int W_VERT_TIRE_DEFLECTION = 180;
+    private const int W_WHEEL_Y_LOCATION = 188;
+    private const int W_TOE = 196;
+    private const int W_TIRE_CARCASS_TEMP = 204;
+    private const int W_INNER_LAYER_TEMP0 = 212;
+    private const int W_INNER_LAYER_TEMP1 = 220;
+    private const int W_INNER_LAYER_TEMP2 = 228;
+    private const int W_OPTIMAL_TEMP = 236;
 
     private static readonly string LogPath = System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -97,6 +208,7 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
         _lockedSlotIndex = -1;
         _loggedHeader = false;
         _loggedWheelDump = false;
+        _prevAccInitialized = false;
         Log("Disconnected");
         GameDisconnected?.Invoke();
     }
@@ -159,9 +271,74 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
 
             LocalAccelG = [(float)accX, -(float)accZ, -(float)accY];
 
+            // ── Chassis-level fields ──
+            double engineTorque = LmuFieldReader.ReadF64(_rawBuffer, t + TI_ENGINE_TORQUE);
+            double frontDownforce = LmuFieldReader.ReadF64(_rawBuffer, t + TI_FRONT_DOWNFORCE);
+            double rearDownforce = LmuFieldReader.ReadF64(_rawBuffer, t + TI_REAR_DOWNFORCE);
+            double drag = LmuFieldReader.ReadF64(_rawBuffer, t + TI_DRAG);
+            double lastImpactMag = LmuFieldReader.ReadF64(_rawBuffer, t + TI_LAST_IMPACT_MAGNITUDE);
+            double lastImpactET = LmuFieldReader.ReadF64(_rawBuffer, t + TI_LAST_IMPACT_ET);
+            double dentSeverity = LmuFieldReader.ReadF64(_rawBuffer, t + TI_DENT_SEVERITY);
+            double frontRideH = LmuFieldReader.ReadF64(_rawBuffer, t + TI_FRONT_RIDE_HEIGHT);
+            double rearRideH = LmuFieldReader.ReadF64(_rawBuffer, t + TI_REAR_RIDE_HEIGHT);
+            double frontWingH = LmuFieldReader.ReadF64(_rawBuffer, t + TI_FRONT_WING_HEIGHT);
+            double front3rd = LmuFieldReader.ReadF64(_rawBuffer, t + TI_FRONT_3RD_DEFLECTION);
+            double rear3rd = LmuFieldReader.ReadF64(_rawBuffer, t + TI_REAR_3RD_DEFLECTION);
+            double physSteerRange = LmuFieldReader.ReadF64(_rawBuffer, t + TI_PHYSICAL_STEER_RANGE);
+            double visSteerRange = LmuFieldReader.ReadF64(_rawBuffer, t + TI_VISUAL_STEER_RANGE);
+            double rearBias = LmuFieldReader.ReadF64(_rawBuffer, t + TI_REAR_BRAKE_BIAS);
+            double turboBoost = LmuFieldReader.ReadF64(_rawBuffer, t + TI_TURBO_BOOST);
+            double ersTorque = LmuFieldReader.ReadF64(_rawBuffer, t + TI_ERS_MOTOR_TORQUE);
+            double ersRPM = LmuFieldReader.ReadF64(_rawBuffer, t + TI_ERS_MOTOR_RPM);
+            double ersTemp = LmuFieldReader.ReadF64(_rawBuffer, t + TI_ERS_MOTOR_TEMP);
+            double regen = LmuFieldReader.ReadF64(_rawBuffer, t + TI_REGEN);
+            double soc = LmuFieldReader.ReadF64(_rawBuffer, t + TI_SOC);
+            double battCharge = LmuFieldReader.ReadF64(_rawBuffer, t + TI_BATTERY_CHARGE);
+            double virtEnergy = LmuFieldReader.ReadF64(_rawBuffer, t + TI_VIRTUAL_ENERGY);
+            double deltaBest = LmuFieldReader.ReadF64(_rawBuffer, t + TI_DELTA_BEST);
+            int currentSector = LmuFieldReader.ReadI32(_rawBuffer, t + TI_CURRENT_SECTOR);
+            int fuelCapacity = LmuFieldReader.ReadI32(_rawBuffer, t + TI_FUEL_CAPACITY);
+            string frontCompound = LmuFieldReader.ReadStr(_rawBuffer, t + TI_FRONT_TIRE_COMPOUND, 18);
+            string rearCompound = LmuFieldReader.ReadStr(_rawBuffer, t + TI_REAR_TIRE_COMPOUND, 18);
+
+            FrontDownforce = IsFinite(frontDownforce) ? (float)frontDownforce : 0f;
+            RearDownforce = IsFinite(rearDownforce) ? (float)rearDownforce : 0f;
+            Drag = IsFinite(drag) ? (float)drag : 0f;
+            EngineTorque = IsFinite(engineTorque) ? (float)engineTorque : 0f;
+            LastImpactMagnitude = IsFinite(lastImpactMag) ? (float)lastImpactMag : 0f;
+            LastImpactET = IsFinite(lastImpactET) ? (float)lastImpactET : 0f;
+            DentSeverity = IsFinite(dentSeverity) ? Math.Clamp((float)dentSeverity, 0f, 1f) : 0f;
+            FrontRideHeight = IsFinite(frontRideH) ? (float)frontRideH : 0f;
+            RearRideHeight = IsFinite(rearRideH) ? (float)rearRideH : 0f;
+            FrontWingHeight = IsFinite(frontWingH) ? (float)frontWingH : 0f;
+            Front3rdDeflection = IsFinite(front3rd) ? (float)front3rd : 0f;
+            Rear3rdDeflection = IsFinite(rear3rd) ? (float)rear3rd : 0f;
+            PhysicalSteeringWheelRange = IsFinite(physSteerRange) && physSteerRange > 100f ? (float)physSteerRange : 900f;
+            VisualSteeringWheelRange = IsFinite(visSteerRange) && visSteerRange > 100f ? (float)visSteerRange : 900f;
+            RearBrakeBias = IsFinite(rearBias) ? (float)rearBias : 0.5f;
+            TurboBoostPressure = IsFinite(turboBoost) ? (float)turboBoost : 0f;
+            ElectricBoostMotorTorque = IsFinite(ersTorque) ? (float)ersTorque : 0f;
+            ElectricBoostMotorRPM = IsFinite(ersRPM) ? (float)ersRPM : 0f;
+            ElectricBoostMotorTemp = IsFinite(ersTemp) ? (float)ersTemp : 0f;
+            Regen = IsFinite(regen) ? (float)regen : 0f;
+            Soc = IsFinite(soc) ? Math.Clamp((float)soc, 0f, 100f) : 0f;
+            BatteryChargeFraction = IsFinite(battCharge) ? Math.Clamp((float)battCharge, 0f, 1f) : 0f;
+            DeltaBest = IsFinite(deltaBest) ? (float)deltaBest : 0f;
+            CurrentSector = currentSector;
+            FuelCapacity = fuelCapacity;
+            FrontTireCompoundName = string.IsNullOrEmpty(frontCompound) || frontCompound.Length < 2 ? null : frontCompound;
+            RearTireCompoundName = string.IsNullOrEmpty(rearCompound) || rearCompound.Length < 2 ? null : rearCompound;
+            string vehicleName = LmuFieldReader.ReadStr(_rawBuffer, t + TI_VEHICLE_NAME, 64);
+            VehicleName = string.IsNullOrEmpty(vehicleName) || vehicleName.Length < 3 ? null : vehicleName;
+
             // ── Wheel data (mWheel[4] at TelemInfoV01 start + 848, each 260 bytes) ──
+            // Basic telemetry (steer, speed, torque) reads from the player's slot.
+            // Wheel data (Fx, Fy, tireLoad, rotation, etc.) only populates at slot 0.
             const int wheelBaseOff = 848;
             const int wheelStride = 260;
+            const int kTelemHeaderOff = 128464;
+            const int kTelemInfoOff = kTelemHeaderOff + 4;
+            int wheelSlot0Base = kTelemInfoOff;
             float[] tireLoads = new float[4];
             float[] tirePressures = new float[4];
             float[] tireRots = new float[4];
@@ -170,51 +347,77 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
             float[] tireTemps = new float[4];
             float[] tireWears = new float[4];
             float[] suspDef = new float[4];
+            float[] suspForce = new float[4];
+            float[] brakePressure = new float[4];
+            float[] latPatchVel = new float[4];
+            float[] lonPatchVel = new float[4];
+            float[] latGroundVel = new float[4];
+            float[] lonGroundVel = new float[4];
+            float[] camberRad = new float[4];
+            float[] vertTireDefl = new float[4];
+            float[] tireCarcassTemp = new float[4];
+            float[] innerLayerTemp = new float[4];
+            float[] optimalTemp = new float[4];
+            string[] terrainNames = new string[4];
 
             for (int wi = 0; wi < 4; wi++)
             {
-                int wOff = t + wheelBaseOff + wi * wheelStride;
-                if (wOff + 160 > readLen) continue;
-                double rv = LmuFieldReader.ReadF64(_rawBuffer, wOff + 40);
-                tireRots[wi] = IsFinite(rv) ? (float)rv : 0f;
-                double lf = LmuFieldReader.ReadF64(_rawBuffer, wOff + 88);
-                latForces[wi] = IsFinite(lf) ? Math.Clamp((float)lf, -50000f, 50000f) : 0f;
-                double lnf = LmuFieldReader.ReadF64(_rawBuffer, wOff + 96);
-                lonForces[wi] = IsFinite(lnf) ? Math.Clamp((float)lnf, -50000f, 50000f) : 0f;
-                double tl = LmuFieldReader.ReadF64(_rawBuffer, wOff + 104);
-                tireLoads[wi] = IsFinite(tl) ? Math.Max(0, (float)tl) : 0f;
-                double gf = LmuFieldReader.ReadF64(_rawBuffer, wOff + 112);
-                _tireGrip[wi] = IsFinite(gf) ? (float)Math.Clamp(gf, -1f, 1f) : 0f;
-                double pr = LmuFieldReader.ReadF64(_rawBuffer, wOff + 120);
-                tirePressures[wi] = IsFinite(pr) ? Math.Max(0, (float)pr) : 0f;
-                double t1 = LmuFieldReader.ReadF64(_rawBuffer, wOff + 128);
-                double t2 = LmuFieldReader.ReadF64(_rawBuffer, wOff + 136);
-                double t3 = LmuFieldReader.ReadF64(_rawBuffer, wOff + 144);
+                int wOff = wheelSlot0Base + wheelBaseOff + wi * wheelStride;
+                if (wOff + 240 > readLen)
+                {
+                    wOff = t + wheelBaseOff + wi * wheelStride;
+                    if (wOff + 240 > readLen) continue;
+                }
+
+                suspDef[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_SUSP_DEFLECTION)) ? (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_SUSP_DEFLECTION) : 0f;
+                suspForce[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_SUSP_FORCE)) ? (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_SUSP_FORCE) : 0f;
+                brakePressure[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_BRAKE_PRESSURE)) ? Math.Max(0, (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_BRAKE_PRESSURE)) : 0f;
+                tireRots[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_ROTATION)) ? (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_ROTATION) : 0f;
+                latPatchVel[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LAT_PATCH_VEL)) ? (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LAT_PATCH_VEL) : 0f;
+                lonPatchVel[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LON_PATCH_VEL)) ? (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LON_PATCH_VEL) : 0f;
+                latGroundVel[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LAT_GROUND_VEL)) ? (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LAT_GROUND_VEL) : 0f;
+                lonGroundVel[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LON_GROUND_VEL)) ? (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LON_GROUND_VEL) : 0f;
+                camberRad[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_CAMBER)) ? (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_CAMBER) : 0f;
+                latForces[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LAT_FORCE)) ? Math.Clamp((float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LAT_FORCE), -50000f, 50000f) : 0f;
+                lonForces[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LON_FORCE)) ? Math.Clamp((float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_LON_FORCE), -50000f, 50000f) : 0f;
+                tireLoads[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TIRE_LOAD)) ? Math.Max(0, (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TIRE_LOAD)) : 0f;
+                _tireGrip[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_GRIP_FRACT)) ? Math.Clamp((float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_GRIP_FRACT), -1f, 1f) : 0f;
+                tirePressures[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_PRESSURE)) ? Math.Max(0, (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_PRESSURE)) : 0f;
+
+                double t1 = LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TEMP_INNER);
+                double t2 = LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TEMP_MID);
+                double t3 = LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TEMP_OUTER);
                 tireTemps[wi] = IsFinite(t1) && IsFinite(t2) && IsFinite(t3) ? (float)(((t1 + t2 + t3) / 3.0) - 273.15) : 0f;
-                double tw = LmuFieldReader.ReadF64(_rawBuffer, wOff + 152);
-                tireWears[wi] = IsFinite(tw) ? Math.Clamp((float)tw, 0f, 1f) : 0f;
-                double sd = LmuFieldReader.ReadF64(_rawBuffer, wOff);
-                suspDef[wi] = IsFinite(sd) ? (float)sd : 0f;
+                tireWears[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_WEAR)) ? Math.Clamp((float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_WEAR), 0f, 1f) : 0f;
+                terrainNames[wi] = LmuFieldReader.ReadStr(_rawBuffer, wOff + W_TERRAIN_NAME, 16);
+                vertTireDefl[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_VERT_TIRE_DEFLECTION)) ? (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_VERT_TIRE_DEFLECTION) : 0f;
+                tireCarcassTemp[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TIRE_CARCASS_TEMP)) ? (float)(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TIRE_CARCASS_TEMP) - 273.15) : 0f;
+                innerLayerTemp[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_INNER_LAYER_TEMP0)) ? (float)(((LmuFieldReader.ReadF64(_rawBuffer, wOff + W_INNER_LAYER_TEMP0) + LmuFieldReader.ReadF64(_rawBuffer, wOff + W_INNER_LAYER_TEMP1) + LmuFieldReader.ReadF64(_rawBuffer, wOff + W_INNER_LAYER_TEMP2)) / 3.0) - 273.15) : 0f;
+                optimalTemp[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_OPTIMAL_TEMP)) ? (float)(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_OPTIMAL_TEMP) - 273.15) : 0f;
+
+                // Copy to reader properties
+                SuspForces[wi] = suspForce[wi];
+                BrakePressures[wi] = brakePressure[wi];
+                PatchVelocities[wi] = latPatchVel[wi];
+                VerticalTireDeflections[wi] = vertTireDefl[wi];
+                CamberRad[wi] = camberRad[wi];
+                TireCarcassTemps[wi] = tireCarcassTemp[wi];
+                InnerLayerTemps[wi] = innerLayerTemp[wi];
+                OptimalTemps[wi] = optimalTemp[wi];
+                TerrainNames[wi] = terrainNames[wi];
             }
 
-            // One-time wheel data dump for diagnostics
-            if (!_loggedWheelDump && tirePressures[0] > 50f)
+            // One-time wheel data dump for diagnostics (unconditional)
+            if (!_loggedWheelDump)
             {
-                int wOff = t + wheelBaseOff;
-                double sd = LmuFieldReader.ReadF64(_rawBuffer, wOff);
-                double rv = LmuFieldReader.ReadF64(_rawBuffer, wOff + 40);
-                double lf = LmuFieldReader.ReadF64(_rawBuffer, wOff + 88);
-                double lnf = LmuFieldReader.ReadF64(_rawBuffer, wOff + 96);
-                double tl = LmuFieldReader.ReadF64(_rawBuffer, wOff + 104);
-                double gf = LmuFieldReader.ReadF64(_rawBuffer, wOff + 112);
-                double pr = LmuFieldReader.ReadF64(_rawBuffer, wOff + 120);
-                double t1 = LmuFieldReader.ReadF64(_rawBuffer, wOff + 128);
-                double tw = LmuFieldReader.ReadF64(_rawBuffer, wOff + 152);
-                Log($"WHEEL0: off={wOff} suspDef={sd:F4} rot={rv:F2} latF={lf:F1} lonF={lnf:F1} load={tl:F1} grip={gf:F4} press={pr:F1} t1={t1:F1} wear={tw:F4}");
+                int wOff = wheelSlot0Base + wheelBaseOff;
+                Log($"WHEEL0 slot0({wheelSlot0Base}): off={wOff} defl={suspDef[0]:F4} rot={tireRots[0]:F2} latF={latForces[0]:F1} lonF={lonForces[0]:F1} load={tireLoads[0]:F1} press={tirePressures[0]:F1} suspF={suspForce[0]:F1} brakeP={brakePressure[0]:F1}");
                 _loggedWheelDump = true;
             }
 
             float totalForce = (float)(Math.Abs(steeringTorque) > 0.0001 ? steeringTorque : ffbTorque);
+
+            // ── Mz synthesis from steering shaft torque ──
             float absForce = Math.Abs(totalForce);
             float absSteer = (float)Math.Abs(steer);
             float sgn = (float)(steer > 0 ? 1 : -1);
@@ -225,20 +428,112 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
             float slipA = (float)(speedMs >= 0.5 ? Math.Clamp(Math.Atan2(vx, -vz), -0.30, 0.30) : 0);
             float speedKmh = (float)(speedMs * 3.6);
 
-            // Synthesize per-wheel Mz from total steering shaft torque.
-            // LMU/rF2 only provides mSteeringShaftTorque, not per-wheel Mz.
-            float mzMagnitude = absForce * blend * cFactor;
-            float mzSign = sgn;
-            float mzFL = -mzMagnitude * mzSign * 18f;
-            float mzFR = -mzMagnitude * mzSign * 18f;
-            float mzRL = -mzMagnitude * mzSign * 12f;
-            float mzRR = -mzMagnitude * mzSign * 12f;
+            // ── Use real wheel data when available, fall back to synthesis ──
+            // Estimate tire loads from physics when wheel data is zero
+            if (tireLoads[0] < 1f && tireLoads[1] < 1f && tireLoads[2] < 1f && tireLoads[3] < 1f)
+            {
+                float speedSq = (float)(speedMs * speedMs);
+                float aeroF = 0.8f * speedSq * 0.40f;
+                float aeroR = 0.8f * speedSq * 0.60f;
+                float latWT = (float)(accY * 1400f * 0.4f / 1.6f);
+                float lonWT = (float)(-accX * 1400f * 0.4f / 2.7f);
+                float staticL = 1400f * 9.81f / 4f;
+                tireLoads[0] = Math.Max(0, staticL + aeroF / 2f - lonWT - latWT);
+                tireLoads[1] = Math.Max(0, staticL + aeroF / 2f - lonWT + latWT);
+                tireLoads[2] = Math.Max(0, staticL + aeroR / 2f + lonWT - latWT);
+                tireLoads[3] = Math.Max(0, staticL + aeroR / 2f + lonWT + latWT);
+            }
 
-            // Log every ~100ms for debugging
+            // Smooth acceleration for Fx/Fy synthesis fallback
+            float rawLatG = (float)accY;
+            float rawLonG = (float)accX;
+            if (!_prevAccInitialized)
+            {
+                _prevAccY = rawLatG;
+                _prevAccX = rawLonG;
+                _prevAccInitialized = true;
+            }
+            float smoothLatG = _prevAccY + (rawLatG - _prevAccY) * 0.25f;
+            float smoothLonG = _prevAccX + (rawLonG - _prevAccX) * 0.25f;
+            _prevAccY = smoothLatG;
+            _prevAccX = smoothLonG;
+
+            float[] synFx = new float[4];
+            float[] synFy = new float[4];
+            for (int wi = 0; wi < 4; wi++)
+            {
+                float load = tireLoads[wi];
+                synFy[wi] = Math.Abs(latForces[wi]) < 0.001f ? smoothLatG * load * 0.002f : latForces[wi];
+                synFx[wi] = Math.Abs(lonForces[wi]) < 0.001f ? smoothLonG * load * 0.002f : lonForces[wi];
+            }
+
+            // Slip ratio from wheel speed vs vehicle speed, or estimate from accel
+            float[] slipRatio = new float[4];
+            if (speedMs > 1f)
+            {
+                float radius = 0.31f;
+                for (int wi = 0; wi < 4; wi++)
+                {
+                    float wSpeedMs = Math.Abs(tireRots[wi]) * radius;
+                    if (wSpeedMs > 0.1f)
+                        slipRatio[wi] = Math.Clamp(((float)speedMs - wSpeedMs) / Math.Max(wSpeedMs, 0.1f), -0.20f, 0.20f);
+                    else
+                        slipRatio[wi] = Math.Clamp(smoothLonG / 20f, -0.15f, 0.15f);
+                }
+            }
+
+            // ── Vibrations from real data ──
+            float kerbVib = 0f;
+            float roadVib = 0f;
+            float slipVib = 0f;
+            float absVib = 0f;
+
+            if (speedMs > 1f)
+            {
+                // Kerb vibration from suspension force spikes
+                float maxSuspF = 0f;
+                for (int wi = 0; wi < 4; wi++)
+                    if (Math.Abs(suspForce[wi]) > maxSuspF) maxSuspF = Math.Abs(suspForce[wi]);
+                kerbVib = Math.Min(maxSuspF * 0.0002f, 1f);
+
+                // Road vibration from vertical tire deflection
+                float maxVertDefl = 0f;
+                for (int wi = 0; wi < 4; wi++)
+                    if (Math.Abs(vertTireDefl[wi]) > maxVertDefl) maxVertDefl = Math.Abs(vertTireDefl[wi]);
+                roadVib = Math.Min(maxVertDefl * 20f, 1f);
+
+                // Impact vibration
+                if (LastImpactMagnitude > 0.1f)
+                    kerbVib = Math.Max(kerbVib, Math.Min(LastImpactMagnitude * 0.002f, 1f));
+
+                // Slip vibration from grip fraction
+                float minGrip = 1f;
+                for (int wi = 0; wi < 4; wi++)
+                    if (_tireGrip[wi] < minGrip && _tireGrip[wi] > 0.01f) minGrip = _tireGrip[wi];
+                if (minGrip < 0.92f)
+                    slipVib = Math.Min((0.92f - minGrip) * 12f, 1f);
+
+                // ABS vibration from brake pressure asymmetry
+                if (brakePressure[0] > 100f || brakePressure[1] > 100f)
+                {
+                    float fp = Math.Abs(brakePressure[0] - brakePressure[1]);
+                    float rp = Math.Abs(brakePressure[2] - brakePressure[3]);
+                    absVib = Math.Min(Math.Max(fp, rp) * 0.001f, 1f);
+                }
+            }
+
+            // ── Mz synthesis ──
+            float mzMagnitude = absForce * blend * cFactor;
+            float mzFL = -mzMagnitude * sgn * 18f;
+            float mzFR = -mzMagnitude * sgn * 18f;
+            float mzRL = -mzMagnitude * sgn * 12f;
+            float mzRR = -mzMagnitude * sgn * 12f;
+
+            // Log every ~100ms
             if (_lastReadTicks % (Stopwatch.Frequency / 10) < Stopwatch.Frequency / 250)
             {
                 string veh = LmuFieldReader.ReadStr(_rawBuffer, t + TI_VEHICLE_NAME, 64);
-                Log($"Telem: veh='{Trunc(veh,20)}' gear={gear} rpm={rpm:F0} speed={speedKmh:F1}km/h tq={totalForce:F4} steer={steer:F4} thr={throttle:F3} brk={brake:F3} mz={-absForce * sgn * blend * cFactor:F4}");
+                Log($"Telem: veh='{Trunc(veh,20)}' gear={gear} rpm={rpm:F0} speed={speedKmh:F1} tq={totalForce:F4} steer={steer:F4} thr={throttle:F3} brk={brake:F3} fDown={FrontDownforce:F1} rDown={RearDownforce:F1} impact={LastImpactMagnitude:F1}");
             }
 
             physics = new SPageFilePhysicsEvo
@@ -258,21 +553,28 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                 TyreWear = [tireWears[0], tireWears[1], tireWears[2], tireWears[3]],
                 SuspensionTravel = [suspDef[0], suspDef[1], suspDef[2], suspDef[3]],
                 FinalFf = totalForce,
-                SlipRatio = [0, 0, 0, 0],
+                SlipRatio = slipRatio,
                 SlipAngle = [slipA, slipA, slipA, slipA],
                 Mz = [mzFL, mzFR, mzRL, mzRR],
-                Fx = [lonForces[0], lonForces[1], lonForces[2], lonForces[3]],
-                Fy = [latForces[0], latForces[1], latForces[2], latForces[3]],
+                Fx = [synFx[0], synFx[1], synFx[2], synFx[3]],
+                Fy = [synFy[0], synFy[1], synFy[2], synFy[3]],
                 LocalAngularVel = [(float)0, (float)0, (float)0],
-                KerbVibration = 0,
-                SlipVibrations = 0,
-                RoadVibrations = 0,
+                KerbVibration = kerbVib,
+                SlipVibrations = slipVib,
+                RoadVibrations = roadVib,
+                AbsVibrations = absVib,
                 TyreTemp = [tireTemps[0], tireTemps[1], tireTemps[2], tireTemps[3]],
                 TyreTempI = [tireTemps[0], tireTemps[1], tireTemps[2], tireTemps[3]],
                 TyreTempM = [tireTemps[0], tireTemps[1], tireTemps[2], tireTemps[3]],
                 TyreTempO = [tireTemps[0], tireTemps[1], tireTemps[2], tireTemps[3]],
                 LocalVelocity = [(float)vx, (float)vy, (float)vz],
                 IsEngineRunning = 1,
+                TurboBoost = TurboBoostPressure,
+                KersCharge = Soc / 100f,
+                KersInput = ElectricBoostMotorTorque,
+                BrakeBias = RearBrakeBias,
+                RideHeight = [FrontRideHeight, RearRideHeight],
+                EngineBrake = (int)EngineTorque,
             };
             return true;
         }
@@ -310,12 +612,12 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                 r0 >= 0 && r0 <= 15000 && g0 >= -1 && g0 <= 10)
             {
                 _stride = 1888;
-                _telemInfoOffset = kTelemInfoOff;
                 byte active = buf[kTelemHeaderOff];
                 byte playerIdx = buf[kTelemHeaderOff + 1];
                 _lockedSlotIndex = FindPlayerVehIndex(buf, len, new[] { v0 });
                 if (_lockedSlotIndex < 0) _lockedSlotIndex = playerIdx;
-                Log($"FindTelemSection: FIXED offset veh='{Trunc(v0,20)}' active={active} player={_lockedSlotIndex} rpm={r0:F0} gear={g0}");
+                _telemInfoOffset = kTelemInfoOff + playerIdx * _stride;
+                Log($"FindTelemSection: FIXED offset veh='{Trunc(v0,20)}' active={active} telemSlot={playerIdx} scoringSlot={_lockedSlotIndex} telemOff={_telemInfoOffset} rpm={r0:F0} gear={g0}");
                 return true;
             }
         }
@@ -339,11 +641,11 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                     r0 >= 0 && r0 <= 15000 && g0 >= -1 && g0 <= 10)
                 {
                     _stride = 1888;
-                    _telemInfoOffset = telemHdr + 4;
                     byte playerIdx = buf[telemHdr + 1];
                     _lockedSlotIndex = FindPlayerVehIndex(buf, len, new[] { v0 });
                     if (_lockedSlotIndex < 0) _lockedSlotIndex = playerIdx;
-                    Log($"FindTelemSection: scoring-fallback FOUND veh='{Trunc(v0,20)}' rpm={r0:F0} gear={g0}");
+                    _telemInfoOffset = telemHdr + 4 + playerIdx * _stride;
+                    Log($"FindTelemSection: scoring-fallback FOUND veh='{Trunc(v0,20)}' telemSlot={playerIdx} scoringSlot={_lockedSlotIndex} telemOff={_telemInfoOffset} rpm={r0:F0} gear={g0}");
                     return true;
                 }
             }
