@@ -173,3 +173,78 @@ NOTE: carModel, playerName, playerSurname, playerNick, maxRpm, maxFuel, steerRat
 
 9. Car Detection
 car_model (char[33]) is available in SPageFileGraphicEvo (graphics struct), after driver_surname. Read from graphics data each frame for car detection and per-car profile auto-loading.
+
+## LMU Shared Memory — Player Telemetry Offset
+
+LMU's shared memory (`LMU_Data`) has a telemetry section with multiple vehicle entries.
+The telemetry **header** contains the player's slot index — use it directly. Do NOT use the
+scoring section player index (`FindPlayerVehIndex`) — scoring and telemetry ordering can differ.
+
+### Header Layout (at fixed offset 128464 from MMF start)
+
+```
+byte[0]: active      - number of active telemetry entries
+byte[1]: playerIdx   - index of the human player WITHIN the telemetry array
+byte[2]: hasVehicle  - sanity flag (should be 1)
+```
+
+### Correct Offset Calculation
+
+```csharp
+const int kTelemHeaderOff = 128464;               // Telemetry section header
+const int kTelemInfoOff  = kTelemHeaderOff + 4;   // First TelemInfoV01 entry
+const int stride = 1888;                           // sizeof(TelemInfoV01)
+
+byte playerIdx = buf[kTelemHeaderOff + 1];
+int playerTelemetryOffset = kTelemInfoOff + playerIdx * stride;
+```
+
+All fields (steeringShaftTorque, wheel data, etc.) are read relative to
+`playerTelemetryOffset`, NOT the base array offset.
+
+### List of TI_ Constants (offsets from playerTelemetryOffset)
+
+```
+TI_VEHICLE_NAME        = 32
+TI_TRACK_NAME          = 96
+TI_LOCAL_VEL           = 184
+TI_LOCAL_ACCEL         = 208
+TI_LOCAL_ROT           = 304
+TI_GEAR                = 352
+TI_ENGINE_RPM          = 356
+TI_UNFILTERED_THROTTLE = 388
+TI_UNFILTERED_BRAKE    = 396
+TI_UNFILTERED_STEERING = 404
+TI_STEERING_SHAFT_TORQUE = 452
+TI_LAP_NUMBER          = 20
+```
+
+### Wheel Array (mWheel[4])
+
+```
+wheelBaseOff = 848    // Pre-wheel fields = 848 (native struct, includes 32 bytes of filtered controls)
+wheelStride = 260     // sizeof(LmuTelemWheelV01) with pack=4
+
+for wi in 0..3:
+    wOff = playerTelemetryOffset + wheelBaseOff + wi * wheelStride
+    suspensionDeflection @ wOff + 0
+    rotation (wheel speed)        @ wOff + 40
+    lateralForce (Fy)             @ wOff + 88
+    longitudinalForce (Fx)        @ wOff + 96
+    tireLoad                      @ wOff + 104
+    gripFract                     @ wOff + 112
+    pressure                      @ wOff + 120
+    temperature[3] (inner, mid, outer) @ wOff + 128, 136, 144
+    wear                          @ wOff + 152
+```
+
+### Common Pitfalls
+
+- **DO NOT** use `FindPlayerVehIndex` (scoring section) to compute telemetry offset.
+  The scoring entry order can differ from telemetry entry order.
+- **ALWAYS** use `buf[kTelemHeaderOff + 1]` (telemetry header playerIdx) for the telemetry slot.
+- The `LmuTelemInfoV01` C# struct is incomplete (missing 4 filtered-control doubles).
+  Marshal.SizeOf = 816 but native pre-wheel size = 848. Always use hardcoded raw offsets,
+  never Marshal-based reading for this struct.
+- The wheel dump diagnostic guard `tirePressures[0] > 50f` will silent-skip if tire data reads
+  zero — make the first-frame dump unconditional when investigating.
