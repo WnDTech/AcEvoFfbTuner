@@ -20,12 +20,18 @@ public sealed class AppSettings
     public string DefaultStartPage { get; set; } = "Home";
     public bool TooltipsEnabled { get; set; } = true;
     public bool AutoProfileUpgrade { get; set; }
+    public bool AutoDetectGame { get; set; } = true;
+    public bool AutoSwitchProfiles { get; set; } = true;
+    public bool ProfileLocked { get; set; }
     public string ThemeName { get; set; } = ThemeManager.DefaultTheme;
     public bool VoiceEnabled { get; set; } = true;
     public int VoiceVolume { get; set; } = 75;
     public string? VoiceName { get; set; }
     public bool UseEdgeTts { get; set; } = true;
     public string GoogleTtsLanguage { get; set; } = "en";
+    public string? OpenAiApiKey { get; set; }
+    public string OpenAiModel { get; set; } = "deepseek-v4-flash";
+    public string AiBaseUrl { get; set; } = "https://opencode.ai/zen/go/v1";
 
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");

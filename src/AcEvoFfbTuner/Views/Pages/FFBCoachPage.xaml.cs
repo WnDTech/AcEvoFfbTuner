@@ -76,14 +76,28 @@ public partial class FFBCoachPage : UserControl
         RebuildUI();
     }
 
+    private void OnInputKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && sender is TextBox tb && !string.IsNullOrWhiteSpace(tb.Text))
+        {
+            VM?.CoachSendTextCommand?.Execute(null);
+            e.Handled = true;
+        }
+    }
+
+    private void OnChatWithAi(object sender, RoutedEventArgs e)
+    {
+        VM?.CoachAnswerCommand?.Execute("source_chat");
+    }
+
+    private void OnUseLiveMonitor(object sender, RoutedEventArgs e)
+    {
+        VM?.CoachAnswerCommand?.Execute("source_monitor");
+    }
+
     private void OnUseLatestSnapshot(object sender, RoutedEventArgs e)
     {
         VM?.CoachUseLatestSnapshotCommand?.Execute(null);
-    }
-
-    private void OnUseLiveData(object sender, RoutedEventArgs e)
-    {
-        VM?.CoachUseLiveDataCommand?.Execute(null);
     }
 
     private void OnRestartSession(object sender, RoutedEventArgs e)
@@ -234,6 +248,9 @@ public partial class FFBCoachPage : UserControl
     {
         bool hasMsgs = vm.CoachMessages.Count > 0;
         EmptyState.Visibility = hasMsgs ? Visibility.Collapsed : Visibility.Visible;
+        TextInputArea.Visibility = hasMsgs ? Visibility.Visible : Visibility.Collapsed;
+        if (hasMsgs && !CoachInputBox.IsFocused)
+            CoachInputBox.Focus();
     }
 
     private void UpdateInfoPanel(MainViewModel vm)

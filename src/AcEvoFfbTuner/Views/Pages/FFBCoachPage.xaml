@@ -6,6 +6,7 @@
              Background="{DynamicResource BgDark}">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <converters:InverseBoolToVisibilityConverter x:Key="InvertBoolToVis" />
         <converters:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis" />
         <Style x:Key="CoachActionBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
@@ -70,12 +71,37 @@
                         Visibility="{Binding CoachIsBusy, Converter={StaticResource BoolToVis}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="⏳" FontSize="16" Margin="0,0,8,0" />
-                        <TextBlock Text="Analyzing your data..." FontSize="14" Foreground="#FFE6EDF3" />
+                        <TextBlock Text="{Binding CoachLoadingText}" FontSize="14" Foreground="#FFE6EDF3" />
                     </StackPanel>
                 </Border>
 
                 <!-- Chat messages container -->
                 <StackPanel x:Name="MessageContainer" />
+
+                <!-- Custom text input -->
+                <Border x:Name="TextInputArea" Background="#1AFFFFFF" CornerRadius="8" Padding="10,8" Margin="0,8,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="CoachInputBox"
+                                 Text="{Binding CoachInput, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                 FontSize="14" Padding="8,6"
+                                 Background="#0AFFFFFF" Foreground="#FFE6EDF3"
+                                 BorderBrush="#FF30363D" BorderThickness="1"
+                                 AcceptsReturn="False"
+                                 VerticalContentAlignment="Center"
+                                 Grid.Column="0"
+                                 KeyDown="OnInputKeyDown" />
+                        <Button Grid.Column="1" Content="Send"
+                                Command="{Binding CoachSendTextCommand}"
+                                FontSize="13" Padding="10,6" Margin="8,0,0,0"
+                                Background="#1AF0883E" Foreground="#FFF0883E"
+                                BorderBrush="#88F0883E" BorderThickness="1"
+                                Cursor="Hand" />
+                    </Grid>
+                </Border>
 
                 <!-- Empty state -->
                 <Border x:Name="EmptyState" Background="#1AFFFFFF" CornerRadius="8" Padding="24,20" Margin="0,8,0,0">
@@ -86,11 +112,14 @@
                         <TextBlock Text="I'll help you tune your FFB profile using telemetry data."
                                    FontSize="14" Foreground="#FF8B949E" HorizontalAlignment="Center"
                                    Margin="0,0,0,20" />
-                        <Button Content="📂  Analyze Latest Snapshot"
-                                Click="OnUseLatestSnapshot"
+                        <Button Content="💬  Chat with AI"
+                                Click="OnChatWithAi"
                                 Style="{StaticResource CoachPrimaryBtn}" Margin="0,4" Width="300" />
-                        <Button Content="📡  Use Live Profiler Data"
-                                Click="OnUseLiveData"
+                        <Button Content="🎯  Live Monitor"
+                                Click="OnUseLiveMonitor"
+                                Style="{StaticResource CoachActionBtn}" Margin="0,4" Width="300" />
+                        <Button Content="📂  Load Snapshot Data"
+                                Click="OnUseLatestSnapshot"
                                 Style="{StaticResource CoachActionBtn}" Margin="0,4" Width="300" />
                     </StackPanel>
                 </Border>
@@ -128,8 +157,12 @@
                 <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
                     <StackPanel>
                         <TextBlock Text="Session State" FontSize="11" Foreground="#FF6B7682" />
-                        <TextBlock x:Name="InfoSessionState" Text="Idle" FontSize="13"
-                                   Foreground="#FF8B949E" Margin="0,4,0,0" />
+                        <TextBlock x:Name="InfoSessionState" Text="{Binding CoachLoadingText, FallbackValue=Idle}"
+                                   FontSize="13" Foreground="#FF8B949E" Margin="0,4,0,0"
+                                   Visibility="{Binding CoachIsBusy, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock x:Name="InfoSessionStateIdle" Text="Idle" FontSize="13"
+                                   Foreground="#FF8B949E" Margin="0,4,0,0"
+                                   Visibility="{Binding CoachIsBusy, Converter={StaticResource InvertBoolToVis}}" />
                     </StackPanel>
                 </Border>
 
@@ -142,6 +175,56 @@
                         <Button Content="📋  Show Summary"
                                 Click="OnShowSummary"
                                 Style="{StaticResource CoachActionBtn}" Margin="0,3" />
+                    </StackPanel>
+                </Border>
+
+                <!-- PENDING CHANGES -->
+                <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,10" Margin="0,0,0,8"
+                        Visibility="{Binding CoachHasPendingRecs, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="PENDING CHANGES" FontSize="11" FontWeight="Bold"
+                                   Foreground="#FFF0883E" Margin="0,0,0,8" />
+                        <ItemsControl ItemsSource="{Binding CoachPendingRecs}" Margin="0,0,0,8">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#0AFFFFFF" CornerRadius="4" Padding="8,6" Margin="0,0,0,4"
+                                            BorderThickness="1" BorderBrush="#FF30363D">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="#FFE6EDF3" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding Description}" FontSize="11"
+                                                           Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Content="✓"
+                                                    Command="{Binding DataContext.CoachApplyRecCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="Apply this change"
+                                                    FontSize="12" Padding="4,2" Margin="4,0,0,0"
+                                                    Background="#1A2EA043" Foreground="#FF2EA043"
+                                                    BorderThickness="1" BorderBrush="#882EA043"
+                                                    Cursor="Hand" VerticalAlignment="Top" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Content="✓  Apply All Changes"
+                                Command="{Binding CoachApplyAllCommand}"
+                                FontSize="12" Padding="8,4" Margin="0,0,0,4"
+                                Background="#1A2EA043" Foreground="#FF2EA043"
+                                BorderThickness="1" BorderBrush="#882EA043"
+                                Cursor="Hand" />
+                        <Button Content="↩  Undo Last Change"
+                                Command="{Binding CoachUndoCommand}"
+                                FontSize="12" Padding="8,4"
+                                Background="#1ADB4343" Foreground="#FFDB4343"
+                                BorderThickness="1" BorderBrush="#88DB4343"
+                                Cursor="Hand" />
                     </StackPanel>
                 </Border>
             </StackPanel>
