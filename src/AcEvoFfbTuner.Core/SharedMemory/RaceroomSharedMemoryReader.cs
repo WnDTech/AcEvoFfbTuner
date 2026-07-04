@@ -12,7 +12,6 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
     private MemoryMappedViewAccessor? _view;
 
     private int _lastTicks = -1;
-    private byte[] _rawBuffer = new byte[65536];
 
     private R3eShared _lastData;
 
@@ -31,6 +30,26 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
     public float[] LocalAccelG => _mmf != null
         ? new[] { (float)_lastData.LocalAcceleration.X, (float)_lastData.LocalAcceleration.Z, (float)_lastData.LocalAcceleration.Y }
         : new float[3];
+
+    public float EngineTorque => _mmf != null ? (float)_lastData.Player.EngineTorque : 0f;
+
+    public float[] TireFlatspot => _mmf != null
+        ? new[] {
+            _lastData.TireFlatspot.FrontLeft == 1 ? 1f : 0f,
+            _lastData.TireFlatspot.FrontRight == 1 ? 1f : 0f,
+            _lastData.TireFlatspot.RearLeft == 1 ? 1f : 0f,
+            _lastData.TireFlatspot.RearRight == 1 ? 1f : 0f }
+        : new float[4];
+
+    public int[] TireOnMtrl => _mmf != null
+        ? new[] { _lastData.TireOnMtrl.FrontLeft, _lastData.TireOnMtrl.FrontRight, _lastData.TireOnMtrl.RearLeft, _lastData.TireOnMtrl.RearRight }
+        : new int[4];
+
+    public float[] BrakePressure => _mmf != null
+        ? new[] { _lastData.BrakePressure.FrontLeft, _lastData.BrakePressure.FrontRight, _lastData.BrakePressure.RearLeft, _lastData.BrakePressure.RearRight }
+        : new float[4];
+
+    public float TractionControlPercent => _mmf != null ? _lastData.TractionControlPercent : 0f;
 
     public bool TryConnect()
     {
@@ -118,7 +137,7 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
                 Heading = _lastData.CarOrientation.Yaw,
                 Pitch = _lastData.CarOrientation.Pitch,
                 Roll = _lastData.CarOrientation.Roll,
-                FinalFf = (float)_lastData.Player.SteeringForce,
+                FinalFf = (float)_lastData.Player.SteeringForcePercentage,
                 SlipRatio = new float[4],
                 SlipAngle = new float[4],
                 Mz = new float[4],
@@ -185,37 +204,18 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
                 IsAiControlled = _lastData.ControlType == 1 ? 1 : 0,
             };
 
-            var steeringForce = (float)_lastData.Player.SteeringForce;
+            var steeringForcePct = (float)_lastData.Player.SteeringForcePercentage;
             var steerNorm = _lastData.SteerInputRaw; // normalized -1..+1 (R3E API)
             var carSpeedMs = _lastData.CarSpeed;
 
-            // Moza R5 convention: positive force = wheel LEFT (auto-detect confirmed).
-            // -absForce * steerSign ensures centering pushes toward center.
-            // NOTE: the leading '-' compensates for Moza auto-detect _invertForce=true,
-            // which negates force at the DirectOutput level. Two inversions cancel.
-            float absForce = Math.Abs(steeringForce);
-            float steerSign = steerNorm > 0f ? 1f : -1f;
-            float absSteer = Math.Abs(steerNorm);
-            float blend = Math.Clamp(absSteer / 0.002f, 0f, 1f);
+            // Raw centering force: use percentage magnitude, derive direction
+            // from steer angle. R3E SteeringForcePercentage is 0-100%.
+            // Pipeline's ApplyCenteringOverride handles all on-center shaping.
+            float steerSign = steerNorm >= 0f ? -1f : 1f;
+            float centeringForce = steerSign * Math.Abs(steeringForcePct);
 
-            // Center smooth zone: no deadzone — DD wheels don't need software
-            // deadbands. Force scales linearly from 0°, eliminating the center notch.
-            float steerDeg = steerNorm * _lastData.SteerLockDegrees * 0.5f;
-            float absSteerDeg = Math.Abs(steerDeg);
-            const float centerSmoothZoneDeg = 3.0f;
-            float centeringFactor;
-            if (absSteerDeg < centerSmoothZoneDeg)
-            {
-                float t = absSteerDeg / centerSmoothZoneDeg;
-                centeringFactor = MathF.Pow(t, 0.5f); // sqrt: fast ramp-up from zero
-            }
-            else
-            {
-                centeringFactor = 1f;
-            }
-
-            physics.Mz[0] = -absForce * steerSign * blend * centeringFactor;
-            physics.Mz[1] = -absForce * steerSign * blend * centeringFactor;
+            physics.Mz[0] = centeringForce;
+            physics.Mz[1] = centeringForce;
 
             const float minSpeedThreshold = 0.5f;
 
@@ -272,23 +272,18 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
             }
 
 
-            // AI control: centering spring toward 0° using the same formula structure
-            // as the normal pipeline (so MzFrontGain sign compensation applies correctly).
-            float normalMz = -absForce * steerSign * blend * centeringFactor;
             if (_lastData.ControlType == 1)
             {
-                // Use steerNorm as force source with 200x scaling (matches typical SteeringForce magnitude)
-                float absSteerForce = Math.Abs(steerNorm * 200f);
-                float aiCentering = -absSteerForce * steerSign * blend * centeringFactor;
+                // AI: R3E zeros SteeringForce during AI control, so synthesize
+                // centering from steerNorm * 200x (matches typical SteeringForce magnitude).
+                float aiSign = steerNorm >= 0f ? -1f : 1f;
+                float aiMagnitude = Math.Abs(steerNorm * 200f);
+                float aiCentering = aiSign * aiMagnitude;
                 physics.Mz[0] = aiCentering;
                 physics.Mz[1] = aiCentering;
                 physics.Fx[0] = physics.Fx[1] = physics.Fx[2] = physics.Fx[3] = 0f;
                 physics.Fy[0] = physics.Fy[1] = physics.Fy[2] = physics.Fy[3] = 0f;
             }
-
-            LogAiDebug(steerNorm, steeringForce, _lastData.ControlType, _lastData.ControlType == 1,
-                _lastData.ControlType == 1 ? -Math.Abs(steerNorm * 200f) * steerSign * blend * centeringFactor : 0f,
-                normalMz, _lastData.CompletedLaps, _lastData.LapDistanceFraction, carSpeedMs * 3.6f);
             if (_lastData.Player.GForce.X != 0 || _lastData.Player.GForce.Y != 0 || _lastData.Player.GForce.Z != 0)
             {
                 physics.AccG[0] = (float)_lastData.Player.GForce.X;
@@ -538,32 +533,6 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
         return dst;
     }
 
-
-    // ── AI debug logging ─────────────────────────────────────────────────
-    private static readonly string AiDebugLogPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "AcEvoFfbTuner", "r3e_ai_debug.log");
-
-    private bool _aiDebugHeaderWritten;
-
-    private void LogAiDebug(float steerNorm, float steeringForce, int controlType, bool isAi,
-        float aiFollowForce, float normalMz, int completedLaps, float lapFrac, float speed)
-    {
-        try
-        {
-            var dir = Path.GetDirectoryName(AiDebugLogPath);
-            if (dir != null) Directory.CreateDirectory(dir);
-            if (!_aiDebugHeaderWritten)
-            {
-                File.AppendAllText(AiDebugLogPath,
-                    "Time,ControlType,IsAi,SteerNorm,SteeringForce,AiFollowMz,NormalMz,CompletedLaps,LapFrac,SpeedKmh,IsAiControlled\r\n");
-                _aiDebugHeaderWritten = true;
-            }
-            File.AppendAllText(AiDebugLogPath,
-                $"{DateTime.Now:HH:mm:ss.fff},{controlType},{(isAi?1:0)},{steerNorm:F6},{steeringForce:F2},{aiFollowForce:F4},{normalMz:F4},{completedLaps},{lapFrac:F4},{speed:F1},{isAi}\n");
-        }
-        catch { }
-    }
 
     public void Dispose()
     {

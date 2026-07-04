@@ -22,6 +22,9 @@ public sealed class FfbLiveServer : IDisposable
     private readonly float[] _hFy = new float[MaxHistory];
     private readonly float[] _hGas = new float[MaxHistory];
     private readonly float[] _hBrake = new float[MaxHistory];
+    private readonly int[] _hGear = new int[MaxHistory];
+    private readonly float[] _hRpm = new float[MaxHistory];
+    private readonly int[] _hLap = new int[MaxHistory];
     private int _hIdx;
     private int _hCount;
     private readonly object _dataLock = new();
@@ -82,6 +85,9 @@ public sealed class FfbLiveServer : IDisposable
             _hFy[_hIdx] = proc.ChannelFyFront;
             _hGas[_hIdx] = raw.GasInput;
             _hBrake[_hIdx] = raw.BrakeInput;
+            _hGear[_hIdx] = raw.Gear;
+            _hRpm[_hIdx] = raw.RpmPercent;
+            _hLap[_hIdx] = raw.CurrentLap;
             _hIdx = (_hIdx + 1) % MaxHistory;
             if (_hCount < MaxHistory) _hCount++;
         }
@@ -147,6 +153,14 @@ public sealed class FfbLiveServer : IDisposable
             _sb.Append(raw.Fy[0].ToString("F2"));
             _sb.Append(",\"rfy1\":");
             _sb.Append(raw.Fy[1].ToString("F2"));
+            _sb.Append(",\"ge\":");
+            _sb.Append(raw.Gear.ToString());
+            _sb.Append(",\"rp\":");
+            _sb.Append(raw.RpmPercent.ToString("F3"));
+            _sb.Append(",\"la\":");
+            _sb.Append(raw.CurrentLap.ToString());
+            _sb.Append(",\"np\":");
+            _sb.Append(raw.Npos.ToString("F4"));
             _sb.Append('}');
 
             var payload = Encoding.UTF8.GetBytes("data: " + _sb.ToString() + "\n\n");
@@ -191,15 +205,20 @@ public sealed class FfbLiveServer : IDisposable
                 var ctx = await _listener.GetContextAsync();
                 if (ct.IsCancellationRequested) break;
 
-                if (ctx.Request.Url?.AbsolutePath == "/history")
+                var path = ctx.Request.Url?.AbsolutePath ?? "";
+                if (path == "/history")
                 {
                     ServeHistory(ctx);
                 }
-                else if (ctx.Request.Url?.AbsolutePath == "/stream")
+                else if (path == "/stream")
                 {
                     var client = new SseClient(ctx.Response);
                     _clients.Add(client);
                     _ = Task.Run(() => SseWriter(client, ct), ct);
+                }
+                else if (path == "/overlay")
+                {
+                    ServeOverlay(ctx);
                 }
                 else
                 {
@@ -313,11 +332,14 @@ public sealed class FfbLiveServer : IDisposable
         public string Theme { get; set; }  // "dark", "transparent", "compact", "clipping"
         public string Charts { get; set; } // "all", "none"
         public string Stats { get; set; }  // "all", "none"
+        public float Opacity { get; set; }
+        public bool ShowTrack { get; set; }
+        public bool ShowWaveform { get; set; }
     }
 
     private static OverlayOptions ParseOptions(string query)
     {
-        var opts = new OverlayOptions { Theme = "dark", Charts = "all", Stats = "all" };
+        var opts = new OverlayOptions { Theme = "dark", Charts = "all", Stats = "all", Opacity = 1.0f, ShowTrack = true, ShowWaveform = true };
         if (string.IsNullOrEmpty(query)) return opts;
 
         var q = query.TrimStart('?');
@@ -330,6 +352,9 @@ public sealed class FfbLiveServer : IDisposable
                 case "theme": opts.Theme = kv[1].ToLowerInvariant(); break;
                 case "charts": opts.Charts = kv[1].ToLowerInvariant(); break;
                 case "stats": opts.Stats = kv[1].ToLowerInvariant(); break;
+                case "opacity": float.TryParse(kv[1], out var o); opts.Opacity = Math.Clamp(o, 0.1f, 1.0f); break;
+                case "showtrack": opts.ShowTrack = kv[1] != "false"; break;
+                case "showwaveform": opts.ShowWaveform = kv[1] != "false"; break;
             }
         }
         return opts;
@@ -676,6 +701,158 @@ function dc(id,trs){
 }
 addEventListener('resize',drawAll);
 addEventListener('keydown',(e)=>{if(e.code==='Space'){e.preventDefault();toggleFreeze();}});
+</script></body></html>";
+    }
+
+    private void ServeOverlay(HttpListenerContext ctx)
+    {
+        var opts = ParseOptions(ctx.Request.Url?.Query ?? "");
+        var html = GetOverlayHtml(opts);
+        var buf = Encoding.UTF8.GetBytes(html);
+        ctx.Response.StatusCode = 200;
+        ctx.Response.ContentType = "text/html; charset=utf-8";
+        ctx.Response.Headers.Add("Access-Control-Allow-Origin", "*");
+        ctx.Response.ContentLength64 = buf.Length;
+        ctx.Response.OutputStream.Write(buf);
+        ctx.Response.Close();
+    }
+
+    private static string GetOverlayHtml(OverlayOptions opts)
+    {
+        var opacity = opts.Opacity.ToString("F2");
+        return @"<!DOCTYPE html>
+<html><head><meta charset=""utf-8""><title>FFB Overlay</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:transparent;color:#fff;font-family:'Segoe UI',Arial,sans-serif;overflow:hidden;height:100vh;width:1920px;position:relative}
+#wrap{position:absolute;bottom:40px;left:40px;right:40px;display:flex;gap:20px;align-items:flex-end;opacity:" + opacity + @"}
+#left{display:flex;flex-direction:column;gap:4px}
+#speed{font-size:64px;font-weight:700;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.8)}
+#speed .unit{font-size:24px;font-weight:400;color:#aaa}
+#gear{font-size:48px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,0.8)}
+#rpmBar{width:200px;height:8px;background:rgba(255,255,255,0.15);border-radius:4px;overflow:hidden}
+#rpmFill{height:100%;background:linear-gradient(90deg,#4caf50,#ffc107,#f44336);border-radius:4px;transition:width 40ms}
+#center{flex:1;display:flex;flex-direction:column;gap:4px;align-items:center}
+#forceText{font-size:28px;font-weight:600;text-shadow:0 2px 6px rgba(0,0,0,0.8)}
+#forceBar{width:100%;height:12px;background:rgba(255,255,255,0.1);border-radius:6px;overflow:hidden;position:relative}
+#forceFill{height:100%;border-radius:6px;transition:width 40ms;position:absolute;top:0}
+#forceFill.pos{right:50%;background:linear-gradient(90deg,#4fc3f7,#1565c0)}
+#forceFill.neg{left:50%;background:linear-gradient(270deg,#f44336,#b71c1c)}
+#clipping{font-size:16px;font-weight:700;color:#f44336;display:none;text-shadow:0 0 10px #f44336}
+#right{display:flex;flex-direction:column;gap:2px;align-items:flex-end;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,0.8)}
+#right .l{color:#888;font-size:11px;text-transform:uppercase}
+#right .v{color:#fff;font-weight:600}
+#trackMap{position:absolute;bottom:120px;right:40px;width:200px;height:200px;display:" + (opts.ShowTrack ? "block" : "none") + @"}
+#trackMap canvas{width:100%;height:100%;border-radius:8px;background:rgba(0,0,0,0.3)}
+#waveform{position:absolute;bottom:300px;left:40px;right:40px;height:60px;display:" + (opts.ShowWaveform ? "block" : "none") + @"}
+#waveform canvas{width:100%;height:100%;border-radius:4px;background:rgba(0,0,0,0.2)}
+#brand{position:absolute;top:20px;right:30px;font-size:13px;color:rgba(255,255,255,0.25);letter-spacing:2px;text-transform:uppercase;font-weight:300}
+.lapinfo{display:flex;gap:12px;font-size:13px;color:#888}
+.lapinfo .v{color:#fff}
+</style></head><body>
+<div id=""brand"">FFB Tuner</div>
+<div id=""trackMap""><canvas id=""cTrack""></canvas></div>
+<div id=""waveform""><canvas id=""cWave""></canvas></div>
+<div id=""wrap"">
+<div id=""left"">
+<div id=""speed"">0 <span class=""unit"">km/h</span></div>
+<div id=""gear"">N</div>
+<div id=""rpmBar""><div id=""rpmFill"" style=""width:0%""></div></div>
+</div>
+<div id=""center"">
+<div id=""forceText"">0.000 Nm</div>
+<div id=""forceBar""><div id=""forceFill"" class=""pos"" style=""width:0%""></div></div>
+<div id=""clipping"">CLIPPING</div>
+<div class=""lapinfo""><span>Lap: <span class=""v"" id=""vLap"">0</span></span></div>
+</div>
+<div id=""right"">
+<div><span class=""l"">Mz</span> <span class=""v"" id=""vMz"">0.000</span></div>
+<div><span class=""l"">Fx</span> <span class=""v"" id=""vFx"">0.000</span></div>
+<div><span class=""l"">Fy</span> <span class=""v"" id=""vFy"">0.000</span></div>
+<div><span class=""l"">Gas</span> <span class=""v"" id=""vGa"">0</span></div>
+<div><span class=""l"">Brake</span> <span class=""v"" id=""vBr"">0</span></div>
+</div>
+</div>
+<script>
+const N=300;
+let D={fo:new Float32Array(N),st:new Float32Array(N),sp:new Float32Array(N)};
+let idx=0;
+const es=new EventSource('/stream');
+es.onmessage=(e)=>{
+const d=JSON.parse(e.data);
+if(d.force){for(let k in D)if(d[k])for(let i=0;i<d[k].length;i++)D[k][i]=d[k][i];return;}
+const $=id=>document.getElementById(id);
+(idx>=N?null:null);
+if(idx<N){D.fo[idx]=d.fo||0;D.st[idx]=d.st||0;D.sp[idx]=d.sp||0;}
+else{D.fo[idx%N]=d.fo||0;D.st[idx%N]=d.st||0;D.sp[idx%N]=d.sp||0;}
+idx++;
+const sp=d.sp||0;
+$('speed').innerHTML=sp.toFixed(0)+' <span class=""unit"">km/h</span>';
+const gr=d.ge;
+const gearEl=$('gear');
+if(gr===0)gearEl.textContent='R';else if(gr===1)gearEl.textContent='N';else gearEl.textContent='G'+gr;
+const rp=(d.rp||0);
+$('rpmFill').style.width=Math.min(rp*100,100)+'%';
+const fo=Math.abs(d.fo||0);
+$('forceText').textContent=fo.toFixed(3)+' Nm';
+const barPct=Math.min(fo*100,100);
+const fill=$('forceFill');
+fill.style.width=barPct+'%';
+fill.className=(d.fo||0)>=0?'pos':'neg';
+const clip=d.cl||0;
+const ce=$('clipping');
+ce.style.display=clip?'block':'none';
+$('vMz').textContent=(d.mz||0).toFixed(3);
+$('vFx').textContent=(d.fx||0).toFixed(3);
+$('vFy').textContent=(d.fy||0).toFixed(3);
+$('vGa').textContent=(d.ga||0).toFixed(2);
+$('vBr').textContent=(d.br||0).toFixed(2);
+$('vLap').textContent=d.la||0;
+drawWave();
+drawTrack(d);
+};
+function drawWave(){
+const c=document.getElementById('cWave');
+if(!c)return;
+const w=c.clientWidth,h=c.clientHeight;
+if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+const x=c.getContext('2d');
+x.clearRect(0,0,w,h);
+x.strokeStyle='#4fc3f7';x.lineWidth=2;
+const n=Math.min(idx,N);if(n<2)return;
+const si=idx>=N?idx%N:0;
+x.beginPath();
+for(let i=0;i<n;i++){
+let v=D.fo[(si+i)%N]||0;
+const px=i/(n-1)*w,py=h/2-v*h*0.4;
+i===0?x.moveTo(px,py):x.lineTo(px,py);
+}
+x.stroke();
+const mid=h/2;
+x.strokeStyle='rgba(255,255,255,0.1)';x.lineWidth=1;x.setLineDash([4,4]);
+x.beginPath();x.moveTo(0,mid);x.lineTo(w,mid);x.stroke();
+}
+function drawTrack(d){
+const c=document.getElementById('cTrack');
+if(!c||!d.np===undefined)return;
+const w=c.clientWidth,h=c.clientHeight;
+if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+const x=c.getContext('2d');
+x.clearRect(0,0,w,h);
+const cx=w/2,cy=h/2,r=Math.min(w,h)*0.35;
+x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);
+x.strokeStyle='rgba(255,255,255,0.15)';x.lineWidth=2;x.stroke();
+const np=d.np||0;
+const angle=np*Math.PI*2-Math.PI/2;
+const px=cx+Math.cos(angle)*r;
+const py=cy+Math.sin(angle)*r;
+x.beginPath();x.arc(px,py,5,0,Math.PI*2);
+x.fillStyle='#4fc3f7';x.fill();
+x.shadowColor='#4fc3f7';x.shadowBlur=10;
+x.beginPath();x.arc(px,py,3,0,Math.PI*2);
+x.fillStyle='#fff';x.fill();
+x.shadowBlur=0;
+}
 </script></body></html>";
     }
 

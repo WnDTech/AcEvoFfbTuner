@@ -107,7 +107,13 @@ public sealed class TelemetryLoop : IDisposable
     public bool IsGameConnected => _reader.IsConnected;
     public bool IsDeviceConnected => _deviceManager.IsDeviceAcquired;
     public int PacketsPerSecond => _packetsPerSecond;
-    public bool SuppressOutput { get => _suppressOutput; set => _suppressOutput = value; }
+    public bool SuppressOutput
+    {
+        get => _suppressOutput;
+        set => _suppressOutput = value;
+    }
+
+    public bool RawPassthroughEnabled { get; set; }
     public float LastLatencyMs => _lastLatencyMs;
     public float AvgLatencyMs => _avgLatencyMs;
     public string ActiveProviderName => _ffbProvider?.ProviderName ?? "DirectInput (Built-in)";
@@ -383,11 +389,20 @@ public sealed class TelemetryLoop : IDisposable
                     {
                         raw.TyreGrip = r3e.TireGrip;
                         raw.DisplayAccG = r3e.LocalAccelG;
+                        raw.EngineTorque = r3e.EngineTorque;
+                        raw.TireFlatspot = r3e.TireFlatspot;
+                        raw.TireOnMtrl = r3e.TireOnMtrl;
+                        raw.BrakePressure = r3e.BrakePressure;
+                        raw.TractionControlPercent = r3e.TractionControlPercent;
                     }
 
                     // Inject AC tyre grip data
                     if (_reader is AssettoCorsaSharedMemoryReader ac)
                         raw.TyreGrip = ac.TireGrip;
+
+                    // Inject ACC tyre grip
+                    if (_reader is AccSharedMemoryReader acc)
+                        raw.TyreGrip = acc.TireGrip;
 
                     // Inject LMU tyre grip and local acceleration
                     if (_reader is LmuSharedMemoryReader lmu)
@@ -448,7 +463,9 @@ public sealed class TelemetryLoop : IDisposable
                         // Clean float scale: deflection is already -1..+1 decimal.
                         // Gain 2.5x so a small deflection creates noticeable resistance.
                         // Hard-capped at 0.25 (25% max torque) to prevent runaway.
-                        float targetForce = -deflection * 15.0f;
+                        // Moza convention: positive force = wheel LEFT.
+                        // When deflection is RIGHT (positive), push LEFT (positive).
+                        float targetForce = deflection * 15.0f;
                         float aiCenter = Math.Clamp(targetForce, -0.50f, 0.50f);
                         Console.Clear();
                         Console.WriteLine($"[R3E AI-CENTER] WheelPos:{wheelPos:F4} Offset:{_wheelCenterOffset:F4} Defl:{deflection:F4} Force:{aiCenter:F4}");
@@ -505,7 +522,10 @@ public sealed class TelemetryLoop : IDisposable
                             }
                             else
                             {
-                                _ffbProvider.UpdateTorque(processed.MainForce * handoverFade);
+                                float outputForce = processed.MainForce * handoverFade;
+                                LogDiag($"TORQ: force={outputForce:F4} mz={processed.ChannelMzFront:F4} vib={processed.VibrationForce:F4} steer={raw.SteerAngle:F4} spd={raw.SpeedKmh:F1}");
+
+                                _ffbProvider.UpdateTorque(outputForce);
                                 _reusableHapticData.VibrationIntensity = processed.VibrationForce;
                                 _ffbProvider.SetHaptics(_reusableHapticData);
                             }
@@ -523,7 +543,9 @@ public sealed class TelemetryLoop : IDisposable
                             }
                             else
                             {
-                                _deviceManager.SendConstantForce(processed.MainForce * handoverFade);
+                                float outputForce = processed.MainForce * handoverFade;
+
+                                _deviceManager.SendConstantForce(outputForce);
                                 _deviceManager.SetTargetVibration(processed.VibrationForce);
                             }
                         }

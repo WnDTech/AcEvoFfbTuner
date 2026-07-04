@@ -71,6 +71,11 @@ public sealed class FfbRawData
     public float RoadTemp { get; set; }
     public float[] TyreDirtyLevel { get; set; } = new float[4];
     public float[] TyreGrip { get; set; } = new float[4];
+    public float EngineTorque { get; set; }
+    public float[] TireFlatspot { get; set; } = new float[4];
+    public int[] TireOnMtrl { get; set; } = new int[4];
+    public float[] BrakePressure { get; set; } = new float[4];
+    public float TractionControlPercent { get; set; }
 }
 
 public sealed class FfbProcessedData
