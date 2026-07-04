@@ -215,6 +215,25 @@
                                 </StackPanel>
                             </Border>
 
+                            <!-- Braking pull question (shown after polarity is settled) -->
+                            <Border x:Name="BrakingQuestionPanel" Background="#FF332211" CornerRadius="4" Padding="12,10" Margin="0,0,0,8" Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Text="During straight-line braking, which way did the wheel pull?" 
+                                               FontSize="16" Foreground="#FFFFD600" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Button x:Name="BtnBrakingLeft" Content="← Pulled left" Width="130" Height="38"
+                                                Background="#FF444444" Foreground="White" BorderThickness="0"
+                                                Click="OnBrakingLeft" Margin="0,0,8,0" />
+                                        <Button x:Name="BtnBrakingRight" Content="Pulled right →" Width="140" Height="38"
+                                                Background="#FF444444" Foreground="White" BorderThickness="0"
+                                                Click="OnBrakingRight" Margin="0,0,8,0" />
+                                        <Button x:Name="BtnBrakingNone" Content="No pull" Width="110" Height="38"
+                                                Background="#FF444444" Foreground="White" BorderThickness="0"
+                                                Click="OnBrakingNone" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
                             <!-- Progress indicator -->
                             <Border Background="#FF1A2233" CornerRadius="4" Padding="10,8" Margin="0,0,0,8" MinHeight="60">
                                 <TextBlock x:Name="Step3Status" Text="Drive to 20+ km/h and steer through a corner..." 

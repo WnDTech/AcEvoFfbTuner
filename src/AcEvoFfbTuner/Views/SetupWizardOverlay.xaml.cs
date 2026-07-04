@@ -70,6 +70,14 @@ public partial class SetupWizardOverlay : Window
     private int _finalTuneCleanSamples;
     private int _finalTuneTotalFrames;
 
+    // Braking pull detection
+    private enum BrakingPhase { Idle, Monitoring, QuestionShown }
+    private BrakingPhase _brakingPhase = BrakingPhase.Idle;
+    private const int BrakeSampleTarget = 1;
+    private int _brakeSampleCount;
+    private float _brakeFxSum;
+    private float _brakeForceSum;
+
     // Auto-detect state for steps 2-5
     private enum AutoPhase { Warmup, Sampling, Applied, Manual }
     private AutoPhase _step2Phase = AutoPhase.Warmup;
@@ -175,7 +183,7 @@ public partial class SetupWizardOverlay : Window
 
         // Initialize LutCurve to match current CenterSuppressionDegrees for non-R3E pipelines.
         // R3E uses its own ApplyCenteringOverride with CenterSuppressionDegrees directly.
-        if (_pipeline is not R3eFfbPipeline)
+        if (_pipeline is not R3eFfbPipeline and not LmuFfbPipeline)
         {
             float initPower = 1.0f + (_pipeline.CenterSuppressionDegrees / 30f) * 3.0f;
             _pipeline.LutCurve.SetProgressive(initPower);
@@ -334,10 +342,7 @@ public partial class SetupWizardOverlay : Window
         Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
         Log($"User polarity: Gradual flip from {currentMz:F2} to {_polarityFlipTarget:F2} over {_polarityFlipFrames} frames");
         
-        // Auto-advance after the gradual flip completes
         _polarityResultCooldown = 60;
-        _advanceStep = _currentStep;
-        _advanceStepDelay = 30;
     }
 
     private void OnPolarityNo(object sender, RoutedEventArgs e)
@@ -349,9 +354,48 @@ public partial class SetupWizardOverlay : Window
         Step3Status.Text = "✓ Centering direction is correct — driving to calibrate force strength...";
         Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
         _polarityResultCooldown = 60;
+        Log($"User polarity: MzFrontGain confirmed at {_pipeline.ChannelMixer.MzFrontGain:F2}");
+        StartBrakingMonitoring();
+    }
+
+    private void OnBrakingLeft(object sender, RoutedEventArgs e)
+    {
+        BrakingQuestionPanel.Visibility = Visibility.Collapsed;
+        float current = _pipeline.ChannelMixer.FxFrontGain;
+        float target = -Math.Abs(current);
+        _pipeline.ChannelMixer.FxFrontGain = target;
+        if (_viewModel != null) _viewModel.FxFrontGain = target;
+        if (_viewModel?.SelectedProfile != null) _viewModel.SelectedProfile.FxFront.Gain = target;
+        Log($"Braking: wheel pulled left — FxFrontGain set to {target:F2}");
+        Step2Status.Text = "✓ Brake pull corrected — continuing";
+        Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
         _advanceStep = _currentStep;
         _advanceStepDelay = 30;
-        Log($"User polarity: MzFrontGain confirmed at {_pipeline.ChannelMixer.MzFrontGain:F2}");
+    }
+
+    private void OnBrakingRight(object sender, RoutedEventArgs e)
+    {
+        BrakingQuestionPanel.Visibility = Visibility.Collapsed;
+        float current = _pipeline.ChannelMixer.FxFrontGain;
+        float target = Math.Abs(current);
+        _pipeline.ChannelMixer.FxFrontGain = target;
+        if (_viewModel != null) _viewModel.FxFrontGain = target;
+        if (_viewModel?.SelectedProfile != null) _viewModel.SelectedProfile.FxFront.Gain = target;
+        Log($"Braking: wheel pulled right — FxFrontGain set to {target:F2}");
+        Step2Status.Text = "✓ Brake pull corrected — continuing";
+        Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+        _advanceStep = _currentStep;
+        _advanceStepDelay = 30;
+    }
+
+    private void OnBrakingNone(object sender, RoutedEventArgs e)
+    {
+        BrakingQuestionPanel.Visibility = Visibility.Collapsed;
+        Log($"Braking: no pull detected — FxFrontGain left at {_pipeline.ChannelMixer.FxFrontGain:F2}");
+        Step2Status.Text = "✓ No brake pull — continuing";
+        Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+        _advanceStep = _currentStep;
+        _advanceStepDelay = 30;
     }
 
     private void OnCloseWizard(object sender, RoutedEventArgs e)
@@ -409,7 +453,7 @@ public partial class SetupWizardOverlay : Window
         // Setup texts
         string title = _stepTitles[stepIndex];
         // R3E uses Step 3 for MasterGain calibration (not channel balancing)
-        if (stepIndex == 2 && _pipeline is R3eFfbPipeline)
+        if (stepIndex == 2 && (_pipeline is R3eFfbPipeline or LmuFfbPipeline))
             title = "Force Strength Calibration";
         StepTitleText.Text = $"Step {stepIndex + 1}: {title}";
         // Step number announcement first, then instructions
@@ -567,7 +611,7 @@ public partial class SetupWizardOverlay : Window
         // Re-sync viewmodel from pipeline — something (profile auto-match, LoadProfileValues)
         // may have overwritten it since the polarity test. PushValuesToPipeline reads from
         // viewmodel properties, so this ensures the corrected values survive the save.
-        if (_pipeline is R3eFfbPipeline && _viewModel != null)
+        if ((_pipeline is R3eFfbPipeline or LmuFfbPipeline) && _viewModel != null)
         {
             _viewModel.MzFrontGain = _pipeline.ChannelMixer.MzFrontGain;
             _viewModel.FyFrontGain = _pipeline.ChannelMixer.FyFrontGain;
@@ -583,7 +627,7 @@ public partial class SetupWizardOverlay : Window
         Close();
     }
 
-    public void UpdateLiveValues(float speedKmh, float mainForce, float steerAngle, bool isClipping, float mzFront)
+    public void UpdateLiveValues(float speedKmh, float mainForce, float steerAngle, bool isClipping, float mzFront, float brake = 0f, float gas = 0f)
     {
         if (++_logFrame % 100 == 0)
             Log($"ULV: step={_currentStep} speed={speedKmh:F1} force={mainForce:F4}");
@@ -657,6 +701,99 @@ public partial class SetupWizardOverlay : Window
                 UpdateAutoCentering(speedKmh, mainForce, steerAngle);
             // Strength calibration always runs — it auto-advances when data collection completes
             UpdateAutoTyreForces(speedKmh, mainForce, steerAngle, mzFront);
+
+            // Braking pull detection: runs after polarity question is resolved
+            if (_brakingPhase == BrakingPhase.Monitoring)
+                UpdateBrakingPull(speedKmh, steerAngle, mzFront, mainForce, brake);
+
+            // After auto-flip completes, start braking monitoring
+            if (_polarityFlipFrames <= 0 && _brakingPhase == BrakingPhase.Idle && _polarityDetermined && _step2Phase == AutoPhase.Manual)
+                StartBrakingMonitoring();
+        }
+    }
+
+    private void StartBrakingMonitoring()
+    {
+        _brakingPhase = BrakingPhase.Monitoring;
+        _brakeSampleCount = 0;
+        _brakeFxSum = 0f;
+        _brakeForceSum = 0f;
+        Log("BrakingPull: monitoring started");
+    }
+
+    private void UpdateBrakingPull(float speedKmh, float steerAngle, float mzFront, float mainForce, float brakeInput)
+    {
+        if (_brakingPhase == BrakingPhase.QuestionShown) return;
+
+        const float brakeThreshold = 0.15f;
+        const float steerStraightThreshold = 0.04f;
+        const float minSpeedKmh = 15f;
+
+        // Monitoring phase: collect data during straight-line braking
+        bool isStraight = speedKmh > minSpeedKmh && Math.Abs(steerAngle) < steerStraightThreshold;
+
+        if (isStraight && brakeInput > brakeThreshold && _brakeSampleCount < BrakeSampleTarget)
+        {
+            _brakeSampleCount++;
+            _brakeFxSum += mzFront;
+            _brakeForceSum += mainForce;
+        }
+
+        // Update status
+        if (_brakeSampleCount < BrakeSampleTarget)
+        {
+            string pct = $"{(float)_brakeSampleCount / BrakeSampleTarget * 100f:F0}%";
+            Step2Status.Text = $"Brake test: {pct} — brake in a straight line from speed";
+            Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+        }
+
+        // Enough samples: auto-detect bias and fix
+        if (_brakeSampleCount >= BrakeSampleTarget)
+        {
+            _brakingPhase = BrakingPhase.QuestionShown;
+            float avgFx = _brakeFxSum;
+            float avgForce = _brakeForceSum;
+            Log($"Braking pull: {_brakeSampleCount} samples, mzFront={avgFx:F6}, avgForce={avgForce:F6}");
+
+            float current = _pipeline.ChannelMixer.FxFrontGain;
+            float target = current;
+            string direction;
+
+            if (avgFx < -0.001f)
+            {
+                // MzFront was negative during braking → wheel pulled left → invert FxFrontGain sign
+                target = -Math.Abs(current);
+                direction = "left";
+            }
+            else if (avgFx > 0.001f)
+            {
+                // MzFront was positive during braking → wheel pulled right → make FxFrontGain positive
+                target = Math.Abs(current);
+                direction = "right";
+            }
+            else
+            {
+                direction = "none";
+            }
+
+            if (Math.Abs(target - current) > 0.001f)
+            {
+                _pipeline.ChannelMixer.FxFrontGain = target;
+                if (_viewModel != null) _viewModel.FxFrontGain = target;
+                if (_viewModel?.SelectedProfile != null) _viewModel.SelectedProfile.FxFront.Gain = target;
+                Log($"Braking pull: wheel pulled {direction} — FxFrontGain {current:F2} → {target:F2}");
+                Step2Status.Text = $"✓ Brake pull ({direction}) auto-corrected — FxFrontGain set to {target:F2}";
+            }
+            else
+            {
+                Log($"Braking pull: no significant pull (avgFx={avgFx:F6}) — FxFrontGain left at {current:F2}");
+                Step2Status.Text = "✓ No brake pull detected — continuing";
+            }
+            Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+
+            // Advance to next step
+            _advanceStep = _currentStep;
+            _advanceStepDelay = 30;
         }
     }
 
@@ -670,10 +807,8 @@ public partial class SetupWizardOverlay : Window
         const float fightThreshold = 0.20f;
         const float maxCenterSuppressCumulative = 15f; // hard cap: don't add more than this total
 
-        // Moza (inv=False) reverses centering polarity: correct centering produces
-        // mainForce × steerAngle > 0 (same sign). Negate for ALL games when inv=False
-        // so the three polarity checks below work with the standard convention.
-        float runCheck = _viewModel?.ForceInvertEnabled == true ? mainForce : -mainForce;
+        // Normalize to physical force direction: positive = push right.
+        float runCheck = _viewModel?.ForceInvertEnabled == true ? -mainForce : mainForce;
 
         // Only run centering phases until polarity is determined
         if (_polarityDetermined)
@@ -861,12 +996,11 @@ public partial class SetupWizardOverlay : Window
                     // For R3E: set CSD for V-shape suppression, then advance immediately.
                     // For AC EVO/ACC: CSD does nothing in base pipeline (ApplyCenteringOverride is no-op).
                     // Don't touch LUT curve either — it's a global shaper, not center-specific.
-                    if (_pipeline is R3eFfbPipeline)
+                    if (_pipeline is R3eFfbPipeline or LmuFfbPipeline)
                     {
                         float targetCs = 2.0f;
                         _pipeline.CenterSuppressionDegrees = targetCs;
-                        // Centering slider removed — CSD set on pipeline directly
-                        Log($"R3E: CenterSuppression set to {targetCs:F1}\u00B0 — immediate advance");
+                        Log($"Column-force: CenterSuppression set to {targetCs:F1}° — immediate advance");
                     }
                     else
                     {
@@ -993,7 +1127,7 @@ public partial class SetupWizardOverlay : Window
         }
 
         const float minSpeedForSampling = 15f;
-        int maxSamples = (_pipeline is R3eFfbPipeline) ? 600 : 1200;
+        int maxSamples = (_pipeline is R3eFfbPipeline or LmuFfbPipeline) ? 600 : 1200;
 
         if (_step2Phase == AutoPhase.Warmup)
         {
@@ -1029,8 +1163,8 @@ public partial class SetupWizardOverlay : Window
 
                 // 2. POLARITY DETECTION: Track if force pushes AWAY from center
                 // If user turns right (steer > 0) and force pushes right (mainForce > 0), it's a runaway force.
-                // Normalize convention based on ForceInvertEnabled state
-                float behaviorCheck = _viewModel?.ForceInvertEnabled == true ? mainForce : -mainForce;
+                // Normalize to physical force direction: positive = push right
+                float behaviorCheck = _viewModel?.ForceInvertEnabled == true ? -mainForce : mainForce;
                 if (Math.Abs(steerAngle) > 0.05f)
                 {
                     _cornerTurnFrames++;
@@ -1086,36 +1220,32 @@ public partial class SetupWizardOverlay : Window
 
                 if (runawayRatio > 0.55f) // Definite inverted behavior detected
                 {
-                    Log($"Auto-detected INVERTED polarity (Runaway: {runawayRatio * 100f:F0}%). Applying centering correction.");
-
                     // Automatically invert the target for the gradual correction shift
                     float currentMz = _pipeline.ChannelMixer.MzFrontGain;
                     _polarityFlipTarget = -currentMz;
                     _polarityFlipFrames = 30;
                     _polarityFlipStep = (_polarityFlipTarget - currentMz) / _polarityFlipFrames;
-
-                    Step2Status.Text = "Inverted forces detected! Auto-correcting centering direction...";
-                    Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x17, 0x44));
-                    Step3Status.Text = Step2Status.Text;
-                    Step3Status.Foreground = Step2Status.Foreground;
+                    _calibratedMasterGain = _pipeline.MasterGain;
 
                     if (PolarityQuestionPanel != null) PolarityQuestionPanel.Visibility = Visibility.Collapsed;
                     _polarityDetermined = true;
-                    _advanceStep = _currentStep;
-                    _advanceStepDelay = 35;
+
+                    Step2Status.Text = $"Auto-correcting centering... (Peak: {(_step2PeakForce * 100f):F0}%)";
+                    Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+                    Step3Status.Text = $"Hold the wheel steady — reversing centering direction...";
+                    Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+                    Log($"AUTO polarity: gradual flip from {currentMz:F2} to {_polarityFlipTarget:F2} over {_polarityFlipFrames} frames (runaway={runawayRatio*100:F0}%)");
                 }
                 else
                 {
                     Log($"Auto-detected CORRECT polarity (Runaway: {runawayRatio * 100f:F0}%). Wheel centers properly.");
-                    Step2Status.Text = $"Calibration complete! Force aligned (Peak: {(_step2PeakForce * 100f):F0}%) — advancing to intensity tune";
+                    Step2Status.Text = $"Calibration complete! Force aligned (Peak: {(_step2PeakForce * 100f):F0}%)";
                     Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                    Step3Status.Text = $"Calibration complete! Peak force: {(_step2PeakForce * 100f):F0}%";
+                    Step3Status.Text = $"Calibration complete! Peak force: {(_step2PeakForce * 100f):F0}% — did the wheel feel correct?";
                     Step3Status.Foreground = Step2Status.Foreground;
 
-                    if (PolarityQuestionPanel != null) PolarityQuestionPanel.Visibility = Visibility.Collapsed;
+                    if (PolarityQuestionPanel != null) PolarityQuestionPanel.Visibility = Visibility.Visible;
                     _polarityDetermined = true;
-                    _advanceStep = _currentStep;
-                    _advanceStepDelay = 30;
                 }
             }
         }
