@@ -210,7 +210,35 @@
                         SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
                     <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.5"
                         Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
-                        Label="Center Str" StringFormat="{}{0:F1}" Suffix="x"
+                        Label="Main Force" StringFormat="{}{0:F1}" Suffix="x"
+                        SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
+                    <controls:LabeledSlider Value="{Binding ForceScale, Mode=TwoWay}" Minimum="0.1" Maximum="5" TickFrequency="0.05"
+                        Label="Force Scale" StringFormat="{}{0:F0}"
+                        Description="R3E/LMU raw SteeringForce is 60-550 Nm driving. Set so output feels right. Start at ~400 for Moza R5."
+                        SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
+                    <controls:LabeledSlider Value="{Binding TyreGripScale, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.1"
+                        Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
+                        Label="Grip Effect" StringFormat="{}{0:F2}"
+                        SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
+                    <controls:LabeledSlider Value="{Binding EngineTorqueLfeMod, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.1"
+                        Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
+                        Label="Torque LFE" StringFormat="{}{0:F2}"
+                        SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
+                    <controls:LabeledSlider Value="{Binding FlatspotGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.1"
+                        Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
+                        Label="Flatspot" StringFormat="{}{0:F2}"
+                        SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
+                    <controls:LabeledSlider Value="{Binding SurfaceFeelGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.1"
+                        Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
+                        Label="Surface" StringFormat="{}{0:F2}"
+                        SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
+                    <controls:LabeledSlider Value="{Binding BrakePressureGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.1"
+                        Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
+                        Label="BrakePrs" StringFormat="{}{0:F2}"
+                        SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,4" />
+                    <controls:LabeledSlider Value="{Binding TcFeelGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.1"
+                        Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
+                        Label="TC Feel" StringFormat="{}{0:F2}"
                         SectionColor="{DynamicResource SectionTyreSlip}" Margin="0,0,0,8" />
 
                     <!-- SAVE -->

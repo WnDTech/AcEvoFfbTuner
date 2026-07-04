@@ -1,4 +1,5 @@
-using System.IO;
+using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using AcEvoFfbTuner.Controls;
@@ -12,16 +13,12 @@ public partial class LiveTrackMapPage : UserControl
     private SatelliteMapService? _satelliteService;
     private bool _satelliteInitialized;
     private readonly TrackDataService _trackDataService = new();
-    private readonly ContinuousTrackAligner _trackAligner = new();
     private string? _lastLoadedTrack;
     private TrackDetailedInfo? _currentOsmData;
-    private float _lastCarX, _lastCarZ;
     private bool _mapCentered;
-    private bool _isCalibrated;
-    private int _prevSectorNumber;
-    private readonly double[] _sectorHeadingDiffs = new double[4];
-    private int _sectorCrossingCount;
-    private int _logFrameCount;
+    private double[] _osmCumDist = Array.Empty<double>();
+    private double _osmTotalDist;
+    private int _osmStartFinishIndex;
 
     public LiveTrackMapPage()
     {
@@ -31,10 +28,6 @@ public partial class LiveTrackMapPage : UserControl
         {
             OsmStatusText.Text = msg;
             StatusDetail.Text = msg;
-        });
-        _trackAligner.CalibrationLocked += () => Dispatcher.Invoke(() =>
-        {
-            OsmStatusText.Text = $"Calibration LOCKED — rotation: {_trackAligner.CurrentRotationDeg:F1}°";
         });
     }
 
@@ -48,48 +41,17 @@ public partial class LiveTrackMapPage : UserControl
     }
 
     public void UpdateDisplay(float carX, float carZ, float heading, float speedKmh,
-        bool isOnTrack, bool hasMap, string? trackName, float trackLatitude,
-        float trackLongitude, float trackRotation,
+        bool isOnTrack, bool hasMap, float npos, string? trackName,
+        float trackLatitude, float trackLongitude, float trackRotation,
         int sectorNumber = 0, int lapCount = 0,
         WaypointForceSample[]? forceHeatmap = null)
     {
         if (!_satelliteInitialized) return;
 
-        _lastCarX = carX;
-        _lastCarZ = carZ;
-
-        // Get game sector index from raw npos (independent of recorded track map)
-        int gameSector = DataContext is MainViewModel gvm ? gvm.GameSectorIndex : sectorNumber;
-
-        // Log raw telemetry every 60 frames
-        if (_logFrameCount % 60 == 0)
-        {
-            string rawLog = $"[{DateTime.Now:HH:mm:ss.fff}] RAW carX:{carX:F2} carZ:{carZ:F2} heading:{heading:F2} speed:{speedKmh:F1} sector:{sectorNumber} gameSector:{gameSector}\n";
-            try { File.AppendAllText(
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "AcEvoFfbTuner", "trackdata.log"), rawLog); } catch { }
-        }
-
-        // Log raw telemetry every 60 frames
-        if (_logFrameCount % 60 == 0)
-        {
-            string rawLog = $"[{DateTime.Now:HH:mm:ss.fff}] RAW carX:{carX:F2} carZ:{carZ:F2} heading:{heading:F2} speed:{speedKmh:F1} sector:{sectorNumber} gameSector:{gameSector}\n";
-            try { File.AppendAllText(
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "AcEvoFfbTuner", "trackdata.log"), rawLog); } catch { }
-        }
-
-        // Seed first waypoint for identity transform (car moves before calibration)
-        if (speedKmh > 5f && !_trackAligner.HasFirstWaypoint)
-        {
-            _trackAligner.SeedFirstWaypoint(carX, carZ);
-        }
-
         if (trackName != _lastLoadedTrack && !string.IsNullOrEmpty(trackName))
         {
             _lastLoadedTrack = trackName;
             _currentOsmData = null;
-            _trackAligner.Reset();
             _ = LoadOsmDataAsync(trackName);
         }
 
@@ -103,110 +65,28 @@ public partial class LiveTrackMapPage : UserControl
                 _satelliteService.SetGeoReference(loc.Value.lat, loc.Value.lon, 0f);
         }
 
-        // Sector-based calibration fast path: detect sector 1→2 and 2→3
-        // crossings, match to OSM track boundary points, compute heading offset.
-        if (!_isCalibrated && _currentOsmData?.TrackLayout != null && gameSector > 0 &&
-            gameSector != _prevSectorNumber)
+        // Use game Npos (0..1 from start/finish line) to interpolate along OSM layout
+        double carLat = 0, carLon = 0;
+        double carHeading = heading;
+        bool hasPosition = false;
+
+        if (_currentOsmData?.TrackLayout != null && _currentOsmData.TrackLayout.Count > 2 && npos >= 0f)
         {
-            _prevSectorNumber = gameSector;
-
-            // Compute sector boundary points at 1/3 and 2/3 of track length
-            int b1 = _currentOsmData.TrackLayout.Count / 3;
-            int b2 = _currentOsmData.TrackLayout.Count * 2 / 3;
-
-            TrackPoint? boundary = gameSector switch
-            {
-                2 => _currentOsmData.TrackLayout[b1],
-                3 => _currentOsmData.TrackLayout[b2],
-                _ => null
-            };
-
-            if (boundary != null)
-            {
-                // Derive heading from 5 points ahead on the OSM boundary
-                int aheadIdx = Math.Min(b1 + 5, _currentOsmData.TrackLayout.Count - 1);
-                double dlat = _currentOsmData.TrackLayout[aheadIdx].Latitude - boundary.Latitude;
-                double dlon = _currentOsmData.TrackLayout[aheadIdx].Longitude - boundary.Longitude;
-                double osmHeading = Math.Atan2(dlon, dlat);
-                double diff = heading - osmHeading;
-                if (diff > Math.PI) diff -= 2 * Math.PI;
-                if (diff < -Math.PI) diff += 2 * Math.PI;
-
-                // Need at least 2 crossings for a stable average
-                int key = gameSector; // 2 or 3
-                _sectorHeadingDiffs[key] = diff;
-                _sectorCrossingCount++;
-
-                if (_sectorCrossingCount >= 2)
-                {
-                    double avg = 0;
-                    int cnt = 0;
-                    for (int i = 0; i < _sectorHeadingDiffs.Length; i++)
-                        if (_sectorHeadingDiffs[i] != 0) { avg += _sectorHeadingDiffs[i]; cnt++; }
-                    if (cnt > 0)
-                    {
-                        avg /= cnt;
-                        _trackAligner.SetRotationFromRadians(avg);
-                        _isCalibrated = true;
-                        OsmStatusText.Text = $"Sector-calibrated: rotation {avg * 180 / Math.PI:F1}°";
-                    }
-                }
-            }
+            var (lat, lon, osmHeading) = GetPositionOnOsmTrack(npos);
+            carLat = lat;
+            carLon = lon;
+            carHeading = osmHeading;
+            hasPosition = true;
+            PositionValue.Text = $"{carLat:F5}, {carLon:F5}";
+            ProgressValue.Text = $"{(npos * 100):F1}%";
         }
 
-        // Lap-based calibration with normalized position matching
-        // (refines or replaces sector calibration if not yet locked)
-        if (!_isCalibrated)
+        if (hasPosition)
         {
-            bool calibrated = _trackAligner.CheckLapCompletion(carX, carZ, lapCount);
-            if (calibrated)
-            {
-                _isCalibrated = true;
-                OsmStatusText.Text = $"Calibration LOCKED — rotation: {_trackAligner.CurrentRotationDeg:F1}°";
-            }
+            MapCtrl.UpdateCarGpsPosition(carLon, carLat, carHeading);
         }
 
-        // Car GPS from aligner
-        var (gpsLat, gpsLon) = _trackAligner.GetCarGps(carX, carZ);
-        PositionValue.Text = $"{gpsLat:F5}, {gpsLon:F5}";
-
-        // Per-frame comparison: car GPS vs nearest OSM track point
-        if (_currentOsmData?.TrackLayout != null && _currentOsmData.TrackLayout.Count > 3)
-        {
-            int nearestIdx = 0;
-            double nearestDist2 = double.MaxValue;
-            for (int i = 0; i < _currentOsmData.TrackLayout.Count; i++)
-            {
-                double dlat = gpsLat - _currentOsmData.TrackLayout[i].Latitude;
-                double dlon = gpsLon - _currentOsmData.TrackLayout[i].Longitude;
-                double d2 = dlat * dlat + dlon * dlon;
-                if (d2 < nearestDist2) { nearestDist2 = d2; nearestIdx = i; }
-            }
-            double nearestDistM = Math.Sqrt(nearestDist2) * 111320;
-
-            // Log every 60 frames (~1 sec at 60fps)
-            _logFrameCount++;
-            if (_logFrameCount % 60 == 0)
-            {
-                var nearestPt = _currentOsmData.TrackLayout[nearestIdx];
-                string compareLog = $"[{DateTime.Now:HH:mm:ss.fff}] CAR:{gpsLat:F5},{gpsLon:F5} OSM:{nearestPt.Latitude:F5},{nearestPt.Longitude:F5} dist:{nearestDistM:F0}m rot:{_trackAligner.CurrentRotationDeg:F1}° cal:{_trackAligner.IsCalibrated}\n";
-                try { File.AppendAllText(
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "AcEvoFfbTuner", "trackdata.log"), compareLog); } catch { }
-            }
-        }
-
-        string gpsLog = $"[{DateTime.Now:HH:mm:ss.fff}] GPS lat:{gpsLat:F5} lon:{gpsLon:F5} rot:{_trackAligner.CurrentRotationDeg:F1}° cal:{_trackAligner.IsCalibrated}\n";
-        try { File.AppendAllText(
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "AcEvoFfbTuner", "trackdata.log"), gpsLog); } catch { }
-
-        // Map heading
-        double mapHeading = (Math.PI * 0.5) - (heading - _trackAligner.CurrentRotationRad);
-        mapHeading = mapHeading % (2 * Math.PI);
-        if (mapHeading < 0) mapHeading += 2 * Math.PI;
-
-        MapCtrl.UpdateCarGpsPosition(gpsLon, gpsLat, mapHeading);
+        int gameSector = DataContext is MainViewModel gvm ? gvm.GameSectorIndex : sectorNumber;
 
         TrackName.Text = trackName ?? "--";
         SpeedValue.Text = speedKmh > 0f ? $"{speedKmh:F0} km/h" : "--";
@@ -217,10 +97,6 @@ public partial class LiveTrackMapPage : UserControl
         {
             CornerNumber.Text = vm.CurrentCornerName;
             CornerName.Text = vm.CurrentCornerRealName ?? "";
-            if (!string.IsNullOrEmpty(vm.SectorStats))
-                ProgressValue.Text = vm.SectorStats;
-            else
-                ProgressValue.Text = "";
         }
 
         PitStatus.Text = _currentOsmData?.Pit != null ? "OSM" : "-";
@@ -230,6 +106,52 @@ public partial class LiveTrackMapPage : UserControl
             var pitText = _currentOsmData.Pit != null ? $" pit=yes" : "";
             OsmDetail.Text = $"{_currentOsmData.Corners.Count} corners, {_currentOsmData.TrackLayout?.Count ?? 0} pts{pitText}";
         }
+    }
+
+    /// <summary>Interpolate position on the OSM track using game Npos (0..1 where 0 = start/finish).</summary>
+    private (double lat, double lon, double heading) GetPositionOnOsmTrack(float npos)
+    {
+        var pts = _currentOsmData!.TrackLayout!;
+        int n = pts.Count;
+
+        if (n < 2 || _osmTotalDist <= 0) return (0, 0, 0);
+
+        // Wrap Npos to [0..1)
+        npos = npos - (float)Math.Floor(npos);
+        if (npos < 0) npos += 1f;
+
+        // Offset by the start/finish index so Npos=0 maps to the start/finish line
+        double distAtSf = _osmCumDist[_osmStartFinishIndex];
+        double target = distAtSf + npos * _osmTotalDist;
+        if (target >= _osmTotalDist) target -= _osmTotalDist;
+
+        int idx = 0;
+        for (int i = 1; i < _osmCumDist.Length; i++)
+        {
+            if (_osmCumDist[i] >= target) { idx = i; break; }
+        }
+
+        if (idx == 0)
+        {
+            // Wrap-around segment: last pt → first pt
+            double segLen = _osmTotalDist - _osmCumDist[^1];
+            if (segLen <= 0) return (pts[0].Latitude, pts[0].Longitude, 0);
+            double t = target / segLen;
+            double lat = pts[n - 1].Latitude + (pts[0].Latitude - pts[n - 1].Latitude) * t;
+            double lon = pts[n - 1].Longitude + (pts[0].Longitude - pts[n - 1].Longitude) * t;
+            double h = Math.Atan2(pts[0].Longitude - pts[n - 1].Longitude, pts[0].Latitude - pts[n - 1].Latitude);
+            return (lat, lon, h);
+        }
+
+        int prev = idx - 1;
+        double segLen2 = _osmCumDist[idx] - _osmCumDist[prev];
+        if (segLen2 <= 0) return (pts[idx].Latitude, pts[idx].Longitude, 0);
+        double t2 = (target - _osmCumDist[prev]) / segLen2;
+        double lat2 = pts[prev].Latitude + (pts[idx].Latitude - pts[prev].Latitude) * t2;
+        double lon2 = pts[prev].Longitude + (pts[idx].Longitude - pts[prev].Longitude) * t2;
+        double h2 = Math.Atan2(pts[idx].Longitude - pts[prev].Longitude, pts[idx].Latitude - pts[prev].Latitude);
+
+        return (lat2, lon2, h2);
     }
 
     private async Task LoadOsmDataAsync(string trackName)
@@ -246,23 +168,37 @@ public partial class LiveTrackMapPage : UserControl
 
             if (data.TrackLayout != null && data.TrackLayout.Count > 3)
             {
-                double anchorLat, anchorLon;
+                // Precompute cumulative distances for Npos-based interpolation
+                var pts = data.TrackLayout;
+                int n = pts.Count;
+                _osmCumDist = new double[n];
+                _osmCumDist[0] = 0;
+                for (int i = 1; i < n; i++)
+                {
+                    double dlat = pts[i].Latitude - pts[i - 1].Latitude;
+                    double dlon = pts[i].Longitude - pts[i - 1].Longitude;
+                    _osmCumDist[i] = _osmCumDist[i - 1] + Math.Sqrt(dlat * dlat + dlon * dlon);
+                }
+                double closeDlat = pts[0].Latitude - pts[n - 1].Latitude;
+                double closeDlon = pts[0].Longitude - pts[n - 1].Longitude;
+                _osmTotalDist = _osmCumDist[n - 1] + Math.Sqrt(closeDlat * closeDlat + closeDlon * closeDlon);
+
+                // Find the layout point closest to the start/finish line
+                // Npos=0 should map here
+                _osmStartFinishIndex = 0;
                 if (data.StartFinish != null)
                 {
-                    anchorLat = data.StartFinish.Latitude;
-                    anchorLon = data.StartFinish.Longitude;
+                    double sfLat = data.StartFinish.Latitude;
+                    double sfLon = data.StartFinish.Longitude;
+                    double bestDist2 = double.MaxValue;
+                    for (int i = 0; i < n; i++)
+                    {
+                        double dlat2 = pts[i].Latitude - sfLat;
+                        double dlon2 = pts[i].Longitude - sfLon;
+                        double d2 = dlat2 * dlat2 + dlon2 * dlon2;
+                        if (d2 < bestDist2) { bestDist2 = d2; _osmStartFinishIndex = i; }
+                    }
                 }
-                else
-                {
-                    int mid = data.TrackLayout.Count / 2;
-                    anchorLat = data.TrackLayout[mid].Latitude;
-                    anchorLon = data.TrackLayout[mid].Longitude;
-                }
-
-                _trackAligner.InitializeTrack(
-                    data.TrackLayout,
-                    data.Pit?.Layout,
-                    anchorLat, anchorLon);
 
                 MapCtrl.SetGpsTrackOutline(data.TrackLayout, data.Corners);
 

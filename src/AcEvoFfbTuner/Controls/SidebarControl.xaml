@@ -13,6 +13,7 @@
         <vm:NavPage x:Key="NavTelemetry">Telemetry</vm:NavPage>
         <vm:NavPage x:Key="NavDevices">Devices</vm:NavPage>
         <vm:NavPage x:Key="NavProfiles">Profiles</vm:NavPage>
+        <vm:NavPage x:Key="NavOverlays">Overlays</vm:NavPage>
     </UserControl.Resources>
 
     <Grid Background="#FF0D1117">
@@ -369,6 +370,50 @@
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
                                         <Path Data="M4,20 V4 H20 V20 Z M12,10 C13.5,10 14.5,8.5 14.5,7.5 C14.5,6.5 13.5,6 12,6 C10.5,6 9.5,6.5 9.5,7.5 C9.5,8.5 10.5,10 12,10 Z M8,16 C8,13 10,12 12,12 C14,12 16,13 16,16"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </RadioButton.Template>
+                <RadioButton.Style>
+                    <Style TargetType="RadioButton">
+                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="#FFF0883E" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </RadioButton.Style>
+            </RadioButton>
+
+            <RadioButton x:Name="NavOverlaysBtn" GroupName="SidebarNav" Content="Overlays" Margin="4,1"
+                         Tag="{x:Static vm:NavPage.Overlays}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Overlays — OBS browser sources and telemetry overlays">
+                <RadioButton.Template>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M3,5 H21 V19 H3 Z M12,8 L8,14 L12,12 L16,16"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                        <Path Data="M17,11 A1.5,1.5,0,1,0 17,10.99"
                                               Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                               StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                                     </Canvas>

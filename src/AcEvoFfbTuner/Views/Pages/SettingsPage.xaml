@@ -216,6 +216,55 @@
                     </Border>
                 </StackPanel>
 
+                <!-- AI COACH -->
+                <StackPanel Margin="0,0,0,24">
+                    <TextBlock Text="AI COACH" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,4" />
+                    <TextBlock Text="Connect to OpenAI for AI-powered FFB analysis and tuning recommendations." FontSize="14" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap" />
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="8" Padding="16,14"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                        <StackPanel>
+                            <TextBlock Text="OpenCode Go API Key" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding OpenAiApiKey, UpdateSourceTrigger=PropertyChanged}"
+                                     FontSize="14" Padding="6,4" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding HasOpenAiKey, StringFormat='Key configured: {0}'}"
+                                       FontSize="13" Foreground="{DynamicResource TextDimBrush}"
+                                       Margin="0,0,0,8" />
+                            <TextBlock Text="Your OpenCode Go API key from opencode.ai/auth. DeepSeek V4 Flash (~31K analyses/$5 window) is the default." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
+
+                            <TextBlock Text="Model" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
+                            <ComboBox IsEditable="True" Text="{Binding OpenAiModel, UpdateSourceTrigger=PropertyChanged}" FontSize="14" Padding="6,4" MinWidth="200" HorizontalAlignment="Left">
+                                <ComboBox.ItemsSource>
+                                    <x:Array Type="sys:String" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                                        <sys:String>deepseek-v4-flash</sys:String>
+                                        <sys:String>deepseek-v4-pro</sys:String>
+                                        <sys:String>glm-5.2</sys:String>
+                                        <sys:String>glm-5.1</sys:String>
+                                        <sys:String>kimi-k2.7-code</sys:String>
+                                        <sys:String>kimi-k2.6</sys:String>
+                                        <sys:String>mimo-v2.5-pro</sys:String>
+                                        <sys:String>mimo-v2.5</sys:String>
+                                        <sys:String>minimax-m3</sys:String>
+                                        <sys:String>minimax-m2.7</sys:String>
+                                        <sys:String>qwen3.7-max</sys:String>
+                                        <sys:String>qwen3.7-plus</sys:String>
+                                        <sys:String>qwen3.6-plus</sys:String>
+                                    </x:Array>
+                                </ComboBox.ItemsSource>
+                            </ComboBox>
+                            <TextBlock Text="DeepSeek V4 Flash is the cheapest. For best analysis quality, try Kimi K2.7 Code or GLM-5.2." FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,8" TextWrapping="Wrap" />
+
+                            <Expander Header="Advanced: Custom API Endpoint" FontSize="13" Foreground="{DynamicResource TextDimBrush}">
+                                <StackPanel Margin="0,8,0,0">
+                                    <TextBlock Text="Base URL" FontSize="13" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding AiBaseUrl, UpdateSourceTrigger=PropertyChanged}"
+                                             FontSize="13" Padding="6,4" Margin="0,0,0,4" />
+                                    <TextBlock Text="Leave as https://opencode.ai/zen/go/v1 for OpenCode Go. Change if using a proxy or different provider." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
             </StackPanel>
         </ScrollViewer>
 

@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
 using AcEvoFfbTuner.Core.Profiles;
 using AcEvoFfbTuner.Core.TrackMapping;
@@ -23,6 +24,27 @@ public partial class MainWindow : Window
     private CompactTunerWindow? _compactTuner;
     private SetupWizardOverlay? _setupWizard;
     private WheelCenterOverlay? _wheelCenterOverlay;
+
+    private DispatcherTimer? _toastTimer;
+
+    public void ShowToast(string title, string message, int durationMs = 4000)
+    {
+        ToastTitle.Text = title;
+        ToastMessage.Text = message;
+        ToastBorder.Opacity = 0;
+        var fadeIn = new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
+        ToastBorder.BeginAnimation(OpacityProperty, fadeIn);
+
+        _toastTimer?.Stop();
+        _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(durationMs) };
+        _toastTimer.Tick += (s, _) =>
+        {
+            _toastTimer.Stop();
+            var fadeOut = new System.Windows.Media.Animation.DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(400));
+            ToastBorder.BeginAnimation(OpacityProperty, fadeOut);
+        };
+        _toastTimer.Start();
+    }
 
     public MainWindow()
     {
@@ -81,6 +103,7 @@ public partial class MainWindow : Window
         FFBCoachPageCtrl.Visibility = vm.CurrentPage == NavPage.FfbCoach ? Visibility.Visible : Visibility.Collapsed;
         DevicesPageCtrl.Visibility = vm.CurrentPage == NavPage.Devices ? Visibility.Visible : Visibility.Collapsed;
         ProfilesPageCtrl.Visibility = vm.CurrentPage == NavPage.Profiles ? Visibility.Visible : Visibility.Collapsed;
+        OverlaysPageCtrl.Visibility = vm.CurrentPage == NavPage.Overlays ? Visibility.Visible : Visibility.Collapsed;
         SettingsPageCtrl.Visibility = vm.CurrentPage == NavPage.Settings ? Visibility.Visible : Visibility.Collapsed;
 
         Sidebar.SetSelected(vm.CurrentPage);
@@ -105,9 +128,9 @@ public partial class MainWindow : Window
         _calibrationWizard?.UpdateLiveValues(speedKmh, mainForce, isClipping);
     }
 
-    public void UpdateSetupWizard(float speedKmh, float mainForce, float steerAngle, bool isClipping, float mzFront)
+    public void UpdateSetupWizard(float speedKmh, float mainForce, float steerAngle, bool isClipping, float mzFront, float brake, float gas)
     {
-        _setupWizard?.UpdateLiveValues(speedKmh, mainForce, steerAngle, isClipping, mzFront);
+        _setupWizard?.UpdateLiveValues(speedKmh, mainForce, steerAngle, isClipping, mzFront, brake, gas);
     }
 
     public void UpdateWheelCenter(float physicalNormalized, float angleDegrees)
@@ -128,7 +151,7 @@ public partial class MainWindow : Window
     }
 
     public void UpdateTrackMapDisplay(float carX, float carZ, float heading, float speedKmh,
-        bool isOnTrack, float trackProgress, float distanceFromCenter,
+        bool isOnTrack, float npos, float trackProgress, float distanceFromCenter,
         float trackLengthM, int waypointCount, bool isRecording, bool hasMap,
         TrackMap? currentMap,
         WaypointForceSample[]? forceHeatmap = null,
@@ -152,7 +175,7 @@ public partial class MainWindow : Window
         {
             LiveTrackMapPageCtrl.Initialize();
             LiveTrackMapPageCtrl.UpdateDisplay(carX, carZ, heading, speedKmh,
-                isOnTrack, hasMap, lvm.DetectedTrackName,
+                isOnTrack, hasMap, npos, lvm.DetectedTrackName,
                 trackLatitude, trackLongitude, trackRotation,
                 lvm.CurrentSectorNumber, lvm.CompletedLapCount,
                 showHeatmap ? forceHeatmap : null);
@@ -408,17 +431,33 @@ public partial class MainWindow : Window
     private void OnGamePillClick(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel vm) return;
+        if (vm.GameAutoMode)
+        {
+            vm.GameAutoMode = false;
+            vm._gameDetectorManualOverride = true;
+            return;
+        }
         vm.SelectedGame = vm.SelectedGame switch
         {
             SupportedGame.AcEvo => SupportedGame.Raceroom,
             SupportedGame.Raceroom => SupportedGame.AssettoCorsa,
             SupportedGame.AssettoCorsa => SupportedGame.LeMansUltimate,
+            SupportedGame.LeMansUltimate => SupportedGame.AssettoCorsaCompetizione,
+            SupportedGame.AssettoCorsaCompetizione => SupportedGame.AcEvo,
             _ => SupportedGame.AcEvo
         };
     }
 
+    private void OnProfileLockToggle(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        vm.AppSettings.ProfileLocked = ProfileLockToggle.IsChecked == true;
+        vm.AppSettings.Save();
+    }
+
     private void OnProfilePopupOpened(object sender, EventArgs e)
     {
+        ProfileLockToggle.IsChecked = DataContext is MainViewModel vm && vm.AppSettings.ProfileLocked;
         ProfileEmptyText.Visibility = ProfileList.Items.Count == 0
             ? Visibility.Visible
             : Visibility.Collapsed;

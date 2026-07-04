@@ -235,7 +235,20 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                        <TextBlock Text=" &#x25BE;" FontSize="10" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                                        <TextBlock Text=" 🔒" FontSize="11" VerticalAlignment="Center" Margin="2,0,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding AppSettings.ProfileLocked}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Setter Property="Foreground" Value="#FFF0883E" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text=" &#x25BE;" FontSize="10" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
                                     </StackPanel>
                                 </Border>
                                 <ControlTemplate.Triggers>
@@ -275,6 +288,31 @@
                             <DockPanel Margin="0,0,0,8">
                                 <TextBlock Text="SELECT PROFILE" FontSize="11" FontWeight="Bold"
                                            Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
+                                <ToggleButton x:Name="ProfileLockToggle"
+                                              Click="OnProfileLockToggle"
+                                              ToolTip="Lock profile — prevent auto-switch"
+                                              Margin="0,0,6,0" VerticalAlignment="Center"
+                                              FontSize="12" Padding="6,2" Cursor="Hand"
+                                              DockPanel.Dock="Right"
+                                              IsChecked="{Binding AppSettings.ProfileLocked, Mode=TwoWay}">
+                                    <ToggleButton.Style>
+                                        <Style TargetType="ToggleButton">
+                                            <Setter Property="Background" Value="#FF30363D" />
+                                            <Setter Property="Foreground" Value="#FFE6EDF3" />
+                                            <Setter Property="BorderBrush" Value="#FF484F58" />
+                                            <Setter Property="BorderThickness" Value="1" />
+                                            <Setter Property="Content" Value="🔓" />
+                                            <Style.Triggers>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter Property="Content" Value="🔒" />
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#FF484F58" />
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ToggleButton.Style>
+                                </ToggleButton>
                                 <Button DockPanel.Dock="Right" Content="Save As..."
                                         Command="{Binding SaveAsNewProfileCommand}"
                                         FontSize="11" Padding="8,3" Cursor="Hand" VerticalAlignment="Center"
@@ -487,6 +525,7 @@
                 <pages:FFBCoachPage x:Name="FFBCoachPageCtrl" Visibility="Collapsed" />
                 <pages:DevicesPage x:Name="DevicesPageCtrl" Visibility="Collapsed" />
                 <pages:ProfilesPage x:Name="ProfilesPageCtrl" Visibility="Collapsed" />
+                <pages:OverlaysPage x:Name="OverlaysPageCtrl" Visibility="Collapsed" />
                 <pages:SettingsPage x:Name="SettingsPageCtrl" Visibility="Collapsed" />
             </Grid>
         </Grid>
@@ -530,6 +569,19 @@
                            TextWrapping="Wrap" FontSize="12" Foreground="#FFCF6679" MaxWidth="700" HorizontalAlignment="Center" TextAlignment="Left" Margin="0,0,0,8" />
                 <Button Content="DISMISS" Command="{Binding DismissConflictingAppsWarningCommand}"
                         HorizontalAlignment="Center" Padding="24,6" FontSize="14" FontWeight="Bold" />
+            </StackPanel>
+        </Border>
+
+        <!-- ═══ TOAST NOTIFICATION ═══ -->
+        <Border Grid.Row="1" x:Name="ToastBorder"
+                VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                Background="#DD161B22" BorderBrush="#FF30363D" BorderThickness="1"
+                CornerRadius="8" Padding="16,10" Margin="0,0,20,20"
+                Panel.ZIndex="200" Opacity="0"
+                IsHitTestVisible="False">
+            <StackPanel>
+                <TextBlock x:Name="ToastTitle" FontSize="13" FontWeight="Bold" Foreground="#FFF0883E" Text="Auto-Loaded Profile" />
+                <TextBlock x:Name="ToastMessage" FontSize="12" Foreground="#FFE6EDF3" TextWrapping="Wrap" MaxWidth="350" />
             </StackPanel>
         </Border>
 

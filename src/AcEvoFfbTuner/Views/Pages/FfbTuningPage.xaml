@@ -616,6 +616,95 @@
                         </controls:SectionCard.InnerContent>
                     </controls:SectionCard>
 
+                    <!-- ═══ GROUP B: RACEROOM ═══ -->
+                    <controls:SectionCard Title="RACEROOM (Column Force)"
+                                          Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
+                                          SectionBrush="{StaticResource SectionTyreSlip}"
+                                          IsExpanded="True">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Gain: " /><Run Text="{Binding CoreForceMultiplier, StringFormat='{}{0:F1}x'}" Foreground="#FF79C0FF" />
+                                <Run Text=" · " /><Run Text="Scale: " /><Run Text="{Binding ForceScale, StringFormat='{}{0:F0}'}" Foreground="#FF79C0FF" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <TextBlock Text="RaceRoom uses total SteeringForce (not per-wheel Mz). These settings directly control how the column torque feels. Only applies when RaceRoom is the active game." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+
+                                <TextBlock Text="Core Force" Style="{StaticResource SubSectionHeader}" />
+                                <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Main Force Gain" LabelWidth="175" StringFormat="{}{0:F1}"
+                                    Description="Scales total SteeringForce magnitude. Higher = stronger. Start at 1.0 for Moza R5."
+                                    DefaultValue="1"
+                                    SectionColor="{StaticResource SectionTyreSlip}" />
+                                <controls:LabeledSlider Value="{Binding ForceScale, Mode=TwoWay}" Minimum="0.1" Maximum="5" TickFrequency="0.05"
+                                    Label="Force Scale" LabelWidth="175" StringFormat="{}{0:F2}"
+                                    Description="Divides SteeringForcePercentage (0-1). At 1.0: 100% steering = 1.0 output. Lower = stronger. Start at 1.0."
+                                    DefaultValue="1"
+                                    SectionColor="{StaticResource SectionTyreSlip}" />
+                                <controls:LabeledSlider Value="{Binding BrakeBoostGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Brake Boost" LabelWidth="175" StringFormat="{}{0:F2}"
+                                    Description="Extra centering force when braking (weight transfer increases front grip). 0 = off. 0.15 = subtle. Higher = stronger brake pull."
+                                    DefaultValue="0.15"
+                                    SectionColor="{StaticResource SectionTyreSlip}" />
+                                <controls:LabeledSlider Value="{Binding BrakeBoostThreshold, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                    Label="Brake Boost Threshold" LabelWidth="175" StringFormat="{}{0:F2}"
+                                    Description="Brake pedal position where boost starts. 0.1 = light brake touch engages. Higher = need harder braking."
+                                    DefaultValue="0.1"
+                                    SectionColor="{StaticResource SectionTyreSlip}" />
+
+                                <TextBlock Text="Tyre &amp; Grip" Style="{StaticResource SubSectionHeader}" />
+                                <controls:LabeledSlider Value="{Binding TyreGripScale, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                    Label="Tyre Grip Effect" LabelWidth="175" StringFormat="{}{0:F2}"
+                                    Description="How strongly front tyre grip attenuates force. At 1.0: full grip = full force, zero grip = 10%. At 0: no effect."
+                                    DefaultValue="1"
+                                    SectionColor="{StaticResource SectionTyreSlip}" />
+
+                                <TextBlock Text="Texture &amp; Effects" Style="{StaticResource SubSectionHeader}" />
+                                <controls:LabeledSlider Value="{Binding EngineTorqueLfeMod, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                    Label="Torque LFE Mod" LabelWidth="175" StringFormat="{}{0:F2}"
+                                    Description="Scales engine rumble (LFE) by actual engine torque from telemetry. 0 = torque doesn't affect LFE."
+                                    DefaultValue="1"
+                                    SectionColor="{StaticResource SectionTyreSlip}" />
+                                <Expander Style="{StaticResource SectionExpander}" Header="Detail Effects">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding FlatspotGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                            Label="Flatspot Vibration" LabelWidth="175" StringFormat="{}{0:F2}"
+                                            Description="Synthesised flatspot shake — sharp pulse once per wheel revolution when tyre has a flatspot."
+                                            DefaultValue="1"
+                                            SectionColor="{StaticResource SectionTyreSlip}" />
+                                        <controls:LabeledSlider Value="{Binding SurfaceFeelGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                            Label="Surface Feel" LabelWidth="175" StringFormat="{}{0:F2}"
+                                            Description="Rumble when tyres leave the racing surface. Gravel = coarse, grass = softer."
+                                            DefaultValue="1"
+                                            SectionColor="{StaticResource SectionTyreSlip}" />
+                                        <controls:LabeledSlider Value="{Binding BrakePressureGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                            Label="Brake Pressure Feel" LabelWidth="175" StringFormat="{}{0:F2}"
+                                            Description="Brake bite texture — subtle vibration from R3E brake pressure telemetry (per-wheel kN). Higher = more brake feel."
+                                            DefaultValue="1"
+                                            SectionColor="{StaticResource SectionTyreSlip}" />
+                                        <controls:LabeledSlider Value="{Binding TcFeelGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                            Label="TC Feel" LabelWidth="175" StringFormat="{}{0:F2}"
+                                            Description="Subtle force release when traction control cuts power. Synthesised from R3E TractionControlPercent (0-100%). Higher = more TC feel."
+                                            DefaultValue="1"
+                                            SectionColor="{StaticResource SectionTyreSlip}" />
+                                        <TextBlock Text="Smoothing" Style="{StaticResource SubSectionHeader}" />
+                                        <controls:LabeledSlider Value="{Binding CoreSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.5" TickFrequency="0.01"
+                                            Label="Core Smoothing" LabelWidth="175" StringFormat="{}{0:F2}"
+                                            Description="0 = raw. 0.15 = light smoothing, retains steering feel. 0.5 = heavy, may feel sluggish."
+                                            DefaultValue="0"
+                                            SectionColor="{StaticResource SectionTyreSlip}" />
+                                        <controls:LabeledSlider Value="{Binding DetailSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.8" TickFrequency="0.01"
+                                            Label="Detail Smoothing" LabelWidth="175" StringFormat="{}{0:F2}"
+                                            Description="0 = raw vibrations. 0.3 = moderate (smoothes jitter, keeps rumble strips). 0.8 = heavy, kills texture."
+                                            DefaultValue="0"
+                                            SectionColor="{StaticResource SectionTyreSlip}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
                     <!-- DYNAMIC EFFECTS -->
                     <controls:SectionCard Title="DYNAMIC EFFECTS"
                                           SectionBrush="{StaticResource SectionDynamic}"
@@ -729,13 +818,6 @@
                                     Label="Center Suppress (deg)" LabelWidth="185" StringFormat="{}{0:F3}"
                                     Description="Steering angle zone near center where forces are faded to zero (quadratic ramp). Wider = larger dead-feel zone. Only active when Sign Correction is enabled."
                                     DefaultValue="{Binding BuiltInDefaults.Advanced.CenterSuppressionDegrees}"
-                                    SectionColor="{StaticResource SectionSignal}" />
-
-                                <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                    Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
-                                    Label="Center Strength (x)" LabelWidth="185" StringFormat="{}{0:F1}"
-                                    Description="Scales centering/core force magnitude at ALL speeds. R3E/LMU default 3.0x. Higher = stronger centering feel."
-                                    DefaultValue="{Binding BuiltInDefaults.Advanced.CoreForceMultiplier}"
                                     SectionColor="{StaticResource SectionSignal}" />
 
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed Signal Settings">
@@ -997,12 +1079,6 @@
                                         </RadioButton.IsChecked>
                                     </RadioButton>
                                 </StackPanel>
-
-                                <controls:LabeledSlider Value="{Binding ForceScale, Mode=TwoWay}" Minimum="0.01" Maximum="20" TickFrequency="0.01"
-                                    Label="Force Scale" StringFormat="{}{0:F3}" IsLogarithmic="True" LabelAbove="True"
-                                    Description="Divides the mixed signal to normalize it. Works with Force Sensitivity."
-                                    DefaultValue="{Binding BuiltInDefaults.ForceScale}"
-                                    SectionColor="{StaticResource SectionOutput}" />
                                  <controls:LabeledSlider Value="{Binding SteeringLockDegrees, Mode=TwoWay}" Minimum="180" Maximum="3600" TickFrequency="10"
                                     Label="Steering Lock" StringFormat="{}{0}" IsLogarithmic="True" LabelAbove="True"
                                     Description="Your wheel's total rotation in degrees."
