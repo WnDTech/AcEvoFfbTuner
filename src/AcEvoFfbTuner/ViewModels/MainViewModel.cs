@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Media;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,14 +23,6 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace AcEvoFfbTuner.ViewModels;
 
-public enum SupportedGame
-{
-    AcEvo,
-    Raceroom,
-    AssettoCorsa,
-    LeMansUltimate
-}
-
 public sealed partial class MainViewModel : ObservableObject, IDisposable
 {
     private ISharedMemoryReader _reader;
@@ -45,6 +38,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private RaceInfoOverlay? _raceInfoOverlay;
     private readonly RaceInfoProcessor _raceInfoProcessor = new();
     private readonly DiscordPresenceService _discordPresence = new();
+    private readonly GameDetectorService _gameDetector = new();
+    internal bool _gameDetectorManualOverride;
     private FfbCoachService _coachService;
 
     private float _profilerMinOut = float.MaxValue;
@@ -56,32 +51,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _profilerPeakFx;
     private float _profilerPeakFy;
     private const int ProfilerStatsWindow = 300;
+    private bool _isLiveMonitoring;
+    private List<ProfilerSample> _profilerSamples = [];
+    private const int MinMonitorSamples = 4;
+
+    private readonly record struct ProfilerSample(
+        float OutputMin, float OutputMax, float OutputAvg,
+        float ClippingPercent, float PeakMz, float PeakFx, float PeakFy,
+        int FrameCount);
 
     public string AppVersion { get; } =
         System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
-
-    [ObservableProperty]
-    private SupportedGame _selectedGame = SupportedGame.AcEvo;
-
-    public string GameDisplayName => SelectedGame switch
-    {
-        SupportedGame.Raceroom => "RaceRoom",
-        SupportedGame.AssettoCorsa => "Assetto Corsa",
-        SupportedGame.LeMansUltimate => "Le Mans Ultimate",
-        _ => "AC EVO"
-    };
-
-    public bool IsAcEvo => SelectedGame == SupportedGame.AcEvo;
-    public bool IsRaceroom => SelectedGame == SupportedGame.Raceroom;
-    public bool IsAssettoCorsa => SelectedGame == SupportedGame.AssettoCorsa;
-    public bool IsLeMansUltimate => SelectedGame == SupportedGame.LeMansUltimate;
-    public bool IsColumnForceGame => SelectedGame is SupportedGame.Raceroom or SupportedGame.LeMansUltimate;
-
-    public int SelectedGameIndex
-    {
-        get => (int)SelectedGame;
-        set => SelectedGame = (SupportedGame)value;
-    }
 
     [ObservableProperty]
     private string _statusText = "Ready";
@@ -441,6 +421,36 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _coreForceMultiplier = 1.0f;
 
     [ObservableProperty]
+    private float _tyreGripScale = 1.0f;
+
+    [ObservableProperty]
+    private float _flatspotGain = 1.0f;
+
+    [ObservableProperty]
+    private float _surfaceFeelGain = 1.0f;
+
+    [ObservableProperty]
+    private float _engineTorqueLfeMod = 1.0f;
+
+    [ObservableProperty]
+    private float _brakePressureGain = 1.0f;
+
+    [ObservableProperty]
+    private float _tcFeelGain = 1.0f;
+
+    [ObservableProperty]
+    private float _coreSmoothing = 0.0f;
+
+    [ObservableProperty]
+    private float _detailSmoothing = 0.0f;
+
+    [ObservableProperty]
+    private float _brakeBoostGain = 0.15f;
+
+    [ObservableProperty]
+    private float _brakeBoostThreshold = 0.1f;
+
+    [ObservableProperty]
     private float _steerVelocityReference = 10.0f;
 
     [ObservableProperty]
@@ -473,7 +483,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private FfbProfile _builtInDefaults = new();
 
-    public bool IsBuiltInProfileSelected => SelectedProfile?.IsBuiltIn ?? false;
 
     [ObservableProperty]
     private int _ledBrightness = 100;
@@ -888,23 +897,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private TrackCorner? _lastCurrentCorner;
 
-    partial void OnCurrentCornerNameChanged(string value)
-    {
-        OnPropertyChanged(nameof(CurrentCornerRealName));
-    }
 
-    public string? CurrentCornerRealName
-    {
-        get
-        {
-            return _lastCurrentCorner?.RealName;
-        }
-    }
 
-    public void NotifyCornerNameChanged()
-    {
-        OnPropertyChanged(nameof(CurrentCornerRealName));
-    }
 
     public int GameSectorIndex => _telemetryLoop?.CurrentSector ?? 0;
 
@@ -989,131 +983,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public TrackMap? CurrentTrackMap => _telemetryLoop.MapBuilder.CurrentMap;
 
-    partial void OnSnapshotButtonComboIndexChanged(int value)
-    {
-        SnapshotButtonIndex = value <= 0 ? -1 : value - 1;
-        _appSettings.SnapshotButtonComboIndex = value;
-        if (!_suppressSettingsSave)
-            _appSettings.Save();
-    }
 
-    partial void OnPanicButtonComboIndexChanged(int value)
-    {
-        _appSettings.PanicButtonComboIndex = value;
-        _appSettings.Save();
-    }
 
-    partial void OnIsPerCarAutoLoadEnabledChanged(bool value)
-    {
-        _appSettings.PerCarAutoLoadEnabled = value;
-        _appSettings.Save();
-    }
 
     private bool[]? _prevSnapshotButtons;
     private bool[]? _prevPanicButtons;
 
-    private void PollSnapshotButton()
-    {
-        if (!IsDeviceConnected && !IsAssigningSnapshotButton) return;
 
-        var buttons = _deviceManager.PollButtons();
-        if (buttons == null)
-        {
-            ButtonDetectionText = "";
-        }
-        else
-        {
-            var pressed = new System.Text.StringBuilder();
-            for (int i = 0; i < buttons.Length; i++)
-            {
-                if (buttons[i])
-                {
-                    if (pressed.Length > 0) pressed.Append(", ");
-                    string btnName = i < SnapshotButtonNames.Count - 1
-                        ? SnapshotButtonNames[i + 1]
-                        : $"Btn{i + 1}";
-                    pressed.Append(btnName);
-                }
-            }
-
-            ButtonDetectionText = pressed.Length > 0 ? $"Pressed: {pressed}" : "";
-
-            if (IsAssigningSnapshotButton)
-            {
-                for (int i = 0; i < buttons.Length; i++)
-                {
-                    bool prev = _prevSnapshotButtons != null && i < _prevSnapshotButtons.Length && _prevSnapshotButtons[i];
-                    if (buttons[i] && !prev)
-                    {
-                        SnapshotButtonComboIndex = i + 1;
-                        IsAssigningSnapshotButton = false;
-                        string name = i < SnapshotButtonNames.Count - 1 ? SnapshotButtonNames[i + 1] : $"Button {i + 1}";
-                        SnapshotAssignStatus = $"Assigned: {name}";
-                        break;
-                    }
-                }
-                _prevSnapshotButtons = (bool[])buttons.Clone();
-            }
-            else if (SnapshotButtonIndex >= 0 && SnapshotButtonIndex < buttons.Length)
-            {
-                bool pressed2 = buttons[SnapshotButtonIndex];
-                bool wasPressed = _prevSnapshotButtons != null && SnapshotButtonIndex < _prevSnapshotButtons.Length && _prevSnapshotButtons[SnapshotButtonIndex];
-                _prevSnapshotButtons = (bool[])buttons.Clone();
-
-                if (pressed2 && !wasPressed)
-                {
-                    if (Application.Current?.MainWindow is MainWindow mw3)
-                    {
-                        string path = mw3.AutoSaveSnapshot();
-                        StatusText = $"Wheel snapshot saved: {Path.GetFileName(path)}";
-                        _telemetryLoop.LiveServer.TriggerSnapshot();
-                        _voiceService.Speak("Snapshot saved");
-                    }
-                }
-            }
-        }
-
-        PollPanicButton();
-    }
-
-    private void PollPanicButton()
-    {
-        if (PanicButtonIndex < 0 && !IsAssigningPanicButton) return;
-
-        var buttons = _deviceManager.PollSecondaryButtons();
-        if (buttons == null) return;
-
-        if (IsAssigningPanicButton)
-        {
-            for (int i = 0; i < buttons.Length; i++)
-            {
-                bool prev = _prevPanicButtons != null && i < _prevPanicButtons.Length && _prevPanicButtons[i];
-                if (buttons[i] && !prev)
-                {
-                    PanicButtonComboIndex = i + 1;
-                    IsAssigningPanicButton = false;
-                    string name = i < PanicButtonNames.Count - 1 ? PanicButtonNames[i + 1] : $"Button {i + 1}";
-                    PanicAssignStatus = $"Assigned: {name}";
-                    break;
-                }
-            }
-            _prevPanicButtons = (bool[])buttons.Clone();
-            return;
-        }
-
-        if (PanicButtonIndex < 0 || PanicButtonIndex >= buttons.Length) return;
-
-        bool pressed = buttons[PanicButtonIndex];
-        bool wasPressed = _prevPanicButtons != null && PanicButtonIndex < _prevPanicButtons.Length && _prevPanicButtons[PanicButtonIndex];
-        _prevPanicButtons = (bool[])buttons.Clone();
-
-        if (pressed && !wasPressed)
-            PanicStop();
-    }
 
     public ObservableCollection<FfbDeviceInfo> AvailableDevices { get; } = new();
     public ObservableCollection<FfbDeviceInfo> PanicDevices { get; } = new();
-    public ObservableCollection<FfbProfile> Profiles { get; } = new();
     public ObservableCollection<string> SnapshotButtonNames { get; } = new();
     public ObservableCollection<string> PanicButtonNames { get; } = new();
     public ObservableCollection<string> ActiveFeatures { get; } = new();
@@ -1126,6 +1005,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isHapticTestRunning;
+
+    private bool CanTestHaptics => IsDeviceConnected && !IsHapticTestRunning;
 
     [ObservableProperty]
     private string _halProviderName = "None";
@@ -1141,6 +1022,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isTestBuzzRunning;
+
+    private bool CanTestBuzz => IsDeviceConnected && !IsTestBuzzRunning && !IsRunning;
 
     private readonly int _signalMonitorMaxPoints = 120;
     private int _signalMonitorTickCounter;
@@ -1181,10 +1064,93 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private CoachSessionState _coachSessionState = Services.CoachSessionState.Idle;
 
     [ObservableProperty]
+    private string _coachLoadingText = "";
+
+    [ObservableProperty]
     private string _coachDataSourceLabel = "";
 
     [ObservableProperty]
     private string _coachCurrentProfileName = "";
+
+    public ObservableCollection<CoachPendingRec> CoachPendingRecs { get; } = [];
+
+    [ObservableProperty]
+    private bool _coachHasPendingRecs;
+
+    [RelayCommand]
+    private async Task CoachApplyRec(CoachPendingRec rec)
+    {
+        if (rec == null) return;
+        var result = _coachService.ApplyRecommendation(rec.ToFfbRecommendation());
+        if (result.State == CoachSessionState.Questioning)
+        {
+            CoachPendingRecs.Remove(rec);
+            CoachHasPendingRecs = CoachPendingRecs.Count > 0;
+            foreach (var msg in result.Messages)
+                CoachMessages.Add(msg);
+            if (_coachService.IsAiEnabled)
+                PlayCoachAlert();
+        }
+    }
+
+    [RelayCommand]
+    private async Task CoachApplyAll()
+    {
+        var recs = CoachPendingRecs.ToList();
+        foreach (var rec in recs)
+        {
+            var result = _coachService.ApplyRecommendation(rec.ToFfbRecommendation());
+            if (result.State == CoachSessionState.Questioning)
+            {
+                CoachPendingRecs.Remove(rec);
+                foreach (var msg in result.Messages)
+                    CoachMessages.Add(msg);
+            }
+        }
+        CoachHasPendingRecs = CoachPendingRecs.Count > 0;
+        if (_coachService.IsAiEnabled)
+            PlayCoachAlert();
+    }
+
+    [RelayCommand]
+    private void CoachUndo()
+    {
+        var result = _coachService.UndoLastChange();
+        foreach (var msg in result.Messages)
+            CoachMessages.Add(msg);
+        if (_coachService.IsAiEnabled)
+            PlayCoachAlert();
+    }
+
+    private void AddPendingRec(FfbRecommendation rec)
+    {
+        if (string.IsNullOrWhiteSpace(rec.Parameter))
+        {
+            SystemLogEntries.Add($"[Coach] Skipped empty-param rec: {rec.Reason}");
+            return;
+        }
+        var existing = CoachPendingRecs.FirstOrDefault(p => p.Parameter == rec.Parameter);
+        if (existing != null)
+        {
+            existing.CurrentValue = rec.CurrentValue;
+            existing.SuggestedValue = rec.SuggestedValue;
+            existing.Label = $"{rec.Parameter}: {rec.CurrentValue:F2} → {rec.SuggestedValue:F2}";
+            existing.Description = rec.Impact ?? rec.Reason ?? "";
+            SystemLogEntries.Add($"[Coach] Updated pending rec: {rec.Parameter} {rec.CurrentValue:F3}→{rec.SuggestedValue:F3}");
+            return;
+        }
+        CoachPendingRecs.Add(new CoachPendingRec
+        {
+            Label = $"{rec.Parameter}: {rec.CurrentValue:F2} → {rec.SuggestedValue:F2}",
+            Description = rec.Impact ?? rec.Reason ?? "",
+            Parameter = rec.Parameter,
+            CurrentValue = rec.CurrentValue,
+            SuggestedValue = rec.SuggestedValue,
+            Reason = rec.Reason ?? ""
+        });
+        CoachHasPendingRecs = CoachPendingRecs.Count > 0;
+        SystemLogEntries.Add($"[Coach] Added pending rec: {rec.Parameter} {rec.CurrentValue:F3}→{rec.SuggestedValue:F3}");
+    }
 
     [ObservableProperty]
     private bool _coachIsBusy;
@@ -1210,6 +1176,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _telemetryLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
         _profileManager = new ProfileManager();
         _coachService = new FfbCoachService(_profileManager, _pipeline);
+        InitializeAiCoach();
 
         _deviceManager.DeviceRequiresReconnect += () => Application.Current?.Dispatcher.BeginInvoke(() =>
         {
@@ -1362,11 +1329,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             DetectedCarModel = carModel;
             StatusText = $"Car detected: {carModel}";
 
-            if (!IsPerCarAutoLoadEnabled) return;
+            if (!_appSettings.AutoSwitchProfiles || _appSettings.ProfileLocked) return;
 
-            var match = Profiles.FirstOrDefault(p =>
-                !string.IsNullOrEmpty(p.CarMatch) &&
-                p.CarMatch.Equals(carModel, StringComparison.OrdinalIgnoreCase));
+            var gameName = SelectedGame.ToString().ToLowerInvariant();
+            var match = _profileManager.FindMatchingProfile(gameName, carModel, _telemetryLoop.DetectedTrackName);
 
             if (match != null && (SelectedProfile == null || match.Name != SelectedProfile.Name))
             {
@@ -1377,6 +1343,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 _profileManager.SetActiveProfile(match);
                 StatusText = $"Auto-loaded profile '{match.Name}' for {carModel}";
                 _voiceService.Speak("Profile loaded");
+                if (Application.Current?.MainWindow is Views.MainWindow mw)
+                    mw.ShowToast("Auto-Loaded Profile", $"{match.Name} — {carModel}");
             }
         });
         _telemetryLoop.TrackChanged += newTrackName => Application.Current?.Dispatcher.Invoke(() =>
@@ -1404,399 +1372,40 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _discordPresence.Initialize();
         _discordPresence.Attach(_telemetryLoop);
 
+        if (_appSettings.AutoDetectGame)
+        {
+            _gameDetector.GameDetected += game => Application.Current?.Dispatcher.Invoke(() =>
+            {
+                SetDetectedGame(game);
+                if (SelectedGame == game) return;
+                if (_gameDetectorManualOverride) return;
+                SelectedGame = game;
+                AddSystemLog($"Auto-detected game: {GameDisplayName}");
+                StatusText = $"Auto-detected: {GameDisplayName}";
+            });
+            _gameDetector.GameExitedAll += () => Application.Current?.Dispatcher.Invoke(() =>
+            {
+                _gameDetectorManualOverride = false;
+            });
+            _gameDetector.Start();
+        }
+
         AddSystemLog("Application initialized");
      }
 
-    private static ISharedMemoryReader CreateReader(SupportedGame game) => game switch
-    {
-        SupportedGame.Raceroom => new RaceroomSharedMemoryReader(),
-        SupportedGame.AssettoCorsa => new SharedMemoryReader(),
-        SupportedGame.LeMansUltimate => new LmuSharedMemoryReader(),
-        _ => new SharedMemoryReader()
-    };
 
-    private static FfbPipeline CreatePipeline(SupportedGame game) => game switch
-    {
-        SupportedGame.Raceroom => new R3eFfbPipeline(),
-        SupportedGame.AssettoCorsa => new AcFfbPipeline(),
-        SupportedGame.LeMansUltimate => new LmuFfbPipeline(),
-        _ => new FfbPipeline()
-    };
 
-    partial void OnSelectedGameChanged(SupportedGame value)
-    {
-        var wasRunning = _telemetryLoop.IsRunning;
-        if (wasRunning)
-            _telemetryLoop.Stop();
 
-        _discordPresence.Detach();
-        _telemetryLoop.Dispose();
-        _reader.Dispose();
-        _reader = CreateReader(value);
-        _pipeline = CreatePipeline(value);
-        OnPropertyChanged(nameof(GameDisplayName));
-        OnPropertyChanged(nameof(IsAcEvo));
-        OnPropertyChanged(nameof(IsRaceroom));
-        OnPropertyChanged(nameof(IsAssettoCorsa));
-        OnPropertyChanged(nameof(IsLeMansUltimate));
-        OnPropertyChanged(nameof(IsColumnForceGame));
 
-        // Re-apply active profile settings to the new pipeline
-        if (_profileManager.ActiveProfile != null)
-            _profileManager.ActiveProfile.ApplyToPipeline(_pipeline);
 
-        var newLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
-        WireTelemetryLoopEvents(newLoop);
-        _telemetryLoop = newLoop;
 
-        if (wasRunning)
-        {
-            _telemetryLoop.Start();
-            StatusText = $"Switched to {GameDisplayName} — telemetry restarted";
-        }
-        else
-        {
-            StatusText = $"Switched to {GameDisplayName}";
-        }
 
-        AddSystemLog($"Game source changed to {GameDisplayName}");
-    }
 
-    private void WireTelemetryLoopEvents(TelemetryLoop newLoop)
-    {
-        newLoop.StatusChanged += status => Application.Current?.Dispatcher.Invoke(() => StatusText = status);
-        newLoop.GameConnectionChanged += () => Application.Current?.Dispatcher.Invoke(() =>
-        {
-            IsGameConnected = newLoop.IsGameConnected;
-            if (IsGameConnected)
-                AddSystemLog($"Game connected ({GameDisplayName})");
-            else
-            {
-                _gameRecordingService.StopRecording();
-                IsScreenRecording = false;
-                AddSystemLog("Game disconnected");
-            }
-        });
-        newLoop.TrackMapCompleted += map => Application.Current?.Dispatcher.Invoke(() =>
-        {
-            IsTrackMapAvailable = true;
-            IsTrackMapRecording = false;
-            TrackLengthM = map.TrackLengthM;
-            TrackWaypointCount = map.Waypoints.Count;
-            CornerCount = map.Corners.Count;
-            SectorCount = map.Sectors.Count;
-            if (string.IsNullOrEmpty(map.TrackName) || map.TrackName.StartsWith("track_"))
-                map.TrackName = newLoop.DetectedTrackName;
-            DetectedTrackName = map.TrackName;
-            IsPitDetected = map.PitLane.IsDetected;
-            TrackMapStatus = $"{map.Waypoints.Count} pts | {map.TrackLengthM:F0}m | {map.Corners.Count} corners | {map.Sectors.Count} sectors";
-        });
-        newLoop.StaticDataReceived += (trackName, config, lengthM, latitude, longitude) => Application.Current?.Dispatcher.Invoke(() =>
-        {
-            DetectedTrackName = trackName;
-            if (!string.IsNullOrEmpty(trackName))
-                StatusText = $"Connected — Track: {trackName} ({config}) {lengthM:F0}m";
-        });
-        newLoop.CarModelChanged += carModel => Application.Current?.Dispatcher.Invoke(() =>
-        {
-            DetectedCarModel = carModel;
-            StatusText = $"Car detected: {carModel}";
-        });
-        newLoop.TrackChanged += newTrackName => Application.Current?.Dispatcher.Invoke(() =>
-        {
-            _mapClearedByUser = false;
-            _lastAutoLoadedTrack = null;
-            IsTrackMapAvailable = false;
-            IsTrackMapRecording = false;
-            StatusText = $"Track changed to: {newTrackName}";
-        });
-        _discordPresence.Attach(newLoop);
-    }
 
-    public void Initialize()
-    {
-        _profileManager.AutoMigrate = _appSettings.AutoProfileUpgrade;
-        _profileManager.Initialize();
-        RefreshProfiles();
-        RefreshDevices();
-        RestoreButtonSettings();
 
-        if (_profileManager.ActiveProfile != null)
-        {
-            _profileManager.ActiveProfile.ApplyToPipeline(_pipeline);
-            _profileManager.ActiveProfile.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
-            LoadProfileValues(_profileManager.ActiveProfile);
-            SelectedProfile = Profiles.FirstOrDefault(p => p.Name == _profileManager.ActiveProfile.Name);
-        }
 
-        LoadSystemLog();
 
-        _ = CheckForUpdatesAsync();
-        _ = EnsureFfmpegAsync();
-    }
 
-    private async Task EnsureFfmpegAsync()
-    {
-        if (Services.FfmpegDownloader.IsInstalled)
-        {
-            IsFfmpegReady = true;
-            FfmpegStatusText = "FFmpeg ready";
-            return;
-        }
-
-        IsFfmpegDownloading = true;
-        FfmpegStatusText = "Downloading FFmpeg...";
-
-        var result = await Services.FfmpegDownloader.EnsureFfmpegAsync(
-            new Progress<(int percent, string message)>(p =>
-            {
-                Application.Current?.Dispatcher.Invoke(() =>
-                {
-                    FfmpegStatusText = p.message;
-                });
-            }));
-
-        Application.Current?.Dispatcher.Invoke(() =>
-        {
-            IsFfmpegDownloading = false;
-            if (result != null)
-            {
-                IsFfmpegReady = true;
-                FfmpegStatusText = "FFmpeg ready";
-            }
-            else
-            {
-                FfmpegStatusText = "FFmpeg unavailable — recording disabled";
-            }
-        });
-    }
-
-    [RelayCommand]
-    private void RefreshDevices()
-    {
-        try
-        {
-            var allDevices = _deviceManager.EnumerateFfbDevices();
-
-            AvailableDevices.Clear();
-            foreach (var device in allDevices)
-                AvailableDevices.Add(device);
-
-            PanicDevices.Clear();
-            PanicDevices.Add(new FfbDeviceInfo { ProductName = "None", IsFfbCapable = false });
-            foreach (var device in allDevices)
-                PanicDevices.Add(device);
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Device enumeration failed: {ex.Message}";
-        }
-    }
-
-    [RelayCommand]
-    private void ConnectDevice()
-    {
-        if (SelectedDevice == null) return;
-
-        var window = Application.Current?.MainWindow;
-        if (window != null)
-        {
-            var helper = new System.Windows.Interop.WindowInteropHelper(window);
-            _deviceManager.SetWindowHandle(helper.Handle);
-        }
-
-        if (_deviceManager.TryConnectDevice(SelectedDevice))
-        {
-            IsDeviceConnected = true;
-            DeviceName = SelectedDevice.ProductName;
-            AutoDetectWheelTorque(SelectedDevice.ProductName);
-            ForceInvertEnabled = _deviceManager.AutoDetectedForceInvert;
-            IsAutoSetupAvailable = WheelMaxTorqueNm > 0;
-            RefreshSnapshotButtonNames();
-            RefreshPanicButtonNames();
-            RestoreButtonSettings();
-            if (!_uiUpdateTimer.IsEnabled)
-                _uiUpdateTimer.Start();
-            _telemetryLoop.AutoDetectAndSetProvider();
-            RefreshProviderFeatures();
-            string providerInfo = _telemetryLoop.ActiveProviderName != "DirectInput (Built-in)"
-                ? $" | Provider: {_telemetryLoop.ActiveProviderName}"
-                : "";
-            string ledStatus = _deviceManager.IsLedControllerConnected
-                ? $" | LEDs: {_deviceManager.LedControllerVendor}"
-                : $" | LEDs: {_deviceManager.LedDiagnosticInfo.Split('\n').LastOrDefault() ?? "not found"}";
-            string vibStatus = _deviceManager.SupportsPeriodicEffects
-                ? ""
-                : " | WARNING: wheel does not report periodic effect support — kerb/slip vibration may not work";
-            StatusText = (_deviceManager.LastError ?? $"Connected to {SelectedDevice.ProductName}") + providerInfo + ledStatus + vibStatus;
-            UpdateLedCapabilities();
-            PushLedConfig();
-            _appSettings.LastConnectedDeviceInstanceId = SelectedDevice.DeviceInstance.InstanceGuid.ToString();
-            _appSettings.Save();
-            AddSystemLog($"Device connected: {SelectedDevice.ProductName}");
-            _voiceService.Speak("Wheelbase connected");
-        }
-        else
-        {
-            StatusText = _deviceManager.LastError ?? "Failed to connect to device";
-        }
-    }
-
-    [RelayCommand]
-    private void DisconnectDevice()
-    {
-        _telemetryLoop.SetFfbProvider(null);
-        RefreshProviderFeatures();
-        _deviceManager.DisconnectDevice();
-        IsDeviceConnected = false;
-        IsAutoSetupAvailable = false;
-        DeviceName = "No device";
-        ResetLedCapabilities();
-        _appSettings.LastConnectedDeviceInstanceId = null;
-        _appSettings.Save();
-        AddSystemLog("Device disconnected");
-        _voiceService.Speak("Wheelbase disconnected");
-    }
-
-    partial void OnSelectedPanicDeviceChanged(FfbDeviceInfo? value)
-    {
-        _deviceManager.DisconnectSecondaryDevice();
-
-        if (value == null || value.ProductName == "None")
-        {
-            OnPropertyChanged(nameof(PanicDeviceButtonCount));
-            _appSettings.PanicDeviceInstanceId = null;
-            _appSettings.Save();
-            RefreshPanicButtonNames();
-            return;
-        }
-
-        var window = Application.Current?.MainWindow;
-        if (window != null)
-        {
-            var helper = new System.Windows.Interop.WindowInteropHelper(window);
-            _deviceManager.SetWindowHandle(helper.Handle);
-        }
-
-        if (_deviceManager.TryConnectSecondaryDevice(value))
-        {
-            StatusText = $"Panic button device: {value.ProductName} ({_deviceManager.SecondaryButtonCount} buttons)";
-            _appSettings.PanicDeviceInstanceId = value.DeviceInstance.InstanceGuid.ToString();
-            _appSettings.Save();
-            if (!_uiUpdateTimer.IsEnabled)
-                _uiUpdateTimer.Start();
-        }
-        else
-        {
-            StatusText = "Failed to connect panic button device";
-            _appSettings.PanicDeviceInstanceId = null;
-            _appSettings.Save();
-        }
-
-        OnPropertyChanged(nameof(PanicDeviceButtonCount));
-        RefreshPanicButtonNames();
-        RestoreButtonSettings();
-    }
-
-    private void RefreshSnapshotButtonNames()
-    {
-        int savedIndex = SnapshotButtonComboIndex;
-        _suppressSettingsSave = true;
-        try
-        {
-            var names = _deviceManager.GetButtonNames();
-            SnapshotButtonNames.Clear();
-            SnapshotButtonNames.Add("Disabled");
-            foreach (var name in names)
-                SnapshotButtonNames.Add(name);
-        }
-        finally
-        {
-            _suppressSettingsSave = false;
-            SnapshotButtonComboIndex = savedIndex;
-        }
-    }
-
-    private void RefreshPanicButtonNames()
-    {
-        var names = _deviceManager.GetSecondaryButtonNames();
-        PanicButtonNames.Clear();
-        PanicButtonNames.Add("Disabled");
-        foreach (var name in names)
-            PanicButtonNames.Add(name);
-    }
-
-    private static void PopulateFallbackButtonNames(ObservableCollection<string> collection, int count)
-    {
-        collection.Clear();
-        collection.Add("Disabled");
-        for (int i = 1; i <= count; i++)
-            collection.Add($"Button {i}");
-    }
-
-    [RelayCommand]
-    private void AssignSnapshotButton()
-    {
-        if (!IsDeviceConnected)
-        {
-            StatusText = "Connect a wheel device first";
-            return;
-        }
-        IsAssigningSnapshotButton = true;
-        SnapshotAssignStatus = "Listening... press a button on your wheel";
-    }
-
-    [RelayCommand]
-    private void AssignPanicButton()
-    {
-        if (SelectedPanicDevice == null || SelectedPanicDevice.ProductName == "None")
-        {
-            StatusText = "Select a panic device first";
-            return;
-        }
-        IsAssigningPanicButton = true;
-        PanicAssignStatus = "Listening... press a button on the panic device";
-    }
-
-    private void AutoDetectWheelTorque(string productName)
-    {
-        float torque = DetectTorqueFromProductName(productName);
-        if (torque > 0)
-        {
-            WheelMaxTorqueNm = torque;
-            StatusText = $"Detected {productName} — {torque:F1} Nm wheelbase";
-        }
-    }
-
-    private static float DetectTorqueFromProductName(string name)
-    {
-        if (string.IsNullOrEmpty(name)) return 0f;
-        var n = name.ToUpperInvariant();
-
-        if (n.Contains("R5")) return 5.5f;
-        if (n.Contains("R9")) return 9f;
-        if (n.Contains("R12")) return 12f;
-        if (n.Contains("R16")) return 16f;
-        if (n.Contains("R21")) return 21f;
-
-        if (n.Contains("CSL DD")) return 5f;
-        if (n.Contains("CLUBSPORT DD")) return n.Contains("8") ? 8f : 15f;
-        if (n.Contains("DD PRO")) return 8f;
-        if (n.Contains("DD1")) return 18f;
-        if (n.Contains("DD2")) return 25f;
-
-        if (n.Contains("ALPHA MINI") || n.Contains("ALPHA-MINI")) return 10f;
-        if (n.Contains("ALPHA U")) return 22f;
-        if (n.Contains("ALPHA")) return 15f;
-
-        if (n.Contains("T818")) return 10f;
-        if (n.Contains("T300")) return 2f;
-        if (n.Contains("T150")) return 1.5f;
-        if (n.Contains("G27")) return 2.5f;
-        if (n.Contains("G29") || n.Contains("G920")) return 2.1f;
-
-        return 0f;
-    }
 
     [RelayCommand]
     private void ToggleTelemetry()
@@ -1824,641 +1433,36 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    [RelayCommand]
-    private void AutoSetup()
-    {
-        if (!IsAutoSetupAvailable || !IsDeviceConnected) return;
 
-        string deviceName = DeviceName;
-        float torque = WheelMaxTorqueNm;
-        if (torque <= 0) return;
 
-        EvoDetectedSettings? evoSettings = null;
-        var raw = _telemetryLoop.LatestRaw;
-        if (raw != null)
-        {
-            evoSettings = EvoSettingsDetector.DetectFromRaw(raw);
-            if (evoSettings != null)
-                evoSettings = new EvoDetectedSettings
-                {
-                    FfbStrength = evoSettings.FfbStrength,
-                    CarFfbMultiplier = evoSettings.CarFfbMultiplier,
-                    SteerDegrees = evoSettings.SteerDegrees,
-                    RecommendedOutputGain = evoSettings.RecommendedOutputGain,
-                    RecommendedNormalizationScale = evoSettings.RecommendedNormalizationScale,
-                    RecommendedSteeringLock = evoSettings.RecommendedSteeringLock,
-                    IsValid = false
-                };
-        }
 
-        var profile = WheelbaseAutoConfigurator.GenerateProfile(torque, deviceName, null);
-        if (evoSettings != null)
-            profile.SteeringLockDegrees = evoSettings.RecommendedSteeringLock;
 
-        profile.Name = $"Auto Setup - {deviceName}";
 
-        var existing = Profiles.FirstOrDefault(p => p.Name == profile.Name);
-        if (existing != null)
-            _profileManager.DeleteProfile(existing);
 
-        _profileManager.SaveProfile(profile);
-        RefreshProfiles();
 
-        SelectedProfile = profile;
-        profile.ApplyToPipeline(_pipeline);
-        profile.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
-        LoadProfileValues(profile);
-        _profileManager.SetActiveProfile(profile);
 
-        var wheelType = WheelbaseAutoConfigurator.DetectWheelType(deviceName);
-        AutoSetupStatus = $"Auto Setup — {deviceName} ({torque:F1}Nm, {wheelType})";
-        StatusText = AutoSetupStatus;
-    }
 
-    [RelayCommand]
-    private void ApplyLutPreset()
-    {
-        var lut = _pipeline.LutCurve;
-        lut.SetLinear();
 
-        switch (SelectedLutPresetIndex)
-        {
-            case 0: lut.SetLinear(); break;
-            case 1: lut.SetSoftCenter(); break;
-            case 2: lut.SetProgressive(); break;
-            case 3: lut.SetDeadZone(); break;
-        }
-    }
 
-    [RelayCommand]
-    private void SaveCurrentProfile()
-    {
-        if (SelectedProfile == null) return;
 
-        if (SelectedProfile.IsBuiltIn)
-        {
-            StatusText = $"\"{SelectedProfile.Name}\" is a built-in profile. Use Save As to create your own copy.";
-            SaveAsNewProfile();
-            return;
-        }
 
-        try
-        {
-            PushValuesToPipeline();
-            SelectedProfile.LedEffects = LedEffectConfigDto.FromConfig(new LedEffectConfig
-            {
-                Brightness = LedBrightness,
-                FlashRateTicks = LedFlashRate,
-                AbsFlashEnabled = LedAbsFlashEnabled,
-                FlagIndicatorsEnabled = LedFlagIndicatorsEnabled,
-                ShiftLimiterFlashEnabled = LedShiftLimiterFlashEnabled,
-                PitLimiterFlashEnabled = LedPitLimiterFlashEnabled,
-                ColorScheme = LedColorSchemeIndex >= 0 && LedColorSchemeIndex <= 4
-                    ? (LedColorScheme)LedColorSchemeIndex
-                    : LedColorScheme.TrafficLight,
-                RpmPreset = LedRpmPresetIndex >= 0 && LedRpmPresetIndex <= 4
-                    ? (LedRpmPreset)LedRpmPresetIndex
-                    : LedRpmPreset.Default,
-                RpmThresholds = GetCurrentRpmThresholds(),
-                CustomColors = LedEffectConfig.BuildTrafficLightColors()
-            });
-            _profileManager.SaveProfileFromPipeline(_pipeline, SelectedProfile.Name);
-            SelectedProfile.WheelMaxTorqueNm = WheelMaxTorqueNm;
-            SelectedProfile.ForceInvertEnabled = ForceInvertEnabled;
-            SelectedProfile.SteeringLockDegrees = SteeringLockDegrees;
-            SelectedProfile.Hf8.OutputRateHz = Hf8OutputRateHz;
-            SelectedProfile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
-            // Write static friction slider values back to profile before saving
-            SelectedProfile.StaticFriction.Gain = StaticFrictionGain;
-            SelectedProfile.StaticFriction.MaxElasticStretch = StaticFrictionMaxElasticStretch;
-            SelectedProfile.StaticFriction.SpringStiffness = StaticFrictionSpringStiffness;
-            SelectedProfile.StaticFriction.KineticFrictionBase = StaticFrictionKineticFrictionBase;
-            SelectedProfile.StaticFriction.EngineOffDamping = StaticFrictionEngineOffDamping;
-            SelectedProfile.StaticFriction.EngineOnDamping = StaticFrictionEngineOnDamping;
-            SelectedProfile.StaticFriction.EngineOffScale = StaticFrictionEngineOffScale;
-            SelectedProfile.StaticFriction.EngineOnScale = StaticFrictionEngineOnScale;
-            SelectedProfile.StaticFriction.ActiveDecay = StaticFrictionActiveDecay;
-            SelectedProfile.StaticFriction.ReturnDecay = StaticFrictionReturnDecay;
-            SelectedProfile.StaticFriction.OutputSmoothAlpha = StaticFrictionOutputSmoothAlpha;
-            _profileManager.SaveProfile(SelectedProfile);
-            _profileManager.SetActiveProfile(SelectedProfile);
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Profile save failed: {ex.Message}";
-        }
-    }
 
-    private void AutoSaveDiagnosticProfile()
-    {
-        try
-        {
-            PushValuesToPipeline();
-
-            string baseName = SelectedProfile?.Name ?? "unsaved";
-            string diagName = $"{baseName}_diag_{DateTime.Now:yyyyMMdd_HHmmss}";
-            var profile = _profileManager.SaveProfileFromPipeline(_pipeline, diagName);
-            profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
-            profile.ForceInvertEnabled = ForceInvertEnabled;
-            profile.SteeringLockDegrees = SteeringLockDegrees;
-            profile.Hf8.OutputRateHz = Hf8OutputRateHz;
-            profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
-            _profileManager.SaveProfile(profile);
-        }
-        catch { }
-    }
-
-    private void SaveProfileMetadata(FfbProfile profile)
-    {
-        profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
-        profile.ForceInvertEnabled = ForceInvertEnabled;
-        profile.SteeringLockDegrees = SteeringLockDegrees;
-        profile.Hf8.OutputRateHz = Hf8OutputRateHz;
-        profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
-    }
-
-    [RelayCommand]
-    private void SaveAsNewProfile()
-    {
-        PushValuesToPipeline();
-
-        string baseName = SelectedProfile?.Name ?? "Profile";
-        string suggestion = GetNextProfileName(baseName);
-
-        var dialog = new Views.InputDialog(suggestion)
-        {
-            Owner = Application.Current?.MainWindow
-        };
-
-        if (dialog.ShowDialog() == true)
-        {
-            var profile = _profileManager.SaveProfileFromPipeline(_pipeline, dialog.Result!);
-            SaveProfileMetadata(profile);
-            _profileManager.SaveProfile(profile);
-            _profileManager.SetActiveProfile(profile);
-            RefreshProfiles();
-            SelectedProfile = profile;
-        }
-    }
-
-    public void WizardSaveProfile(string name, ProfileScope scope)
-    {
-        PushValuesToPipeline();
-
-        var profile = _profileManager.SaveProfileFromPipeline(_pipeline, name);
-        profile.Scope = scope;
-        profile.GameMatch = GameDisplayName;
-
-        switch (scope)
-        {
-            case ProfileScope.PerCar:
-                profile.CarMatch = DetectedCarModel ?? "";
-                break;
-            case ProfileScope.PerTrack:
-                profile.TrackMatch = DetectedTrackName ?? "";
-                break;
-            case ProfileScope.PerCarAndTrack:
-                profile.CarMatch = DetectedCarModel ?? "";
-                profile.TrackMatch = DetectedTrackName ?? "";
-                break;
-        }
-
-        SaveProfileMetadata(profile);
-        _profileManager.SaveProfile(profile);
-        _profileManager.SetActiveProfile(profile);
-        RefreshProfiles();
-        SelectedProfile = profile;
-        StatusText = $"Setup profile '{name}' saved and active";
-    }
-
-    private string GetNextProfileName(string baseName)
-    {
-        var existingNames = _profileManager.Profiles.Select(p => p.Name).ToHashSet();
-        string trimmed = System.Text.RegularExpressions.Regex.Replace(baseName, @"\s*v?\d+$", "").TrimEnd();
-        int version = 2;
-        while (existingNames.Contains($"{trimmed} v{version}"))
-            version++;
-        return $"{trimmed} v{version}";
-    }
-
-    [RelayCommand]
-    private void DeleteProfile()
-    {
-        if (SelectedProfile == null) return;
-        if (SelectedProfile.IsBuiltIn)
-        {
-            StatusText = $"Cannot delete built-in profile \"{SelectedProfile.Name}\".";
-            return;
-        }
-        _profileManager.DeleteProfile(SelectedProfile);
-        RefreshProfiles();
-        SelectedProfile = _profileManager.ActiveProfile;
-    }
-
-    [RelayCommand]
-    private void SetCarMatchFromDetected()
-    {
-        if (string.IsNullOrEmpty(DetectedCarModel))
-        {
-            StatusText = "No car model detected yet — start a session in AC EVO first";
-            return;
-        }
-        ProfileCarMatch = DetectedCarModel;
-        if (SelectedProfile != null)
-        {
-            SelectedProfile.CarMatch = DetectedCarModel;
-            _profileManager.SaveProfile(SelectedProfile);
-            StatusText = $"Car Match set to '{DetectedCarModel}' — saved and will auto-load for that car";
-        }
-    }
-
-    [RelayCommand]
-    private void SetTrackMatchFromDetected()
-    {
-        if (string.IsNullOrEmpty(DetectedTrackName))
-        {
-            StatusText = "No track detected yet — start a session in AC EVO first";
-            return;
-        }
-        ProfileTrackMatch = DetectedTrackName;
-        if (SelectedProfile != null)
-        {
-            SelectedProfile.TrackMatch = DetectedTrackName;
-            _profileManager.SaveProfile(SelectedProfile);
-            StatusText = $"Track Match set to '{DetectedTrackName}' — saved";
-        }
-    }
-
-    [RelayCommand]
-    private void RenameProfile()
-    {
-        if (SelectedProfile == null) return;
-        if (SelectedProfile.IsBuiltIn)
-        {
-            StatusText = $"Cannot rename built-in profile \"{SelectedProfile.Name}\". Use Save As to create a renamed copy.";
-            return;
-        }
-
-        var dialog = new Views.InputDialog(SelectedProfile.Name)
-        {
-            Owner = Application.Current?.MainWindow,
-            Title = "Rename Profile"
-        };
-
-        if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.Result))
-        {
-            var oldName = SelectedProfile.Name;
-            _profileManager.RenameProfile(SelectedProfile, dialog.Result!);
-            RefreshProfiles();
-            StatusText = $"Renamed '{oldName}' to '{dialog.Result}'";
-        }
-    }
-
-    [RelayCommand]
-    private void ExportProfile()
-    {
-        if (SelectedProfile == null) return;
-        var dialog = new Microsoft.Win32.SaveFileDialog
-        {
-            Filter = "JSON Profile|*.json",
-            FileName = $"{SelectedProfile.Name}.json"
-        };
-        if (dialog.ShowDialog() == true)
-            _profileManager.ExportProfile(SelectedProfile, dialog.FileName);
-    }
-
-    [RelayCommand]
-    private void ImportProfile()
-    {
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Filter = "JSON Profile|*.json"
-        };
-        if (dialog.ShowDialog() == true)
-        {
-            var profile = _profileManager.ImportProfile(dialog.FileName);
-            if (profile != null)
-            {
-                RefreshProfiles();
-                SelectedProfile = profile;
-            }
-        }
-    }
-
-    [RelayCommand]
-    private void DismissGameFfbWarning()
-    {
-        ShowGameFfbWarning = false;
-        _ffbWarningDismissed = true;
-    }
 
     private bool _conflictingAppsWarningDismissed;
 
-    [RelayCommand]
-    private void DismissConflictingAppsWarning()
-    {
-        ShowConflictingAppsWarning = false;
-        _conflictingAppsWarningDismissed = true;
-    }
 
     private int _conflictingAppsCheckCounter;
 
-    private void CheckConflictingApps()
-    {
-        _conflictingAppsCheckCounter++;
-        if (_conflictingAppsCheckCounter % 30 != 0 && !ShowConflictingAppsWarning) return;
 
-        var result = Services.ConflictingAppDetector.Detect();
-        if (result.HasConflicts)
-        {
-            ConflictingAppsNames = string.Join(", ", result.DetectedApps.Select(a => a.DisplayName));
-            var sb = new System.Text.StringBuilder();
-            foreach (var app in result.DetectedApps)
-                sb.AppendLine($"  • {app.DisplayName} — {app.Reason}");
-            ConflictingAppsDetail = sb.ToString();
 
-            if (!_conflictingAppsWarningDismissed)
-            {
-                ShowConflictingAppsWarning = true;
-                AddSystemLog($"Conflicting FFB apps detected: {ConflictingAppsNames}");
-            }
-        }
-        else
-        {
-            ShowConflictingAppsWarning = false;
-            ConflictingAppsNames = "";
-            ConflictingAppsDetail = "";
-            _conflictingAppsWarningDismissed = false;
-        }
-    }
 
-    [RelayCommand]
-    private void PanicStop()
-    {
-        IsRunning = false;
-        _telemetryLoop.Stop();
-        _uiUpdateTimer.Stop();
-        _deviceManager.ZeroForce();
-        StatusText = "PANIC STOP - Telemetry stopped, FFB zeroed";
-    }
 
-    [RelayCommand(CanExecute = nameof(CanTestHaptics))]
-    private async Task TestHaptics()
-    {
-        if (IsHapticTestRunning) return;
-        IsHapticTestRunning = true;
-        TestHapticsCommand.NotifyCanExecuteChanged();
 
-        try
-        {
-            var provider = _telemetryLoop.ActiveProvider;
-            const int durationMs = 500;
-            const double frequencyHz = 50.0;
-            const double amplitude = 0.5;
-            int stepMs = 2;
-            int steps = durationMs / stepMs;
 
-            StatusText = "Haptic test: 50Hz sine wave (500ms)...";
 
-            if (provider is FanatecProvider fanatec)
-                fanatec.TriggerAbsRumble(true);
 
-            for (int i = 0; i < steps; i++)
-            {
-                double t = i * stepMs / 1000.0;
-                float signal = (float)(amplitude * Math.Sin(2.0 * Math.PI * frequencyHz * t));
-                float absSignal = (float)Math.Abs(signal);
 
-                if (provider != null && provider.IsInitialized)
-                {
-                    provider.UpdateTorque(signal);
-                    var haptic = new HapticData { VibrationIntensity = absSignal };
-                    provider.SetHaptics(haptic);
-                }
-                else
-                {
-                    _deviceManager.SendConstantForce(signal);
-                    _deviceManager.SetTargetVibration(absSignal);
-                }
 
-                await Task.Delay(stepMs);
-            }
-
-            if (provider != null && provider.IsInitialized)
-            {
-                provider.UpdateTorque(0f);
-                provider.SetHaptics(new HapticData());
-            }
-            else
-            {
-                _deviceManager.SendConstantForce(0f);
-                _deviceManager.SetTargetVibration(0f);
-            }
-
-            if (provider is FanatecProvider fanatec2)
-                fanatec2.TriggerAbsRumble(false);
-
-            StatusText = "Haptic test complete";
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Haptic test failed: {ex.Message}";
-        }
-        finally
-        {
-            IsHapticTestRunning = false;
-            TestHapticsCommand.NotifyCanExecuteChanged();
-        }
-    }
-
-    private bool CanTestHaptics => IsDeviceConnected && !IsHapticTestRunning;
-
-    private void RefreshProviderFeatures()
-    {
-        ActiveFeatures.Clear();
-        var provider = _telemetryLoop.ActiveProvider;
-
-        if (provider == null)
-        {
-            HalProviderName = "None";
-            IsHalSdkConnected = false;
-            IsHalHapticEngineActive = false;
-            IsHalPeripheralSynced = false;
-            return;
-        }
-
-        ActiveFeatures.Add(provider.ProviderName);
-        HalProviderName = provider.ProviderName;
-        IsHalSdkConnected = provider.IsInitialized;
-        IsHalHapticEngineActive = provider.IsInitialized && provider.IsAvailable;
-        IsHalPeripheralSynced = IsDeviceConnected && provider.IsInitialized;
-
-        if (provider is FanatecProvider fp)
-        {
-            if (fp.IsFullForceAvailable) ActiveFeatures.Add("FullForce Active");
-            if (fp.HasRimRevLeds) ActiveFeatures.Add("Rev LEDs");
-            if (fp.HasRumbleMotors) ActiveFeatures.Add("Rim Rumble");
-            if (fp.HasRimLedDisplay) ActiveFeatures.Add("Gear Display");
-            if (fp.MaxTorqueNm > 0) ActiveFeatures.Add($"Torque Capped {fp.MaxTorqueNm}Nm");
-            if (fp.IsMauriceDetected) ActiveFeatures.Add("Maurice");
-        }
-        else if (provider is GenericDirectInputProvider)
-        {
-            ActiveFeatures.Add("DirectInput Only");
-        }
-        else
-        {
-            ActiveFeatures.Add("SDK Pending");
-        }
-    }
-
-    private void AddSystemLog(string entry)
-    {
-        var timestamp = DateTime.Now.ToString("HH:mm:ss");
-        var formatted = $"[{timestamp}] {entry}";
-        SystemLogEntries.Add(formatted);
-        while (SystemLogEntries.Count > 500)
-            SystemLogEntries.RemoveAt(0);
-
-        RecentSystemLogEntries.Clear();
-        if (SystemLogEntries.Count > 0)
-            RecentSystemLogEntries.Add(SystemLogEntries[^1]);
-
-        SaveSystemLog();
-    }
-
-    private void SaveSystemLog()
-    {
-        try
-        {
-            var dir = Path.GetDirectoryName(SystemLogFilePath)!;
-            Directory.CreateDirectory(dir);
-            var json = JsonSerializer.Serialize(SystemLogEntries.ToList());
-            File.WriteAllText(SystemLogFilePath, json);
-        }
-        catch { }
-    }
-
-    private void LoadSystemLog()
-    {
-        try
-        {
-            if (!File.Exists(SystemLogFilePath)) return;
-            var json = File.ReadAllText(SystemLogFilePath);
-            var entries = JsonSerializer.Deserialize<List<string>>(json);
-            if (entries == null) return;
-            SystemLogEntries.Clear();
-            foreach (var e in entries)
-                SystemLogEntries.Add(e);
-
-            RecentSystemLogEntries.Clear();
-            if (SystemLogEntries.Count > 0)
-            {
-                RecentSystemLogEntries.Add(SystemLogEntries[0]);
-            }
-        }
-        catch { }
-    }
-
-    private void UpdateSignalMonitor(float lowFreqValue, float highFreqValue)
-    {
-        _signalMonitorTickCounter++;
-        if (_signalMonitorTickCounter % 3 != 0) return;
-
-        _signalLowFreqBuffer.Add(lowFreqValue);
-        _signalHighFreqBuffer.Add(highFreqValue);
-
-        while (_signalLowFreqBuffer.Count > _signalMonitorMaxPoints)
-            _signalLowFreqBuffer.RemoveAt(0);
-        while (_signalHighFreqBuffer.Count > _signalMonitorMaxPoints)
-            _signalHighFreqBuffer.RemoveAt(0);
-
-        double canvasWidth = 260;
-        double canvasHeight = 80;
-        double midY = canvasHeight / 2.0;
-        double stepX = canvasWidth / _signalMonitorMaxPoints;
-
-        var low = new System.Windows.Media.PointCollection(_signalLowFreqBuffer.Count);
-        for (int i = 0; i < _signalLowFreqBuffer.Count; i++)
-        {
-            double y = midY - Math.Clamp(_signalLowFreqBuffer[i], -1, 1) * midY;
-            low.Add(new System.Windows.Point(i * stepX, y));
-        }
-
-        var high = new System.Windows.Media.PointCollection(_signalHighFreqBuffer.Count);
-        for (int i = 0; i < _signalHighFreqBuffer.Count; i++)
-        {
-            double y = midY - Math.Clamp(_signalHighFreqBuffer[i], -1, 1) * midY;
-            high.Add(new System.Windows.Point(i * stepX, y));
-        }
-
-        SignalMonitorLowFreq = low;
-        SignalMonitorHighFreq = high;
-    }
-
-    [RelayCommand(CanExecute = nameof(CanTestBuzz))]
-    private async Task TestBuzz()
-    {
-        if (IsTestBuzzRunning) return;
-        IsTestBuzzRunning = true;
-        TestBuzzCommand.NotifyCanExecuteChanged();
-
-        try
-        {
-            var provider = _telemetryLoop.ActiveProvider;
-            AddSystemLog("Test Buzz: 500ms diagnostic vibration...");
-
-            const int durationMs = 500;
-            const double frequencyHz = 60.0;
-            const double amplitude = 0.6;
-            int stepMs = 4;
-            int steps = durationMs / stepMs;
-
-            for (int i = 0; i < steps; i++)
-            {
-                double t = i * stepMs / 1000.0;
-                float signal = (float)(amplitude * Math.Sin(2.0 * Math.PI * frequencyHz * t));
-                float absSignal = (float)Math.Abs(signal);
-
-                if (provider != null && provider.IsInitialized)
-                {
-                    provider.UpdateTorque(signal);
-                    provider.SetHaptics(new HapticData { VibrationIntensity = absSignal });
-                }
-                else
-                {
-                    _deviceManager.SendConstantForce(signal);
-                    _deviceManager.SetTargetVibration(absSignal);
-                }
-
-                await Task.Delay(stepMs);
-            }
-
-            if (provider != null && provider.IsInitialized)
-            {
-                provider.UpdateTorque(0f);
-                provider.SetHaptics(new HapticData());
-            }
-            else
-            {
-                _deviceManager.SendConstantForce(0f);
-                _deviceManager.SetTargetVibration(0f);
-            }
-
-            AddSystemLog("Test Buzz: complete");
-        }
-        catch (Exception ex)
-        {
-            AddSystemLog($"Test Buzz: failed — {ex.Message}");
-        }
-        finally
-        {
-            IsTestBuzzRunning = false;
-            TestBuzzCommand.NotifyCanExecuteChanged();
-        }
-    }
-
-    private bool CanTestBuzz => IsDeviceConnected && !IsTestBuzzRunning && !IsRunning;
 
     [RelayCommand]
     private void StartTrackMapRecording()
@@ -2483,19 +1487,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         StatusText = "Track map recording stopped";
     }
 
-    [RelayCommand]
-    private void ToggleScreenRecording()
-    {
-        if (_gameRecordingService.IsRecording)
-        {
-            _gameRecordingService.StopRecording();
-            IsScreenRecording = false;
-        }
-        else
-        {
-            _gameRecordingService.StartRecording();
-        }
-    }
 
     [RelayCommand]
     private void CompleteAndSaveTrackMap()
@@ -2730,142 +1721,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    partial void OnSelectedMixModeChanged(FfbMixMode value) => _pipeline.ChannelMixer.MixMode = value;
-    partial void OnForceSensitivityChanged(float value) => _pipeline.MasterGain = 1000f / Math.Max(value, 1f);
-    partial void OnForceScaleChanged(float value) => _pipeline.ForceScale = value;
-    partial void OnMzFrontGainChanged(float value) => _pipeline.ChannelMixer.MzFrontGain = value;
-    partial void OnMzFrontEnabledChanged(bool value) => _pipeline.ChannelMixer.MzFrontEnabled = value;
-    partial void OnFxFrontGainChanged(float value) => _pipeline.ChannelMixer.FxFrontGain = value;
-    partial void OnFxFrontEnabledChanged(bool value) => _pipeline.ChannelMixer.FxFrontEnabled = value;
-    partial void OnFyFrontGainChanged(float value) => _pipeline.ChannelMixer.FyFrontGain = value;
-    partial void OnFyFrontEnabledChanged(bool value) => _pipeline.ChannelMixer.FyFrontEnabled = value;
-    partial void OnMzRearGainChanged(float value) => _pipeline.ChannelMixer.MzRearGain = value;
-    partial void OnMzRearEnabledChanged(bool value) => _pipeline.ChannelMixer.MzRearEnabled = value;
-    partial void OnFxRearGainChanged(float value) => _pipeline.ChannelMixer.FxRearGain = value;
-    partial void OnFxRearEnabledChanged(bool value) => _pipeline.ChannelMixer.FxRearEnabled = value;
-    partial void OnFyRearGainChanged(float value) => _pipeline.ChannelMixer.FyRearGain = value;
-    partial void OnFyRearEnabledChanged(bool value) => _pipeline.ChannelMixer.FyRearEnabled = value;
-    partial void OnFinalFfGainChanged(float value) => _pipeline.ChannelMixer.FinalFfGain = value;
-    partial void OnFinalFfEnabledChanged(bool value) => _pipeline.ChannelMixer.FinalFfEnabled = value;
-    partial void OnWheelLoadWeightingChanged(float value) => _pipeline.ChannelMixer.WheelLoadWeighting = value;
-    partial void OnMzScaleChanged(float value) => _pipeline.ChannelMixer.MzScale = value;
-    partial void OnFxScaleChanged(float value) => _pipeline.ChannelMixer.FxScale = value;
-    partial void OnFyScaleChanged(float value) => _pipeline.ChannelMixer.FyScale = value;
-    partial void OnSpeedDampingChanged(float value) => _pipeline.Damping.SpeedDampingCoefficient = value;
-    partial void OnFrictionLevelChanged(float value) => _pipeline.Damping.FrictionLevel = value;
-    partial void OnInertiaWeightChanged(float value) => _pipeline.Damping.InertiaWeight = value;
-    partial void OnDampingSpeedReferenceChanged(float value) => _pipeline.Damping.MaxSpeedReference = value;
-    partial void OnSlipRatioGainChanged(float value) => _pipeline.SlipEnhancer.SlipRatioGain = value;
-    partial void OnSlipAngleGainChanged(float value) => _pipeline.SlipEnhancer.SlipAngleGain = value;
-    partial void OnSlipThresholdChanged(float value) => _pipeline.SlipEnhancer.SlipThreshold = value;
-    partial void OnSlipUseFrontOnlyChanged(bool value) => _pipeline.SlipEnhancer.UseFrontOnly = value;
 
-    partial void OnGearChangeMuteEnabledChanged(bool value)
-    {
-        var logPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "AcEvoFfbTuner", "ffb_debug.log");
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
-            File.AppendAllText(logPath,
-                $"[VM] OnGearChangeMuteEnabledChanged called: value={value} | _pipeline type={_pipeline.GetType().Name} | BEFORE: _pipeline.GearShiftFilterEnabled={_pipeline.GearShiftFilterEnabled}\n");
-        }
-        catch { }
 
-        _pipeline.GearShiftFilterEnabled = value;
-        R3eFfbPipeline? r3e = null;
-        if (_pipeline is R3eFfbPipeline r3ePipeline)
-            r3e = r3ePipeline;
-
-        if (r3e != null)
-            r3e.GearChangeMuteEnabled = value;
-
-        try
-        {
-            File.AppendAllText(logPath,
-                $"[VM] OnGearChangeMuteEnabledChanged AFTER: _pipeline.GearShiftFilterEnabled={_pipeline.GearShiftFilterEnabled} | r3e={(r3e != null ? r3e.GearChangeMuteEnabled.ToString() : "N/A")}\n");
-        }
-        catch { }
-    }
-    partial void OnCorneringForceChanged(float value) => _pipeline.DynamicEffects.LateralGGain = value;
-    partial void OnAccelerationBrakingForceChanged(float value) => _pipeline.DynamicEffects.LongitudinalGGain = value;
-    partial void OnRoadFeelChanged(float value) => _pipeline.DynamicEffects.SuspensionGain = value;
-    partial void OnCarRotationForceChanged(float value) => _pipeline.DynamicEffects.YawRateGain = value;
-    partial void OnTyreFlexGainChanged(float value) => _pipeline.TyreFlex.FlexGain = value;
-    partial void OnCarcassStiffnessChanged(float value) => _pipeline.TyreFlex.CarcassStiffness = value;
-    partial void OnFlexSmoothingChanged(float value) => _pipeline.TyreFlex.FlexSmoothing = value;
-    partial void OnContactPatchWeightChanged(float value) => _pipeline.TyreFlex.ContactPatchWeight = value;
-    partial void OnLoadFlexGainChanged(float value) => _pipeline.TyreFlex.LoadFlexGain = value;
-    partial void OnAutoGainEnabledChanged(bool value) => _pipeline.AutoGainEnabled = value;
-    partial void OnAutoGainScaleChanged(float value) => _pipeline.AutoGainScale = value;
-    partial void OnCurbGainChanged(float value) => _pipeline.VibrationMixer.KerbGain = value;
-    partial void OnSlipGainChanged(float value) => _pipeline.VibrationMixer.SlipGain = value;
-    partial void OnRoadGainChanged(float value) => _pipeline.VibrationMixer.RoadGain = value;
-    partial void OnAbsGainChanged(float value) => _pipeline.VibrationMixer.AbsGain = value;
-
-    partial void OnAbsPulseAmplitudeChanged(float value) => _pipeline.VibrationMixer.AbsPulseAmplitude = value;
-    partial void OnVibrationMasterGainChanged(float value) => _pipeline.VibrationMixer.MasterGain = value;
-    partial void OnSuspensionRoadGainChanged(float value) => _pipeline.VibrationMixer.SuspensionRoadGain = value;
-    partial void OnScrubGainChanged(float value) => _pipeline.VibrationMixer.ScrubGain = value;
-    partial void OnRearSlipGainChanged(float value) => _pipeline.VibrationMixer.RearSlipGain = value;
-    partial void OnOfftrackGainChanged(float value) => _pipeline.VibrationMixer.OfftrackGain = value;
-    partial void OnOfftrackSeverityScaleChanged(float value) => _pipeline.VibrationMixer.OfftrackSeverityScale = value;
-    partial void OnLfeEnabledChanged(bool value) => _pipeline.LfeGenerator.Enabled = value;
-    partial void OnLfeGainChanged(float value) => _pipeline.LfeGenerator.Gain = value;
-    partial void OnLfeFrequencyChanged(float value) => _pipeline.LfeGenerator.Frequency = value;
-    partial void OnLfeSuspensionDriveChanged(float value) => _pipeline.LfeGenerator.SuspensionDrive = value;
-    partial void OnLfeSpeedScalingChanged(float value) => _pipeline.LfeGenerator.SpeedScaling = value;
-    partial void OnLfeRpmDriveChanged(float value) => _pipeline.LfeGenerator.RpmDrive = value;
-    partial void OnEqEnabledChanged(bool value) => _pipeline.Equalizer.MasterEnabled = value;
-    partial void OnEqBand0GainChanged(float value) => _pipeline.Equalizer.SetBandGain(0, value);
-    partial void OnEqBand1GainChanged(float value) => _pipeline.Equalizer.SetBandGain(1, value);
-    partial void OnEqBand2GainChanged(float value) => _pipeline.Equalizer.SetBandGain(2, value);
-    partial void OnEqBand3GainChanged(float value) => _pipeline.Equalizer.SetBandGain(3, value);
-    partial void OnEqBand4GainChanged(float value) => _pipeline.Equalizer.SetBandGain(4, value);
-    partial void OnEqBand5GainChanged(float value) => _pipeline.Equalizer.SetBandGain(5, value);
-    partial void OnEqBand6GainChanged(float value) => _pipeline.Equalizer.SetBandGain(6, value);
-    partial void OnEqBand7GainChanged(float value) => _pipeline.Equalizer.SetBandGain(7, value);
-    partial void OnEqBand8GainChanged(float value) => _pipeline.Equalizer.SetBandGain(8, value);
-    partial void OnEqBand9GainChanged(float value) => _pipeline.Equalizer.SetBandGain(9, value);
-    partial void OnSteeringLockDegreesChanged(int value) { }
-    partial void OnCompressionPowerChanged(float value) => _pipeline.CompressionPower = value;
-    partial void OnSignCorrectionEnabledChanged(bool value) => _pipeline.SignCorrectionEnabled = value;
-    partial void OnFyInvertedChanged(bool value) => _pipeline.ChannelMixer.FyInverted = value;
-    partial void OnMaxSlewRateChanged(float value) => _pipeline.MaxSlewRate = value;
-    partial void OnCenterSuppressionDegreesChanged(float value) => _pipeline.CenterSuppressionDegrees = value;
-    partial void OnCenterKneePowerChanged(float value) => _pipeline.CenterKneePower = value;
-    partial void OnHysteresisThresholdChanged(float value) => _pipeline.HysteresisThreshold = value;
-    partial void OnNoiseFloorChanged(float value) => _pipeline.NoiseFloor = value;
-    partial void OnHysteresisWatchdogFramesChanged(int value) => _pipeline.HysteresisWatchdogFrames = value;
-    partial void OnCenterBlendDegreesChanged(float value) => _pipeline.ChannelMixer.CenterBlendDegrees = value;
-    partial void OnCenterSharpnessDegreesChanged(float value) => _pipeline.CenterSharpnessDegrees = value;
-    partial void OnCoreForceMultiplierChanged(float value) => _pipeline.CoreForceMultiplier = value;
-    partial void OnSteerVelocityReferenceChanged(float value) => _pipeline.Damping.SteerVelocityReference = value;
-    partial void OnVelocityDeadzoneChanged(float value) => _pipeline.Damping.VelocityDeadzone = value;
-    partial void OnLowSpeedSmoothKmhChanged(float value) => _pipeline.ChannelMixer.LowSpeedSmoothKmh = value;
-    partial void OnForceInvertEnabledChanged(bool value) => _deviceManager.ForceInvert = value;
-    partial void OnMaxForceLimitChanged(float value)
-    {
-        _pipeline.OutputClipper.SoftClipThreshold = value;
-        OnPropertyChanged(nameof(MaxForceLimitNmText));
-        OnPropertyChanged(nameof(OutputGainNmText));
-    }
-    partial void OnWheelMaxTorqueNmChanged(float value)
-    {
-        OnPropertyChanged(nameof(MaxForceLimitNmText));
-        OnPropertyChanged(nameof(OutputGainNmText));
-    }
-    partial void OnOutputGainChanged(float value)
-    {
-        _pipeline.OutputGain = value;
-        OnPropertyChanged(nameof(OutputGainNmText));
-    }
-    partial void OnCurrentForceOutputChanged(float value)
-    {
-        OnPropertyChanged(nameof(ForceBarFillHeight));
-    }
-    partial void OnSpeedKmhChanged(float value) => OnPropertyChanged(nameof(SpeedNeedleAngle));
 
     public float MaxGaugeForce => WheelMaxTorqueNm > 0 ? Math.Max(WheelMaxTorqueNm, 8f) : 10f;
 
@@ -3019,679 +1876,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnWetWeatherHydroplaningMaxAttenuationChanged(float value) => _pipeline.WetWeather.HydroplaningMaxAttenuation = value;
 
     // ── Stationary Friction handlers ──────────────────────────────────
-    partial void OnStaticFrictionGainChanged(float value) => _telemetryLoop.StaticFriction.Gain = value;
-    partial void OnStaticFrictionMaxElasticStretchChanged(float value) => _telemetryLoop.StaticFriction.MaxElasticStretch = value;
-    partial void OnStaticFrictionSpringStiffnessChanged(float value) => _telemetryLoop.StaticFriction.SpringStiffness = value;
-    partial void OnStaticFrictionKineticFrictionBaseChanged(float value) => _telemetryLoop.StaticFriction.KineticFrictionBase = value;
-    partial void OnStaticFrictionEngineOffDampingChanged(float value) => _telemetryLoop.StaticFriction.EngineOffDamping = value;
-    partial void OnStaticFrictionEngineOnDampingChanged(float value) => _telemetryLoop.StaticFriction.EngineOnDamping = value;
-    partial void OnStaticFrictionEngineOffScaleChanged(float value) => _telemetryLoop.StaticFriction.EngineOffScale = value;
-    partial void OnStaticFrictionEngineOnScaleChanged(float value) => _telemetryLoop.StaticFriction.EngineOnScale = value;
-    partial void OnStaticFrictionActiveDecayChanged(float value) => _telemetryLoop.StaticFriction.ActiveDecay = value;
-    partial void OnStaticFrictionReturnDecayChanged(float value) => _telemetryLoop.StaticFriction.ReturnDecay = value;
-    partial void OnStaticFrictionOutputSmoothAlphaChanged(float value) => _telemetryLoop.StaticFriction.OutputSmoothAlpha = value;
-
-    partial void OnSelectedProfileChanged(FfbProfile? value)
-    {
-        if (value == null) return;
-        _profileManager.SetActiveProfile(value);
-        value.ApplyToPipeline(_pipeline);
-        value.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
-        LoadProfileValues(value);
-        OnPropertyChanged(nameof(IsBuiltInProfileSelected));
-    }
-
-    private void OnUiUpdate(object? sender, EventArgs e)
-    {
-        var raw = _telemetryLoop.LatestRaw;
-        var processed = _telemetryLoop.LatestProcessed;
-
-        if (processed != null && raw != null)
-        {
-            CurrentForceOutput = processed.MainForce;
-            CurrentRawForce = processed.RawFinalFf;
-            IsClipping = processed.IsClipping;
-            SpeedKmh = processed.SpeedKmh;
-            var g = raw.DisplayAccG?.Length > 0 && raw.DisplayAccG.Any(v => v != 0) ? raw.DisplayAccG : raw.AccG;
-            LatG = g?.Length > 0 ? g[0] : 0f;
-            LongG = g?.Length > 1 ? g[1] : 0f;
-            ActiveLedCount = _deviceManager.ActiveLedCount;
-
-            float highFreqHaptics = processed.VibrationForce;
-            UpdateSignalMonitor(processed.MainForce, highFreqHaptics);
-
-            _gameRecordingService.OnTelemetryTick(processed.SpeedKmh);
-            IsScreenRecording = _gameRecordingService.IsRecording;
-
-            if (IsGameConnected && raw.FfbStrength > 0.01f && !ShowGameFfbWarning && _ffbWarningDismissed != true)
-                ShowGameFfbWarning = true;
-            int lockDeg = SteeringLockDegrees;
-            if (lockDeg <= 0) lockDeg = 900;
-            SteerAngle = (float)raw.SteerAngle * (lockDeg / 2f);
-
-            DebugSnapshot =
-                $"=== RAW SHARED MEMORY ===\n" +
-                $"Mz:  FL={raw.Mz[0]:F4}  FR={raw.Mz[1]:F4}  RL={raw.Mz[2]:F4}  RR={raw.Mz[3]:F4}\n" +
-                $"Fx:  FL={raw.Fx[0]:F4}  FR={raw.Fx[1]:F4}  RL={raw.Fx[2]:F4}  RR={raw.Fx[3]:F4}\n" +
-                $"Fy:  FL={raw.Fy[0]:F4}  FR={raw.Fy[1]:F4}  RL={raw.Fy[2]:F4}  RR={raw.Fy[3]:F4}\n" +
-                $"FinalFf:       {raw.FinalFf:F6}\n" +
-                $"WheelLoad: FL={raw.WheelLoad[0]:F1}  FR={raw.WheelLoad[1]:F1}  RL={raw.WheelLoad[2]:F1}  RR={raw.WheelLoad[3]:F1}\n" +
-                $"SteerAngle:    {raw.SteerAngle:F4}  SteerDeg={raw.SteerDegrees}  Lock={SteeringLockDegrees}°\n" +
-                $"Speed:         {raw.SpeedKmh:F1} km/h\n" +
-                $"AccG:          X={raw.AccG[0]:F3}  Y={raw.AccG[1]:F3}  Z={raw.AccG[2]:F3}\n" +
-                $"SlipRatio:     FL={raw.SlipRatio[0]:F4}  FR={raw.SlipRatio[1]:F4}  RL={raw.SlipRatio[2]:F4}  RR={raw.SlipRatio[3]:F4}\n" +
-                $"SlipAngle:     FL={raw.SlipAngle[0]:F4}  FR={raw.SlipAngle[1]:F4}  RL={raw.SlipAngle[2]:F4}  RR={raw.SlipAngle[3]:F4}\n" +
-                $"FfbStrength:   {raw.FfbStrength:F4}  CarMult={raw.CarFfbMultiplier:F4}\n" +
-                $"\n=== VIBRATIONS ===\n" +
-                $"Kerb: {raw.KerbVibration:F4}  Slip: {raw.SlipVibrations:F4}  Road: {raw.RoadVibrations:F4}  ABS: {raw.AbsVibrations:F4}\n" +
-                $"VibForce: {processed.VibrationForce:F4}  MasterGain: {_pipeline.VibrationMixer.MasterGain:F2}  AbsGain: {_pipeline.VibrationMixer.AbsGain:F2}\n" +
-                $"\n=== PIPELINE STAGES ===\n" +
-                $"MzFront (norm): {processed.ChannelMzFront:F6}\n" +
-                $"FxFront (norm): {processed.ChannelFxFront:F6}\n" +
-                $"FyFront (norm): {processed.ChannelFyFront:F6}\n" +
-                $"PostCompress:    {processed.PostCompressionForce:F6}\n" +
-                $"PostLUT:         {processed.PostLutForce:F6}\n" +
-                $"PostDamping:    {processed.PostDampingForce:F6}\n" +
-                $"PostGainOut:    {processed.PostOutputGainForce:F6}\n" +
-                $"PostDynamic:    {processed.PostDynamicForce:F6}\n" +
-                $"OUTPUT:         {processed.MainForce:F6}   Clipping={processed.IsClipping}\n" +
-                $"AutoGain:       {processed.AutoGainApplied:F4}\n" +
-                $"\n=== FFB DEVICE ===\n" +
-                $"Acquired:       {IsDeviceConnected}\n" +
-                $"MasterGain:     {_pipeline.MasterGain:F2}\n" +
-                $"OutputGain:     {_pipeline.OutputGain:F2}\n" +
-                $"ClipThreshold:  {_pipeline.OutputClipper.SoftClipThreshold:F2}\n" +
-                $"MzScale:        {_pipeline.ChannelMixer.MzScale:F0}\n" +
-                $"FxScale:        {_pipeline.ChannelMixer.FxScale:F0}\n" +
-                $"FyScale:        {_pipeline.ChannelMixer.FyScale:F0}\n" +
-                $"LastError:      {_deviceManager.LastError ?? "none"}\n" +
-                $"PeriodicFX:     {_deviceManager.SupportsPeriodicEffects}\n" +
-                $"PacketId:       {raw.PacketId}  PPS: {_telemetryLoop.PacketsPerSecond}\n" +
-                $"Latency:        {_telemetryLoop.LastLatencyMs:F2}ms (avg: {_telemetryLoop.AvgLatencyMs:F2}ms)\n" +
-                $"\n=== LED CONTROLLER ===\n" +
-                $"Connected:      {_deviceManager.IsLedControllerConnected}\n" +
-                $"Vendor:         {_deviceManager.LedControllerVendor}\n" +
-                $"RPM:            {raw.RpmPercent:F1}%  ShiftUp={raw.IsChangeUpRpm}  Limiter={raw.IsRpmLimiterOn}\n" +
-                $"ABS:  InAction={raw.AbsInAction}  Level={raw.AbsLevel:F3}  Gfx={raw.AbsActiveGfx}  Vib={raw.AbsVibrations:F4}  Brake={raw.BrakeInput:F3}\n" +
-                $"LED Config:     Brightness={LedBrightness}% FlashRate={LedFlashRate} AbsFlash={LedAbsFlashEnabled}\n" +
-                $"{_deviceManager.LedDiagnosticInfo}";
-
-            if (IsRunning && IsDeviceConnected)
-            {
-                if (_deviceManager.HasLostDeviceAccess)
-                {
-                    IsDeviceConnected = false;
-                    DeviceName = "Lost exclusive access";
-                    StatusText = "FFB device lost exclusive access — auto-reconnect in progress...";
-                }
-                else
-                {
-                    var err = _deviceManager.LastError;
-                    if (!string.IsNullOrEmpty(err))
-                        StatusText = err;
-                }
-            }
-
-            _profilerMinOut = Math.Min(_profilerMinOut, processed.MainForce);
-            _profilerMaxOut = Math.Max(_profilerMaxOut, processed.MainForce);
-            _profilerSumOut += processed.MainForce;
-            _profilerFrames++;
-            if (processed.IsClipping) _profilerClips++;
-            _profilerPeakMz = Math.Max(_profilerPeakMz, Math.Abs(processed.ChannelMzFront));
-            _profilerPeakFx = Math.Max(_profilerPeakFx, Math.Abs(processed.ChannelFxFront));
-            _profilerPeakFy = Math.Max(_profilerPeakFy, Math.Abs(processed.ChannelFyFront));
-
-            if (_profilerFrames >= ProfilerStatsWindow)
-            {
-                _profilerMinOut = float.MaxValue;
-                _profilerMaxOut = float.MinValue;
-                _profilerSumOut = 0f;
-                _profilerFrames = 0;
-                _profilerClips = 0;
-                _profilerPeakMz = 0f;
-                _profilerPeakFx = 0f;
-                _profilerPeakFy = 0f;
-            }
-
-            if (Application.Current?.MainWindow is MainWindow mw)
-            {
-                mw.UpdateProfiler(
-                    raw.SpeedKmh, raw.SteerAngle,
-                    processed.MainForce, processed.RawFinalFf,
-                    processed.PostCompressionForce, processed.PostDampingForce,
-                    processed.PostOutputGainForce, processed.PostDynamicForce,
-                    processed.ChannelMzFront, processed.ChannelFxFront, processed.ChannelFyFront,
-                    processed.PostLutForce, processed.IsClipping,
-                    raw.GasInput, raw.BrakeInput, raw, processed.WetnessFactor,
-                    lockDeg);
-
-                mw.UpdateCalibrationWizard(raw.SpeedKmh, processed.MainForce, processed.IsClipping);
-                mw.UpdateSetupWizard(raw.SpeedKmh, processed.MainForce, raw.SteerAngle, processed.IsClipping, processed.ChannelMzFront);
-
-                // Auto-show WheelCenter overlay when RaceRoom AI takes control
-                bool r3eAi = _telemetryLoop.IsR3eAiControlled;
-                if (r3eAi)
-                {
-                    float physicalNorm = _telemetryLoop.LatestPhysicalWheelNormalized;
-                    float physicalAngleDeg = physicalNorm * (lockDeg / 2f);
-                    mw.UpdateWheelCenter(physicalNorm, physicalAngleDeg);
-                    mw.ShowWheelCenterOverlay();
-                }
-                else
-                {
-                    mw.CloseWheelCenterOverlay();
-                }
 
 
 
 
-
-
-
-
-            }
-
-            WetWeatherCurrentFactor = processed.WetnessFactor;
-            CurrentTyreCompoundFront = processed.TyreCompoundFrontName;
-            CurrentTyreCompoundRear = processed.TyreCompoundRearName;
-            CurrentTyreCategoryName = processed.TyreCategory.ToString();
-
-            CarPosX = raw.CarX;
-            CarPosZ = raw.CarZ;
-            CarHeading = raw.Heading;
-
-            if (_telemetryLoop.PositionDetector.HasMap)
-            {
-                var pos = _telemetryLoop.PositionDetector.GetPosition(raw.CarX, raw.CarZ);
-                if (pos.IsValid)
-                {
-                    IsOnTrackMap = pos.IsOnTrack;
-                    TrackProgress = pos.TrackProgress;
-                    TrackDistanceFromCenter = pos.DistanceFromCenterM;
-
-                    if (pos.CurrentCorner != null)
-                    {
-                        _lastCurrentCorner = pos.CurrentCorner;
-                        CurrentCornerName = pos.CurrentCorner.DisplayName;
-                        CurrentCornerType = pos.CurrentCorner.TypeName;
-                    }
-                    else
-                    {
-                        _lastCurrentCorner = null;
-                        CurrentCornerName = "Straight";
-                        CurrentCornerType = "";
-                    }
-
-                    if (pos.CurrentSector != null)
-                    {
-                        _sectorStatsCounter++;
-                        if (_sectorStatsCounter >= 30)
-                        {
-                            _sectorStatsCounter = 0;
-                            var map = _telemetryLoop.MapBuilder.CurrentMap;
-                            if (map != null)
-                                map.UpdateSectorStats(_telemetryLoop.ForceHeatmap);
-                        }
-
-                        CurrentSectorNumber = pos.CurrentSector.SectorNumber;
-                        var s = pos.CurrentSector;
-                        if (s.SampleCount > 0)
-                        {
-                            SectorStats = $"AvgF={s.AvgOutputForce:F3} PeakF={s.PeakOutputForce:F3} Clip={s.ClippingPct:F1}% AvgMz={s.AvgMzFront:F3} AvgSpd={s.AvgSpeedKmh:F0}";
-                        }
-                    }
-                }
-            }
-
-            IsTrackMapRecording = _telemetryLoop.MapBuilder.IsRecording;
-            IsTrackMapAvailable = _telemetryLoop.MapBuilder.HasCompleteMap;
-            TrackWaypointCount = _telemetryLoop.MapBuilder.WaypointCount;
-
-            var currentMap = _telemetryLoop.MapBuilder.CurrentMap;
-            if (currentMap != null)
-            {
-                CornerCount = currentMap.Corners.Count;
-                SectorCount = currentMap.Sectors.Count;
-                IsPitDetected = currentMap.PitLane.IsDetected;
-            }
-
-            IsInPit = raw.IsInPitLane;
-            CompletedLapCount = _telemetryLoop.LapRecorder.CompletedLaps.Count;
-            var laps = _telemetryLoop.LapRecorder.CompletedLaps;
-            if (laps.Count >= 2)
-            {
-                var last = laps[^1];
-                var prev = laps[^2];
-                float forceDelta = last.AvgOutputForce - prev.AvgOutputForce;
-                float clipDelta = last.ClippingPct - prev.ClippingPct;
-                LapComparison = $"Lap{last.LapNumber} vs Lap{prev.LapNumber}: ΔForce={forceDelta:+F3;-F3} ΔClip={clipDelta:+F1;-F1}%";
-            }
-
-            var runningSummary = _telemetryLoop.DiagnosticHeatmap.GetRunningSummary();
-            var coverage = _telemetryLoop.DiagnosticHeatmap.TrackCoveragePct;
-            var sufficientCoverage = _telemetryLoop.DiagnosticHeatmap.HasSufficientCoverage;
-
-            if (runningSummary != null && runningSummary.TotalEvents > 0)
-            {
-                DiagnosticSummary = $"Snaps:{runningSummary.TotalSnapEvents} Osc:{runningSummary.TotalOscillations} Clip:{runningSummary.TotalClippingEvents} Anomaly:{runningSummary.TotalForceAnomalies} | Corner:{runningSummary.CornerEventPct:F0}% Suspicious:{runningSummary.SuspiciousPct:F0}%";
-                DiagnosticVerdict = runningSummary.Verdict;
-            }
-
-            DiagnosticCoverage = sufficientCoverage
-                ? $"Coverage: {coverage:F0}% — ready for recommendations"
-                : $"Coverage: {coverage:F0}% — keep driving ({60 - (int)coverage}% more needed)";
-
-            var completedSummary = _telemetryLoop.DiagnosticHeatmap.LatestLapSummary;
-            if (sufficientCoverage)
-            {
-                if (completedSummary != null && completedSummary.TotalEvents > 0)
-                {
-                    UpdateRecommendations(completedSummary);
-                }
-                else if (runningSummary != null && runningSummary.TotalEvents > 0)
-                {
-                    UpdateRecommendations(runningSummary);
-                }
-            }
-
-            var lastEvt = _telemetryLoop.EventDetector.LastEvent;
-            if (lastEvt != null)
-            {
-                LastEventInfo = $"{lastEvt.EventType} @ {lastEvt.CornerName ?? "straight"} ({lastEvt.Classification}) ΔF={lastEvt.ForceDelta:F3}";
-            }
-
-            if (Application.Current?.MainWindow is MainWindow mw2)
-            {
-                mw2.UpdateTrackMapDisplay(
-                    raw.CarX, raw.CarZ, raw.Heading, raw.SpeedKmh,
-                    IsOnTrackMap, TrackProgress, TrackDistanceFromCenter,
-                    _telemetryLoop.MapBuilder.CurrentMap?.TrackLengthM ?? 0f,
-                    TrackWaypointCount, IsTrackMapRecording, IsTrackMapAvailable,
-                    _telemetryLoop.MapBuilder.CurrentMap,
-                    _telemetryLoop.ForceHeatmap.GetSnapshot(),
-                    ShowForceHeatmap,
-                    ShowTrackEdges,
-                    _telemetryLoop.DiagnosticHeatmap.GetSnapshot(),
-                    ShowDiagnostics,
-                    TrackLatitude,
-                    TrackLongitude,
-                    TrackRotation);
-            }
-        }
-
-
-        var racePhysics = _telemetryLoop.LatestPhysicsRaw;
-        var raceGraphics = _telemetryLoop.LatestGraphicsRaw;
-        if (racePhysics != null && raceGraphics != null && _raceInfoOverlay != null)
-        {
-            _raceInfoProcessor.Process(racePhysics.Value, raceGraphics.Value, out var raceInfo);
-            _raceInfoOverlay.UpdateData(raceInfo, racePhysics.Value, raceGraphics.Value);
-        }
-        if (IsDeviceConnected || IsAssigningSnapshotButton || IsAssigningPanicButton)
-            PollSnapshotButton();
-
-        CheckConflictingApps();
-
-        PacketsPerSecond = _telemetryLoop.PacketsPerSecond;
-        IsGameConnected = _telemetryLoop.IsGameConnected;
-    }
-
-    private void LoadProfileValues(FfbProfile profile)
-    {
-        BuiltInDefaults = FfbProfile.GetDefaultProfile(profile.Name);
-        ProfileCarMatch = profile.CarMatch;
-        ProfileTrackMatch = profile.TrackMatch;
-        SelectedMixMode = profile.MixMode switch
-        {
-            FfbMixModeDto.Replace => FfbMixMode.Replace,
-            FfbMixModeDto.Overlay => FfbMixMode.Overlay,
-            _ => FfbMixMode.Replace
-        };
-        OutputGain = profile.OutputGain;
-        ForceSensitivity = profile.NormalizationScale;
-        MaxForceLimit = profile.SoftClipThreshold;
-        WheelMaxTorqueNm = profile.WheelMaxTorqueNm;
-        MzFrontGain = profile.MzFront.Gain;
-        MzFrontEnabled = profile.MzFront.Enabled;
-        FxFrontGain = profile.FxFront.Gain;
-        FxFrontEnabled = profile.FxFront.Enabled;
-        FyFrontGain = profile.FyFront.Gain;
-        FyFrontEnabled = profile.FyFront.Enabled;
-        MzRearGain = profile.MzRear.Gain;
-        MzRearEnabled = profile.MzRear.Enabled;
-        FxRearGain = profile.FxRear.Gain;
-        FxRearEnabled = profile.FxRear.Enabled;
-        FyRearGain = profile.FyRear.Gain;
-        FyRearEnabled = profile.FyRear.Enabled;
-        FinalFfGain = profile.FinalFf.Gain;
-        FinalFfEnabled = profile.FinalFf.Enabled;
-        WheelLoadWeighting = profile.WheelLoadWeighting;
-        MzScale = profile.MzScale;
-        FxScale = profile.FxScale;
-        FyScale = profile.FyScale;
-        SpeedDamping = profile.Damping.SpeedDamping;
-        FrictionLevel = profile.Damping.Friction;
-        InertiaWeight = profile.Damping.Inertia;
-        DampingSpeedReference = profile.Damping.MaxSpeedReference;
-        SlipRatioGain = profile.Slip.SlipRatioGain;
-        SlipAngleGain = profile.Slip.SlipAngleGain;
-        SlipThreshold = profile.Slip.SlipThreshold;
-        SlipUseFrontOnly = profile.Slip.UseFrontOnly;
-        GearChangeMuteEnabled = profile.Slip.GearChangeMuteEnabled;
-        CorneringForce = profile.Dynamic.LateralGGain;
-        AccelerationBrakingForce = profile.Dynamic.LongitudinalGGain;
-        RoadFeel = profile.Dynamic.SuspensionGain;
-        CarRotationForce = profile.Dynamic.YawRateGain;
-        TyreFlexGain = profile.TyreFlex.FlexGain;
-        CarcassStiffness = profile.TyreFlex.CarcassStiffness;
-        FlexSmoothing = profile.TyreFlex.FlexSmoothing;
-        ContactPatchWeight = profile.TyreFlex.ContactPatchWeight;
-        LoadFlexGain = profile.TyreFlex.LoadFlexGain;
-        AutoGainEnabled = profile.AutoGain.Enabled;
-        AutoGainScale = profile.AutoGain.Scale;
-        CurbGain = profile.Vibrations.KerbGain;
-        SlipGain = profile.Vibrations.SlipGain;
-        RoadGain = profile.Vibrations.RoadGain;
-        AbsGain = profile.Vibrations.AbsGain;
-        AbsPulseAmplitude = profile.Vibrations.AbsPulseAmplitude;
-        VibrationMasterGain = profile.Vibrations.MasterGain;
-        SuspensionRoadGain = profile.Vibrations.SuspensionRoadGain;
-        ScrubGain = profile.Vibrations.ScrubGain;
-        RearSlipGain = profile.Vibrations.RearSlipGain;
-        OfftrackGain = profile.Vibrations.OfftrackGain;
-        OfftrackSeverityScale = profile.Vibrations.OfftrackSeverityScale;
-        LfeEnabled = profile.Lfe.Enabled;
-        LfeGain = profile.Lfe.Gain;
-        LfeFrequency = profile.Lfe.Frequency;
-        LfeSuspensionDrive = profile.Lfe.SuspensionDrive;
-        LfeSpeedScaling = profile.Lfe.SpeedScaling;
-        LfeRpmDrive = profile.Lfe.RpmDrive;
-        CompressionPower = profile.CompressionPower;
-        SteeringLockDegrees = Math.Clamp(profile.SteeringLockDegrees, 180, 1080);
-        ForceScale = profile.ForceScale;
-        SignCorrectionEnabled = profile.SignCorrectionEnabled;
-        FyInverted = profile.FyInverted;
-        ForceInvertEnabled = profile.ForceInvertEnabled;
-        MaxSlewRate = profile.Advanced.MaxSlewRate;
-        CenterSuppressionDegrees = profile.Advanced.CenterSuppressionDegrees;
-        CenterKneePower = profile.Advanced.CenterKneePower;
-        HysteresisThreshold = profile.Advanced.HysteresisThreshold;
-        NoiseFloor = profile.Advanced.NoiseFloor;
-        HysteresisWatchdogFrames = profile.Advanced.HysteresisWatchdogFrames;
-        CenterBlendDegrees = profile.Advanced.CenterBlendDegrees;
-        CenterSharpnessDegrees = profile.Advanced.CenterSharpnessDegrees;
-        CoreForceMultiplier = profile.Advanced.CoreForceMultiplier;
-        SteerVelocityReference = profile.Advanced.SteerVelocityReference;
-        VelocityDeadzone = profile.Advanced.VelocityDeadzone;
-        LowSpeedSmoothKmh = profile.Advanced.LowSpeedSmoothKmh;
-        EqEnabled = profile.Equalizer.Enabled;
-        EqBand0Gain = profile.Equalizer.GetGain(0);
-        EqBand1Gain = profile.Equalizer.GetGain(1);
-        EqBand2Gain = profile.Equalizer.GetGain(2);
-        EqBand3Gain = profile.Equalizer.GetGain(3);
-        EqBand4Gain = profile.Equalizer.GetGain(4);
-        EqBand5Gain = profile.Equalizer.GetGain(5);
-        EqBand6Gain = profile.Equalizer.GetGain(6);
-        EqBand7Gain = profile.Equalizer.GetGain(7);
-        EqBand8Gain = profile.Equalizer.GetGain(8);
-        EqBand9Gain = profile.Equalizer.GetGain(9);
-        LoadLedValues(profile.LedEffects);
-
-        Hf8Enabled = profile.Hf8.Enabled;
-        Hf8MasterGain = profile.Hf8.MasterGain;
-        Hf8OutputRateHz = profile.Hf8.OutputRateHz;
-        Hf8ZoneGain0 = profile.Hf8.GetZoneGain(0);
-        Hf8ZoneGain1 = profile.Hf8.GetZoneGain(1);
-        Hf8ZoneGain2 = profile.Hf8.GetZoneGain(2);
-        Hf8ZoneGain3 = profile.Hf8.GetZoneGain(3);
-        Hf8ZoneGain4 = profile.Hf8.GetZoneGain(4);
-        Hf8ZoneGain5 = profile.Hf8.GetZoneGain(5);
-        Hf8ZoneGain6 = profile.Hf8.GetZoneGain(6);
-        Hf8ZoneGain7 = profile.Hf8.GetZoneGain(7);
-        Hf8ZoneEnabled0 = profile.Hf8.GetZoneEnabled(0);
-        Hf8ZoneEnabled1 = profile.Hf8.GetZoneEnabled(1);
-        Hf8ZoneEnabled2 = profile.Hf8.GetZoneEnabled(2);
-        Hf8ZoneEnabled3 = profile.Hf8.GetZoneEnabled(3);
-        Hf8ZoneEnabled4 = profile.Hf8.GetZoneEnabled(4);
-        Hf8ZoneEnabled5 = profile.Hf8.GetZoneEnabled(5);
-        Hf8ZoneEnabled6 = profile.Hf8.GetZoneEnabled(6);
-        Hf8ZoneEnabled7 = profile.Hf8.GetZoneEnabled(7);
-
-        Hf8SrcSusp0 = profile.Hf8.GetSourceWeight(0, 0);
-        Hf8SrcSlip0 = profile.Hf8.GetSourceWeight(0, 1);
-        Hf8SrcKerb0 = profile.Hf8.GetSourceWeight(0, 2);
-        Hf8SrcLatG0 = profile.Hf8.GetSourceWeight(0, 3);
-        Hf8SrcEngine0 = profile.Hf8.GetSourceWeight(0, 4);
-
-        Hf8SrcSusp1 = profile.Hf8.GetSourceWeight(1, 0);
-        Hf8SrcSlip1 = profile.Hf8.GetSourceWeight(1, 1);
-        Hf8SrcKerb1 = profile.Hf8.GetSourceWeight(1, 2);
-        Hf8SrcLatG1 = profile.Hf8.GetSourceWeight(1, 3);
-        Hf8SrcEngine1 = profile.Hf8.GetSourceWeight(1, 4);
-
-        Hf8SrcSusp2 = profile.Hf8.GetSourceWeight(2, 0);
-        Hf8SrcSlip2 = profile.Hf8.GetSourceWeight(2, 1);
-        Hf8SrcKerb2 = profile.Hf8.GetSourceWeight(2, 2);
-        Hf8SrcLatG2 = profile.Hf8.GetSourceWeight(2, 3);
-        Hf8SrcEngine2 = profile.Hf8.GetSourceWeight(2, 4);
-
-        Hf8SrcSusp3 = profile.Hf8.GetSourceWeight(3, 0);
-        Hf8SrcSlip3 = profile.Hf8.GetSourceWeight(3, 1);
-        Hf8SrcKerb3 = profile.Hf8.GetSourceWeight(3, 2);
-        Hf8SrcLatG3 = profile.Hf8.GetSourceWeight(3, 3);
-        Hf8SrcEngine3 = profile.Hf8.GetSourceWeight(3, 4);
-
-        Hf8SrcSusp4 = profile.Hf8.GetSourceWeight(4, 0);
-        Hf8SrcSlip4 = profile.Hf8.GetSourceWeight(4, 1);
-        Hf8SrcKerb4 = profile.Hf8.GetSourceWeight(4, 2);
-        Hf8SrcLatG4 = profile.Hf8.GetSourceWeight(4, 3);
-        Hf8SrcEngine4 = profile.Hf8.GetSourceWeight(4, 4);
-
-        Hf8SrcSusp5 = profile.Hf8.GetSourceWeight(5, 0);
-        Hf8SrcSlip5 = profile.Hf8.GetSourceWeight(5, 1);
-        Hf8SrcKerb5 = profile.Hf8.GetSourceWeight(5, 2);
-        Hf8SrcLatG5 = profile.Hf8.GetSourceWeight(5, 3);
-        Hf8SrcEngine5 = profile.Hf8.GetSourceWeight(5, 4);
-
-        Hf8SrcSusp6 = profile.Hf8.GetSourceWeight(6, 0);
-        Hf8SrcSlip6 = profile.Hf8.GetSourceWeight(6, 1);
-        Hf8SrcKerb6 = profile.Hf8.GetSourceWeight(6, 2);
-        Hf8SrcLatG6 = profile.Hf8.GetSourceWeight(6, 3);
-        Hf8SrcEngine6 = profile.Hf8.GetSourceWeight(6, 4);
-
-        Hf8SrcSusp7 = profile.Hf8.GetSourceWeight(7, 0);
-        Hf8SrcSlip7 = profile.Hf8.GetSourceWeight(7, 1);
-        Hf8SrcKerb7 = profile.Hf8.GetSourceWeight(7, 2);
-        Hf8SrcLatG7 = profile.Hf8.GetSourceWeight(7, 3);
-        Hf8SrcEngine7 = profile.Hf8.GetSourceWeight(7, 4);
-
-        GripGuardEnabled = profile.GripGuard.Enabled;
-        GripGuardPeakSlipAngle = profile.GripGuard.PeakSlipAngle;
-        GripGuardAttenuationStrength = profile.GripGuard.AttenuationStrength;
-        GripGuardMechanicalTrailGain = profile.GripGuard.MechanicalTrailGain;
-        GripGuardMinSpeedKmh = profile.GripGuard.MinSpeedKmh;
-
-        CrashEnabled = profile.Crash.Enabled;
-        CrashImpactGain = profile.Crash.ImpactGain;
-        CrashSafetyClamp = profile.Crash.SafetyClamp;
-        CrashDecayRate = profile.Crash.DecayRate;
-        CrashTriggerThresholdG = profile.Crash.TriggerThresholdG;
-        CrashMinSpeedKmh = profile.Crash.MinSpeedKmh;
-        CrashSafetyOverride = profile.Crash.SafetyOverride;
-        ShowCrashSafetyWarning = profile.Crash.SafetyOverride;
-
-        TyreConditionEnabled = profile.TyreCondition.Enabled;
-        TyreConditionBlowoutGain = profile.TyreCondition.BlowoutVibrationGain;
-        TyreConditionPressureLossGain = profile.TyreCondition.PressureLossGain;
-        TyreConditionDamageAsymmetryGain = profile.TyreCondition.DamageAsymmetryGain;
-        TyreConditionBlowoutThreshold = profile.TyreCondition.BlowoutPressureThreshold;
-        TyreConditionMaxBlowoutAmplitude = profile.TyreCondition.MaxBlowoutAmplitude;
-
-        WetWeatherEnabled = profile.WetWeather.Enabled;
-        WetWeatherAutoDetect = profile.WetWeather.AutoDetect;
-        WetWeatherManualIntensity = profile.WetWeather.ManualIntensity;
-        WetWeatherRoadVibSuppression = profile.WetWeather.RoadVibSuppression;
-        WetWeatherCurbSuppression = profile.WetWeather.CurbSuppression;
-        WetWeatherScrubSuppression = profile.WetWeather.ScrubSuppression;
-        WetWeatherPeakSlipAngleMultiplier = profile.WetWeather.PeakSlipAngleMultiplier;
-        WetWeatherDampingReduction = profile.WetWeather.DampingReduction;
-        WetWeatherNoiseFloorSuppression = profile.WetWeather.NoiseFloorSuppression;
-        WetWeatherHydroplaningEnabled = profile.WetWeather.HydroplaningEnabled;
-        WetWeatherHydroplaningSpeedThreshold = profile.WetWeather.HydroplaningSpeedThreshold;
-        WetWeatherHydroplaningMaxAttenuation = profile.WetWeather.HydroplaningMaxAttenuation;
-
-        StaticFrictionGain = profile.StaticFriction.Gain;
-        StaticFrictionMaxElasticStretch = profile.StaticFriction.MaxElasticStretch;
-        StaticFrictionSpringStiffness = profile.StaticFriction.SpringStiffness;
-        StaticFrictionKineticFrictionBase = profile.StaticFriction.KineticFrictionBase;
-        StaticFrictionEngineOffDamping = profile.StaticFriction.EngineOffDamping;
-        StaticFrictionEngineOnDamping = profile.StaticFriction.EngineOnDamping;
-        StaticFrictionEngineOffScale = profile.StaticFriction.EngineOffScale;
-        StaticFrictionEngineOnScale = profile.StaticFriction.EngineOnScale;
-        StaticFrictionActiveDecay = profile.StaticFriction.ActiveDecay;
-        StaticFrictionReturnDecay = profile.StaticFriction.ReturnDecay;
-        StaticFrictionOutputSmoothAlpha = profile.StaticFriction.OutputSmoothAlpha;
-    }
-
-    private void PushValuesToPipeline()
-    {
-        if (SelectedProfile != null)
-        {
-            SelectedProfile.CarMatch = ProfileCarMatch;
-            SelectedProfile.TrackMatch = ProfileTrackMatch;
-        }
-
-        _pipeline.ChannelMixer.MzFrontGain = MzFrontGain;
-        _pipeline.ChannelMixer.MzFrontEnabled = MzFrontEnabled;
-        _pipeline.ChannelMixer.FxFrontGain = FxFrontGain;
-        _pipeline.ChannelMixer.FxFrontEnabled = FxFrontEnabled;
-        _pipeline.ChannelMixer.FyFrontGain = FyFrontGain;
-        _pipeline.ChannelMixer.FyFrontEnabled = FyFrontEnabled;
-        _pipeline.ChannelMixer.MzRearGain = MzRearGain;
-        _pipeline.ChannelMixer.MzRearEnabled = MzRearEnabled;
-        _pipeline.ChannelMixer.FxRearGain = FxRearGain;
-        _pipeline.ChannelMixer.FxRearEnabled = FxRearEnabled;
-        _pipeline.ChannelMixer.FyRearGain = FyRearGain;
-        _pipeline.ChannelMixer.FyRearEnabled = FyRearEnabled;
-        _pipeline.ChannelMixer.FinalFfGain = FinalFfGain;
-        _pipeline.ChannelMixer.FinalFfEnabled = FinalFfEnabled;
-        _pipeline.ChannelMixer.WheelLoadWeighting = WheelLoadWeighting;
-        _pipeline.ChannelMixer.MzScale = MzScale;
-        _pipeline.ChannelMixer.FxScale = FxScale;
-        _pipeline.ChannelMixer.FyScale = FyScale;
-        _pipeline.ChannelMixer.MixMode = SelectedMixMode;
-        _pipeline.OutputClipper.SoftClipThreshold = MaxForceLimit;
-        _pipeline.MasterGain = 1000f / Math.Max(ForceSensitivity, 1f);
-        _pipeline.Damping.SpeedDampingCoefficient = SpeedDamping;
-        _pipeline.Damping.FrictionLevel = FrictionLevel;
-        _pipeline.Damping.InertiaWeight = InertiaWeight;
-        _pipeline.Damping.MaxSpeedReference = DampingSpeedReference;
-        _pipeline.SlipEnhancer.SlipRatioGain = SlipRatioGain;
-        _pipeline.SlipEnhancer.SlipAngleGain = SlipAngleGain;
-        _pipeline.SlipEnhancer.SlipThreshold = SlipThreshold;
-        _pipeline.SlipEnhancer.UseFrontOnly = SlipUseFrontOnly;
-        _pipeline.DynamicEffects.LateralGGain = CorneringForce;
-        _pipeline.DynamicEffects.LongitudinalGGain = AccelerationBrakingForce;
-        _pipeline.DynamicEffects.SuspensionGain = RoadFeel;
-        _pipeline.DynamicEffects.YawRateGain = CarRotationForce;
-        _pipeline.TyreFlex.FlexGain = TyreFlexGain;
-        _pipeline.TyreFlex.CarcassStiffness = CarcassStiffness;
-        _pipeline.TyreFlex.FlexSmoothing = FlexSmoothing;
-        _pipeline.TyreFlex.ContactPatchWeight = ContactPatchWeight;
-        _pipeline.TyreFlex.LoadFlexGain = LoadFlexGain;
-        _pipeline.AutoGainEnabled = AutoGainEnabled;
-        _pipeline.AutoGainScale = AutoGainScale;
-        _pipeline.VibrationMixer.KerbGain = CurbGain;
-        _pipeline.VibrationMixer.SlipGain = SlipGain;
-        _pipeline.VibrationMixer.RoadGain = RoadGain;
-        _pipeline.VibrationMixer.AbsGain = AbsGain;
-        _pipeline.VibrationMixer.AbsPulseAmplitude = AbsPulseAmplitude;
-        _pipeline.VibrationMixer.MasterGain = VibrationMasterGain;
-        _pipeline.VibrationMixer.SuspensionRoadGain = SuspensionRoadGain;
-        _pipeline.VibrationMixer.ScrubGain = ScrubGain;
-        _pipeline.VibrationMixer.RearSlipGain = RearSlipGain;
-        _pipeline.LfeGenerator.Enabled = LfeEnabled;
-        _pipeline.LfeGenerator.Gain = LfeGain;
-        _pipeline.LfeGenerator.Frequency = LfeFrequency;
-        _pipeline.LfeGenerator.SuspensionDrive = LfeSuspensionDrive;
-        _pipeline.LfeGenerator.SpeedScaling = LfeSpeedScaling;
-        _pipeline.LfeGenerator.RpmDrive = LfeRpmDrive;
-        _pipeline.CompressionPower = CompressionPower;
-        _pipeline.ForceScale = ForceScale;
-        _pipeline.SignCorrectionEnabled = SignCorrectionEnabled;
-        _pipeline.ChannelMixer.FyInverted = FyInverted;
-        _pipeline.MaxSlewRate = MaxSlewRate;
-        _pipeline.CenterSuppressionDegrees = CenterSuppressionDegrees;
-        _pipeline.CenterKneePower = CenterKneePower;
-        _pipeline.HysteresisThreshold = HysteresisThreshold;
-        _pipeline.NoiseFloor = NoiseFloor;
-        _pipeline.HysteresisWatchdogFrames = HysteresisWatchdogFrames;
-        _pipeline.ChannelMixer.CenterBlendDegrees = CenterBlendDegrees;
-        _pipeline.CenterSharpnessDegrees = CenterSharpnessDegrees;
-        _pipeline.CoreForceMultiplier = CoreForceMultiplier;
-        _pipeline.Damping.SteerVelocityReference = SteerVelocityReference;
-        _pipeline.Damping.VelocityDeadzone = VelocityDeadzone;
-        _pipeline.ChannelMixer.LowSpeedSmoothKmh = LowSpeedSmoothKmh;
-        _pipeline.Equalizer.MasterEnabled = EqEnabled;
-        _pipeline.Equalizer.SetBandGain(0, EqBand0Gain);
-        _pipeline.Equalizer.SetBandGain(1, EqBand1Gain);
-        _pipeline.Equalizer.SetBandGain(2, EqBand2Gain);
-        _pipeline.Equalizer.SetBandGain(3, EqBand3Gain);
-        _pipeline.Equalizer.SetBandGain(4, EqBand4Gain);
-        _pipeline.Equalizer.SetBandGain(5, EqBand5Gain);
-        _pipeline.Equalizer.SetBandGain(6, EqBand6Gain);
-        _pipeline.Equalizer.SetBandGain(7, EqBand7Gain);
-        _pipeline.Equalizer.SetBandGain(8, EqBand8Gain);
-        _pipeline.Equalizer.SetBandGain(9, EqBand9Gain);
-
-        _pipeline.GripGuard.Enabled = GripGuardEnabled;
-        _pipeline.GripGuard.PeakSlipAngle = GripGuardPeakSlipAngle;
-        _pipeline.GripGuard.AttenuationStrength = GripGuardAttenuationStrength;
-        _pipeline.GripGuard.MechanicalTrailGain = GripGuardMechanicalTrailGain;
-        _pipeline.GripGuard.MinSpeedKmh = GripGuardMinSpeedKmh;
-
-        _pipeline.CrashDetector.Enabled = CrashEnabled;
-        _pipeline.CrashDetector.ImpactGain = CrashImpactGain;
-        _pipeline.CrashDetector.SafetyClamp = CrashSafetyClamp;
-        _pipeline.CrashDetector.DecayRate = CrashDecayRate;
-        _pipeline.CrashDetector.TriggerThresholdG = CrashTriggerThresholdG;
-        _pipeline.CrashDetector.MinSpeedKmh = CrashMinSpeedKmh;
-        _pipeline.CrashDetector.SafetyOverride = CrashSafetyOverride;
-
-        _pipeline.TyreCondition.Enabled = TyreConditionEnabled;
-        _pipeline.TyreCondition.BlowoutVibrationGain = TyreConditionBlowoutGain;
-        _pipeline.TyreCondition.PressureLossGain = TyreConditionPressureLossGain;
-        _pipeline.TyreCondition.DamageAsymmetryGain = TyreConditionDamageAsymmetryGain;
-        _pipeline.TyreCondition.BlowoutPressureThreshold = TyreConditionBlowoutThreshold;
-        _pipeline.TyreCondition.MaxBlowoutAmplitude = TyreConditionMaxBlowoutAmplitude;
-
-        _pipeline.WetWeather.Enabled = WetWeatherEnabled;
-        _pipeline.WetWeather.AutoDetect = WetWeatherAutoDetect;
-        _pipeline.WetWeather.ManualIntensity = WetWeatherManualIntensity;
-        _pipeline.WetWeather.RoadVibSuppression = WetWeatherRoadVibSuppression;
-        _pipeline.WetWeather.CurbSuppression = WetWeatherCurbSuppression;
-        _pipeline.WetWeather.ScrubSuppression = WetWeatherScrubSuppression;
-        _pipeline.WetWeather.PeakSlipAngleMultiplier = WetWeatherPeakSlipAngleMultiplier;
-        _pipeline.WetWeather.DampingReduction = WetWeatherDampingReduction;
-        _pipeline.WetWeather.NoiseFloorSuppression = WetWeatherNoiseFloorSuppression;
-        _pipeline.WetWeather.HydroplaningEnabled = WetWeatherHydroplaningEnabled;
-        _pipeline.WetWeather.HydroplaningSpeedThreshold = WetWeatherHydroplaningSpeedThreshold;
-        _pipeline.WetWeather.HydroplaningMaxAttenuation = WetWeatherHydroplaningMaxAttenuation;
-
-        _telemetryLoop.StaticFriction.Gain = StaticFrictionGain;
-        _telemetryLoop.StaticFriction.MaxElasticStretch = StaticFrictionMaxElasticStretch;
-        _telemetryLoop.StaticFriction.SpringStiffness = StaticFrictionSpringStiffness;
-        _telemetryLoop.StaticFriction.KineticFrictionBase = StaticFrictionKineticFrictionBase;
-        _telemetryLoop.StaticFriction.EngineOffDamping = StaticFrictionEngineOffDamping;
-        _telemetryLoop.StaticFriction.EngineOnDamping = StaticFrictionEngineOnDamping;
-        _telemetryLoop.StaticFriction.EngineOffScale = StaticFrictionEngineOffScale;
-        _telemetryLoop.StaticFriction.EngineOnScale = StaticFrictionEngineOnScale;
-        _telemetryLoop.StaticFriction.ActiveDecay = StaticFrictionActiveDecay;
-        _telemetryLoop.StaticFriction.ReturnDecay = StaticFrictionReturnDecay;
-        _telemetryLoop.StaticFriction.OutputSmoothAlpha = StaticFrictionOutputSmoothAlpha;
-
-        PushLedConfig();
-    }
 
     private void UpdateLedCapabilities()
     {
@@ -3826,12 +2014,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         LedRpmThreshold6, LedRpmThreshold7, LedRpmThreshold8, LedRpmThreshold9, LedRpmThreshold10
     };
 
-    private void RefreshProfiles()
-    {
-        Profiles.Clear();
-        foreach (var p in _profileManager.Profiles)
-            Profiles.Add(p);
-    }
 
     [ObservableProperty]
     private bool _isSendingDiagnosticPack;
@@ -3840,6 +2022,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private string _diagnosticPackStatus = string.Empty;
 
     private readonly Services.AppSettings _appSettings = Services.AppSettings.Load();
+
+    public Services.AppSettings AppSettings => _appSettings;
 
     [ObservableProperty]
     private bool _splashScreenEnabled = true;
@@ -3896,19 +2080,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private int _voiceVolume = 75;
 
-    partial void OnVoiceEnabledChanged(bool value)
-    {
-        _voiceService.Enabled = value;
-        _appSettings.VoiceEnabled = value;
-        _appSettings.Save();
-    }
 
-    partial void OnVoiceVolumeChanged(int value)
-    {
-        _voiceService.Volume = value;
-        _appSettings.VoiceVolume = value;
-        _appSettings.Save();
-    }
 
     public string VoiceEngine => _voiceService.ActiveEngine;
 
@@ -3918,24 +2090,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         ? $"{_voiceService.CachedCount}/{_voiceService.TotalPhrases} phrases cached"
         : "Voice pack not found. Place MP3 files in:\n" + GetVoiceCachePath();
 
-    [RelayCommand]
-    private void OpenVoiceCacheFolder()
-    {
-        try
-        {
-            var dir = GetVoiceCachePath();
-            Directory.CreateDirectory(dir);
-            Process.Start(new ProcessStartInfo("explorer.exe", dir) { UseShellExecute = true });
-        }
-        catch { }
-    }
 
-    private static string GetVoiceCachePath()
-    {
-        return Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "AcEvoFfbTuner", "voice-cache");
-    }
 
     [ObservableProperty]
     private ObservableCollection<string> _availableVoices = new();
@@ -3945,59 +2100,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private bool _voiceInitialized;
 
-    partial void OnSelectedVoiceChanged(string? value)
-    {
-        if (string.IsNullOrEmpty(value) || value == _voiceService.SelectedVoice) return;
-        _voiceService.SelectedVoice = value;
-        _appSettings.VoiceName = value;
-        _appSettings.Save();
-
-        if (_voiceInitialized)
-            _voiceService.Speak("This is {0}", value);
-    }
 
     [ObservableProperty]
     private bool _isInstallingVoices;
 
-    [RelayCommand]
-    private void OpenVoiceSettings()
-    {
-        Services.VoiceService.OpenSpeechSettings();
-    }
 
-    [RelayCommand]
-    private async Task InstallNaturalVoicesAsync()
-    {
-        if (IsInstallingVoices) return;
-        IsInstallingVoices = true;
-        try
-        {
-            await Task.Run(() =>
-            {
-                var psi = new ProcessStartInfo("powershell.exe")
-                {
-                    Arguments = "-NoProfile -Command \"Add-WindowsCapability -Online -Name 'Language.Speech.en-US~~~0.0.1.0' -LimitAccess -Source 'WindowsUpdate'\"",
-                    Verb = "runas",
-                    UseShellExecute = true,
-                    CreateNoWindow = true,
-                    WindowStyle = ProcessWindowStyle.Hidden
-                };
-                using var proc = Process.Start(psi);
-                proc?.WaitForExit(120000);
-            });
-            RefreshVoices();
-            if (_voiceService.HasNaturalVoice)
-                _voiceService.Speak("Natural voices installed");
-        }
-        catch (Exception ex)
-        {
-            AddSystemLog($"Voice install failed: {ex.Message}");
-        }
-        finally
-        {
-            IsInstallingVoices = false;
-        }
-    }
 
     private NAudio.Wave.WasapiLoopbackCapture? _loopbackCapture;
     private NAudio.Wave.WaveFileWriter? _waveWriter;
@@ -4017,11 +2124,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _appSettings.Save();
     }
 
-    partial void OnSelectedRecordingDeviceIdChanged(string? value)
-    {
-        _appSettings.LastRecordingDeviceId = value;
-        _appSettings.Save();
-    }
 
     partial void OnStartMinimisedChanged(bool value)
     {
@@ -4063,116 +2165,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _appSettings.Save();
     }
 
-    public void LoadAppSettings()
-    {
-        SplashScreenEnabled = _appSettings.SplashScreenEnabled;
-        CustomStartupSoundPath = _appSettings.CustomStartupSoundPath;
-        StartMinimised = _appSettings.StartMinimised;
-        AutoConnect = _appSettings.AutoConnect;
-        AutoStart = _appSettings.AutoStart;
-        IsPerCarAutoLoadEnabled = _appSettings.PerCarAutoLoadEnabled;
-        TooltipsEnabled = _appSettings.TooltipsEnabled;
-        AutoProfileUpgrade = _appSettings.AutoProfileUpgrade;
-        ThemeMode = _appSettings.ThemeName;
-        VoiceEnabled = _appSettings.VoiceEnabled;
-        VoiceVolume = _appSettings.VoiceVolume;
-        if (Enum.TryParse<NavPage>(_appSettings.DefaultStartPage, out var startPage))
-        {
-            var pages = Enum.GetValues<NavPage>();
-            DefaultStartPageIndex = Array.IndexOf(pages, startPage);
-            CurrentPage = startPage;
-        }
-        else
-        {
-            DefaultStartPageIndex = 0;
-            CurrentPage = NavPage.Home;
-        }
 
-        RefreshVoices();
-        _voiceInitialized = true;
-        RefreshRecordingDevices();
-    }
 
-    private void RefreshVoices()
-    {
-        var current = _voiceService.SelectedVoice;
-        AvailableVoices.Clear();
-        foreach (var v in _voiceService.AvailableVoices)
-            AvailableVoices.Add(v);
 
-        if (!string.IsNullOrEmpty(_appSettings.VoiceName) && AvailableVoices.Contains(_appSettings.VoiceName))
-            SelectedVoice = _appSettings.VoiceName;
-        else if (current != null && AvailableVoices.Contains(current))
-            SelectedVoice = current;
-        else if (AvailableVoices.Count > 0)
-            SelectedVoice = AvailableVoices[0];
-    }
 
-    public void ApplyStartupActions()
-    {
-        if (AutoConnect && !string.IsNullOrEmpty(_appSettings.LastConnectedDeviceInstanceId)
-            && Guid.TryParse(_appSettings.LastConnectedDeviceInstanceId, out var deviceGuid))
-        {
-            var match = AvailableDevices.FirstOrDefault(d =>
-                d.DeviceInstance != null && d.DeviceInstance.InstanceGuid == deviceGuid);
-            if (match != null)
-            {
-                SelectedDevice = match;
-                ConnectDevice();
-            }
-        }
-
-        if (AutoStart && IsDeviceConnected)
-        {
-            IsRunning = true;
-            ToggleTelemetry();
-        }
-    }
-
-    public void RestoreButtonSettings()
-    {
-        SnapshotButtonComboIndex = _appSettings.SnapshotButtonComboIndex;
-        PanicButtonComboIndex = _appSettings.PanicButtonComboIndex;
-
-        if (!string.IsNullOrEmpty(_appSettings.PanicDeviceInstanceId) && Guid.TryParse(_appSettings.PanicDeviceInstanceId, out var guid))
-        {
-            var match = PanicDevices.FirstOrDefault(d =>
-                d.DeviceInstance != null && d.DeviceInstance.InstanceGuid == guid);
-            if (match != null)
-                SelectedPanicDevice = match;
-        }
-    }
-
-    [RelayCommand]
-    private void RefreshRecordingDevices()
-    {
-        try
-        {
-            AudioOutputDevices.Clear();
-            _deviceNameToId.Clear();
-            var enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
-            var devices = enumerator.EnumerateAudioEndPoints(
-                NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.DeviceState.Active);
-
-            var savedId = _appSettings.LastRecordingDeviceId;
-
-            foreach (var device in devices)
-            {
-                var name = device.FriendlyName;
-                AudioOutputDevices.Add(name);
-                _deviceNameToId[name] = device.ID;
-                if (device.ID == savedId)
-                    SelectedAudioOutputDevice = name;
-            }
-
-            if (string.IsNullOrEmpty(SelectedAudioOutputDevice) && AudioOutputDevices.Count > 0)
-                SelectedAudioOutputDevice = AudioOutputDevices[0];
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Audio device enumeration failed: {ex.Message}";
-        }
-    }
 
     private string? GetSelectedOutputDeviceId()
     {
@@ -4180,411 +2176,172 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         return _deviceNameToId.TryGetValue(SelectedAudioOutputDevice, out var id) ? id : null;
     }
 
-    [RelayCommand]
-#pragma warning disable CS1998
-    private async Task StartRecording()
-#pragma warning restore CS1998
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private static void PlayCoachAlert()
     {
-        var deviceId = GetSelectedOutputDeviceId();
-        if (deviceId == null)
-        {
-            RecordingStatus = "No output device selected.";
-            return;
-        }
-
-        NAudio.CoreAudioApi.MMDevice? device = null;
         try
         {
-            var enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
-            device = enumerator.GetDevice(deviceId);
-        }
-        catch (Exception ex)
-        {
-            RecordingStatus = $"Could not open device: {ex.Message}";
-            return;
-        }
+            int sampleRate = 44100;
+            int durationMs = 120;
+            int samples = sampleRate * durationMs / 1000;
+            short[] buffer = new short[samples];
 
-        if (device == null)
-        {
-            RecordingStatus = "Device not found.";
-            return;
-        }
-
-        try
-        {
-            var soundsDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "AcEvoFfbTuner", "Sounds");
-            Directory.CreateDirectory(soundsDir);
-            _recordingTempPath = Path.Combine(soundsDir, $"recording_{DateTime.Now:yyyyMMdd_HHmmss}.wav");
-
-            _selectedOutputDeviceId = deviceId;
-            _loopbackCapture = new NAudio.Wave.WasapiLoopbackCapture(device);
-
-            RecordingStatus = $"Capturing from: {device.FriendlyName} ({_loopbackCapture.WaveFormat})";
-
-            _waveWriter = new NAudio.Wave.WaveFileWriter(
-                _recordingTempPath, _loopbackCapture.WaveFormat);
-
-            _loopbackCapture.DataAvailable += (s, e) =>
+            double freq1 = 880.0;
+            double freq2 = 1320.0;
+            for (int i = 0; i < samples; i++)
             {
-                if (_waveWriter == null) return;
-                _waveWriter.Write(e.Buffer, 0, e.BytesRecorded);
-                var duration = (double)_waveWriter.Position / _waveWriter.WaveFormat.AverageBytesPerSecond;
-                Application.Current?.Dispatcher.BeginInvoke(() =>
-                    RecordingStatus = $"Recording... {duration:F1}s");
-            };
+                double t = (double)i / sampleRate;
+                double env = i < samples / 2
+                    ? (double)i / (samples / 2)
+                    : 1.0 - (double)(i - samples / 2) / (samples / 2);
+                double sample = env * 0.35 * (
+                    Math.Sin(2.0 * Math.PI * freq1 * t) * 0.6 +
+                    Math.Sin(2.0 * Math.PI * freq2 * t) * 0.4);
+                buffer[i] = (short)(sample * short.MaxValue);
+            }
 
-            _loopbackCapture.RecordingStopped += (s, e) =>
+            using var ms = new MemoryStream();
+            WriteWavHeader(ms, sampleRate, buffer.Length);
+            foreach (short s in buffer)
             {
-                _waveWriter?.Flush();
-                _waveWriter?.Dispose();
-                _waveWriter = null;
-
-                _loopbackCapture?.Dispose();
-                _loopbackCapture = null;
-
-                if (_recordingTempPath != null && File.Exists(_recordingTempPath))
-                {
-                    var rawPath = _recordingTempPath;
-                    _recordingTempPath = null;
-                    var finalPath = rawPath.Replace(".wav", "_final.wav");
-
-                    try
-                    {
-                        ConvertToHighQualityWav(rawPath, finalPath);
-                        File.Delete(rawPath);
-                        rawPath = finalPath;
-                    }
-                    catch
-                    {
-                        try { File.Delete(finalPath); } catch { }
-                    }
-
-                    var savedPath = rawPath;
-                    Application.Current?.Dispatcher.BeginInvoke(() =>
-                    {
-                        CustomStartupSoundPath = savedPath;
-                        RecordingStatus = $"Saved: {Path.GetFileName(savedPath)}";
-                        IsRecording = false;
-                    });
-                }
-                else
-                {
-                    _recordingTempPath = null;
-                    Application.Current?.Dispatcher.BeginInvoke(() =>
-                    {
-                        RecordingStatus = "Recording saved.";
-                        IsRecording = false;
-                    });
-                }
-            };
-
-            _loopbackCapture.StartRecording();
-            IsRecording = true;
-            RecordingStatus = $"Recording from: {device.FriendlyName} — play audio now!";
+                ms.WriteByte((byte)(s & 0xFF));
+                ms.WriteByte((byte)((s >> 8) & 0xFF));
+            }
+            ms.Position = 0;
+            using var player = new SoundPlayer(ms);
+            player.Play();
         }
-        catch (Exception ex)
-        {
-            RecordingStatus = $"Error: {ex.Message}";
-            CleanupRecording();
-        }
+        catch { }
     }
 
-    [RelayCommand]
-#pragma warning disable CS1998
-    private async Task StopRecording()
-#pragma warning restore CS1998
+    private static void WriteWavHeader(Stream stream, int sampleRate, int dataSampleCount)
     {
-        try
-        {
-            _loopbackCapture?.StopRecording();
-        }
-        catch (Exception ex)
-        {
-            RecordingStatus = $"Error stopping: {ex.Message}";
-            IsRecording = false;
-        }
+        int byteRate = sampleRate * 2;
+        int dataSize = dataSampleCount * 2;
+        int fileSize = 36 + dataSize;
+
+        WriteLE32(stream, 0x46464952); // "RIFF"
+        WriteLE32(stream, fileSize);
+        WriteLE32(stream, 0x45564157); // "WAVE"
+
+        WriteLE32(stream, 0x20746D66); // "fmt "
+        WriteLE32(stream, 16);         // chunk size
+        WriteLE16(stream, 1);          // PCM
+        WriteLE16(stream, 1);          // mono
+        WriteLE32(stream, sampleRate);
+        WriteLE32(stream, byteRate);
+        WriteLE16(stream, 2);          // block align
+        WriteLE16(stream, 16);         // bits per sample
+
+        WriteLE32(stream, 0x61746164); // "data"
+        WriteLE32(stream, dataSize);
     }
 
-    [RelayCommand]
-    private void PreviewStartupSound()
+    private static void WriteLE16(Stream stream, ushort value)
     {
-        if (string.IsNullOrEmpty(CustomStartupSoundPath) || !File.Exists(CustomStartupSoundPath))
-        {
-            RecordingStatus = "No sound file to preview.";
-            return;
-        }
-
-        try
-        {
-            var player = new System.Windows.Media.MediaPlayer();
-            player.Open(new Uri(CustomStartupSoundPath));
-            player.MediaOpened += (s, e) => player.Play();
-            player.MediaFailed += (s, e) => RecordingStatus = "Failed to play sound.";
-            RecordingStatus = "Playing preview...";
-        }
-        catch (Exception ex)
-        {
-            RecordingStatus = $"Preview error: {ex.Message}";
-        }
+        stream.WriteByte((byte)(value & 0xFF));
+        stream.WriteByte((byte)((value >> 8) & 0xFF));
     }
 
-    [RelayCommand]
-    private void ClearStartupSound()
+    private static void WriteLE32(Stream stream, int value)
     {
-        CustomStartupSoundPath = null;
-        RecordingStatus = "Custom sound cleared. Using default.";
+        stream.WriteByte((byte)(value & 0xFF));
+        stream.WriteByte((byte)((value >> 8) & 0xFF));
+        stream.WriteByte((byte)((value >> 16) & 0xFF));
+        stream.WriteByte((byte)((value >> 24) & 0xFF));
     }
 
-    [RelayCommand]
-    private void BrowseStartupSound()
+    private void CoachStartLiveMonitor()
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
+        if (_isLiveMonitoring) return;
+
+        // Reset profiler buffers so we sample fresh data from this point
+        _profilerMinOut = float.MaxValue;
+        _profilerMaxOut = float.MinValue;
+        _profilerSumOut = 0f;
+        _profilerFrames = 0;
+        _profilerClips = 0;
+        _profilerPeakMz = 0f;
+        _profilerPeakFx = 0f;
+        _profilerPeakFy = 0f;
+
+        _isLiveMonitoring = true;
+        _profilerSamples.Clear();
+        CoachMessages.Clear();
+        CoachSessionState = CoachSessionState.Analyzing;
+        CoachMessages.Add(new CoachMessage
         {
-            Filter = "Audio Files|*.mp3;*.wav;*.wma;*.ogg|All Files|*.*",
-            Title = "Select Startup Sound"
+            Text = "🎯 Live Monitor active — drive normally for about 20 seconds while I collect data across 4 sampling windows. I'll analyze the trends and give you targeted recommendations.",
+            Icon = "🎯"
+        });
+        CoachMessages.Add(new CoachMessage
+        {
+            Text = "No need to stop — just keep driving. I'll alert you when the analysis is ready.",
+            Icon = "⏳"
+        });
+    }
+
+    private async Task ProcessMonitorSamplesAsync()
+    {
+        _isLiveMonitoring = false;
+        var samples = _profilerSamples.ToList();
+        _profilerSamples.Clear();
+
+        if (CoachMessages.Count > 0)
+            CoachMessages.RemoveAt(CoachMessages.Count - 1);
+        CoachMessages.Add(new CoachMessage
+        {
+            Text = $"✅ Collected {samples.Count} samples over ~{samples.Count * ProfilerStatsWindow / 60}s. Analyzing with AI...",
+            Icon = "📊"
+        });
+
+        string statsText = string.Join("\n\n", samples.Select((s, i) =>
+            $"=== Sample {i + 1} ===\n" +
+            $"Window: {s.FrameCount} frames\n" +
+            $"OutputMin: {s.OutputMin:F6}\n" +
+            $"OutputMax: {s.OutputMax:F6}\n" +
+            $"OutputAvg: {s.OutputAvg:F6}\n" +
+            $"ClippingPct: {s.ClippingPercent:F1}%\n" +
+            $"PeakMz: {s.PeakMz:F4}\n" +
+            $"PeakFx: {s.PeakFx:F4}\n" +
+            $"PeakFy: {s.PeakFy:F4}"));
+
+        var csvData = new SnapshotCsvData
+        {
+            ProfileName = SelectedProfile?.Name ?? "Live",
+            TorqueNm = 5.5f,
+            StatsText = statsText
         };
 
-        if (dialog.ShowDialog() == true)
-        {
-            var soundsDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "AcEvoFfbTuner", "Sounds");
-            Directory.CreateDirectory(soundsDir);
-            var destPath = Path.Combine(soundsDir, Path.GetFileName(dialog.FileName));
-            File.Copy(dialog.FileName, destPath, true);
-            CustomStartupSoundPath = destPath;
-            RecordingStatus = $"Sound set: {Path.GetFileName(destPath)}";
-        }
+        CoachSessionState = CoachSessionState.Analyzing;
+        var result = await _coachService.AnalyzeSnapshotAsync(csvData);
+        CoachSessionState = result.State;
+        CoachDataSourceLabel = "Live Monitor — Temporal";
+
+        foreach (var msg in result.Messages)
+            CoachMessages.Add(msg);
+        foreach (var rec in result.Recommendations ?? [])
+            AddPendingRec(rec);
+        if (_coachService.IsAiEnabled)
+            PlayCoachAlert();
     }
 
-    private static void ConvertToHighQualityWav(string sourcePath, string destPath)
+    private async Task CoachLoadSnapshotFile(string filePath)
     {
-        using var reader = new NAudio.Wave.WaveFileReader(sourcePath);
-        var targetFormat = new NAudio.Wave.WaveFormat(48000, 24, reader.WaveFormat.Channels);
-
-        using var writer = new NAudio.Wave.WaveFileWriter(destPath, targetFormat);
-        using var resampler = new NAudio.Wave.MediaFoundationResampler(reader, targetFormat);
-        resampler.ResamplerQuality = 60;
-
-        var buffer = new byte[resampler.WaveFormat.AverageBytesPerSecond];
-        int bytesRead;
-        while ((bytesRead = resampler.Read(buffer, 0, buffer.Length)) > 0)
-        {
-            writer.Write(buffer, 0, bytesRead);
-        }
-        writer.Flush();
-    }
-
-    private void CleanupRecording()
-    {
-        _loopbackCapture?.Dispose();
-        _loopbackCapture = null;
-        _waveWriter?.Dispose();
-        _waveWriter = null;
-        IsRecording = false;
-        _selectedOutputDeviceId = null;
-        if (_recordingTempPath != null)
-        {
-            try { if (File.Exists(_recordingTempPath)) File.Delete(_recordingTempPath); } catch { }
-            _recordingTempPath = null;
-        }
-    }
-
-    [RelayCommand]
-    private async Task SendDiagnosticPack()
-    {
-        var mainWin = Application.Current?.MainWindow;
-        WriteDiagLog("START", $"MainWindow={mainWin?.GetType().Name ?? "null"}");
-        if (mainWin == null) return;
-
-        var dialog = new Views.FeedbackDialog { Owner = mainWin };
-        if (dialog.ShowDialog() != true)
-        {
-            WriteDiagLog("CANCELLED", "User cancelled feedback dialog");
-            return;
-        }
-
-        IsSendingDiagnosticPack = true;
-        DiagnosticPackStatus = "Auto-saving...";
-        StatusText = "Auto-saving profile and snapshot...";
-
-        try
-        {
-            WriteDiagLog("STEP", "Auto-saving profile...");
-            AutoSaveDiagnosticProfile();
-            WriteDiagLog("STEP", "Auto-saving snapshot...");
-            (mainWin as Views.MainWindow)?.AutoSaveSnapshot();
-
-            StatusText = "Sending diagnostic pack...";
-            DiagnosticPackStatus = "Sending...";
-            var progress = new Progress<string>(msg =>
-            {
-                StatusText = msg;
-                DiagnosticPackStatus = msg;
-                WriteDiagLog("PROGRESS", msg);
-            });
-            WriteDiagLog("STEP", "Calling DiagnosticPackService.SendAsync...");
-            var (success, message) = await DiagnosticPackService.SendAsync(dialog.Feedback, progress);
-            StatusText = message;
-            WriteDiagLog("RESULT", $"Success={success}, Message={message}");
-
-            if (!success)
-            {
-                DiagnosticPackStatus = "Failed";
-                MessageBox.Show(mainWin, $"{message}\n\nLog: {DiagLogDir()}", "Send Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            else
-            {
-                DiagnosticPackStatus = message;
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Error: {ex.Message}";
-            DiagnosticPackStatus = "Error";
-            WriteDiagLog("ERROR", $"{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
-            MessageBox.Show(mainWin, $"Failed to send diagnostics:\n\n{ex.Message}\n\nLog: {DiagLogDir()}", "Send Failed", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            IsSendingDiagnosticPack = false;
-        }
-    }
-
-    private static string DiagLogDir()
-    {
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "AcEvoFfbTuner", "diag_send.log");
-    }
-
-    private static void WriteDiagLog(string category, string detail)
-    {
-        try
-        {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "AcEvoFfbTuner");
-            Directory.CreateDirectory(dir);
-            File.AppendAllText(Path.Combine(dir, "diag_send.log"),
-                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{category}] {detail}\n");
-        }
-        catch { }
-    }
-
-    private static void LogUpdate(string message)
-    {
-        try
-        {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "AcEvoFfbTuner");
-            Directory.CreateDirectory(dir);
-            File.AppendAllText(Path.Combine(dir, "update.log"),
-                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}\n");
-        }
-        catch { }
-    }
-
-    [RelayCommand]
-    private async Task CheckForUpdatesAsync()
-    {
-        UpdateStatusText = "Checking for updates...";
-        IsUpdateAvailable = false;
-
-        try
-        {
-            var service = new GitHubUpdateService();
-            LogUpdate($"CheckForUpdates: current version={service.CurrentVersion}, checking...");
-            var update = await service.CheckForUpdateAsync();
-
-            if (update != null)
-            {
-                _pendingUpdate = update;
-                LatestVersionText = $"v{update.Version}";
-                IsUpdateAvailable = true;
-                UpdateStatusText = $"Update available: v{update.Version}";
-                LogUpdate($"CheckForUpdates: update available v{update.Version}, url={update.DownloadUrl}");
-            }
-            else
-            {
-                UpdateStatusText = $"You're up to date (v{service.CurrentVersion.ToString(3)})";
-                _pendingUpdate = null;
-                LogUpdate("CheckForUpdates: up to date");
-            }
-        }
-        catch (Exception ex)
-        {
-            UpdateStatusText = "Update check failed";
-            LogUpdate($"CheckForUpdates FAILED: {ex.GetType().Name}: {ex.Message}");
-        }
-    }
-
-    [RelayCommand]
-    private async Task DownloadAndInstallUpdateAsync()
-    {
-        if (_pendingUpdate == null || IsDownloadingUpdate) return;
-
-        IsDownloadingUpdate = true;
-        DownloadProgressPercent = 0;
-        UpdateStatusText = "Downloading update...";
-        LogUpdate($"DownloadAndInstall: starting for v{_pendingUpdate.Version}");
-
-        try
-        {
-            var progress = new Progress<DownloadProgress>(p =>
-            {
-                if (p.State == DownloadState.Downloading)
-                {
-                    DownloadProgressPercent = p.Percent;
-                    UpdateStatusText = $"Downloading update... {p.Percent}%";
-                }
-                else
-                {
-                    UpdateStatusText = "Launching installer...";
-                }
-            });
-
-            await GitHubUpdateService.DownloadAndInstallAsync(_pendingUpdate, progress);
-
-            LogUpdate("DownloadAndInstall: installer launched successfully, shutting down app");
-            UpdateStatusText = "Installer launched — closing app...";
-            Dispose();
-            Application.Current.Shutdown();
-        }
-        catch (Exception ex)
-        {
-            UpdateStatusText = $"Download failed: {ex.Message}";
-            LogUpdate($"DownloadAndInstall FAILED: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
-        }
-        finally
-        {
-            IsDownloadingUpdate = false;
-            DownloadProgressPercent = 0;
-        }
-    }
-
-    [RelayCommand]
-    private void ToggleRaceInfoOverlay()
-    {
-        if (_raceInfoOverlay != null)
-        {
-            _raceInfoOverlay.Close();
-            _raceInfoOverlay = null;
-        }
-        else
-        {
-            if (!_uiUpdateTimer.IsEnabled) _uiUpdateTimer.Start();
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
-            {
-                _raceInfoOverlay = new RaceInfoOverlay();
-                _raceInfoOverlay.Closed += (_, _) => _raceInfoOverlay = null;
-                _raceInfoOverlay.Show();
-            });
-        }
-    }
-
-    private void CoachLoadSnapshotFile(string filePath)
-    {
+        CoachLoadingText = "Analyzing snapshot...";
         CoachIsBusy = true;
         try
         {
@@ -4597,13 +2354,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             }
 
             CoachSessionState = CoachSessionState.Analyzing;
-            var result = _coachService.AnalyzeSnapshot(csvData);
+            var result = await _coachService.AnalyzeSnapshotAsync(csvData);
             CoachSessionState = result.State;
             CoachDataSourceLabel = _coachService.DataSourceLabel;
             CoachCurrentProfileName = _coachService.CurrentProfileName;
 
             foreach (var msg in result.Messages)
                 CoachMessages.Add(msg);
+            foreach (var rec in result.Recommendations ?? [])
+                AddPendingRec(rec);
+            if (_coachService.IsAiEnabled)
+                PlayCoachAlert();
         }
         finally
         {
@@ -4612,8 +2373,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void CoachUseLatestSnapshot()
+    private async Task CoachUseLatestSnapshot()
     {
+        CoachLoadingText = "Analyzing snapshot...";
         CoachIsBusy = true;
         try
         {
@@ -4633,13 +2395,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             }
 
             CoachSessionState = CoachSessionState.Analyzing;
-            var result = _coachService.AnalyzeSnapshot(csvData);
+            var result = await _coachService.AnalyzeSnapshotAsync(csvData);
             CoachSessionState = result.State;
             CoachDataSourceLabel = _coachService.DataSourceLabel;
             CoachCurrentProfileName = _coachService.CurrentProfileName;
 
             foreach (var msg in result.Messages)
                 CoachMessages.Add(msg);
+            foreach (var rec in result.Recommendations ?? [])
+                AddPendingRec(rec);
+            if (_coachService.IsAiEnabled)
+                PlayCoachAlert();
         }
         finally
         {
@@ -4648,8 +2414,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void CoachUseLiveData()
+    private async Task CoachUseLiveData()
     {
+        CoachLoadingText = "Analyzing live data...";
         CoachIsBusy = true;
         try
         {
@@ -4676,13 +2443,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             };
 
             CoachSessionState = CoachSessionState.Analyzing;
-            var result = _coachService.AnalyzeLiveData(stats, SelectedProfile?.Name ?? "Live");
+            var result = await _coachService.AnalyzeLiveDataAsync(stats, SelectedProfile?.Name ?? "Live");
             CoachSessionState = result.State;
             CoachDataSourceLabel = _coachService.DataSourceLabel;
             CoachCurrentProfileName = _coachService.CurrentProfileName;
 
             foreach (var msg in result.Messages)
                 CoachMessages.Add(msg);
+            foreach (var rec in result.Recommendations ?? [])
+                AddPendingRec(rec);
+            if (_coachService.IsAiEnabled)
+                PlayCoachAlert();
         }
         finally
         {
@@ -4690,17 +2461,125 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+
     [RelayCommand]
-    private void CoachAnswer(string answerId)
+    private void CoachRestart()
+    {
+        _coachService.Reset();
+        CoachMessages.Clear();
+        CoachPendingRecs.Clear();
+        CoachHasPendingRecs = false;
+        CoachSessionState = CoachSessionState.Idle;
+        CoachDataSourceLabel = "";
+        CoachCurrentProfileName = "";
+
+        foreach (var msg in _coachService.BuildWelcomeMessages())
+            CoachMessages.Add(msg);
+        CoachSessionState = CoachSessionState.SelectingSource;
+    }
+
+    [ObservableProperty]
+    private string _coachInput = "";
+
+    [RelayCommand]
+    private async Task CoachSendText()
+    {
+        var text = CoachInput?.Trim();
+        if (string.IsNullOrWhiteSpace(text)) return;
+        CoachInput = "";
+
+        CoachMessages.Add(new CoachMessage
+        {
+            Text = text,
+            IsUser = true,
+            Icon = "👤"
+        });
+
+        if (_coachService.IsAiEnabled && _coachService.HasActiveConversation)
+        {
+            await ProcessAiCustomText(text);
+        }
+        else
+        {
+            var history = CoachMessages.ToList();
+            var result = await _coachService.ProcessAnswerAsync(text, history);
+            CoachSessionState = result.State;
+            foreach (var msg in result.Messages)
+                CoachMessages.Add(msg);
+        }
+    }
+
+    private async Task ProcessAiCustomText(string text)
+    {
+        CoachLoadingText = "Thinking...";
+        CoachIsBusy = true;
+        try
+        {
+            var history = CoachMessages.Take(CoachMessages.Count - 1).ToList();
+            _coachService.SetCustomInput(text);
+            var result = await _coachService.ProcessAnswerAsync("__custom__", history);
+            CoachSessionState = result.State;
+            foreach (var msg in result.Messages)
+                CoachMessages.Add(msg);
+            foreach (var rec in result.Recommendations ?? [])
+                AddPendingRec(rec);
+            if (_coachService.IsAiEnabled)
+                PlayCoachAlert();
+        }
+        finally
+        {
+            CoachIsBusy = false;
+        }
+    }
+
+    [ObservableProperty]
+    private string _openAiApiKey = "";
+
+    partial void OnOpenAiApiKeyChanged(string value)
+    {
+        _appSettings.OpenAiApiKey = string.IsNullOrWhiteSpace(value) ? null : value;
+        _appSettings.Save();
+        RebuildAiCoach();
+    }
+
+    [ObservableProperty]
+    private string _openAiModel = "deepseek-v4-flash";
+
+    partial void OnOpenAiModelChanged(string value)
+    {
+        _appSettings.OpenAiModel = value;
+        _appSettings.Save();
+        if (_aiAnalyzer != null)
+            _aiAnalyzer.Model = value;
+    }
+
+    [ObservableProperty]
+    private string _aiBaseUrl = "https://opencode.ai/zen/go/v1";
+
+    partial void OnAiBaseUrlChanged(string value)
+    {
+        _appSettings.AiBaseUrl = value;
+        _appSettings.Save();
+        if (_aiAnalyzer != null)
+            _aiAnalyzer.BaseUrl = value;
+    }
+
+    [RelayCommand]
+    private async Task CoachAnswer(string answerId)
     {
         if (answerId == "source_latest")
         {
-            CoachUseLatestSnapshot();
+            await CoachUseLatestSnapshot();
             return;
         }
         if (answerId == "source_live")
         {
-            CoachUseLiveData();
+            await CoachUseLiveData();
+            return;
+        }
+        if (answerId == "source_monitor")
+        {
+            CoachStartLiveMonitor();
             return;
         }
         if (answerId == "source_pick")
@@ -4715,17 +2594,23 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         if (answerId.StartsWith("snap_"))
         {
-            CoachLoadSnapshotFile(answerId["snap_".Length..]);
+            await CoachLoadSnapshotFile(answerId["snap_".Length..]);
             return;
         }
 
+        CoachLoadingText = "Thinking...";
         CoachIsBusy = true;
         try
         {
-            var result = _coachService.ProcessAnswer(answerId);
+            var history = CoachMessages.ToList();
+            var result = await _coachService.ProcessAnswerAsync(answerId, history);
             CoachSessionState = result.State;
             foreach (var msg in result.Messages)
                 CoachMessages.Add(msg);
+            foreach (var rec in result.Recommendations ?? [])
+                AddPendingRec(rec);
+            if (_coachService.IsAiEnabled)
+                PlayCoachAlert();
         }
         finally
         {
@@ -4733,47 +2618,53 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void ShowSnapshotPicker()
+    public bool HasOpenAiKey => !string.IsNullOrWhiteSpace(OpenAiApiKey);
+
+    private FfbAIAnalyzer? _aiAnalyzer;
+
+    private void RebuildAiCoach()
     {
-        var files = SnapshotFileLoader.LoadSnapshotFiles();
-        if (files.Count == 0)
+        _aiAnalyzer?.Dispose();
+        _aiAnalyzer = null;
+
+        var apiKey = _appSettings.OpenAiApiKey ?? "";
+        var baseUrl = !string.IsNullOrWhiteSpace(_appSettings.AiBaseUrl)
+            ? _appSettings.AiBaseUrl
+            : "https://opencode.ai/zen/go/v1";
+        if (!string.IsNullOrWhiteSpace(apiKey))
         {
-            CoachMessages.Add(new CoachMessage { Text = "No saved snapshots found. Take a snapshot first (wheel button or Telemetry page), or use live data.", Icon = "📭" });
-            return;
+            _aiAnalyzer = new FfbAIAnalyzer(apiKey, _appSettings.OpenAiModel, baseUrl);
+            _coachService.SetAiAnalyzer(_aiAnalyzer);
+        }
+        else
+        {
+            _coachService.SetAiAnalyzer(null);
         }
 
-        CoachSessionState = CoachSessionState.SelectingSource;
-        List<CoachAnswer> answers = [];
-        foreach (var f in files.Take(20))
-        {
-            answers.Add(new CoachAnswer
-            {
-                Id = "snap_" + f.FilePath,
-                Label = f.Timestamp.ToString("MMM dd, HH:mm:ss"),
-                Description = f.ProfileName
-            });
-        }
-        answers.Add(new CoachAnswer { Id = "go_back", Label = "← Back to options" });
-
-        CoachMessages.Add(new CoachMessage
-        {
-            Text = $"Found {files.Count} snapshot{(files.Count > 1 ? "s" : "")}. Select one to analyze:",
-            Answers = answers
-        });
+        OnPropertyChanged(nameof(HasOpenAiKey));
     }
 
-    [RelayCommand]
-    private void CoachRestart()
+    private void InitializeAiCoach()
     {
-        CoachMessages.Clear();
-        _coachService.Reset();
-        CoachSessionState = CoachSessionState.Idle;
-        CoachDataSourceLabel = "";
-        CoachCurrentProfileName = "";
+        var apiKey = _appSettings.OpenAiApiKey ?? "";
+        var baseUrl = !string.IsNullOrWhiteSpace(_appSettings.AiBaseUrl)
+            ? _appSettings.AiBaseUrl
+            : "https://opencode.ai/zen/go/v1";
+        OpenAiApiKey = apiKey;
+        OpenAiModel = _appSettings.OpenAiModel;
+        AiBaseUrl = baseUrl;
+        RebuildAiCoach();
 
-        foreach (var msg in _coachService.BuildWelcomeMessages())
-            CoachMessages.Add(msg);
-        CoachSessionState = CoachSessionState.SelectingSource;
+        FfbAIAnalyzer.OnLog += msg =>
+        {
+            App.Current?.Dispatcher?.BeginInvoke(() =>
+            {
+                SystemLogEntries.Add(msg);
+                RecentSystemLogEntries.Add(msg);
+                if (RecentSystemLogEntries.Count > 50)
+                    RecentSystemLogEntries.RemoveAt(0);
+            });
+        };
     }
 
     public void Dispose()
@@ -4785,5 +2676,33 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _telemetryLoop.Dispose();
         _deviceManager.Dispose();
         _reader.Dispose();
+        _aiAnalyzer?.Dispose();
     }
+
+public sealed class CoachPendingRec : System.ComponentModel.INotifyPropertyChanged
+{
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+    private void Notify(string prop) => PropertyChanged?.Invoke(this, new(prop));
+
+    string _label = "";
+    public string Label { get => _label; set { _label = value; Notify(nameof(Label)); } }
+
+    string _description = "";
+    public string Description { get => _description; set { _description = value; Notify(nameof(Description)); } }
+
+    public string Parameter { get; set; } = "";
+    public float CurrentValue { get; set; }
+    public float SuggestedValue { get; set; }
+    public string Reason { get; set; } = "";
+
+    public FfbRecommendation ToFfbRecommendation() => new()
+    {
+        Type = RecommendationType.ProfileChange,
+        Parameter = Parameter,
+        CurrentValue = CurrentValue,
+        SuggestedValue = SuggestedValue,
+        Reason = Reason,
+        Impact = Description
+    };
+}
 }
