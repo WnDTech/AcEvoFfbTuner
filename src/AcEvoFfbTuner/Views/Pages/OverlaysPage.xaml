@@ -1,0 +1,132 @@
+<UserControl x:Class="AcEvoFfbTuner.Views.Pages.OverlaysPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24">
+        <StackPanel MaxWidth="800">
+
+            <TextBlock Text="Overlays" FontSize="32" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
+            <TextBlock TextWrapping="Wrap" FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,24">
+                OBS browser source overlays for live telemetry. Add a Browser Source in OBS and point it to one of the URLs below.
+            </TextBlock>
+
+            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="FFB Telemetry Dashboard" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                        Full telemetry dashboard with live charts: force output, Mz/Fx/Fy channels, raw tire data, LUT curve, damping, and pipeline stages. Includes speed, steer angle, clipping indicator, and frozen frame analysis.
+                    </TextBlock>
+                    <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" x:Name="UrlDashboard" Text="http://localhost:8321/?theme=dark"
+                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                     VerticalAlignment="Center" Padding="8,4"
+                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                            <Button Grid.Column="1" Content="Copy" Tag="UrlDashboard"
+                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                        </Grid>
+                    </Border>
+                    <TextBlock FontSize="12" Foreground="#FF607D8B" Margin="0,0,0,4">
+                        <Run FontWeight="Bold" Text="Themes:" /> dark, transparent, compact, clipping
+                    </TextBlock>
+                    <TextBlock FontSize="12" Foreground="#FF607D8B">
+                        <Run FontWeight="Bold" Text="Options:" /> ?theme=dark&amp;charts=all&amp;stats=all
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="OBS Streamer Overlay" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                        Clean streamer-friendly overlay showing speed, gear, RPM bar, force (Nm), clipping indicator, Mz/Fx/Fy channel values, lap counter, track position map, and scrolling force waveform. Optimized for OBS browser source with transparent background support.
+                    </TextBlock>
+                    <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" x:Name="UrlOverlay" Text="http://localhost:8321/overlay"
+                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                     VerticalAlignment="Center" Padding="8,4"
+                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                            <Button Grid.Column="1" Content="Copy" Tag="UrlOverlay"
+                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                        </Grid>
+                    </Border>
+                    <TextBlock FontSize="12" Foreground="#FF607D8B" Margin="0,0,0,4">
+                        <Run FontWeight="Bold" Text="Options:" /> ?opacity=0.7&amp;showTrack=true&amp;showWaveform=true
+                    </TextBlock>
+                    <TextBlock FontSize="12" Foreground="#FF607D8B">
+                        <Run FontWeight="Bold" Text="Tip:" /> Use "?opacity=0.8" to reduce transparency.
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Clipping Indicator" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                        Minimal overlay that only shows a large CLIPPING/OK indicator. Ideal as a thin OBS browser source overlay on your stream to warn viewers when FFB is clipping.
+                    </TextBlock>
+                    <Border Background="#FF0D1117" CornerRadius="6" Padding="4">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" x:Name="UrlClipping" Text="http://localhost:8321/?theme=clipping"
+                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                     VerticalAlignment="Center" Padding="8,4"
+                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                            <Button Grid.Column="1" Content="Copy" Tag="UrlClipping"
+                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="OBS Setup Guide" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                        1. Open OBS Studio and add a new Browser Source to your scene.<LineBreak />
+                        2. Set the URL to one of the overlay URLs above.<LineBreak />
+                        3. Set width to 1920 and height to 1080 (or match your canvas).<LineBreak />
+                        4. Enable "Refresh browser when scene becomes active" for auto-connect.<LineBreak />
+                        5. For transparent overlays, add "?theme=transparent" to the URL.
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Status" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                    <TextBlock FontSize="13" Foreground="#8B949E" Margin="0,0,0,4">
+                        <Run Text="Server:" /><Run Text=" http://localhost:8321" FontFamily="Consolas" Foreground="#4FC3F7" />
+                    </TextBlock>
+                    <TextBlock FontSize="13" Foreground="#8B949E">
+                        <Run Text="Status:" /><Run Text=" Running" Foreground="#4CAF50" />
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
