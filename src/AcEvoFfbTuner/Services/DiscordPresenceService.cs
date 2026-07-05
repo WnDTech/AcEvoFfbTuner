@@ -25,7 +25,6 @@ public sealed class DiscordPresenceService : IDisposable
     private string _lastTrack = "";
     private bool _wasConnected;
     private DateTime _sessionStart = DateTime.UtcNow;
-    private string _lastLaptimeString = "";
     private int _prevTotalLapCount;
     private int _maxCurrentLapTimeMs;
     private int _storedLapTimeMs;
@@ -42,7 +41,6 @@ public sealed class DiscordPresenceService : IDisposable
         _lastSpeed = 0;
         _lastForce = 0;
         _lastGear = 0;
-        _lastLaptimeString = "";
         _prevTotalLapCount = 0;
         _maxCurrentLapTimeMs = 0;
         _storedLapTimeMs = 0;

@@ -7,7 +7,7 @@ namespace TelemetryBrowser.Services;
 // Based on ksBroadcastingNetwork from Dedicated Server SDK
 public sealed class AccBroadcastService : IDisposable
 {
-    private readonly UdpClient _udp;
+    private readonly UdpClient? _udp;
     private readonly CancellationTokenSource _cts = new();
     private readonly Dictionary<int, CarEntry> _cars = new();
     private readonly object _lock = new();
@@ -45,7 +45,7 @@ public sealed class AccBroadcastService : IDisposable
         WriteStr(w, "asd");                   // connection password
         w.Write(250);                         // update interval (int32)
         WriteStr(w, "");                      // command password
-        _udp.Send(ms.ToArray(), (int)ms.Length, "127.0.0.1", AccPort);
+        _udp!.Send(ms.ToArray(), (int)ms.Length, "127.0.0.1", AccPort);
         _registerResult = "Sent";
     }
 
@@ -63,7 +63,7 @@ public sealed class AccBroadcastService : IDisposable
         using var w = new BinaryWriter(ms);
         w.Write((byte)10);        // REQUEST_ENTRY_LIST
         w.Write(_connectionId);   // int32
-        _udp.Send(ms.ToArray(), (int)ms.Length, "127.0.0.1", AccPort);
+        _udp!.Send(ms.ToArray(), (int)ms.Length, "127.0.0.1", AccPort);
     }
 
     private void RequestTrackData()
@@ -72,7 +72,7 @@ public sealed class AccBroadcastService : IDisposable
         using var w = new BinaryWriter(ms);
         w.Write((byte)11);        // REQUEST_TRACK_DATA
         w.Write(_connectionId);   // int32
-        _udp.Send(ms.ToArray(), (int)ms.Length, "127.0.0.1", AccPort);
+        _udp!.Send(ms.ToArray(), (int)ms.Length, "127.0.0.1", AccPort);
     }
 
     // === Properties ===
@@ -134,7 +134,7 @@ public sealed class AccBroadcastService : IDisposable
         {
             try
             {
-                var result = await _udp.ReceiveAsync(ct);
+                var result = await _udp!.ReceiveAsync(ct);
                 _msgCount++;
                 using var br = new BinaryReader(new MemoryStream(result.Buffer));
                 byte type = br.ReadByte(); // read type, advancing stream to offset 1

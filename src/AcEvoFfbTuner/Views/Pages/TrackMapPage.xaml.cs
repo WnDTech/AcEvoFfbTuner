@@ -889,7 +889,7 @@ public partial class TrackMapPage : UserControl
                 };
                 foreach (var cp in _displayedMap.GetAlignedPoints())
                 {
-                    var (lat, lon) = _satelliteService.GameToGps(cp.X, cp.Z);
+                    var (lat, lon) = _satelliteService!.GameToGps(cp.X, cp.Z);
                     alignment.Points.Add(new GroundControlPoint
                     {
                         GameX = cp.X,

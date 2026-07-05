@@ -22,7 +22,7 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
     private int _lastGraphicsPacketId = -1;
     private byte[] _rawBuffer = new byte[65536];
     private bool _gameConnectedFired;
-    private bool _didLogZeroPkt;
+    
 
     private SPageFilePhysicsEvo _lastPhysics;
 
@@ -565,9 +565,7 @@ public sealed class AssettoCorsaSharedMemoryReader : ISharedMemoryReader
     private float _smLatG;
     private float _smFrontSlip;
     private float _smRearSlip;
-    private float _smCenteringMz;
     private float _smLoadFL, _smLoadFR, _smLoadRL, _smLoadRR;
-    private float _lastOutputMz;
     private int _lastGear;
     private int _gearChangeFramesRemaining;
 

@@ -915,7 +915,7 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
     }
 
     private static bool IsFinite(double d) => !double.IsNaN(d) && !double.IsInfinity(d);
-    private static string Trunc(string s, int n) => s == null || s.Length <= n ? s : s[..n] + "…";
+    private static string Trunc(string? s, int n) => s == null || s.Length <= n ? s ?? "" : s[..n] + "…";
     private static byte[] CopyStr(string src, int d)
     {
         var dst = new byte[d];

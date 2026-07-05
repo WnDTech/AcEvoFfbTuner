@@ -167,20 +167,14 @@ public sealed class RawDataService
             const int OFF_FinishStatus = HEADER + 128;          // 132
             const int OFF_Place = HEADER + 132;                 // 136
             const int OFF_PlaceClass = HEADER + 136;            // 140
-            const int OFF_LapDistance = HEADER + 140;           // 144
-            const int OFF_LapDistanceFraction = HEADER + 144;   // 148
             const int OFF_TrackSector = HEADER + 160;           // 164
             const int OFF_CompletedLaps = HEADER + 164;         // 168
             const int OFF_LapTimeCurrentSelf = HEADER + 172;    // 176
-            const int OFF_SectorCurrent = HEADER + 176;         // 180
-            const int OFF_SectorPrevious = HEADER + 188;        // 192
-            const int OFF_SectorBest = HEADER + 200;            // 204
             const int OFF_TimeDeltaFront = HEADER + 212;        // 216
             const int OFF_TimeDeltaBehind = HEADER + 216;       // 220
             const int OFF_PitStopStatus = HEADER + 220;         // 224
             const int OFF_InPitlane = HEADER + 224;             // 228
             const int OFF_NumPitstops = HEADER + 228;           // 232
-            const int OFF_Penalties = HEADER + 232;             // 236
             const int OFF_CarSpeed = HEADER + 252;              // 256
             const int OFF_TireTypeFront = HEADER + 256;         // 260
             const int OFF_TireTypeRear = HEADER + 260;          // 264
@@ -269,9 +263,6 @@ public sealed class RawDataService
 
     private static void ExploreLmuFields(List<RawFieldInfo> fields)
     {
-        const int telemHeaderOff = 128464;
-        const int telemInfoBase = telemHeaderOff + 4;
-        const int stride = 1888;
         const int wheelBaseOff = 848;
         const int wheelStride = 260;
 
@@ -1702,7 +1693,7 @@ public sealed class RawDataService
         return val;
     }
 
-    protected static void SanitizeFloats(Dictionary<string, object?> d)
+    private static void SanitizeFloats(Dictionary<string, object?> d)
     {
         foreach (var k in d.Keys.ToList())
         {

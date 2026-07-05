@@ -202,7 +202,7 @@ Dictionary<string, object?> HandleOpponents(string game, RawDataService raw, Acc
         if (oppData != null)
         {
             var positions = oppData.TryGetValue("entries", out var e)
-                ? (List<Dictionary<string, object?>>)e : new();
+                ? (List<Dictionary<string, object?>>?)e ?? [] : [];
 
             // Get broadcasting data (gear, RPM, names, lap times) if available
             var broadcast = broadcastSvc?.GetOpponentsData();
@@ -255,7 +255,7 @@ Dictionary<string, object?> HandleOpponents(string game, RawDataService raw, Acc
     else if (game == "rfactor2")
     {
         var opp = raw.ReadRf2Opponents();
-        var entries = opp.TryGetValue("entries", out var e) ? (List<Dictionary<string, object?>>)e : new();
+        var entries = opp.TryGetValue("entries", out var e) ? (List<Dictionary<string, object?>>?)e ?? [] : [];
         result["game"] = "rFactor 2";
         result["totalOpponents"] = opp.TryGetValue("_count", out var c) ? Convert.ToInt32(c) : 0;
         result["entries"] = entries;

@@ -13,8 +13,6 @@ namespace AcEvoFfbTuner.Views;
 
 public partial class SetupWizardOverlay : Window
 {
-    private bool _isTransparent;
-    private bool _isCompact;
     private bool _suppressSliderEvents;
     private int _currentStep;
     private const int MaxSteps = 4;
@@ -39,7 +37,6 @@ public partial class SetupWizardOverlay : Window
     private CenterPhase _centerPhase = CenterPhase.Warmup;
     private bool _calibrationComplete; // true when strength calibration data collection is done
     private bool _polarityDetermined; // true after user answers the polarity question
-    private int _polarityResultCooldown;
     private float _calibratedMasterGain = 1.0f; // Stores the pure 92% peak target from Step 2
     private float _intensityMultiplier = 1.0f; // Slider/Preset modifier (0.5 to 1.2)
     private float _polarityFlipTarget; // target MzFrontGain for gradual flip
@@ -50,7 +47,6 @@ public partial class SetupWizardOverlay : Window
     private float[] _centerForceSamples = new float[CenterSampleCount];
     private float _straightDetectResult;
     private float _straightBiasSum; // signed sum to detect DC offset direction
-    private float _totalCenterSuppressAdjust; // cumulative cap
 
     // Corner detection uses ratio of |force| / |steer| across all turns
     private const int CornerSampleCount = 600;
@@ -81,9 +77,7 @@ public partial class SetupWizardOverlay : Window
     // Auto-detect state for steps 2-5
     private enum AutoPhase { Warmup, Sampling, Applied, Manual }
     private AutoPhase _step2Phase = AutoPhase.Warmup;
-    private float _step2RunningSum;
     private float _step2PeakForce; // R3E: peak |mainForce| for anti-clipping routine
-    private float _step2MzSum; // running sum of |mzFront| for stable averaging
     private const int AutoSampleCount = 1200;
     private float[] _step2Samples = new float[AutoSampleCount];
     private int _step2Idx;
@@ -274,7 +268,7 @@ public partial class SetupWizardOverlay : Window
 
     private void OnDeactivated(object sender, EventArgs e)
     {
-        if (!_isTransparent) Topmost = true; // Pin it
+        Topmost = true; // Pin it
     }
 
     private void Window_MouseDown(object sender, MouseButtonEventArgs e)
@@ -305,7 +299,7 @@ public partial class SetupWizardOverlay : Window
         }
     }
 
-    private void OnNext(object sender, RoutedEventArgs e)
+    private void OnNext(object? sender, RoutedEventArgs? e)
     {
         if (_currentStep == MaxSteps - 1)
         {
@@ -342,7 +336,7 @@ public partial class SetupWizardOverlay : Window
         Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
         Log($"User polarity: Gradual flip from {currentMz:F2} to {_polarityFlipTarget:F2} over {_polarityFlipFrames} frames");
         
-        _polarityResultCooldown = 60;
+        
     }
 
     private void OnPolarityNo(object sender, RoutedEventArgs e)
@@ -353,7 +347,6 @@ public partial class SetupWizardOverlay : Window
         SetPhaseBanner("✓ CENTERING OK", "Centering direction is correct — continuing calibration", "#FF66BB6A");
         Step3Status.Text = "✓ Centering direction is correct — driving to calibrate force strength...";
         Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-        _polarityResultCooldown = 60;
         Log($"User polarity: MzFrontGain confirmed at {_pipeline.ChannelMixer.MzFrontGain:F2}");
         StartBrakingMonitoring();
     }
@@ -805,7 +798,6 @@ public partial class SetupWizardOverlay : Window
         const float steerCornerThreshold = 0.05f;    // gentle turns and sweepers included
         const float pullForceThreshold = 0.003f;
         const float fightThreshold = 0.20f;
-        const float maxCenterSuppressCumulative = 15f; // hard cap: don't add more than this total
 
         // Normalize to physical force direction: positive = push right.
         float runCheck = _viewModel?.ForceInvertEnabled == true ? -mainForce : mainForce;
@@ -928,7 +920,7 @@ public partial class SetupWizardOverlay : Window
                     _cornerFightFrames = 0;
                     _cornerInvertedRunawayFrames = 0;
                     _wasTurning = false;
-                    _totalCenterSuppressAdjust = 0f;
+                    
                     _centerPhase = CenterPhase.CornerDetect;
                 }
                 break;

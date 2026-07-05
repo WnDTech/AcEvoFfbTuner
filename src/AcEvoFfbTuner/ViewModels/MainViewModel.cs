@@ -1078,9 +1078,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _coachHasPendingRecs;
 
     [RelayCommand]
-    private async Task CoachApplyRec(CoachPendingRec rec)
+    private Task CoachApplyRec(CoachPendingRec rec)
     {
-        if (rec == null) return;
+        if (rec == null) return Task.CompletedTask;
         var result = _coachService.ApplyRecommendation(rec.ToFfbRecommendation());
         if (result.State == CoachSessionState.Questioning)
         {
@@ -1091,10 +1091,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (_coachService.IsAiEnabled)
                 PlayCoachAlert();
         }
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
-    private async Task CoachApplyAll()
+    private Task CoachApplyAll()
     {
         var recs = CoachPendingRecs.ToList();
         foreach (var rec in recs)
@@ -1110,6 +1111,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         CoachHasPendingRecs = CoachPendingRecs.Count > 0;
         if (_coachService.IsAiEnabled)
             PlayCoachAlert();
+        return Task.CompletedTask;
     }
 
     [RelayCommand]

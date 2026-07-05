@@ -9,7 +9,6 @@ public sealed class AcFfbPipeline : FfbPipeline
         ChannelMixer.AutoMinPeak = float.MaxValue;
     }
 
-    private float _dcBlockSmooth;
     private int _processCallCount;
     private float _prevCoreOutput;
     private int _startupFadeFrames;

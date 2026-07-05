@@ -84,7 +84,6 @@ public sealed class TelemetryLoop : IDisposable
     private int _lastGfxPacketId = -1;
     private bool _wasAiControlled;
     private long _handoverFadeEndTicks;
-    private int _lastHandoverLap;
     private float _wheelCenterOffset;
     private bool _wheelCalibrated;
     private float _latestPhysicalWheelNorm;
