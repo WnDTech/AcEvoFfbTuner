@@ -13,6 +13,9 @@ public partial class FfbTuningPage : UserControl
 {
     private readonly Dictionary<string, bool> _sectionExpandedState = new();
     private readonly HashSet<SectionCard> _subscribedCards = new();
+    private List<SectionCard> _allCards = new();
+    private List<SectionCard> _visibleCards = new();
+    private string _currentSearch = string.Empty;
 
     private static readonly string AppDataPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
@@ -29,6 +32,13 @@ public partial class FfbTuningPage : UserControl
     {
         LoadExpandedState();
         ApplyExpandedState();
+        CacheCards();
+        ApplySearchFilter();
+    }
+
+    private void CacheCards()
+    {
+        _allCards = FindSectionCards(this).ToList();
     }
 
     private void ApplyExpandedState()
@@ -59,6 +69,55 @@ public partial class FfbTuningPage : UserControl
         var key = $"section::{card.Title}";
         _sectionExpandedState[key] = card.IsExpanded;
         SaveExpandedState();
+    }
+
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _currentSearch = SearchBox?.Text ?? string.Empty;
+        ApplySearchFilter();
+    }
+
+    private void ApplySearchFilter()
+    {
+        if (_allCards == null || _allCards.Count == 0) return;
+
+        var query = _currentSearch?.Trim() ?? string.Empty;
+        _visibleCards = new List<SectionCard>();
+
+        foreach (var card in _allCards)
+        {
+            if (string.IsNullOrEmpty(query))
+            {
+                card.Visibility = Visibility.Visible;
+                _visibleCards.Add(card);
+            }
+            else
+            {
+                var titleMatch = card.Title?.IndexOf(query, System.StringComparison.OrdinalIgnoreCase) >= 0;
+                if (titleMatch)
+                {
+                    card.Visibility = Visibility.Visible;
+                    _visibleCards.Add(card);
+                }
+                else
+                {
+                    card.Visibility = Visibility.Collapsed;
+                }
+            }
+        }
+
+        UpdateFilterCounter();
+    }
+
+    private void UpdateFilterCounter()
+    {
+        if (FilterCounter == null) return;
+        var total = _allCards.Count;
+        var visible = _visibleCards.Count;
+        if (string.IsNullOrEmpty(_currentSearch?.Trim()))
+            FilterCounter.Text = $"{total} sections";
+        else
+            FilterCounter.Text = $"{visible} / {total} sections match";
     }
 
     private static IEnumerable<SectionCard> FindSectionCards(DependencyObject parent)

@@ -403,11 +403,14 @@ public sealed class TelemetryLoop : IDisposable
                     if (_reader is AccSharedMemoryReader acc)
                         raw.TyreGrip = acc.TireGrip;
 
-                    // Inject LMU tyre grip and local acceleration
+                    // Inject LMU tyre data: grip fraction, temperature, acceleration, on-track state
                     if (_reader is LmuSharedMemoryReader lmu)
                     {
                         raw.TyreGrip = lmu.TireGrip;
                         raw.DisplayAccG = lmu.LocalAccelG;
+                        raw.TyreTemp = physics.TyreTemp;
+                        raw.IsOnTrack = physics.WheelLoad[0] + physics.WheelLoad[1] > 100f
+                                     && physics.WheelLoad[2] + physics.WheelLoad[3] > 100f;
                     }
 
                     IntegratePosition(raw, physics);

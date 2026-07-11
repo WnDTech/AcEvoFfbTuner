@@ -3,7 +3,29 @@ using System.Threading.Channels;
 using TelemetryBrowser.Services;
 using System.Net.Sockets;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = FindContentRoot(),
+    EnvironmentName = Environments.Development
+});
+
+static string FindContentRoot()
+{
+    // Try current directory first (works with dotnet run)
+    if (Directory.Exists(Path.Combine(Environment.CurrentDirectory, "wwwroot")))
+        return Environment.CurrentDirectory;
+    // Try relative to the executable (bin/Release/../.. = project root)
+    var asmDir = Path.GetDirectoryName(typeof(Program).Assembly.Location);
+    if (asmDir != null)
+    {
+        var probe = Path.GetFullPath(Path.Combine(asmDir, "..", ".."));
+        if (Directory.Exists(Path.Combine(probe, "wwwroot")))
+            return probe;
+    }
+    // Fallback to current directory
+    return Environment.CurrentDirectory;
+}
 
 builder.WebHost.UseUrls("http://localhost:5200");
 
@@ -309,6 +331,7 @@ Dictionary<string, object?> HandleOpponents(string game, RawDataService raw, Acc
         var values = raw.ReadRawValues(game, "scoring");
         var numVeh = values.TryGetValue("S_numVehicles", out var nv) ? Convert.ToInt32(nv) : 0;
         var entries = new List<Dictionary<string, object?>>();
+        double maxLapDist = 0;
         for (int i = 0; i < numVeh && i < 104; i++)
         {
             var prefix = $"V{i}";
@@ -331,12 +354,47 @@ Dictionary<string, object?> HandleOpponents(string game, RawDataService raw, Acc
             ReadOpponentField(values, entry, $"{prefix}_underYellow", "underYellow");
             ReadOpponentField(values, entry, $"{prefix}_flag", "flag");
             ReadOpponentField(values, entry, $"{prefix}_estimatedLapTime", "estimatedLapTime");
-            ReadOpponentField(values, entry, $"{prefix}_numPenalties", "penalties");
+            ReadOpponentField(values, entry, $"{prefix}_lapDist", "lapDist");
+            ReadOpponentField(values, entry, $"{prefix}_vehFile", "vehFile");
+            ReadOpponentField(values, entry, $"{prefix}_posX", "posX");
+            ReadOpponentField(values, entry, $"{prefix}_posY", "posY");
+            ReadOpponentField(values, entry, $"{prefix}_posZ", "posZ");
+            // Track position % — compute from vehicle's lapDist
+            if (entry.TryGetValue("lapDist", out var ld))
+            {
+                maxLapDist = Math.Max(maxLapDist, Convert.ToDouble(ld));
+                if (i < 3) result[$"_debug_lapDist_{i}"] = ld;
+            }
+            // Aliases for frontend column compatibility
+            if (entry.TryGetValue("place", out var p)) entry["position"] = p;
+            if (entry.TryGetValue("driver", out var d)) entry["driverName"] = d;
+            if (entry.TryGetValue("vehicleClass", out var vc)) entry["carModel"] = vc;
+            if (entry.TryGetValue("name", out var n)) entry["teamName"] = n;
+            if (entry.TryGetValue("estimatedLapTime", out var elt)) entry["currentLapTime"] = elt;
+            if (entry.TryGetValue("inPits", out var ip)) entry["pitStatus"] = ip is int iip && iip == 1 ? "pitlane" : "track";
             entry["index"] = i;
             if (entry.Count > 2) entries.Add(entry);
         }
+        // Calculate track % after first pass when we know maxLapDist
+        if (maxLapDist > 0)
+        {
+            result["trackLength"] = maxLapDist;
+            result["_debug_trackPctCount"] = 0;
+            foreach (var entry in entries)
+            {
+                if (entry.TryGetValue("lapDist", out var ld))
+                {
+                    var lapDist = Convert.ToDouble(ld);
+                    var pct = Math.Min(Math.Round(lapDist / maxLapDist * 100.0, 1), 100.0);
+                    entry["trackPct"] = pct;
+                    result["_debug_trackPctCount"] = (int)result["_debug_trackPctCount"] + 1;
+                }
+            }
+        }
+        // Debug first entry to confirm
+        if (entries.Count > 0) result["_debug_hasTrackPct"] = entries[0].ContainsKey("trackPct");
         result["game"] = "Le Mans Ultimate";
-        result["totalOpponents"] = numVeh;
+        result["totalOpponents"] = entries.Count;
         result["entries"] = entries;
     }
     else if (game == "acevo")

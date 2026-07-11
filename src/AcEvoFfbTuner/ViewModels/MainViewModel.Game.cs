@@ -54,6 +54,7 @@ public sealed partial class MainViewModel
     public bool IsLeMansUltimate => SelectedGame == SupportedGame.LeMansUltimate;
     public bool IsAssettoCorsaCompetizione => SelectedGame == SupportedGame.AssettoCorsaCompetizione;
     public bool IsColumnForceGame => SelectedGame is SupportedGame.Raceroom or SupportedGame.LeMansUltimate;
+    public bool IsPerWheelGame => SelectedGame is SupportedGame.AcEvo or SupportedGame.AssettoCorsa or SupportedGame.AssettoCorsaCompetizione;
 
     public int SelectedGameIndex
     {
@@ -101,6 +102,7 @@ public sealed partial class MainViewModel
         OnPropertyChanged(nameof(IsLeMansUltimate));
         OnPropertyChanged(nameof(IsAssettoCorsaCompetizione));
         OnPropertyChanged(nameof(IsColumnForceGame));
+        OnPropertyChanged(nameof(IsPerWheelGame));
 
         _coachService.CurrentGame = value switch
         {

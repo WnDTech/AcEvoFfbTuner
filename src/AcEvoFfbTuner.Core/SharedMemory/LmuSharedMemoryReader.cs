@@ -17,6 +17,8 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
         private int _lockedSlotIndex = -1;
         private int _connectAttempts;
         private bool _loggedHeader;
+        private string _expectedVehicleName = "";
+        private long _lastReResolveTicks;
 
 
     public bool IsConnected => _mmf != null;
@@ -238,15 +240,40 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
 
             float ffbTorque = LmuFieldReader.ReadF32(_rawBuffer, 64);
 
+            // Track the telemetry header's player slot on every frame — LMU compacts
+            // the telemetry array when cars leave, shifting the player's slot downward.
+            // Re-reading the header every frame keeps us in sync without re-scanning.
+            const int HdrOff = 128464;
+            const int InfoOff = HdrOff + 4;
             int t = _telemInfoOffset;
-            if (t < 0 || t + 450 > readLen)
+            if (readLen > HdrOff + 2)
             {
-                if (!FindTelemSection(_rawBuffer, readLen))
+                int headerSlot = _rawBuffer[HdrOff + 1];
+                int headerOff = InfoOff + headerSlot * _stride;
+                if (_telemInfoOffset < 0)
                 {
-                    Log("TryReadPhysics: no telemetry section found");
+                    if (!FindTelemSection(_rawBuffer, readLen))
+                    {
+                        Log("TryReadPhysics: no telemetry section found");
+                        return false;
+                    }
+                    t = _telemInfoOffset;
+                }
+                else if (headerOff != t && headerOff >= InfoOff && headerOff + 450 <= readLen)
+                {
+                    string oldVeh = LmuFieldReader.ReadStr(_rawBuffer, t + TI_VEHICLE_NAME, 64);
+                    Log($"TryReadPhysics: slot {(_telemInfoOffset - InfoOff) / _stride} → {headerSlot} (old='{Trunc(oldVeh,20)}')");
+                    t = headerOff;
+                    _telemInfoOffset = t;
+                }
+            }
+            else
+            {
+                if (_telemInfoOffset < 0)
+                {
+                    Log("TryReadPhysics: buffer too small");
                     return false;
                 }
-                t = _telemInfoOffset;
             }
 
             if (t < 0 || t + 450 > readLen)
@@ -267,6 +294,9 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
             double speedMs = Math.Sqrt(vx * vx + vy * vy + vz * vz);
             double accX = LmuFieldReader.ReadF64(_rawBuffer, t + TI_LOCAL_ACCEL);
             double accY = LmuFieldReader.ReadF64(_rawBuffer, t + TI_LOCAL_ACCEL + 8);
+            double rotX = LmuFieldReader.ReadF64(_rawBuffer, t + TI_LOCAL_ROT);
+            double rotY = LmuFieldReader.ReadF64(_rawBuffer, t + TI_LOCAL_ROT + 8);
+            double rotZ = LmuFieldReader.ReadF64(_rawBuffer, t + TI_LOCAL_ROT + 16);
             double accZ = LmuFieldReader.ReadF64(_rawBuffer, t + TI_LOCAL_ACCEL + 16);
 
             LocalAccelG = [(float)accX, -(float)accZ, -(float)accY];
@@ -332,12 +362,13 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
             VehicleName = string.IsNullOrEmpty(vehicleName) || vehicleName.Length < 3 ? null : vehicleName;
 
             // ── Wheel data (mWheel[4] at TelemInfoV01 start + 848, each 260 bytes) ──
-            // Basic telemetry (steer, speed, torque) reads from the player's slot.
-            // Wheel data (Fx, Fy, tireLoad, rotation, etc.) only populates at slot 0.
+            // Read wheel data from the player's telemetry slot (each car has its own
+            // mWheel[] in LMU/rF2). Fall back to slot 0 if player slot is out of range.
             const int wheelBaseOff = 848;
             const int wheelStride = 260;
             const int kTelemHeaderOff = 128464;
             const int kTelemInfoOff = kTelemHeaderOff + 4;
+            int wheelPlayerBase = t;
             int wheelSlot0Base = kTelemInfoOff;
             float[] tireLoads = new float[4];
             float[] tirePressures = new float[4];
@@ -362,10 +393,10 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
 
             for (int wi = 0; wi < 4; wi++)
             {
-                int wOff = wheelSlot0Base + wheelBaseOff + wi * wheelStride;
+                int wOff = wheelPlayerBase + wheelBaseOff + wi * wheelStride;
                 if (wOff + 240 > readLen)
                 {
-                    wOff = t + wheelBaseOff + wi * wheelStride;
+                    wOff = wheelSlot0Base + wheelBaseOff + wi * wheelStride;
                     if (wOff + 240 > readLen) continue;
                 }
 
@@ -410,8 +441,18 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
             // One-time wheel data dump for diagnostics (unconditional)
             if (!_loggedWheelDump)
             {
-                int wOff = wheelSlot0Base + wheelBaseOff;
-                Log($"WHEEL0 slot0({wheelSlot0Base}): off={wOff} defl={suspDef[0]:F4} rot={tireRots[0]:F2} latF={latForces[0]:F1} lonF={lonForces[0]:F1} load={tireLoads[0]:F1} press={tirePressures[0]:F1} suspF={suspForce[0]:F1} brakeP={brakePressure[0]:F1}");
+                int wpOff = wheelPlayerBase + wheelBaseOff;
+                int ws0Off = wheelSlot0Base + wheelBaseOff;
+                Log($"WHEEL0 playerSlot({wheelPlayerBase}): off={wpOff} defl={suspDef[0]:F4} rot={tireRots[0]:F2} latF={latForces[0]:F1} lonF={lonForces[0]:F1} load={tireLoads[0]:F1} press={tirePressures[0]:F1}");
+                if (wpOff != ws0Off)
+                {
+                    double s0Lat = LmuFieldReader.ReadF64(_rawBuffer, ws0Off + W_LAT_FORCE);
+                    double s0Lon = LmuFieldReader.ReadF64(_rawBuffer, ws0Off + W_LON_FORCE);
+                    double s0Load = LmuFieldReader.ReadF64(_rawBuffer, ws0Off + W_TIRE_LOAD);
+                    double s0Press = LmuFieldReader.ReadF64(_rawBuffer, ws0Off + W_PRESSURE);
+                    double s0Rot = LmuFieldReader.ReadF64(_rawBuffer, ws0Off + W_ROTATION);
+                    Log($"WHEEL0 slot0  ({wheelSlot0Base}): off={ws0Off} defl={LmuFieldReader.ReadF64(_rawBuffer, ws0Off + W_SUSP_DEFLECTION):F4} rot={s0Rot:F2} latF={s0Lat:F1} lonF={s0Lon:F1} load={s0Load:F1} press={s0Press:F1}");
+                }
                 _loggedWheelDump = true;
             }
 
@@ -524,16 +565,20 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
 
             // ── Mz synthesis ──
             float mzMagnitude = absForce * blend * cFactor;
-            float mzFL = -mzMagnitude * sgn * 18f;
-            float mzFR = -mzMagnitude * sgn * 18f;
-            float mzRL = -mzMagnitude * sgn * 12f;
-            float mzRR = -mzMagnitude * sgn * 12f;
+            // Negate Mz to match AC EVO convention: Mz opposes steering direction.
+            // LMU's raw Mz (from -mzMagnitude * sgn) has the OPPOSITE sign — it points
+            // with the steer direction. Flipping here makes the existing channel mixer
+            // Gain=-0.40 produce correct centering force.
+            float mzFL = mzMagnitude * sgn * 18f;
+            float mzFR = mzMagnitude * sgn * 18f;
+            float mzRL = mzMagnitude * sgn * 12f;
+            float mzRR = mzMagnitude * sgn * 12f;
 
             // Log every ~100ms
             if (_lastReadTicks % (Stopwatch.Frequency / 10) < Stopwatch.Frequency / 250)
             {
                 string veh = LmuFieldReader.ReadStr(_rawBuffer, t + TI_VEHICLE_NAME, 64);
-                Log($"Telem: veh='{Trunc(veh,20)}' gear={gear} rpm={rpm:F0} speed={speedKmh:F1} tq={totalForce:F4} steer={steer:F4} thr={throttle:F3} brk={brake:F3} fDown={FrontDownforce:F1} rDown={RearDownforce:F1} impact={LastImpactMagnitude:F1}");
+                Log($"Telem: veh='{Trunc(veh,20)}' gear={gear} rpm={rpm:F0} spd={speedKmh:F1} tq={totalForce:F4} steer={steer:F4} thr={throttle:F3} brk={brake:F3} yaw={rotY:F3} kerb={kerbVib:F3} road={roadVib:F3} slip={slipVib:F3} abs={absVib:F3}");
             }
 
             physics = new SPageFilePhysicsEvo
@@ -558,7 +603,7 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                 Mz = [mzFL, mzFR, mzRL, mzRR],
                 Fx = [synFx[0], synFx[1], synFx[2], synFx[3]],
                 Fy = [synFy[0], synFy[1], synFy[2], synFy[3]],
-                LocalAngularVel = [(float)0, (float)0, (float)0],
+                LocalAngularVel = [(float)rotX, (float)rotY, (float)rotZ],
                 KerbVibration = kerbVib,
                 SlipVibrations = slipVib,
                 RoadVibrations = roadVib,
@@ -613,11 +658,17 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
             {
                 _stride = 1888;
                 byte active = buf[kTelemHeaderOff];
-                byte playerIdx = buf[kTelemHeaderOff + 1];
-                _lockedSlotIndex = FindPlayerVehIndex(buf, len, new[] { v0 });
-                if (_lockedSlotIndex < 0) _lockedSlotIndex = playerIdx;
-                _telemInfoOffset = kTelemInfoOff + playerIdx * _stride;
-                Log($"FindTelemSection: FIXED offset veh='{Trunc(v0,20)}' active={active} telemSlot={playerIdx} scoringSlot={_lockedSlotIndex} telemOff={_telemInfoOffset} rpm={r0:F0} gear={g0}");
+                int scoringSlot = FindPlayerVehIndex(buf, len, new[] { v0 }, out int _);
+                _lockedSlotIndex = scoringSlot >= 0 ? scoringSlot : buf[kTelemHeaderOff + 1];
+
+                int selectedSlot = ResolvePlayerSlot(buf, kTelemInfoOff, kTelemHeaderOff, active);
+
+                _telemInfoOffset = kTelemInfoOff + selectedSlot * _stride;
+                string resolvedName = LmuFieldReader.ReadStr(buf, _telemInfoOffset + TI_VEHICLE_NAME, 64);
+                if (!string.IsNullOrEmpty(resolvedName) && resolvedName.Length >= 5)
+                    _expectedVehicleName = resolvedName;
+                _lastReResolveTicks = Stopwatch.GetTimestamp();
+                Log($"FindTelemSection: FIXED offset veh='{Trunc(v0,20)}' active={active} telemSlot={selectedSlot} (hdr={buf[kTelemHeaderOff + 1]} scoring={scoringSlot}) telemOff={_telemInfoOffset} rpm={r0:F0} gear={g0}");
                 return true;
             }
         }
@@ -641,11 +692,17 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                     r0 >= 0 && r0 <= 15000 && g0 >= -1 && g0 <= 10)
                 {
                     _stride = 1888;
-                    byte playerIdx = buf[telemHdr + 1];
-                    _lockedSlotIndex = FindPlayerVehIndex(buf, len, new[] { v0 });
-                    if (_lockedSlotIndex < 0) _lockedSlotIndex = playerIdx;
-                    _telemInfoOffset = telemHdr + 4 + playerIdx * _stride;
-                    Log($"FindTelemSection: scoring-fallback FOUND veh='{Trunc(v0,20)}' telemSlot={playerIdx} scoringSlot={_lockedSlotIndex} telemOff={_telemInfoOffset} rpm={r0:F0} gear={g0}");
+                    int scoringSlot = FindPlayerVehIndex(buf, len, new[] { v0 }, out int _);
+                    _lockedSlotIndex = scoringSlot >= 0 ? scoringSlot : buf[telemHdr + 1];
+
+                    int selectedSlot = ResolvePlayerSlot(buf, telemHdr + 4, telemHdr, buf[telemHdr]);
+
+                    _telemInfoOffset = telemHdr + 4 + selectedSlot * _stride;
+                    string resolvedName = LmuFieldReader.ReadStr(buf, _telemInfoOffset + TI_VEHICLE_NAME, 64);
+                    if (!string.IsNullOrEmpty(resolvedName) && resolvedName.Length >= 5)
+                        _expectedVehicleName = resolvedName;
+                    _lastReResolveTicks = Stopwatch.GetTimestamp();
+                    Log($"FindTelemSection: scoring-fallback FOUND veh='{Trunc(v0,20)}' telemSlot={selectedSlot} (hdr={buf[telemHdr + 1]} scoring={scoringSlot}) telemOff={_telemInfoOffset} rpm={r0:F0} gear={g0}");
                     return true;
                 }
             }
@@ -683,7 +740,7 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
     /// Find the player's vehicle index by scanning VehicleScoringInfoV01 entries.
     /// Vehicle names at offset 36, stride 584. mIsPlayer at 196, mControl at 197.
     /// </summary>
-    private int FindPlayerVehIndex(byte[] buf, int len, string[] knownNames)
+    private int FindPlayerVehIndex(byte[] buf, int len, string[] knownNames, out int scoringBase)
     {
         const int vsStride = 584;
         const int nameOff = 36;
@@ -718,22 +775,35 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
         if (baseEntry < 0)
         {
             Log("FindPlayerVehIndex: could not find scoring section base via name match");
+            scoringBase = -1;
             return -1;
         }
 
+        scoringBase = baseEntry;
         Log($"FindPlayerVehIndex: base={baseEntry}, scanning for player...");
+
+        // First pass: find isP == 1 (local human player)
         for (int i = 0; i < 104; i++)
         {
             int entry = baseEntry + i * vsStride;
             if (entry + 198 > len) break;
-
-            byte isP = buf[entry + 196];
-            byte ctrl = buf[entry + 197];
-            string vn = LmuFieldReader.ReadStr(buf, entry + nameOff, 64);
-
-            if (isP == 1 || ctrl == 1)
+            if (buf[entry + 196] == 1)
             {
-                Log($"  -> PLAYER at index {i} (isP={isP} ctrl={ctrl}): '{Trunc(vn,25)}'");
+                string vn = LmuFieldReader.ReadStr(buf, entry + nameOff, 64);
+                Log($"  -> PLAYER at index {i} (isP=1): '{Trunc(vn,25)}'");
+                return i;
+            }
+        }
+
+        // Second pass: find ctrl == 1 (any human, in case isP is not set)
+        for (int i = 0; i < 104; i++)
+        {
+            int entry = baseEntry + i * vsStride;
+            if (entry + 198 > len) break;
+            if (buf[entry + 197] == 1)
+            {
+                string vn = LmuFieldReader.ReadStr(buf, entry + nameOff, 64);
+                Log($"  -> HUMAN at index {i} (ctrl=1): '{Trunc(vn,25)}'");
                 return i;
             }
         }
@@ -754,6 +824,85 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                 names.Add(n);
         }
         return names.ToArray();
+    }
+
+    private int FindTelemetrySlotByName(byte[] buf, int telemBase, int activeCount, string targetName)
+    {
+        for (int i = 0; i < Math.Min(activeCount, 104); i++)
+        {
+            int off = telemBase + i * _stride;
+            if (off + 96 > buf.Length) break;
+            string name = LmuFieldReader.ReadStr(buf, off + TI_VEHICLE_NAME, 64);
+            if (string.IsNullOrEmpty(name) || name.Length < 5) continue;
+            if (name == targetName || targetName.StartsWith(name) || name.StartsWith(targetName))
+                return i;
+        }
+        return -1;
+    }
+
+    private int ResolvePlayerSlot(byte[] buf, int telemBase, int telemHeaderOff, int activeCount)
+    {
+        byte headerSlot = buf[telemHeaderOff + 1];
+
+        int vsBase = FindScoringSectionBase(buf, buf.Length);
+        if (vsBase > 0)
+        {
+            // First pass: find isP == 1 (local player)
+            for (int i = 0; i < 104; i++)
+            {
+                int entry = vsBase + i * 584;
+                if (entry + 200 > buf.Length) break;
+                if (buf[entry + 196] == 1)
+                {
+                    string playerVeh = LmuFieldReader.ReadStr(buf, entry + 36, 64);
+                    if (!string.IsNullOrEmpty(playerVeh) && playerVeh.Length >= 5)
+                    {
+                        _expectedVehicleName = playerVeh;
+                        int matched = FindTelemetrySlotByName(buf, telemBase, activeCount, playerVeh);
+                        if (matched >= 0)
+                        {
+                            Log($"ResolvePlayerSlot: scoring slot {i} (isP=1) veh='{Trunc(playerVeh,20)}' matched telemetry slot {matched} (hdr={headerSlot})");
+                            return matched;
+                        }
+                        if (i < activeCount)
+                        {
+                            Log($"ResolvePlayerSlot: scoring slot {i} (isP=1), no name match, using index (hdr={headerSlot})");
+                            return i;
+                        }
+                    }
+                    break;
+                }
+            }
+            // Second pass: find ctrl == 1 (any human, fallback)
+            for (int i = 0; i < 104; i++)
+            {
+                int entry = vsBase + i * 584;
+                if (entry + 200 > buf.Length) break;
+                if (buf[entry + 197] == 1)
+                {
+                    string playerVeh = LmuFieldReader.ReadStr(buf, entry + 36, 64);
+                    if (!string.IsNullOrEmpty(playerVeh) && playerVeh.Length >= 5)
+                    {
+                        _expectedVehicleName = playerVeh;
+                        int matched = FindTelemetrySlotByName(buf, telemBase, activeCount, playerVeh);
+                        if (matched >= 0)
+                        {
+                            Log($"ResolvePlayerSlot: scoring slot {i} (ctrl=1) veh='{Trunc(playerVeh,20)}' matched telemetry slot {matched} (hdr={headerSlot})");
+                            return matched;
+                        }
+                        if (i < activeCount)
+                        {
+                            Log($"ResolvePlayerSlot: scoring slot {i} (ctrl=1), no name match, using index (hdr={headerSlot})");
+                            return i;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        Log($"ResolvePlayerSlot: unresolved, using header slot {headerSlot}");
+        return headerSlot;
     }
 
     private bool TryParseTelemetryHeader(byte[] buf, int len, int off)
@@ -812,7 +961,7 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
 
         // ── Find player index from VehicleScoringInfoV01 mIsPlayer flag ──
         var knownNames = GetKnownNames(buf, t0, stride, (int)active, len);
-        int playerSlot = FindPlayerVehIndex(buf, len, knownNames);
+        int playerSlot = FindPlayerVehIndex(buf, len, knownNames, out _);
         if (playerSlot < 0)
         {
             Log($"  @@{off}: player not found in scoring, trying header pIdx={headerPlayerIdx}");

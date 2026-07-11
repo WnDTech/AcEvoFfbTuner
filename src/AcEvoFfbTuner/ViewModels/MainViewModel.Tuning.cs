@@ -121,6 +121,16 @@ public sealed partial class MainViewModel
     partial void OnRearSlipGainChanged(float value) => _pipeline.VibrationMixer.RearSlipGain = value;
     partial void OnOfftrackGainChanged(float value) => _pipeline.VibrationMixer.OfftrackGain = value;
     partial void OnOfftrackSeverityScaleChanged(float value) => _pipeline.VibrationMixer.OfftrackSeverityScale = value;
+    partial void OnGripScaleGainChanged(float value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.GripScaleGain = value;
+    }
+    partial void OnTyreTempGainChanged(float value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.TyreTempGain = value;
+    }
 
     // ── LFE ───────────────────────────────────────────────────────────────
     partial void OnLfeEnabledChanged(bool value) => _pipeline.LfeGenerator.Enabled = value;

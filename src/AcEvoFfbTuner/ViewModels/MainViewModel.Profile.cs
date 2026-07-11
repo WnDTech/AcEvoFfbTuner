@@ -79,6 +79,8 @@ public sealed partial class MainViewModel
             string baseName = SelectedProfile?.Name ?? "unsaved";
             string diagName = $"{baseName}_diag_{DateTime.Now:yyyyMMdd_HHmmss}";
             var profile = _profileManager.SaveProfileFromPipeline(_pipeline, diagName);
+            profile.CarMatch = ProfileCarMatch;
+            profile.TrackMatch = ProfileTrackMatch;
             SaveNonPipelineSettings(profile);
             _profileManager.SaveProfile(profile);
         }
@@ -143,6 +145,10 @@ public sealed partial class MainViewModel
         if (dialog.ShowDialog() == true)
         {
             var profile = _profileManager.SaveProfileFromPipeline(_pipeline, dialog.Result!);
+            profile.CarMatch = ProfileCarMatch;
+            profile.TrackMatch = ProfileTrackMatch;
+            profile.GameMatch = GameDisplayName;
+            profile.Scope = SelectedProfile?.Scope ?? ProfileScope.General;
             SaveNonPipelineSettings(profile);
             _profileManager.SaveProfile(profile);
             _profileManager.SetActiveProfile(profile);
@@ -397,6 +403,8 @@ public sealed partial class MainViewModel
         DetailSmoothing = _pipeline is R3eFfbPipeline r3eDs ? r3eDs.DetailSmoothing : 0.0f;
         BrakeBoostGain = _pipeline is R3eFfbPipeline r3eBg ? r3eBg.BrakeBoostGain : 0.15f;
         BrakeBoostThreshold = _pipeline is R3eFfbPipeline r3eBt ? r3eBt.BrakeBoostThreshold : 0.1f;
+        GripScaleGain = _pipeline is LmuFfbPipeline lmuGs ? lmuGs.GripScaleGain : 0.6f;
+        TyreTempGain = _pipeline is LmuFfbPipeline lmuTt ? lmuTt.TyreTempGain : 0.0f;
         SteerVelocityReference = profile.Advanced.SteerVelocityReference;
         VelocityDeadzone = profile.Advanced.VelocityDeadzone;
         LowSpeedSmoothKmh = profile.Advanced.LowSpeedSmoothKmh;
@@ -586,6 +594,8 @@ public sealed partial class MainViewModel
         _pipeline.VibrationMixer.SuspensionRoadGain = SuspensionRoadGain;
         _pipeline.VibrationMixer.ScrubGain = ScrubGain;
         _pipeline.VibrationMixer.RearSlipGain = RearSlipGain;
+        _pipeline.VibrationMixer.OfftrackGain = OfftrackGain;
+        _pipeline.VibrationMixer.OfftrackSeverityScale = OfftrackSeverityScale;
         _pipeline.LfeGenerator.Enabled = LfeEnabled;
         _pipeline.LfeGenerator.Gain = LfeGain;
         _pipeline.LfeGenerator.Frequency = LfeFrequency;

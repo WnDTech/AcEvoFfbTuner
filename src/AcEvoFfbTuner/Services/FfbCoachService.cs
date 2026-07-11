@@ -616,7 +616,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             var rec = _lastResult.PendingRecommendation;
             var result = ApplyRecommendation(rec);
             _lastResult = null;
-            _aiConversation?.Add(new ChatMessage { Role = "system", Content = $"Applied change: {rec.Parameter} = {rec.SuggestedValue:F3} (was {rec.CurrentValue:F3}). The profile has been updated." });
+            RefreshConversationProfile();
             return result;
         }
 
@@ -625,7 +625,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             var rec = _lastResult.PendingRecommendation;
             var result = ApplyRecommendation(rec);
             _lastResult = null;
-            _aiConversation?.Add(new ChatMessage { Role = "system", Content = $"Applied change: {rec.Parameter} = {rec.SuggestedValue:F3} (was {rec.CurrentValue:F3}). The profile has been updated." });
+            RefreshConversationProfile();
             return result;
         }
 
@@ -1599,6 +1599,19 @@ Analyze this data. Identify the most important FFB issues and provide specific r
                 }
             ]
         };
+    }
+
+    private void RefreshConversationProfile()
+    {
+        if (_aiConversation == null || _aiConversation.Count == 0) return;
+        var profile = _profileManager.ActiveProfile;
+        if (profile == null) return;
+        var fresh = BuildProfileFullJson(profile);
+        _aiConversation.Insert(0, new ChatMessage
+        {
+            Role = "system",
+            Content = $"## Updated Profile Values (after changes)\n```json\n{fresh}\n```\nThe profile has been updated."
+        });
     }
 
     private CoachResult BuildFineTuneDampingQuestion()

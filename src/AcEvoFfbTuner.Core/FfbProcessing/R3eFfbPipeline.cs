@@ -33,8 +33,8 @@ public sealed class R3eFfbPipeline : FfbPipeline
     public float BrakeBoostGain { get; set; } = 0.15f;
     public float BrakeBoostThreshold { get; set; } = 0.1f;
 
-    /// <summary>Core force multiplier. Default 1.0 — no EVO compensation needed now that SteeringForce bypasses the channel mixer.</summary>
-    public override float CoreForceMultiplier { get; set; } = 1.0f;
+    /// <summary>Core force multiplier. Default 3.0 for column-force games to compensate for the conversion from SteeringForce.</summary>
+    public override float CoreForceMultiplier { get; set; } = 3.0f;
 
     /// <summary>
     /// Tyre grip scale: how strongly average front tyre grip attenuates core force.
@@ -116,12 +116,11 @@ public sealed class R3eFfbPipeline : FfbPipeline
         }
         magnitude *= gripScale;
 
-        // Normalize via MasterGain/ForceScale.
-        // Moza convention: positive force = wheel LEFT (auto-detect confirmed).
-        // Core centering: when steering right, push LEFT (= positive in Moza).
-        // steerSign = +1 when right → magnitude * +1 = positive = LEFT = centering.
-        // Device _invertForce flag handles sign correction for other wheel brands.
-        float coreNorm = magnitude * steerSign * MasterGain / Math.Max(ForceScale, 0.001f);
+        // Normalize via MasterGain only. ForceScale is NOT used here because
+        // R3E's SteeringForcePercentage is already a 0-1 normalized signal
+        // (unlike EVO's raw Mz which has arbitrary units requiring scaling).
+        // Dividing by ForceScale (=700-1500 for EVO) would kill the signal.
+        float coreNorm = magnitude * steerSign * MasterGain;
 
         // Centering override (smoothstep at small steer angles)
         float corePostCenter = ApplyCenteringOverride(coreNorm, raw);
@@ -132,6 +131,19 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // Core force multiplier: user-controlled main force gain.
         // Exposed as "Center Strength (x)" slider in the UI.
         coreOutput *= CoreForceMultiplier;
+
+        // Steering angle compensation: R3E's SteeringForce always drops at the
+        // same fixed angle (~90° wheel rotation) regardless of tire state.
+        // In a real car the SAT peak varies with temp, wear, grip, and speed —
+        // a fixed-angle drop is a game telemetry simplification, not physics.
+        // Above 0.08 steer (~36° wheel), ramp to 1.15x at 0.20 (~90°) and hold.
+        // Keep boost modest to avoid saturating the output and causing sign flips.
+        float absSteer = Math.Abs(raw.SteerAngle);
+        if (absSteer > 0.08f)
+        {
+            float boost = 0.85f + 0.15f * Math.Clamp((absSteer - 0.08f) / 0.12f, 0f, 1f);
+            coreOutput *= boost;
+        }
 
         // Brake boost (applied after centering shaping so it doesn't
         // interact with the smoothstep at small angles)
@@ -160,6 +172,10 @@ public sealed class R3eFfbPipeline : FfbPipeline
         }
         _prevSmoothedCore = coreOutput;
 
+        // GripGuard: attenuate core force when tyre exceeds peak slip angle.
+        // This provides the classic "wheel goes light" warning at the grip limit.
+        coreOutput = GripGuard.Apply(coreOutput, raw);
+
         // ═════════════════════════════════════════════════════════════════
         // DETAIL PATH — Texture effects only
         // ═════════════════════════════════════════════════════════════════
@@ -173,6 +189,19 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // (sliding tyres produce less crisp vibration feel)
         vibration *= gripScale;
         detailForce += vibration;
+
+        // Slip enhancer: force enhancement from tyre slip ratio/angle.
+        // Provides the "tyre about to lose grip" warning — force builds as
+        // slip approaches the threshold, then drops warning of lost grip.
+        detailForce += SlipEnhancer.Apply(0f, raw);
+
+        // Dynamic effects: lateral/longitudinal G, suspension, yaw rate.
+        // Adds cornering feel, brake dive, road texture from suspension.
+        detailForce += DynamicEffects.Apply(0f, raw);
+
+        // Tyre flex feel: carcass stiffness, contact patch deformation.
+        // Adds subtle texture from tyre sidewall and tread flex.
+        detailForce += TyreFlex.Apply(0f, raw);
 
         // ABS force modulation
         float absMod = VibrationMixer.AbsForceModulation;

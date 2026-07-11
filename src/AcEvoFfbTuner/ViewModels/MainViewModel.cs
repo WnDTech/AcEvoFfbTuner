@@ -315,6 +315,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _rearSlipGain = 0.60f;
 
     [ObservableProperty]
+    private float _gripScaleGain = 0.6f;
+
+    [ObservableProperty]
+    private float _tyreTempGain = 0.0f;
+
+    [ObservableProperty]
     private float _offtrackGain = 0.5f;
 
     [ObservableProperty]
@@ -712,6 +718,29 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _hf8Connected;
 
     [ObservableProperty]
+    private int _hf8CopySourceIndex = -1;
+
+    public bool Hf8IsCopySource0 => Hf8CopySourceIndex == 0;
+    public bool Hf8IsCopySource1 => Hf8CopySourceIndex == 1;
+    public bool Hf8IsCopySource2 => Hf8CopySourceIndex == 2;
+    public bool Hf8IsCopySource3 => Hf8CopySourceIndex == 3;
+    public bool Hf8IsCopySource4 => Hf8CopySourceIndex == 4;
+    public bool Hf8IsCopySource5 => Hf8CopySourceIndex == 5;
+    public bool Hf8IsCopySource6 => Hf8CopySourceIndex == 6;
+    public bool Hf8IsCopySource7 => Hf8CopySourceIndex == 7;
+
+    public bool Hf8CanCopyTo0 => Hf8CopySourceIndex >= 0 && Hf8CopySourceIndex != 0;
+    public bool Hf8CanCopyTo1 => Hf8CopySourceIndex >= 0 && Hf8CopySourceIndex != 1;
+    public bool Hf8CanCopyTo2 => Hf8CopySourceIndex >= 0 && Hf8CopySourceIndex != 2;
+    public bool Hf8CanCopyTo3 => Hf8CopySourceIndex >= 0 && Hf8CopySourceIndex != 3;
+    public bool Hf8CanCopyTo4 => Hf8CopySourceIndex >= 0 && Hf8CopySourceIndex != 4;
+    public bool Hf8CanCopyTo5 => Hf8CopySourceIndex >= 0 && Hf8CopySourceIndex != 5;
+    public bool Hf8CanCopyTo6 => Hf8CopySourceIndex >= 0 && Hf8CopySourceIndex != 6;
+    public bool Hf8CanCopyTo7 => Hf8CopySourceIndex >= 0 && Hf8CopySourceIndex != 7;
+
+    public bool Hf8CopyActive => Hf8CopySourceIndex >= 0;
+
+    [ObservableProperty]
     private bool _gripGuardEnabled = true;
 
     [ObservableProperty]
@@ -1090,6 +1119,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 CoachMessages.Add(msg);
             if (_coachService.IsAiEnabled)
                 PlayCoachAlert();
+            RefreshProfileValues();
         }
         return Task.CompletedTask;
     }
@@ -1111,6 +1141,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         CoachHasPendingRecs = CoachPendingRecs.Count > 0;
         if (_coachService.IsAiEnabled)
             PlayCoachAlert();
+        RefreshProfileValues();
         return Task.CompletedTask;
     }
 
@@ -1122,6 +1153,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CoachMessages.Add(msg);
         if (_coachService.IsAiEnabled)
             PlayCoachAlert();
+        RefreshProfileValues();
+    }
+
+    private void RefreshProfileValues()
+    {
+        var profile = _profileManager.ActiveProfile;
+        if (profile == null) return;
+        profile.ApplyToPipeline(_pipeline);
+        LoadProfileValues(profile);
+        SystemLogEntries.Add($"[Coach] Profile values refreshed in UI");
     }
 
     private void AddPendingRec(FfbRecommendation rec)
@@ -1774,6 +1815,28 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnHf8EnabledChanged(bool value) => _pipeline.Hf8SignalMapper.Enabled = value;
     partial void OnHf8MasterGainChanged(float value) => _pipeline.Hf8SignalMapper.MasterGain = value;
     partial void OnHf8OutputRateHzChanged(int value) => _deviceManager.ApplyHf8Config(value);
+
+    partial void OnHf8CopySourceIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(Hf8IsCopySource0));
+        OnPropertyChanged(nameof(Hf8IsCopySource1));
+        OnPropertyChanged(nameof(Hf8IsCopySource2));
+        OnPropertyChanged(nameof(Hf8IsCopySource3));
+        OnPropertyChanged(nameof(Hf8IsCopySource4));
+        OnPropertyChanged(nameof(Hf8IsCopySource5));
+        OnPropertyChanged(nameof(Hf8IsCopySource6));
+        OnPropertyChanged(nameof(Hf8IsCopySource7));
+        OnPropertyChanged(nameof(Hf8CanCopyTo0));
+        OnPropertyChanged(nameof(Hf8CanCopyTo1));
+        OnPropertyChanged(nameof(Hf8CanCopyTo2));
+        OnPropertyChanged(nameof(Hf8CanCopyTo3));
+        OnPropertyChanged(nameof(Hf8CanCopyTo4));
+        OnPropertyChanged(nameof(Hf8CanCopyTo5));
+        OnPropertyChanged(nameof(Hf8CanCopyTo6));
+        OnPropertyChanged(nameof(Hf8CanCopyTo7));
+        OnPropertyChanged(nameof(Hf8CopyActive));
+    }
+
     partial void OnHf8ZoneGain0Changed(float value) => _pipeline.Hf8SignalMapper.ZoneGains[0] = value;
     partial void OnHf8ZoneGain1Changed(float value) => _pipeline.Hf8SignalMapper.ZoneGains[1] = value;
     partial void OnHf8ZoneGain2Changed(float value) => _pipeline.Hf8SignalMapper.ZoneGains[2] = value;
@@ -1838,6 +1901,181 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnHf8SrcKerb7Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(7, 2, value);
     partial void OnHf8SrcLatG7Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(7, 3, value);
     partial void OnHf8SrcEngine7Changed(float value) => _pipeline.Hf8SignalMapper.SetSourceWeight(7, 4, value);
+
+    [RelayCommand]
+    private void Hf8SetCopySource(string zoneIndex)
+    {
+        if (int.TryParse(zoneIndex, out int idx))
+            Hf8CopySourceIndex = idx;
+    }
+
+    [RelayCommand]
+    private void Hf8CopyToZone(string zoneIndex)
+    {
+        if (!int.TryParse(zoneIndex, out int dst)) return;
+        int src = Hf8CopySourceIndex;
+        if (src < 0 || src == dst) return;
+        CopyHf8ZoneSettings(src, dst);
+        Hf8CopySourceIndex = -1;
+    }
+
+    private void CopyHf8ZoneSettings(int src, int dst)
+    {
+        SetHf8ZoneGain(dst, GetHf8ZoneGain(src));
+        SetHf8ZoneEnabled(dst, GetHf8ZoneEnabled(src));
+        SetHf8SrcSusp(dst, GetHf8SrcSusp(src));
+        SetHf8SrcSlip(dst, GetHf8SrcSlip(src));
+        SetHf8SrcKerb(dst, GetHf8SrcKerb(src));
+        SetHf8SrcLatG(dst, GetHf8SrcLatG(src));
+        SetHf8SrcEngine(dst, GetHf8SrcEngine(src));
+    }
+
+    private float GetHf8ZoneGain(int i) => i switch
+    {
+        0 => Hf8ZoneGain0, 1 => Hf8ZoneGain1, 2 => Hf8ZoneGain2, 3 => Hf8ZoneGain3,
+        4 => Hf8ZoneGain4, 5 => Hf8ZoneGain5, 6 => Hf8ZoneGain6, _ => Hf8ZoneGain7,
+    };
+
+    private bool GetHf8ZoneEnabled(int i) => i switch
+    {
+        0 => Hf8ZoneEnabled0, 1 => Hf8ZoneEnabled1, 2 => Hf8ZoneEnabled2, 3 => Hf8ZoneEnabled3,
+        4 => Hf8ZoneEnabled4, 5 => Hf8ZoneEnabled5, 6 => Hf8ZoneEnabled6, _ => Hf8ZoneEnabled7,
+    };
+
+    private float GetHf8SrcSusp(int i) => i switch
+    {
+        0 => Hf8SrcSusp0, 1 => Hf8SrcSusp1, 2 => Hf8SrcSusp2, 3 => Hf8SrcSusp3,
+        4 => Hf8SrcSusp4, 5 => Hf8SrcSusp5, 6 => Hf8SrcSusp6, _ => Hf8SrcSusp7,
+    };
+
+    private float GetHf8SrcSlip(int i) => i switch
+    {
+        0 => Hf8SrcSlip0, 1 => Hf8SrcSlip1, 2 => Hf8SrcSlip2, 3 => Hf8SrcSlip3,
+        4 => Hf8SrcSlip4, 5 => Hf8SrcSlip5, 6 => Hf8SrcSlip6, _ => Hf8SrcSlip7,
+    };
+
+    private float GetHf8SrcKerb(int i) => i switch
+    {
+        0 => Hf8SrcKerb0, 1 => Hf8SrcKerb1, 2 => Hf8SrcKerb2, 3 => Hf8SrcKerb3,
+        4 => Hf8SrcKerb4, 5 => Hf8SrcKerb5, 6 => Hf8SrcKerb6, _ => Hf8SrcKerb7,
+    };
+
+    private float GetHf8SrcLatG(int i) => i switch
+    {
+        0 => Hf8SrcLatG0, 1 => Hf8SrcLatG1, 2 => Hf8SrcLatG2, 3 => Hf8SrcLatG3,
+        4 => Hf8SrcLatG4, 5 => Hf8SrcLatG5, 6 => Hf8SrcLatG6, _ => Hf8SrcLatG7,
+    };
+
+    private float GetHf8SrcEngine(int i) => i switch
+    {
+        0 => Hf8SrcEngine0, 1 => Hf8SrcEngine1, 2 => Hf8SrcEngine2, 3 => Hf8SrcEngine3,
+        4 => Hf8SrcEngine4, 5 => Hf8SrcEngine5, 6 => Hf8SrcEngine6, _ => Hf8SrcEngine7,
+    };
+
+    private void SetHf8ZoneGain(int i, float v)
+    {
+        switch (i)
+        {
+            case 0: Hf8ZoneGain0 = v; break;
+            case 1: Hf8ZoneGain1 = v; break;
+            case 2: Hf8ZoneGain2 = v; break;
+            case 3: Hf8ZoneGain3 = v; break;
+            case 4: Hf8ZoneGain4 = v; break;
+            case 5: Hf8ZoneGain5 = v; break;
+            case 6: Hf8ZoneGain6 = v; break;
+            case 7: Hf8ZoneGain7 = v; break;
+        }
+    }
+
+    private void SetHf8ZoneEnabled(int i, bool v)
+    {
+        switch (i)
+        {
+            case 0: Hf8ZoneEnabled0 = v; break;
+            case 1: Hf8ZoneEnabled1 = v; break;
+            case 2: Hf8ZoneEnabled2 = v; break;
+            case 3: Hf8ZoneEnabled3 = v; break;
+            case 4: Hf8ZoneEnabled4 = v; break;
+            case 5: Hf8ZoneEnabled5 = v; break;
+            case 6: Hf8ZoneEnabled6 = v; break;
+            case 7: Hf8ZoneEnabled7 = v; break;
+        }
+    }
+
+    private void SetHf8SrcSusp(int i, float v)
+    {
+        switch (i)
+        {
+            case 0: Hf8SrcSusp0 = v; break;
+            case 1: Hf8SrcSusp1 = v; break;
+            case 2: Hf8SrcSusp2 = v; break;
+            case 3: Hf8SrcSusp3 = v; break;
+            case 4: Hf8SrcSusp4 = v; break;
+            case 5: Hf8SrcSusp5 = v; break;
+            case 6: Hf8SrcSusp6 = v; break;
+            case 7: Hf8SrcSusp7 = v; break;
+        }
+    }
+
+    private void SetHf8SrcSlip(int i, float v)
+    {
+        switch (i)
+        {
+            case 0: Hf8SrcSlip0 = v; break;
+            case 1: Hf8SrcSlip1 = v; break;
+            case 2: Hf8SrcSlip2 = v; break;
+            case 3: Hf8SrcSlip3 = v; break;
+            case 4: Hf8SrcSlip4 = v; break;
+            case 5: Hf8SrcSlip5 = v; break;
+            case 6: Hf8SrcSlip6 = v; break;
+            case 7: Hf8SrcSlip7 = v; break;
+        }
+    }
+
+    private void SetHf8SrcKerb(int i, float v)
+    {
+        switch (i)
+        {
+            case 0: Hf8SrcKerb0 = v; break;
+            case 1: Hf8SrcKerb1 = v; break;
+            case 2: Hf8SrcKerb2 = v; break;
+            case 3: Hf8SrcKerb3 = v; break;
+            case 4: Hf8SrcKerb4 = v; break;
+            case 5: Hf8SrcKerb5 = v; break;
+            case 6: Hf8SrcKerb6 = v; break;
+            case 7: Hf8SrcKerb7 = v; break;
+        }
+    }
+
+    private void SetHf8SrcLatG(int i, float v)
+    {
+        switch (i)
+        {
+            case 0: Hf8SrcLatG0 = v; break;
+            case 1: Hf8SrcLatG1 = v; break;
+            case 2: Hf8SrcLatG2 = v; break;
+            case 3: Hf8SrcLatG3 = v; break;
+            case 4: Hf8SrcLatG4 = v; break;
+            case 5: Hf8SrcLatG5 = v; break;
+            case 6: Hf8SrcLatG6 = v; break;
+            case 7: Hf8SrcLatG7 = v; break;
+        }
+    }
+
+    private void SetHf8SrcEngine(int i, float v)
+    {
+        switch (i)
+        {
+            case 0: Hf8SrcEngine0 = v; break;
+            case 1: Hf8SrcEngine1 = v; break;
+            case 2: Hf8SrcEngine2 = v; break;
+            case 3: Hf8SrcEngine3 = v; break;
+            case 4: Hf8SrcEngine4 = v; break;
+            case 5: Hf8SrcEngine5 = v; break;
+            case 6: Hf8SrcEngine6 = v; break;
+            case 7: Hf8SrcEngine7 = v; break;
+        }
+    }
 
     partial void OnGripGuardEnabledChanged(bool value) => _pipeline.GripGuard.Enabled = value;
     partial void OnGripGuardPeakSlipAngleChanged(float value) => _pipeline.GripGuard.PeakSlipAngle = value;
@@ -2335,10 +2573,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         foreach (var msg in result.Messages)
             CoachMessages.Add(msg);
-        foreach (var rec in result.Recommendations ?? [])
-            AddPendingRec(rec);
-        if (_coachService.IsAiEnabled)
-            PlayCoachAlert();
+            foreach (var rec in result.Recommendations ?? [])
+                AddPendingRec(rec);
+            if (_coachService.IsAiEnabled)
+                PlayCoachAlert();
+            RefreshProfileValues();
     }
 
     private async Task CoachLoadSnapshotFile(string filePath)
@@ -2456,6 +2695,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 AddPendingRec(rec);
             if (_coachService.IsAiEnabled)
                 PlayCoachAlert();
+            RefreshProfileValues();
         }
         finally
         {

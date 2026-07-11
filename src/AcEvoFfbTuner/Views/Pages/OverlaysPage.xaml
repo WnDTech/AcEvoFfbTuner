@@ -9,7 +9,7 @@
 
             <TextBlock Text="Overlays" FontSize="32" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
             <TextBlock TextWrapping="Wrap" FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,24">
-                OBS browser source overlays for live telemetry. Add a Browser Source in OBS and point it to one of the URLs below.
+                OBS browser source overlays for live telemetry. Add a Browser Source in OBS and point it to one of the URLs below. Each overlay can use a different source address.
             </TextBlock>
 
             <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
@@ -19,21 +19,35 @@
                         Full telemetry dashboard with live charts: force output, Mz/Fx/Fy channels, raw tire data, LUT curve, damping, and pipeline stages. Includes speed, steer angle, clipping indicator, and frozen frame analysis.
                     </TextBlock>
                     <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" x:Name="UrlDashboard" Text="http://localhost:8321/?theme=dark"
-                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
-                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
-                                     VerticalAlignment="Center" Padding="8,4"
-                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
-                            <Button Grid.Column="1" Content="Copy" Tag="UrlDashboard"
-                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
-                                    Background="#FF30363D" Foreground="#FFE6EDF3"
-                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
-                        </Grid>
+                        <StackPanel>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" x:Name="UrlDashboard" Text=""
+                                         Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                         Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                         VerticalAlignment="Center" Padding="8,4"
+                                         PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                <Button Grid.Column="1" Content="Copy" Tag="UrlDashboard"
+                                        Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                        Background="#FF30363D" Foreground="#FFE6EDF3"
+                                        BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                <ComboBox Grid.Column="1" x:Name="SourceDashboard" IsEditable="True"
+                                          SelectionChanged="OnDashboardSourceChanged"
+                                          LostFocus="OnDashboardSourceLostFocus"
+                                          Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                          BorderBrush="#FF484F58" FontSize="13" />
+                            </Grid>
+                        </StackPanel>
                     </Border>
                     <TextBlock FontSize="12" Foreground="#FF607D8B" Margin="0,0,0,4">
                         <Run FontWeight="Bold" Text="Themes:" /> dark, transparent, compact, clipping
@@ -51,21 +65,35 @@
                         Clean streamer-friendly overlay showing speed, gear, RPM bar, force (Nm), clipping indicator, Mz/Fx/Fy channel values, lap counter, track position map, and scrolling force waveform. Optimized for OBS browser source with transparent background support.
                     </TextBlock>
                     <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" x:Name="UrlOverlay" Text="http://localhost:8321/overlay"
-                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
-                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
-                                     VerticalAlignment="Center" Padding="8,4"
-                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
-                            <Button Grid.Column="1" Content="Copy" Tag="UrlOverlay"
-                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
-                                    Background="#FF30363D" Foreground="#FFE6EDF3"
-                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
-                        </Grid>
+                        <StackPanel>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" x:Name="UrlOverlay" Text=""
+                                         Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                         Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                         VerticalAlignment="Center" Padding="8,4"
+                                         PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                <Button Grid.Column="1" Content="Copy" Tag="UrlOverlay"
+                                        Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                        Background="#FF30363D" Foreground="#FFE6EDF3"
+                                        BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                <ComboBox Grid.Column="1" x:Name="SourceOverlay" IsEditable="True"
+                                          SelectionChanged="OnOverlaySourceChanged"
+                                          LostFocus="OnOverlaySourceLostFocus"
+                                          Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                          BorderBrush="#FF484F58" FontSize="13" />
+                            </Grid>
+                        </StackPanel>
                     </Border>
                     <TextBlock FontSize="12" Foreground="#FF607D8B" Margin="0,0,0,4">
                         <Run FontWeight="Bold" Text="Options:" /> ?opacity=0.7&amp;showTrack=true&amp;showWaveform=true
@@ -83,21 +111,35 @@
                         Minimal overlay that only shows a large CLIPPING/OK indicator. Ideal as a thin OBS browser source overlay on your stream to warn viewers when FFB is clipping.
                     </TextBlock>
                     <Border Background="#FF0D1117" CornerRadius="6" Padding="4">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" x:Name="UrlClipping" Text="http://localhost:8321/?theme=clipping"
-                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
-                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
-                                     VerticalAlignment="Center" Padding="8,4"
-                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
-                            <Button Grid.Column="1" Content="Copy" Tag="UrlClipping"
-                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
-                                    Background="#FF30363D" Foreground="#FFE6EDF3"
-                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
-                        </Grid>
+                        <StackPanel>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" x:Name="UrlClipping" Text=""
+                                         Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                         Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                         VerticalAlignment="Center" Padding="8,4"
+                                         PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                <Button Grid.Column="1" Content="Copy" Tag="UrlClipping"
+                                        Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                        Background="#FF30363D" Foreground="#FFE6EDF3"
+                                        BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                <ComboBox Grid.Column="1" x:Name="SourceClipping" IsEditable="True"
+                                          SelectionChanged="OnClippingSourceChanged"
+                                          LostFocus="OnClippingSourceLostFocus"
+                                          Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                          BorderBrush="#FF484F58" FontSize="13" />
+                            </Grid>
+                        </StackPanel>
                     </Border>
                 </StackPanel>
             </Border>
@@ -117,13 +159,15 @@
 
             <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="Status" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
-                    <TextBlock FontSize="13" Foreground="#8B949E" Margin="0,0,0,4">
-                        <Run Text="Server:" /><Run Text=" http://localhost:8321" FontFamily="Consolas" Foreground="#4FC3F7" />
-                    </TextBlock>
-                    <TextBlock FontSize="13" Foreground="#8B949E">
-                        <Run Text="Status:" /><Run Text=" Running" Foreground="#4CAF50" />
-                    </TextBlock>
+                    <TextBlock Text="Network Access" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                    <TextBlock x:Name="NetworkStatusLine" FontSize="13" Foreground="#FF8B949E" Text="Checking..." />
+                    <TextBlock x:Name="NetworkDetailLine" FontSize="12" Foreground="#FF607D8B" Margin="0,4,0,0" />
+                    <Button x:Name="NetworkBtn" Content="Enable Network Access (URL ACL + Firewall)"
+                            Click="OnEnableNetworkAccess" Cursor="Hand"
+                            Margin="0,12,0,0" Padding="12,8" HorizontalAlignment="Left"
+                            Background="#FF30363D" Foreground="#FFE6EDF3"
+                            BorderThickness="1" BorderBrush="#FF484F58" FontSize="13" />
+                    <TextBlock x:Name="NetworkResult" FontSize="12" Foreground="#FF607D8B" Margin="0,6,0,0" />
                 </StackPanel>
             </Border>
 

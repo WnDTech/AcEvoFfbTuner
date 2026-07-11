@@ -185,6 +185,8 @@ public sealed class FfbProfile
             lmu.BrakeBoostGain = Slip.BrakeBoostGain;
             lmu.BrakeBoostThreshold = Slip.BrakeBoostThreshold;
             lmu.CoreForceMultiplier = Slip.CoreForceMultiplier;
+            lmu.GripScaleGain = Slip.GripScaleGain;
+            lmu.TyreTempGain = Slip.TyreTempGain;
         }
 
         pipeline.DynamicEffects.LateralGGain = Dynamic.LateralGGain;
@@ -381,7 +383,9 @@ public sealed class FfbProfile
             BrakePressureGain = (pipeline as R3eFfbPipeline)?.BrakePressureGain ?? 1.0f,
             TcFeelGain = (pipeline as R3eFfbPipeline)?.TcFeelGain ?? 1.0f,
             CoreSmoothing = (pipeline as R3eFfbPipeline)?.CoreSmoothing ?? 0.0f,
-            DetailSmoothing = (pipeline as R3eFfbPipeline)?.DetailSmoothing ?? 0.0f
+            DetailSmoothing = (pipeline as R3eFfbPipeline)?.DetailSmoothing ?? 0.0f,
+            GripScaleGain = (pipeline as LmuFfbPipeline)?.GripScaleGain ?? 0.6f,
+            TyreTempGain = (pipeline as LmuFfbPipeline)?.TyreTempGain ?? 0.0f
         };
         Dynamic = new DynamicConfig
         {
@@ -1114,6 +1118,8 @@ public sealed class SlipConfig
     public float BrakeBoostGain { get; set; } = 0.4f;
     public float BrakeBoostThreshold { get; set; } = 0.1f;
     public float CoreForceMultiplier { get; set; } = 3.0f;
+    public float GripScaleGain { get; set; } = 0.6f;
+    public float TyreTempGain { get; set; } = 0.0f;
     public float ForceGain { get; set; } = 2.5f;
     public float TyreGripScale { get; set; } = 1.0f;
     public float FlatspotGain { get; set; } = 1.0f;
@@ -1125,7 +1131,7 @@ public sealed class SlipConfig
     public float DetailSmoothing { get; set; } = 0.0f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); TyreGripScale = S(TyreGripScale); FlatspotGain = S(FlatspotGain); SurfaceFeelGain = S(SurfaceFeelGain); EngineTorqueLfeMod = S(EngineTorqueLfeMod); BrakePressureGain = S(BrakePressureGain); TcFeelGain = S(TcFeelGain); CoreSmoothing = S(CoreSmoothing); DetailSmoothing = S(DetailSmoothing); }
+    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); GearSpikeThreshold = S(GearSpikeThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); GripScaleGain = S(GripScaleGain); TyreTempGain = S(TyreTempGain); ForceGain = S(ForceGain); TyreGripScale = S(TyreGripScale); FlatspotGain = S(FlatspotGain); SurfaceFeelGain = S(SurfaceFeelGain); EngineTorqueLfeMod = S(EngineTorqueLfeMod); BrakePressureGain = S(BrakePressureGain); TcFeelGain = S(TcFeelGain); CoreSmoothing = S(CoreSmoothing); DetailSmoothing = S(DetailSmoothing); }
 }
 
 public sealed class DynamicConfig

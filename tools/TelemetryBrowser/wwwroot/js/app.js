@@ -728,6 +728,7 @@
       sector:      { label: 'S', align: 'center', width: '28px' },
       sector1:     { label: 'S1', align: 'right', fmt: 'time' },
       sector2:     { label: 'S2', align: 'right', fmt: 'time' },
+      trackPct:    { label: 'Track %', align: 'right', fmt: 'pct' },
       inPits:      { label: 'Pits', fmt: 'pit' },
       pitStops:    { label: 'Pit#', align: 'right' },
       tireFront:   { label: 'TireF', width: '60px' },
@@ -766,8 +767,9 @@
     const keys = entries.length > 0 ? Object.keys(entries[0]) : [];
     const cols = keys.filter(k => COL_DEFS[k] && k !== 'index');
     const colsOrder = ['isPlayer', 'position', 'carModel', 'driverName', 'teamName',
-      'raceNumber', 'gear', 'speedKmh', 'laps', 'bestLapTime', 'lastLapTime',
-      'currentLapTime', 'pitStatus', 'splinePos', 'trackPosition',
+      'raceNumber', 'gear', 'speedKmh', 'trackPct', 'laps', 'bestLapTime',
+      'lastLapTime', 'currentLapTime', 'pitStatus', 'gapFront', 'gapLeader',
+      'fuel', 'drs', 'splinePos', 'trackPosition',
       'posX', 'posY', 'posZ'].filter(k => keys.includes(k));
 
     let headHtml = '';
@@ -832,6 +834,11 @@
       const num = Number(val);
       if (num <= 0) return '—';
       return (num * 100).toFixed(0) + '%';
+    }
+    if (def.fmt === 'pct') {
+      const num = Number(val);
+      if (num <= 0) return '—';
+      return num.toFixed(1) + '%';
     }
     if (typeof val === 'number') {
       if (Number.isInteger(val)) return val.toString();

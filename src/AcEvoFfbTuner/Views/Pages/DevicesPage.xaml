@@ -340,6 +340,44 @@
                                 BorderThickness="1" BorderBrush="#3379C0FF">
                             <StackPanel>
                                 <TextBlock Text="Seat Front Left" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="Transparent" BorderThickness="0" Foreground="#FF79C0FF"
+                                            Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
+                                            Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="1">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                               VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource1, Converter={StaticResource BoolToVis}}" />
+                                    <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Visibility="{Binding Hf8CanCopyTo1, Converter={StaticResource BoolToVis}}"
+                                            Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="1">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain1, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF79C0FF" />
                                 <CheckBox IsChecked="{Binding Hf8ZoneEnabled1}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
@@ -360,6 +398,44 @@
                                 BorderThickness="1" BorderBrush="#3379C0FF">
                             <StackPanel>
                                 <TextBlock Text="Seat Front Right" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="Transparent" BorderThickness="0" Foreground="#FF79C0FF"
+                                            Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
+                                            Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="0">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                               VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource0, Converter={StaticResource BoolToVis}}" />
+                                    <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Visibility="{Binding Hf8CanCopyTo0, Converter={StaticResource BoolToVis}}"
+                                            Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="0">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain0, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF79C0FF" />
                                 <CheckBox IsChecked="{Binding Hf8ZoneEnabled0}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
@@ -390,6 +466,44 @@
                                 BorderThickness="1" BorderBrush="#3356D4A0">
                             <StackPanel>
                                 <TextBlock Text="Seat Rear Left" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="Transparent" BorderThickness="0" Foreground="#FF56D4A0"
+                                            Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
+                                            Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="3">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                               VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource3, Converter={StaticResource BoolToVis}}" />
+                                    <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Visibility="{Binding Hf8CanCopyTo3, Converter={StaticResource BoolToVis}}"
+                                            Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="3">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain3, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF56D4A0" />
                                 <CheckBox IsChecked="{Binding Hf8ZoneEnabled3}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
@@ -410,6 +524,44 @@
                                 BorderThickness="1" BorderBrush="#3356D4A0">
                             <StackPanel>
                                 <TextBlock Text="Seat Rear Right" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="Transparent" BorderThickness="0" Foreground="#FF56D4A0"
+                                            Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
+                                            Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="2">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                               VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource2, Converter={StaticResource BoolToVis}}" />
+                                    <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Visibility="{Binding Hf8CanCopyTo2, Converter={StaticResource BoolToVis}}"
+                                            Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="2">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain2, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF56D4A0" />
                                 <CheckBox IsChecked="{Binding Hf8ZoneEnabled2}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
@@ -440,6 +592,44 @@
                                 BorderThickness="1" BorderBrush="#33E08040">
                             <StackPanel>
                                 <TextBlock Text="Back Lower Left" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="Transparent" BorderThickness="0" Foreground="#FFE08040"
+                                            Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
+                                            Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="5">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                               VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource5, Converter={StaticResource BoolToVis}}" />
+                                    <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Visibility="{Binding Hf8CanCopyTo5, Converter={StaticResource BoolToVis}}"
+                                            Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="5">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain5, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFE08040" />
                                 <CheckBox IsChecked="{Binding Hf8ZoneEnabled5}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
@@ -460,6 +650,44 @@
                                 BorderThickness="1" BorderBrush="#33E08040">
                             <StackPanel>
                                 <TextBlock Text="Back Lower Right" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="Transparent" BorderThickness="0" Foreground="#FFE08040"
+                                            Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
+                                            Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="4">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                               VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource4, Converter={StaticResource BoolToVis}}" />
+                                    <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Visibility="{Binding Hf8CanCopyTo4, Converter={StaticResource BoolToVis}}"
+                                            Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="4">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain4, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFE08040" />
                                 <CheckBox IsChecked="{Binding Hf8ZoneEnabled4}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
@@ -490,6 +718,44 @@
                                 BorderThickness="1" BorderBrush="#33F0883E">
                             <StackPanel>
                                 <TextBlock Text="Back Upper Left" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="Transparent" BorderThickness="0" Foreground="#FFF0883E"
+                                            Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
+                                            Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="7">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                               VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource7, Converter={StaticResource BoolToVis}}" />
+                                    <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Visibility="{Binding Hf8CanCopyTo7, Converter={StaticResource BoolToVis}}"
+                                            Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="7">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain7, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFF0883E" />
                                 <CheckBox IsChecked="{Binding Hf8ZoneEnabled7}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
@@ -510,6 +776,44 @@
                                 BorderThickness="1" BorderBrush="#33F0883E">
                             <StackPanel>
                                 <TextBlock Text="Back Upper Right" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="Transparent" BorderThickness="0" Foreground="#FFF0883E"
+                                            Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
+                                            Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="6">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                               VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource6, Converter={StaticResource BoolToVis}}" />
+                                    <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
+                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Visibility="{Binding Hf8CanCopyTo6, Converter={StaticResource BoolToVis}}"
+                                            Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="6">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain6, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFF0883E" />
                                 <CheckBox IsChecked="{Binding Hf8ZoneEnabled6}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />

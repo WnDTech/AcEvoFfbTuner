@@ -97,12 +97,42 @@
             <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,16,12,20">
                 <StackPanel>
 
+                    <!-- ═══ FILTER BAR: current game + search + section counter ═══ -->
+                    <Border Background="{StaticResource BgPanel}" CornerRadius="6"
+                            BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                            Padding="14,10" Margin="0,0,0,16">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Left"
+                                    Background="#1AF0883E" BorderBrush="#66F0883E" BorderThickness="1"
+                                    CornerRadius="12" Padding="10,4" Margin="0,0,14,0"
+                                    VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="7" Height="7" Fill="#FFF0883E" VerticalAlignment="Center" Margin="0,0,7,0" />
+                                    <TextBlock Text="{Binding GameDisplayName}" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock x:Name="FilterCounter" DockPanel.Dock="Right"
+                                       Text="" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                       VerticalAlignment="Center" Margin="10,0,0,0" />
+                            <TextBox x:Name="SearchBox" FontSize="13" Padding="6,4" MinHeight="26"
+                                     Background="{StaticResource BgCard}"
+                                     Foreground="{StaticResource TextBrush}"
+                                     BorderBrush="{StaticResource BorderBrush}"
+                                     CaretBrush="{StaticResource TextBrush}"
+                                     SelectionBrush="#66F0883E"
+                                     TextChanged="SearchBox_TextChanged"
+                                     ToolTip="Filter sections by title (e.g. 'flatspot', 'curb', 'wet')"
+                                     VerticalAlignment="Center" />
+                        </DockPanel>
+                    </Border>
+
                     <!-- ═══ GROUP A: CORE PHYSICS ═══ -->
                     <TextBlock Text="C O R E   P H Y S I C S" FontSize="12" FontWeight="Bold"
                                Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" />
 
                     <!-- TYRE FORCES -->
                     <controls:SectionCard Title="TYRE FORCES"
+                                          Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
                                           SectionBrush="{StaticResource SectionTyreForces}"
                                           IsExpanded="True">
                         <controls:SectionCard.SummaryContent>
@@ -197,20 +227,38 @@
                                           SectionBrush="{StaticResource SectionTyreSlip}"
                                           IsExpanded="False">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="13" Foreground="#FF8B949E">
-                                <Run Text="Ratio: " /><Run Text="{Binding SlipRatioGain, StringFormat='{}{0:F2}'}" Foreground="#FF56D4A0" />
-                                <Run Text=" · " /><Run Text="Angle: " /><Run Text="{Binding SlipAngleGain, StringFormat='{}{0:F2}'}" Foreground="#FF56D4A0" />
-                                <Run Text=" · " /><Run Text="Thresh: " /><Run Text="{Binding SlipThreshold, StringFormat='{}{0:F2}'}" Foreground="#FF56D4A0" />
-                            </TextBlock>
+                            <StackPanel>
+                                <TextBlock FontSize="13" Foreground="#FF8B949E"
+                                           Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}">
+                                    <Run Text="Ratio: " /><Run Text="{Binding SlipRatioGain, StringFormat='{}{0:F2}'}" Foreground="#FF56D4A0" />
+                                    <Run Text=" · " /><Run Text="Angle: " /><Run Text="{Binding SlipAngleGain, StringFormat='{}{0:F2}'}" Foreground="#FF56D4A0" />
+                                    <Run Text=" · " /><Run Text="Thresh: " /><Run Text="{Binding SlipThreshold, StringFormat='{}{0:F2}'}" Foreground="#FF56D4A0" />
+                                </TextBlock>
+                                <TextBlock FontSize="13" Foreground="#FF8B949E"
+                                           Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}">
+                                    <Run Text="Gear Change Mute" Foreground="#FF56D4A0" />
+                                </TextBlock>
+                            </StackPanel>
                         </controls:SectionCard.SummaryContent>
                         <controls:SectionCard.InnerContent>
                             <StackPanel>
+                                <Border Background="#1AF0883E" BorderBrush="#66F0883E" BorderThickness="1"
+                                        CornerRadius="4" Padding="10,8" Margin="0,0,0,8"
+                                        Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock FontSize="12" Foreground="#FFE6EDF3" TextWrapping="Wrap">
+                                        <Run FontWeight="Bold" Foreground="#FFF0883E" Text="Column-force game" />
+                                        <Run Text=" — Slip Ratio, Slip Angle, and Slip Threshold do not apply to RaceRoom and Le Mans Ultimate (these games provide column torque directly, not per-wheel slip data). Only the Gear Change Mute option below is used." />
+                                    </TextBlock>
+                                </Border>
+
                                 <controls:LabeledSlider Value="{Binding SlipRatioGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                    Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
                                     Label="Slip Ratio Gain" StringFormat="{}{0:F3}"
                                     Description="Adds extra force during wheelspin or wheel lock-up. Needs Slip Threshold set correctly."
                                     DefaultValue="{Binding BuiltInDefaults.Slip.SlipRatioGain}"
                                     SectionColor="{StaticResource SectionTyreSlip}" />
                                 <controls:LabeledSlider Value="{Binding SlipAngleGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.01"
+                                    Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
                                     Label="Slip Angle Gain" StringFormat="{}{0:F3}"
                                     Description="Adds extra force when tires slide sideways (oversteer). Needs Slip Threshold set correctly."
                                     DefaultValue="{Binding BuiltInDefaults.Slip.SlipAngleGain}"
@@ -219,22 +267,24 @@
                                 <Expander Style="{StaticResource SectionExpander}" Header="Detailed Slip Settings">
                                     <StackPanel>
                                         <controls:LabeledSlider Value="{Binding SlipThreshold, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
                                             Label="Slip Threshold" StringFormat="{}{0:F3}"
                                             Description="Minimum slip level before the slip enhancer activates. Lower = more sensitive."
                                             DefaultValue="{Binding BuiltInDefaults.Slip.SlipThreshold}"
                                             SectionColor="{StaticResource SectionTyreSlip}" />
-                                        <DockPanel Margin="0,6">
+                                        <DockPanel Margin="0,6"
+                                                   Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}">
                                             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
                                                 <CheckBox IsChecked="{Binding SlipUseFrontOnly}" Margin="0,0,12,0" />
                                                 <TextBlock Text="Front Wheels Only" FontSize="15" />
                                             </StackPanel>
                                         </DockPanel>
-                                        <DockPanel Margin="0,6" Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}">
+                                        <DockPanel Margin="0,6">
                                             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
                                                 <CheckBox IsChecked="{Binding GearChangeMuteEnabled}" Margin="0,0,12,0" />
                                                 <TextBlock Text="Mute Gear Change FFB" FontSize="15" Foreground="#FFE6EDF3" />
                                             </StackPanel>
-                                            <TextBlock Text="Suppresses force spikes during gear shifts in RaceRoom and Le Mans Ultimate." FontSize="12" Foreground="#FF8B949E" Margin="28,4,0,0" TextWrapping="Wrap" />
+                                            <TextBlock Text="Suppresses force spikes during gear shifts." FontSize="12" Foreground="#FF8B949E" Margin="28,4,0,0" TextWrapping="Wrap" />
                                         </DockPanel>
                                     </StackPanel>
                                 </Expander>
@@ -255,6 +305,13 @@
                         </controls:SectionCard.SummaryContent>
                         <controls:SectionCard.InnerContent>
                             <StackPanel>
+                                <Border Background="#1A79C0FF" BorderBrush="#6679C0FF" BorderThickness="1,1,1,1"
+                                        CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                    <TextBlock FontSize="12" Foreground="#FFE6EDF3" TextWrapping="Wrap">
+                                        <Run FontWeight="Bold" Foreground="#FF79C0FF" Text="Per-wheel game" />
+                                        <Run Text=" — applies to AC EVO, Assetto Corsa 1, and ACC. Hidden for RaceRoom and Le Mans Ultimate (column-force games don't expose per-wheel Mz data)." />
+                                    </TextBlock>
+                                </Border>
                                 <TextBlock Text="Feel the tires approaching and exceeding their grip limit. Front scrub gives a grainy texture as front tires reach peak. Rear slip warns you when the back end is stepping out." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
                                 <controls:LabeledSlider Value="{Binding ScrubGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Front Tire Scrub" StringFormat="{}{0:F3}"
@@ -272,6 +329,7 @@
 
                     <!-- TYRE FLEX -->
                     <controls:SectionCard Title="TYRE FLEX"
+                                          Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
                                           SectionBrush="{StaticResource SectionTyreFlex}"
                                           IsExpanded="False">
                         <controls:SectionCard.SummaryContent>
@@ -318,6 +376,7 @@
 
                     <!-- STATIONARY FRICTION (engine-off wheel scrub) -->
                     <controls:SectionCard Title="STATIONARY FRICTION"
+                                          Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
                                           SectionBrush="{StaticResource SectionDamping}"
                                           IsExpanded="False">
                         <controls:SectionCard.SummaryContent>
@@ -396,6 +455,7 @@
 
                     <!-- CRASH IMPACT -->
                     <controls:SectionCard Title="CRASH IMPACT"
+                                          Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
                                           SectionBrush="{StaticResource SectionCrash}"
                                           IsExpanded="False">
                         <controls:SectionCard.SummaryContent>
@@ -468,156 +528,8 @@
                     <TextBlock Text="M E C H A N I C A L   F E E D B A C K" FontSize="12" FontWeight="Bold"
                                Foreground="{StaticResource TextDimBrush}" Margin="0,20,0,12" />
 
-                    <!-- CURB & RUMBLE -->
-                    <controls:SectionCard Title="CURB &amp; RUMBLE"
-                                          SectionBrush="{StaticResource SectionCurb}"
-                                          IsExpanded="False">
-                        <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="13" Foreground="#FF8B949E">
-                                <Run Text="Curb: " /><Run Text="{Binding CurbGain, StringFormat='{}{0:F1}'}" Foreground="#FFB388FF" />
-                                <Run Text=" · " /><Run Text="Master: " /><Run Text="{Binding VibrationMasterGain, StringFormat='{}{0:F1}'}" Foreground="#FFB388FF" />
-                            </TextBlock>
-                        </controls:SectionCard.SummaryContent>
-                        <controls:SectionCard.InnerContent>
-                            <StackPanel>
-                                <TextBlock Text="Kerb strike and rumble strip vibration. Uses TyreContactNormal deviation to detect angled surfaces and combines with suspension compression for realistic curb impacts." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
-                                <controls:LabeledSlider Value="{Binding CurbGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                    Label="Curb Gain" StringFormat="{}{0:F3}"
-                                    Description="Kerb strike vibration intensity. Also scales suspension-derived kerb bumps in the main force."
-                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.KerbGain}"
-                                    SectionColor="{StaticResource SectionCurb}" />
-
-                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Curb Settings">
-                                    <StackPanel>
-                                        <controls:LabeledSlider Value="{Binding VibrationMasterGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                            Label="Vibration Master" StringFormat="{}{0:F3}"
-                                            Description="Master volume for all vibration effects. Scales Curb, Slip, Road, and ABS together."
-                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.MasterGain}"
-                                            SectionColor="{StaticResource SectionCurb}" />
-                                        <controls:LabeledSlider Value="{Binding SuspensionRoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.01"
-                                            Label="Suspension Road" StringFormat="{}{0:F3}"
-                                            Description="Suspension-derived road texture gain for the main force channel. Works with Road and Curb vibration gains."
-                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.SuspensionRoadGain}"
-                                            SectionColor="{StaticResource SectionCurb}" />
-                                    </StackPanel>
-                                </Expander>
-                            </StackPanel>
-                        </controls:SectionCard.InnerContent>
-                    </controls:SectionCard>
-
-                    <!-- SURFACE VIBRATION -->
-                    <controls:SectionCard Title="SURFACE VIBRATION"
-                                          SectionBrush="{StaticResource SectionVibration}"
-                                          IsExpanded="False">
-                        <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="13" Foreground="#FF8B949E">
-                                <Run Text="Slip: " /><Run Text="{Binding SlipGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
-                                <Run Text=" · " /><Run Text="Road: " /><Run Text="{Binding RoadGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
-                                <Run Text=" · " /><Run Text="ABS: " /><Run Text="{Binding AbsGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
-                            </TextBlock>
-                        </controls:SectionCard.SummaryContent>
-                        <controls:SectionCard.InnerContent>
-                            <StackPanel>
-                                <controls:LabeledSlider Value="{Binding SlipGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                    Label="Slip" StringFormat="{}{0:F3}"
-                                    Description="Tire slip vibration intensity. Scaled by Master."
-                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.SlipGain}"
-                                    SectionColor="{StaticResource SectionVibration}" />
-                                <controls:LabeledSlider Value="{Binding RoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                    Label="Road" StringFormat="{}{0:F3}"
-                                    Description="Road surface vibration intensity. Also scales suspension-derived road texture in the main force."
-                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.RoadGain}"
-                                    SectionColor="{StaticResource SectionVibration}" />
-                                <controls:LabeledSlider Value="{Binding AbsGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                    Label="ABS Intensity" StringFormat="{}{0:F3}"
-                                    Description="ABS pulse vibration intensity. Also adds pulses to the main steering force when ABS activates."
-                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.AbsGain}"
-                                    SectionColor="{StaticResource SectionVibration}" />
-
-                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Vibration Settings">
-                                    <StackPanel>
-                                        <controls:LabeledSlider Value="{Binding AbsPulseAmplitude, Mode=TwoWay}" Minimum="0" Maximum="1.0" TickFrequency="0.01"
-                                            Label="ABS Pulse Strength" StringFormat="{}{0:F3}"
-                                            Description="How punchy each ABS pulse feels. Per-car tuning: gentle cars ~0.10, aggressive ~0.25-0.50."
-                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.AbsPulseAmplitude}"
-                                            SectionColor="{StaticResource SectionVibration}" />
-                                    </StackPanel>
-                                </Expander>
-                            </StackPanel>
-                        </controls:SectionCard.InnerContent>
-                    </controls:SectionCard>
-
-                    <!-- OFFTRACK EFFECTS -->
-                    <controls:SectionCard Title="OFFTRACK EFFECTS"
-                                          SectionBrush="{StaticResource SectionOfftrack}"
-                                          IsExpanded="False">
-                        <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="13" Foreground="#FF8B949E">
-                                <Run Text="Gain: " /><Run Text="{Binding OfftrackGain, StringFormat='{}{0:F2}'}" Foreground="#FFCE9178" />
-                                <Run Text=" · " /><Run Text="Severity: " /><Run Text="{Binding OfftrackSeverityScale, StringFormat='{}{0:F1}'}" Foreground="#FFCE9178" />
-                            </TextBlock>
-                        </controls:SectionCard.SummaryContent>
-                        <controls:SectionCard.InnerContent>
-                            <StackPanel>
-                                <TextBlock Text="Vibration feedback when the car leaves the racing surface. Detects off-track state and generates surface rumble from suspension movement combined with synthetic noise for grass, gravel, and dirt textures." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
-                                <controls:LabeledSlider Value="{Binding OfftrackGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
-                                    Label="Offtrack Gain" StringFormat="{}{0:F3}"
-                                    Description="Overall intensity of off-track vibration. 0 = no off-track feedback, 0.5 = subtle, 1.0 = strong rumble."
-                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.OfftrackGain}"
-                                    SectionColor="{StaticResource SectionOfftrack}" />
-                                <controls:LabeledSlider Value="{Binding OfftrackSeverityScale, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
-                                    Label="Severity Scale" StringFormat="{}{0:F3}"
-                                    Description="How aggressively suspension deltas are amplified for off-track surface texture. Higher = more violent rumble on rough terrain."
-                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.OfftrackSeverityScale}"
-                                    SectionColor="{StaticResource SectionOfftrack}" />
-                            </StackPanel>
-                        </controls:SectionCard.InnerContent>
-                    </controls:SectionCard>
-
-                    <!-- DAMPING & FRICTION -->
-                    <controls:SectionCard Title="DAMPING &amp; FRICTION"
-                                          SectionBrush="{StaticResource SectionDamping}"
-                                          IsExpanded="False">
-                        <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="13" Foreground="#FF8B949E">
-                                <Run Text="Damp: " /><Run Text="{Binding SpeedDamping, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
-                                <Run Text=" · " /><Run Text="Fric: " /><Run Text="{Binding FrictionLevel, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
-                                <Run Text=" · " /><Run Text="Inertia: " /><Run Text="{Binding InertiaWeight, StringFormat='{}{0:F1}'}" Foreground="#FFE3B341" />
-                            </TextBlock>
-                        </controls:SectionCard.SummaryContent>
-                        <controls:SectionCard.InnerContent>
-                            <StackPanel>
-                                <controls:LabeledSlider Value="{Binding SpeedDamping, Mode=TwoWay}" Minimum="0" Maximum="25" TickFrequency="0.001"
-                                    Label="Speed Damping" StringFormat="{}{0:F3}"
-                                    Description="Viscous damping — adds resistance that increases with car speed. Higher = heavier steering at speed. Scaled by Damping Speed Ref."
-                                    DefaultValue="{Binding BuiltInDefaults.Damping.SpeedDamping}"
-                                    SectionColor="{StaticResource SectionDamping}" />
-                                <controls:LabeledSlider Value="{Binding FrictionLevel, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.001"
-                                    Label="Friction" StringFormat="{}{0:F3}"
-                                    Description="Constant friction resistance when turning the wheel (Coulomb model). Higher = heavier, more resistant feel."
-                                    DefaultValue="{Binding BuiltInDefaults.Damping.Friction}"
-                                    SectionColor="{StaticResource SectionDamping}" />
-
-                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Damping Settings">
-                                    <StackPanel>
-                                        <controls:LabeledSlider Value="{Binding InertiaWeight, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.1"
-                                            Label="Inertia" StringFormat="{}{0:F3}"
-                                            Description="Simulates steering inertia — resists rapid direction changes based on angular acceleration. Increases with car speed."
-                                            DefaultValue="{Binding BuiltInDefaults.Damping.Inertia}"
-                                            SectionColor="{StaticResource SectionDamping}" />
-                                        <controls:LabeledSlider Value="{Binding DampingSpeedReference, Mode=TwoWay}" Minimum="50" Maximum="500" TickFrequency="5"
-                                            Label="Damping Speed Ref (km/h)" StringFormat="{}{0:F0}"
-                                            Description="Speed where speed-based damping reaches full strength. Lower = damping kicks in sooner."
-                                            DefaultValue="{Binding BuiltInDefaults.Damping.MaxSpeedReference}"
-                                            SectionColor="{StaticResource SectionDamping}" />
-                                    </StackPanel>
-                                </Expander>
-                            </StackPanel>
-                        </controls:SectionCard.InnerContent>
-                    </controls:SectionCard>
-
-                    <!-- ═══ GROUP B: RACEROOM ═══ -->
-                    <controls:SectionCard Title="RACEROOM (Column Force)"
+                    <!-- COLUMN FORCE (moved from buried position to top of group; applies to RaceRoom + Le Mans Ultimate) -->
+                    <controls:SectionCard Title="COLUMN FORCE  (RaceRoom · Le Mans Ultimate)"
                                           Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}"
                                           SectionBrush="{StaticResource SectionTyreSlip}"
                                           IsExpanded="True">
@@ -629,7 +541,13 @@
                         </controls:SectionCard.SummaryContent>
                         <controls:SectionCard.InnerContent>
                             <StackPanel>
-                                <TextBlock Text="RaceRoom uses total SteeringForce (not per-wheel Mz). These settings directly control how the column torque feels. Only applies when RaceRoom is the active game." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+                                <Border Background="#1AF0883E" BorderBrush="#66F0883E" BorderThickness="1,1,1,1"
+                                        CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
+                                    <TextBlock FontSize="12" Foreground="#FFE6EDF3" TextWrapping="Wrap">
+                                        <Run FontWeight="Bold" Foreground="#FFF0883E" Text="Column-force game" />
+                                        <Run Text=" — only applies when RaceRoom or Le Mans Ultimate is active. RaceRoom reads total SteeringForce from shared memory; Le Mans Ultimate reads per-vehicle SteeringShaftTorque from telemetry offset 452. These sliders directly control the column torque (not per-wheel Mz)." />
+                                    </TextBlock>
+                                </Border>
 
                                 <TextBlock Text="Core Force" Style="{StaticResource SubSectionHeader}" />
                                 <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
@@ -705,8 +623,136 @@
                         </controls:SectionCard.InnerContent>
                     </controls:SectionCard>
 
+                    <!-- VIBRATIONS (consolidated) -->
+                    <controls:SectionCard Title="VIBRATIONS"
+                                          SectionBrush="{StaticResource SectionVibration}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Master: " /><Run Text="{Binding VibrationMasterGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
+                                <Run Text=" · " /><Run Text="Curb: " /><Run Text="{Binding CurbGain, StringFormat='{}{0:F1}'}" Foreground="#FFB388FF" />
+                                <Run Text=" · " /><Run Text="Road: " /><Run Text="{Binding RoadGain, StringFormat='{}{0:F1}'}" Foreground="#FFD2A8FF" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <TextBlock Text="Vibration feedback from curb strikes, tyre slip, road texture, ABS pulses, and off-track surface rumble. All gains are per-game profile settings — changing them for LMU only affects LMU." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+
+                                <controls:LabeledSlider Value="{Binding VibrationMasterGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Vibration Master" StringFormat="{}{0:F3}"
+                                    Description="Master volume for all vibration effects. Scales Curb, Slip, Road, and ABS together."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.MasterGain}"
+                                    SectionColor="{StaticResource SectionVibration}" />
+
+                                <controls:LabeledSlider Value="{Binding CurbGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Curb Gain" StringFormat="{}{0:F3}"
+                                    Description="Kerb strike and rumble strip vibration intensity. Also scales suspension-derived kerb bumps in the main force."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.KerbGain}"
+                                    SectionColor="{StaticResource SectionVibration}" />
+
+                                <controls:LabeledSlider Value="{Binding SlipGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Slip" StringFormat="{}{0:F3}"
+                                    Description="Tire slip vibration intensity. Scaled by Master."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.SlipGain}"
+                                    SectionColor="{StaticResource SectionVibration}" />
+
+                                <controls:LabeledSlider Value="{Binding RoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="Road" StringFormat="{}{0:F3}"
+                                    Description="Road surface vibration intensity. Also scales suspension-derived road texture in the main force."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.RoadGain}"
+                                    SectionColor="{StaticResource SectionVibration}" />
+
+                                <controls:LabeledSlider Value="{Binding AbsGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                    Label="ABS Intensity" StringFormat="{}{0:F3}"
+                                    Description="ABS pulse vibration intensity. Also adds pulses to the main steering force when ABS activates."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.AbsGain}"
+                                    SectionColor="{StaticResource SectionVibration}" />
+
+                                <controls:LabeledSlider Value="{Binding SuspensionRoadGain, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.01"
+                                    Label="Suspension Road" StringFormat="{}{0:F3}"
+                                    Description="Suspension-derived road texture gain for the main force channel (separate from the haptic pad path)."
+                                    DefaultValue="{Binding BuiltInDefaults.Vibrations.SuspensionRoadGain}"
+                                    SectionColor="{StaticResource SectionVibration}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Offtrack &amp; Detailed Vibration Settings">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding OfftrackGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="Offtrack Gain" StringFormat="{}{0:F3}"
+                                            Description="Overall intensity of off-track vibration. 0 = no off-track feedback, 0.5 = subtle, 1.0 = strong rumble."
+                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.OfftrackGain}"
+                                            SectionColor="{StaticResource SectionVibration}" />
+                                        <controls:LabeledSlider Value="{Binding OfftrackSeverityScale, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                            Label="Offtrack Severity" StringFormat="{}{0:F3}"
+                                            Description="How aggressively suspension deltas are amplified for off-track surface texture. Higher = more violent rumble."
+                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.OfftrackSeverityScale}"
+                                            SectionColor="{StaticResource SectionVibration}" />
+                                        <controls:LabeledSlider Value="{Binding AbsPulseAmplitude, Mode=TwoWay}" Minimum="0" Maximum="1.0" TickFrequency="0.01"
+                                            Label="ABS Pulse Strength" StringFormat="{}{0:F3}"
+                                            Description="How punchy each ABS pulse feels. Per-car tuning: gentle cars ~0.10, aggressive ~0.25-0.50."
+                                            DefaultValue="{Binding BuiltInDefaults.Vibrations.AbsPulseAmplitude}"
+                                            SectionColor="{StaticResource SectionVibration}" />
+                                        <controls:LabeledSlider Value="{Binding GripScaleGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Grip Scale" StringFormat="{}{0:F3}"
+                                            Description="How much centering force fades as the front tyres approach grip limit. 0 = always full force, 1 = full fade at zero grip. Uses LMU's real grip fraction per wheel."
+                                            DefaultValue="{Binding BuiltInDefaults.Lmu.GripScaleGain}"
+                                            SectionColor="{StaticResource SectionVibration}" />
+                                        <controls:LabeledSlider Value="{Binding TyreTempGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                            Label="Tyre Temp Feel" StringFormat="{}{0:F3}"
+                                            Description="Subtle texture from cold (under 75°C) or overheated (over 105°C) tyres. 0 = off. Uses LMU's real surface temperature per wheel."
+                                            DefaultValue="{Binding BuiltInDefaults.Lmu.TyreTempGain}"
+                                            SectionColor="{StaticResource SectionVibration}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
+                    <!-- DAMPING & FRICTION -->
+                    <controls:SectionCard Title="DAMPING &amp; FRICTION"
+                                          Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
+                                          SectionBrush="{StaticResource SectionDamping}"
+                                          IsExpanded="False">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Damp: " /><Run Text="{Binding SpeedDamping, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
+                                <Run Text=" · " /><Run Text="Fric: " /><Run Text="{Binding FrictionLevel, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
+                                <Run Text=" · " /><Run Text="Inertia: " /><Run Text="{Binding InertiaWeight, StringFormat='{}{0:F1}'}" Foreground="#FFE3B341" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                        <controls:SectionCard.InnerContent>
+                            <StackPanel>
+                                <controls:LabeledSlider Value="{Binding SpeedDamping, Mode=TwoWay}" Minimum="0" Maximum="25" TickFrequency="0.001"
+                                    Label="Speed Damping" StringFormat="{}{0:F3}"
+                                    Description="Viscous damping — adds resistance that increases with car speed. Higher = heavier steering at speed. Scaled by Damping Speed Ref."
+                                    DefaultValue="{Binding BuiltInDefaults.Damping.SpeedDamping}"
+                                    SectionColor="{StaticResource SectionDamping}" />
+                                <controls:LabeledSlider Value="{Binding FrictionLevel, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.001"
+                                    Label="Friction" StringFormat="{}{0:F3}"
+                                    Description="Constant friction resistance when turning the wheel (Coulomb model). Higher = heavier, more resistant feel."
+                                    DefaultValue="{Binding BuiltInDefaults.Damping.Friction}"
+                                    SectionColor="{StaticResource SectionDamping}" />
+
+                                <Expander Style="{StaticResource SectionExpander}" Header="Detailed Damping Settings">
+                                    <StackPanel>
+                                        <controls:LabeledSlider Value="{Binding InertiaWeight, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.1"
+                                            Label="Inertia" StringFormat="{}{0:F3}"
+                                            Description="Simulates steering inertia — resists rapid direction changes based on angular acceleration. Increases with car speed."
+                                            DefaultValue="{Binding BuiltInDefaults.Damping.Inertia}"
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                        <controls:LabeledSlider Value="{Binding DampingSpeedReference, Mode=TwoWay}" Minimum="50" Maximum="500" TickFrequency="5"
+                                            Label="Damping Speed Ref (km/h)" StringFormat="{}{0:F0}"
+                                            Description="Speed where speed-based damping reaches full strength. Lower = damping kicks in sooner."
+                                            DefaultValue="{Binding BuiltInDefaults.Damping.MaxSpeedReference}"
+                                            SectionColor="{StaticResource SectionDamping}" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </controls:SectionCard.InnerContent>
+                    </controls:SectionCard>
+
                     <!-- DYNAMIC EFFECTS -->
                     <controls:SectionCard Title="DYNAMIC EFFECTS"
+                                          Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
                                           SectionBrush="{StaticResource SectionDynamic}"
                                           IsExpanded="False">
                         <controls:SectionCard.SummaryContent>
@@ -870,6 +916,7 @@
 
                      <!-- AUTO-GAIN -->
                      <controls:SectionCard Title="AUTO-GAIN"
+                                           Visibility="{Binding IsColumnForceGame, Converter={StaticResource InverseBoolToVis}}"
                                            SectionBrush="{StaticResource SectionOutput}"
                                            IsExpanded="False">
                         <controls:SectionCard.SummaryContent>
@@ -912,6 +959,13 @@
                         </controls:SectionCard.SummaryContent>
                         <controls:SectionCard.InnerContent>
                             <StackPanel>
+                                <Border Background="#1A79C0FF" BorderBrush="#6679C0FF" BorderThickness="1,1,1,1"
+                                        CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
+                                    <TextBlock FontSize="12" Foreground="#FFE6EDF3" TextWrapping="Wrap">
+                                        <Run FontWeight="Bold" Foreground="#FF79C0FF" Text="Per-wheel game" />
+                                        <Run Text=" — applies to AC EVO, Assetto Corsa 1, and ACC. Hidden for RaceRoom and Le Mans Ultimate (no shared-memory road/wet state in column-force games)." />
+                                    </TextBlock>
+                                </Border>
                                 <TextBlock Text="Adjusts FFB for wet track conditions. Suppresses vibration detail, widens slip curves, increases noise floor, and optionally simulates hydroplaning. Enable before driving in rain." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
                                 <DockPanel Margin="0,6">
                                     <TextBlock Text="Enable Wet Weather" Width="200" VerticalAlignment="Center" FontWeight="Bold" FontSize="15" DockPanel.Dock="Left" />

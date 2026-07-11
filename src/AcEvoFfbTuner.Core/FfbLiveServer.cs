@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
@@ -8,7 +10,7 @@ namespace AcEvoFfbTuner.Core;
 
 public sealed class FfbLiveServer : IDisposable
 {
-    private HttpListener? _listener;
+    private TcpListener? _tcpListener;
     private readonly CancellationTokenSource _cts = new();
     private Task? _listenTask;
     private readonly ConcurrentBag<SseClient> _clients = new();
@@ -35,7 +37,9 @@ public sealed class FfbLiveServer : IDisposable
     private readonly StringBuilder _sb = new(2048);
 
     public int Port { get; }
-    public bool IsRunning => _listener != null;
+    public bool IsRunning => _tcpListener != null;
+    public bool IsNetworkEnabled { get; private set; }
+    public List<string> NetworkAddresses { get; private set; } = new();
 
     public FfbLiveServer(int port = 8321)
     {
@@ -44,20 +48,54 @@ public sealed class FfbLiveServer : IDisposable
 
     public void Start()
     {
-        if (_listener != null) return;
-        _listener = new HttpListener();
-        _listener.Prefixes.Add("http://localhost:8321/");
-        _listener.Prefixes.Add("http://127.0.0.1:8321/");
+        if (_tcpListener != null) return;
+        NetworkAddresses = GetLocalNetworkAddresses();
+        _tcpListener = new TcpListener(IPAddress.Any, Port);
         try
         {
-            _listener.Start();
+            _tcpListener.Start();
+            IsNetworkEnabled = NetworkAddresses.Count > 0;
         }
-        catch (HttpListenerException)
+        catch (SocketException)
         {
-            _listener = null;
+            _tcpListener = null;
             return;
         }
         _listenTask = Task.Run(() => AcceptLoop(_cts.Token));
+    }
+
+    public static List<string> GetLocalNetworkAddresses()
+    {
+        var ips = new List<string>();
+        try
+        {
+            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                var ipProps = ni.GetIPProperties();
+                foreach (var addr in ipProps.UnicastAddresses)
+                {
+                    if (addr.Address.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        ips.Add(addr.Address.ToString());
+                    }
+                }
+            }
+            if (ips.Count == 0)
+            {
+                var host = Dns.GetHostEntry(Dns.GetHostName());
+                foreach (var addr in host.AddressList)
+                {
+                    if (addr.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(addr))
+                    {
+                        ips.Add(addr.ToString());
+                    }
+                }
+            }
+        }
+        catch { }
+        return ips;
     }
 
     public void Stop()
@@ -65,12 +103,11 @@ public sealed class FfbLiveServer : IDisposable
         _cts.Cancel();
         foreach (var c in _clients)
         {
-            try { c.Stream.Close(); } catch { }
+            try { c.TcpClient.Close(); } catch { }
         }
         _clients.Clear();
-        try { _listener?.Stop(); } catch { }
-        try { _listener?.Close(); } catch { }
-        _listener = null;
+        try { _tcpListener?.Stop(); } catch { }
+        _tcpListener = null;
     }
 
     public void OnData(FfbRawData raw, FfbProcessedData proc)
@@ -198,66 +235,117 @@ public sealed class FfbLiveServer : IDisposable
 
     private async void AcceptLoop(CancellationToken ct)
     {
-        while (!ct.IsCancellationRequested && _listener != null)
+        while (!ct.IsCancellationRequested && _tcpListener != null)
         {
             try
             {
-                var ctx = await _listener.GetContextAsync();
-                if (ct.IsCancellationRequested) break;
-
-                var path = ctx.Request.Url?.AbsolutePath ?? "";
-                if (path == "/history")
-                {
-                    ServeHistory(ctx);
-                }
-                else if (path == "/stream")
-                {
-                    var client = new SseClient(ctx.Response);
-                    _clients.Add(client);
-                    _ = Task.Run(() => SseWriter(client, ct), ct);
-                }
-                else if (path == "/overlay")
-                {
-                    ServeOverlay(ctx);
-                }
-                else
-                {
-                    ServeHtml(ctx);
-                }
+                var tcpClient = await _tcpListener.AcceptTcpClientAsync(ct);
+                _ = Task.Run(() => HandleClient(tcpClient, ct), ct);
             }
-            catch (HttpListenerException) { break; }
-            catch (ObjectDisposedException) { break; }
             catch (OperationCanceledException) { break; }
+            catch (ObjectDisposedException) { break; }
+            catch (SocketException) { break; }
         }
     }
 
-    private void SseWriter(SseClient client, CancellationToken ct)
+    private async void HandleClient(TcpClient tcpClient, CancellationToken ct)
     {
-        client.Response.StatusCode = 200;
-        client.Response.ContentType = "text/event-stream";
-        client.Response.Headers.Add("Cache-Control", "no-cache");
-        client.Response.Headers.Add("Access-Control-Allow-Origin", "*");
-        client.Response.Headers.Add("Connection", "keep-alive");
-
-        string initJson;
-        lock (_dataLock)
-        {
-            _sb.Clear();
-            _sb.Append("{\"force\":[");
-            AppendHistoryArray(_hForce);
-            _sb.Append("],\"steer\":[");
-            AppendHistoryArray(_hSteer);
-            _sb.Append("],\"speed\":[");
-            AppendHistoryArray(_hSpeed);
-            _sb.Append("]}");
-            initJson = _sb.ToString();
-        }
-
         try
         {
+            var stream = tcpClient.GetStream();
+            var (method, path, query) = await ReadHttpRequest(stream, ct);
+            if (method != "GET") return;
+
+            if (path == "/stream")
+            {
+                var sseClient = new SseClient(tcpClient);
+                _clients.Add(sseClient);
+                await SseWriter(sseClient, ct);
+            }
+            else
+            {
+                if (path == "/history")
+                    await ServeHistory(stream);
+                else if (path == "/overlay")
+                    await ServeOverlay(stream, query);
+                else
+                    await ServeHtml(stream, query);
+            }
+        }
+        catch { }
+        finally
+        {
+            try { tcpClient.Close(); } catch { }
+        }
+    }
+
+    private static async Task<(string method, string path, string query)> ReadHttpRequest(NetworkStream stream, CancellationToken ct)
+    {
+        try
+        {
+            using var reader = new StreamReader(stream, Encoding.UTF8, false, 4096, leaveOpen: true);
+            var requestLine = await reader.ReadLineAsync(ct);
+            if (requestLine == null) return ("", "", "");
+
+            var parts = requestLine.Split(' ');
+            if (parts.Length < 2) return ("", "", "");
+
+            string? line;
+            do
+            {
+                line = await reader.ReadLineAsync(ct);
+            } while (line != null && line != "");
+
+            var pathAndQuery = parts[1];
+            var qIdx = pathAndQuery.IndexOf('?');
+            var path = qIdx >= 0 ? pathAndQuery[..qIdx] : pathAndQuery;
+            var query = qIdx >= 0 ? pathAndQuery[qIdx..] : "";
+
+            return (parts[0], path, query);
+        }
+        catch { return ("", "", ""); }
+    }
+
+    private static async Task WriteResponse(NetworkStream stream, int statusCode, string statusText, string contentType, byte[] body)
+    {
+        var header = $"HTTP/1.1 {statusCode} {statusText}\r\nContent-Type: {contentType}\r\nContent-Length: {body.Length}\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n";
+        var headerBytes = Encoding.UTF8.GetBytes(header);
+        await stream.WriteAsync(headerBytes, 0, headerBytes.Length);
+        if (body.Length > 0)
+            await stream.WriteAsync(body, 0, body.Length);
+    }
+
+    private static async Task WriteSseHeaders(NetworkStream stream)
+    {
+        var header = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nAccess-Control-Allow-Origin: *\r\nConnection: keep-alive\r\n\r\n";
+        var headerBytes = Encoding.UTF8.GetBytes(header);
+        await stream.WriteAsync(headerBytes, 0, headerBytes.Length);
+        await stream.FlushAsync();
+    }
+
+    private async Task SseWriter(SseClient client, CancellationToken ct)
+    {
+        try
+        {
+            await WriteSseHeaders(client.Stream);
+
+            string initJson;
+            lock (_dataLock)
+            {
+                _sb.Clear();
+                _sb.Append("{\"force\":[");
+                AppendHistoryArray(_hForce);
+                _sb.Append("],\"steer\":[");
+                AppendHistoryArray(_hSteer);
+                _sb.Append("],\"speed\":[");
+                AppendHistoryArray(_hSpeed);
+                _sb.Append("]}");
+                initJson = _sb.ToString();
+            }
+
             var init = Encoding.UTF8.GetBytes("data: " + initJson + "\n\n");
-            client.Stream.Write(init, 0, init.Length);
-            client.Stream.Flush();
+            await client.Stream.WriteAsync(init, 0, init.Length, ct);
+            await client.Stream.FlushAsync(ct);
 
             while (!ct.IsCancellationRequested)
             {
@@ -266,20 +354,20 @@ public sealed class FfbLiveServer : IDisposable
 
                 while (client.Queue.TryDequeue(out var payload))
                 {
-                    client.Stream.Write(payload, 0, payload.Length);
+                    await client.Stream.WriteAsync(payload, 0, payload.Length, ct);
                 }
-                client.Stream.Flush();
+                await client.Stream.FlushAsync(ct);
             }
         }
         catch { }
         finally
         {
             _clients.TryTake(out _);
-            try { client.Response.Close(); } catch { }
+            try { client.TcpClient.Close(); } catch { }
         }
     }
 
-    private void ServeHistory(HttpListenerContext ctx)
+    private async Task ServeHistory(NetworkStream stream)
     {
         string json;
         lock (_dataLock)
@@ -305,12 +393,7 @@ public sealed class FfbLiveServer : IDisposable
             json = _sb.ToString();
         }
         var buf = Encoding.UTF8.GetBytes(json);
-        ctx.Response.StatusCode = 200;
-        ctx.Response.ContentType = "application/json";
-        ctx.Response.Headers.Add("Access-Control-Allow-Origin", "*");
-        ctx.Response.ContentLength64 = buf.Length;
-        ctx.Response.OutputStream.Write(buf);
-        ctx.Response.Close();
+        await WriteResponse(stream, 200, "OK", "application/json", buf);
     }
 
     private void AppendHistoryArray(float[] arr)
@@ -362,15 +445,11 @@ public sealed class FfbLiveServer : IDisposable
 
     // ── HTML Serving ─────────────────────────────────────────────────────
 
-    private void ServeHtml(HttpListenerContext ctx)
+    private async Task ServeHtml(NetworkStream stream, string query)
     {
-        var opts = ParseOptions(ctx.Request.Url?.Query ?? "");
+        var opts = ParseOptions(query);
         var html = Encoding.UTF8.GetBytes(GetHtml(opts));
-        ctx.Response.StatusCode = 200;
-        ctx.Response.ContentType = "text/html; charset=utf-8";
-        ctx.Response.ContentLength64 = html.Length;
-        ctx.Response.OutputStream.Write(html);
-        ctx.Response.Close();
+        await WriteResponse(stream, 200, "OK", "text/html; charset=utf-8", html);
     }
 
     private static string GetHtml() => GetHtml(default);
@@ -704,17 +783,11 @@ addEventListener('keydown',(e)=>{if(e.code==='Space'){e.preventDefault();toggleF
 </script></body></html>";
     }
 
-    private void ServeOverlay(HttpListenerContext ctx)
+    private async Task ServeOverlay(NetworkStream stream, string query)
     {
-        var opts = ParseOptions(ctx.Request.Url?.Query ?? "");
-        var html = GetOverlayHtml(opts);
-        var buf = Encoding.UTF8.GetBytes(html);
-        ctx.Response.StatusCode = 200;
-        ctx.Response.ContentType = "text/html; charset=utf-8";
-        ctx.Response.Headers.Add("Access-Control-Allow-Origin", "*");
-        ctx.Response.ContentLength64 = buf.Length;
-        ctx.Response.OutputStream.Write(buf);
-        ctx.Response.Close();
+        var opts = ParseOptions(query);
+        var html = Encoding.UTF8.GetBytes(GetOverlayHtml(opts));
+        await WriteResponse(stream, 200, "OK", "text/html; charset=utf-8", html);
     }
 
     private static string GetOverlayHtml(OverlayOptions opts)
@@ -724,53 +797,61 @@ addEventListener('keydown',(e)=>{if(e.code==='Space'){e.preventDefault();toggleF
 <html><head><meta charset=""utf-8""><title>FFB Overlay</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:transparent;color:#fff;font-family:'Segoe UI',Arial,sans-serif;overflow:hidden;height:100vh;width:1920px;position:relative}
-#wrap{position:absolute;bottom:40px;left:40px;right:40px;display:flex;gap:20px;align-items:flex-end;opacity:" + opacity + @"}
-#left{display:flex;flex-direction:column;gap:4px}
-#speed{font-size:64px;font-weight:700;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.8)}
-#speed .unit{font-size:24px;font-weight:400;color:#aaa}
-#gear{font-size:48px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,0.8)}
-#rpmBar{width:200px;height:8px;background:rgba(255,255,255,0.15);border-radius:4px;overflow:hidden}
-#rpmFill{height:100%;background:linear-gradient(90deg,#4caf50,#ffc107,#f44336);border-radius:4px;transition:width 40ms}
-#center{flex:1;display:flex;flex-direction:column;gap:4px;align-items:center}
-#forceText{font-size:28px;font-weight:600;text-shadow:0 2px 6px rgba(0,0,0,0.8)}
-#forceBar{width:100%;height:12px;background:rgba(255,255,255,0.1);border-radius:6px;overflow:hidden;position:relative}
-#forceFill{height:100%;border-radius:6px;transition:width 40ms;position:absolute;top:0}
-#forceFill.pos{right:50%;background:linear-gradient(90deg,#4fc3f7,#1565c0)}
-#forceFill.neg{left:50%;background:linear-gradient(270deg,#f44336,#b71c1c)}
-#clipping{font-size:16px;font-weight:700;color:#f44336;display:none;text-shadow:0 0 10px #f44336}
-#right{display:flex;flex-direction:column;gap:2px;align-items:flex-end;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,0.8)}
-#right .l{color:#888;font-size:11px;text-transform:uppercase}
-#right .v{color:#fff;font-weight:600}
-#trackMap{position:absolute;bottom:120px;right:40px;width:200px;height:200px;display:" + (opts.ShowTrack ? "block" : "none") + @"}
-#trackMap canvas{width:100%;height:100%;border-radius:8px;background:rgba(0,0,0,0.3)}
-#waveform{position:absolute;bottom:300px;left:40px;right:40px;height:60px;display:" + (opts.ShowWaveform ? "block" : "none") + @"}
-#waveform canvas{width:100%;height:100%;border-radius:4px;background:rgba(0,0,0,0.2)}
-#brand{position:absolute;top:20px;right:30px;font-size:13px;color:rgba(255,255,255,0.25);letter-spacing:2px;text-transform:uppercase;font-weight:300}
-.lapinfo{display:flex;gap:12px;font-size:13px;color:#888}
-.lapinfo .v{color:#fff}
+body{background:transparent;color:#fff;font-family:'Inter','Segoe UI',Arial,sans-serif;overflow:hidden;height:100vh;width:100vw;display:flex;align-items:center;justify-content:center}
+#p{background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.06);border-radius:clamp(12px,1.2vw,24px);padding:clamp(12px,2vw,32px);width:96vw;max-width:1400px;display:flex;flex-direction:column;gap:clamp(8px,1.2vh,20px);opacity:" + opacity + @"}
+#tr{display:flex;flex-wrap:wrap;align-items:center;gap:clamp(8px,1.5vw,24px)}
+#sg{display:flex;align-items:baseline;gap:clamp(6px,0.8vw,14px);flex-shrink:0}
+#sp{font-size:clamp(24px,6vw,96px);font-weight:700;line-height:1;letter-spacing:-0.03em}
+#sp .u{font-size:clamp(10px,1.5vw,28px);font-weight:400;color:rgba(255,255,255,0.4);margin-left:clamp(2px,0.3vw,8px)}
+#ge{display:inline-flex;align-items:center;justify-content:center;min-width:clamp(26px,2.8vw,56px);height:clamp(26px,2.8vw,56px);border-radius:clamp(6px,0.6vw,12px);font-size:clamp(15px,2.5vw,48px);font-weight:700;background:rgba(255,255,255,0.08);color:#fff}
+#rs{flex:1;min-width:clamp(60px,10vw,300px);display:flex;flex-direction:column;gap:clamp(2px,0.2vh,4px)}
+#rl{font-size:clamp(7px,0.65vw,13px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em}
+#rb{width:100%;height:clamp(4px,0.6vh,12px);background:rgba(255,255,255,0.06);border-radius:clamp(2px,0.3vw,6px);overflow:hidden}
+#rf{height:100%;border-radius:clamp(2px,0.3vw,6px);transition:width 40ms ease;background:linear-gradient(90deg,#22c55e,#eab308 45%,#ef4444 75%,#dc2626)}
+#lc{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0}
+#ll{font-size:clamp(7px,0.65vw,13px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em}
+#lv{font-size:clamp(12px,1.4vw,26px);font-weight:600}
+#fa{display:flex;flex-direction:column;gap:clamp(4px,0.5vh,10px)}
+#fv{font-size:clamp(14px,2.5vw,44px);font-weight:400;letter-spacing:-0.01em}
+#fv .n{font-size:clamp(9px,1vw,18px);font-weight:400;color:rgba(255,255,255,0.35);margin-left:clamp(4px,0.4vw,10px)}
+#fbw{width:100%;height:clamp(8px,1.2vh,24px);background:rgba(255,255,255,0.05);border-radius:clamp(4px,0.5vw,10px);overflow:hidden;position:relative}
+#fb{height:100%;border-radius:clamp(4px,0.5vw,10px);transition:width 40ms ease;position:absolute;top:0}
+#fb.p{right:50%;background:linear-gradient(90deg,#0ea5e9,#22d3ee)}
+#fb.n{left:50%;background:linear-gradient(270deg,#f97316,#fb923c)}
+#cp{display:none;font-size:clamp(10px,1vw,20px);font-weight:700;color:#ef4444;text-shadow:0 0 clamp(6px,0.8vw,16px) rgba(239,68,68,0.5);animation:p 0.7s ease-in-out infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:0.4}}
+#ch{display:flex;flex-wrap:wrap;gap:clamp(10px,1.8vw,36px);align-items:center}
+.cg{display:flex;flex-direction:column;gap:0}
+.cl{font-size:clamp(7px,0.6vw,12px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em}
+.cv{font-size:clamp(10px,1.1vw,22px);font-weight:600}
+.cv.mz{color:#fbbf24}.cv.fx{color:#f87171}.cv.fy{color:#34d399}.cv.ga{color:#fff}.cv.br{color:#f87171}
+#btr{display:flex;flex-wrap:wrap;gap:clamp(8px,1vw,20px);align-items:flex-end;min-height:0;flex:1}
+#ww{flex:1;min-width:clamp(60px,20vw,400px);height:clamp(24px,4vh,70px);display:" + (opts.ShowWaveform ? "block" : "none") + @"}
+#ww canvas{width:100%;height:100%;border-radius:clamp(4px,0.4vw,10px);background:rgba(0,0,0,0.15);display:block}
+#tw{width:clamp(50px,7vw,140px);height:clamp(50px,7vw,140px);flex-shrink:0;display:" + (opts.ShowTrack ? "block" : "none") + @"}
+#tw canvas{width:100%;height:100%;border-radius:clamp(6px,0.6vw,12px);background:rgba(0,0,0,0.2);display:block}
 </style></head><body>
-<div id=""brand"">FFB Tuner</div>
-<div id=""trackMap""><canvas id=""cTrack""></canvas></div>
-<div id=""waveform""><canvas id=""cWave""></canvas></div>
-<div id=""wrap"">
-<div id=""left"">
-<div id=""speed"">0 <span class=""unit"">km/h</span></div>
-<div id=""gear"">N</div>
-<div id=""rpmBar""><div id=""rpmFill"" style=""width:0%""></div></div>
+<div id='p'>
+<div id='tr'>
+<div id='sg'><div id='sp'>0<span class='u'>km/h</span></div><div id='ge'>N</div></div>
+<div id='rs'><div id='rl'>RPM</div><div id='rb'><div id='rf' style='width:0%'></div></div></div>
+<div id='lc'><div id='ll'>LAP</div><div id='lv'>0</div></div>
 </div>
-<div id=""center"">
-<div id=""forceText"">0.000 Nm</div>
-<div id=""forceBar""><div id=""forceFill"" class=""pos"" style=""width:0%""></div></div>
-<div id=""clipping"">CLIPPING</div>
-<div class=""lapinfo""><span>Lap: <span class=""v"" id=""vLap"">0</span></span></div>
+<div id='fa'>
+<div id='fv'>0.000<span class='n'>Nm</span></div>
+<div id='fbw'><div id='fb' class='p' style='width:0%'></div></div>
+<div id='cp'>CLIPPING</div>
+<div id='ch'>
+<div class='cg'><span class='cl'>Mz</span><span class='cv mz' id='vMz'>0.000</span></div>
+<div class='cg'><span class='cl'>Fx</span><span class='cv fx' id='vFx'>0.000</span></div>
+<div class='cg'><span class='cl'>Fy</span><span class='cv fy' id='vFy'>0.000</span></div>
+<div class='cg'><span class='cl'>Gas</span><span class='cv ga' id='vGa'>0</span></div>
+<div class='cg'><span class='cl'>Brk</span><span class='cv br' id='vBr'>0</span></div>
 </div>
-<div id=""right"">
-<div><span class=""l"">Mz</span> <span class=""v"" id=""vMz"">0.000</span></div>
-<div><span class=""l"">Fx</span> <span class=""v"" id=""vFx"">0.000</span></div>
-<div><span class=""l"">Fy</span> <span class=""v"" id=""vFy"">0.000</span></div>
-<div><span class=""l"">Gas</span> <span class=""v"" id=""vGa"">0</span></div>
-<div><span class=""l"">Brake</span> <span class=""v"" id=""vBr"">0</span></div>
+</div>
+<div id='btr'>
+<div id='ww'><canvas id='cWave'></canvas></div>
+<div id='tw'><canvas id='cTrack'></canvas></div>
 </div>
 </div>
 <script>
@@ -787,30 +868,33 @@ if(idx<N){D.fo[idx]=d.fo||0;D.st[idx]=d.st||0;D.sp[idx]=d.sp||0;}
 else{D.fo[idx%N]=d.fo||0;D.st[idx%N]=d.st||0;D.sp[idx%N]=d.sp||0;}
 idx++;
 const sp=d.sp||0;
-$('speed').innerHTML=sp.toFixed(0)+' <span class=""unit"">km/h</span>';
+$('sp').innerHTML=sp.toFixed(0)+'<span class=""u"">km/h</span>';
 const gr=d.ge;
-const gearEl=$('gear');
-if(gr===0)gearEl.textContent='R';else if(gr===1)gearEl.textContent='N';else gearEl.textContent='G'+gr;
+const ge=$('ge');
+if(gr===0){ge.textContent='R';ge.style.background='rgba(239,68,68,0.25)';}
+else if(gr<=1){ge.textContent='N';ge.style.background='rgba(255,255,255,0.06)';}
+else{ge.textContent=gr;ge.style.background='rgba(255,255,255,0.08)';}
 const rp=(d.rp||0);
-$('rpmFill').style.width=Math.min(rp*100,100)+'%';
+$('rf').style.width=Math.min(rp*100,100)+'%';
 const fo=Math.abs(d.fo||0);
-$('forceText').textContent=fo.toFixed(3)+' Nm';
+$('fv').innerHTML=fo.toFixed(3)+'<span class=""n"">Nm</span>';
 const barPct=Math.min(fo*100,100);
-const fill=$('forceFill');
-fill.style.width=barPct+'%';
-fill.className=(d.fo||0)>=0?'pos':'neg';
+const fb=$('fb');
+fb.style.width=barPct+'%';
+fb.className=(d.fo||0)>=0?'p':'n';
 const clip=d.cl||0;
-const ce=$('clipping');
+const ce=$('cp');
 ce.style.display=clip?'block':'none';
 $('vMz').textContent=(d.mz||0).toFixed(3);
 $('vFx').textContent=(d.fx||0).toFixed(3);
 $('vFy').textContent=(d.fy||0).toFixed(3);
 $('vGa').textContent=(d.ga||0).toFixed(2);
 $('vBr').textContent=(d.br||0).toFixed(2);
-$('vLap').textContent=d.la||0;
+$('lv').textContent=d.la||0;
 drawWave();
 drawTrack(d);
 };
+window.addEventListener('resize',()=>{drawWave();});
 function drawWave(){
 const c=document.getElementById('cWave');
 if(!c)return;
@@ -818,40 +902,38 @@ const w=c.clientWidth,h=c.clientHeight;
 if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
 const x=c.getContext('2d');
 x.clearRect(0,0,w,h);
-x.strokeStyle='#4fc3f7';x.lineWidth=2;
 const n=Math.min(idx,N);if(n<2)return;
 const si=idx>=N?idx%N:0;
+const mid=h/2;
+x.strokeStyle='rgba(255,255,255,0.05)';x.lineWidth=1;x.setLineDash([3,6]);
+x.beginPath();x.moveTo(0,mid);x.lineTo(w,mid);x.stroke();x.setLineDash([]);
+x.strokeStyle='#22d3ee';x.lineWidth=Math.max(1,h*0.1);
 x.beginPath();
 for(let i=0;i<n;i++){
 let v=D.fo[(si+i)%N]||0;
-const px=i/(n-1)*w,py=h/2-v*h*0.4;
+const px=i/(n-1)*w,py=mid-v*mid*0.75;
 i===0?x.moveTo(px,py):x.lineTo(px,py);
 }
 x.stroke();
-const mid=h/2;
-x.strokeStyle='rgba(255,255,255,0.1)';x.lineWidth=1;x.setLineDash([4,4]);
-x.beginPath();x.moveTo(0,mid);x.lineTo(w,mid);x.stroke();
 }
 function drawTrack(d){
 const c=document.getElementById('cTrack');
-if(!c||!d.np===undefined)return;
+if(!c||d.np===undefined)return;
 const w=c.clientWidth,h=c.clientHeight;
 if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
 const x=c.getContext('2d');
 x.clearRect(0,0,w,h);
 const cx=w/2,cy=h/2,r=Math.min(w,h)*0.35;
 x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);
-x.strokeStyle='rgba(255,255,255,0.15)';x.lineWidth=2;x.stroke();
+x.strokeStyle='rgba(255,255,255,0.1)';x.lineWidth=1.5;x.stroke();
 const np=d.np||0;
 const angle=np*Math.PI*2-Math.PI/2;
 const px=cx+Math.cos(angle)*r;
 const py=cy+Math.sin(angle)*r;
-x.beginPath();x.arc(px,py,5,0,Math.PI*2);
-x.fillStyle='#4fc3f7';x.fill();
-x.shadowColor='#4fc3f7';x.shadowBlur=10;
-x.beginPath();x.arc(px,py,3,0,Math.PI*2);
+x.beginPath();x.arc(px,py,Math.max(3,w*0.04),0,Math.PI*2);
+x.fillStyle='rgba(34,211,238,0.8)';x.fill();
+x.beginPath();x.arc(px,py,Math.max(1.5,w*0.018),0,Math.PI*2);
 x.fillStyle='#fff';x.fill();
-x.shadowBlur=0;
 }
 </script></body></html>";
     }
@@ -864,15 +946,15 @@ x.shadowBlur=0;
 
     private sealed class SseClient
     {
-        public HttpListenerResponse Response { get; }
-        public Stream Stream { get; }
+        public TcpClient TcpClient { get; }
+        public NetworkStream Stream { get; }
         public ConcurrentQueue<byte[]> Queue { get; } = new();
         public ManualResetEventSlim Signal { get; } = new(false);
 
-        public SseClient(HttpListenerResponse response)
+        public SseClient(TcpClient tcpClient)
         {
-            Response = response;
-            Stream = response.OutputStream;
+            TcpClient = tcpClient;
+            Stream = tcpClient.GetStream();
         }
     }
 }

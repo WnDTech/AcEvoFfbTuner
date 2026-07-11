@@ -1264,6 +1264,7 @@ public sealed class RawDataService
         if (section == "scoring" || section == "all")
         {
             int sOff = LmuScoringOff;
+            // Original working offset-based reading for vehicle scoring entries
             result["S_trackName"] = ReadFixedString(buf, sOff, 64);
             result["S_session"] = BitConverter.ToInt32(buf, sOff + 64);
             result["S_currentET"] = BitConverter.ToDouble(buf, sOff + 68);
@@ -1280,9 +1281,6 @@ public sealed class RawDataService
             result["S_raining"] = BitConverter.ToDouble(buf, sOff + 220);
             result["S_ambientTemp"] = BitConverter.ToDouble(buf, sOff + 228);
             result["S_trackTemp"] = BitConverter.ToDouble(buf, sOff + 236);
-            result["S_windX"] = BitConverter.ToDouble(buf, sOff + 244);
-            result["S_windY"] = BitConverter.ToDouble(buf, sOff + 252);
-            result["S_windZ"] = BitConverter.ToDouble(buf, sOff + 260);
             result["S_minPathWetness"] = BitConverter.ToDouble(buf, sOff + 268);
             result["S_maxPathWetness"] = BitConverter.ToDouble(buf, sOff + 276);
             result["S_gameMode"] = buf[sOff + 284];
@@ -1294,18 +1292,18 @@ public sealed class RawDataService
             result["S_trackGripLevel"] = buf[sOff + 349];
             result["S_cloudCoverage"] = buf[sOff + 350];
 
-            // Vehicle scoring array
+            // Vehicle scoring array — original working offsets
             for (int vi = 0; vi < LmuMaxVehicles; vi++)
             {
                 int vOff = LmuVehScoringOff + vi * LmuVehStride;
                 if (vOff + LmuVehStride > buf.Length) break;
 
                 var name = ReadFixedString(buf, vOff + 36, 64);
-                if (string.IsNullOrEmpty(name) && vi > 0) continue; // skip empty slots after first
+                if (string.IsNullOrEmpty(name) && vi > 0) continue;
 
                 string prefix = $"V{vi}";
                 result[$"{prefix}_name"] = name;
-                result[$"{prefix}_driver"] = ReadFixedString(buf, vOff + 4, 32); // driverName starts at +4 (after int32 id)
+                result[$"{prefix}_driver"] = ReadFixedString(buf, vOff + 4, 32);
                 result[$"{prefix}_totalLaps"] = BitConverter.ToInt16(buf, vOff + 100);
                 result[$"{prefix}_finishStatus"] = (sbyte)buf[vOff + 103];
                 result[$"{prefix}_lapDist"] = BitConverter.ToDouble(buf, vOff + 104);
@@ -1323,12 +1321,6 @@ public sealed class RawDataService
                 result[$"{prefix}_posX"] = BitConverter.ToDouble(buf, vOff + 264);
                 result[$"{prefix}_posY"] = BitConverter.ToDouble(buf, vOff + 272);
                 result[$"{prefix}_posZ"] = BitConverter.ToDouble(buf, vOff + 280);
-                result[$"{prefix}_localVelX"] = BitConverter.ToDouble(buf, vOff + 288);
-                result[$"{prefix}_localVelY"] = BitConverter.ToDouble(buf, vOff + 296);
-                result[$"{prefix}_localVelZ"] = BitConverter.ToDouble(buf, vOff + 304);
-                result[$"{prefix}_localAccelX"] = BitConverter.ToDouble(buf, vOff + 312);
-                result[$"{prefix}_localAccelY"] = BitConverter.ToDouble(buf, vOff + 320);
-                result[$"{prefix}_localAccelZ"] = BitConverter.ToDouble(buf, vOff + 328);
                 result[$"{prefix}_timeIntoLap"] = BitConverter.ToDouble(buf, vOff + 464);
                 result[$"{prefix}_estimatedLapTime"] = BitConverter.ToDouble(buf, vOff + 472);
                 result[$"{prefix}_flag"] = buf[vOff + 504];

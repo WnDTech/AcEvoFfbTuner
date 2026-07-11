@@ -68,6 +68,14 @@ Our goal is to **fix the code** so we can establish a reliable baseline profile 
 4. Make targeted fix (state clearly: code change or profile change)
 5. Build, user tests, repeat
 
+### Investigate Thoroughly — No Guessing
+- Never say "likely" or "probably" when diagnosing issues. Investigate the actual code paths, read the files, trace the data flow end-to-end.
+- If a snapshot shows unexpected values (zero channels, wrong ranges), trace the pipeline code that produces that field to confirm whether it's by design or a bug.
+- When analyzing telemetry data, cross-reference the CSV columns against the pipeline code that writes them. Every field in `FfbProcessedData` has a specific assignment site.
+- Profile parameter ranges must be verified against the actual config model defaults and clamping logic — do not assume typical ranges from memory.
+- When the root cause is found, explain the exact code path with file:line references, not general impressions.
+- "Test and verify" means run a full clean build, launch the app, take a snapshot, and confirm the fix with data.
+
 ### The Following Data are current AC EVO Shared memory propeties for refrence 
 This is the exhaustive list of all properties, constants, and structures extracted from every page of the documentation you provided. I have grouped them logically so you can use them to build your C# classes or monitor buffers.
 
