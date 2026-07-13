@@ -167,7 +167,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _forceSensitivity = 20f;
 
     [ObservableProperty]
-    private float _forceScale = 1.0f;    [ObservableProperty]
+    private float _forceScale = 1.0f;
+
+    [ObservableProperty]
     private float _mzFrontGain = 1.0f;
 
     [ObservableProperty]
@@ -2577,7 +2579,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 AddPendingRec(rec);
             if (_coachService.IsAiEnabled)
                 PlayCoachAlert();
-            RefreshProfileValues();
     }
 
     private async Task CoachLoadSnapshotFile(string filePath)
@@ -2695,7 +2696,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 AddPendingRec(rec);
             if (_coachService.IsAiEnabled)
                 PlayCoachAlert();
-            RefreshProfileValues();
         }
         finally
         {

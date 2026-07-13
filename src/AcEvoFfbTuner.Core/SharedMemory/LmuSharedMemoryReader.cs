@@ -390,6 +390,9 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
             float[] innerLayerTemp = new float[4];
             float[] optimalTemp = new float[4];
             string[] terrainNames = new string[4];
+            float[] tireTempInner = new float[4];
+            float[] tireTempMid = new float[4];
+            float[] tireTempOuter = new float[4];
 
             for (int wi = 0; wi < 4; wi++)
             {
@@ -415,10 +418,13 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                 _tireGrip[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_GRIP_FRACT)) ? Math.Clamp((float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_GRIP_FRACT), -1f, 1f) : 0f;
                 tirePressures[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_PRESSURE)) ? Math.Max(0, (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_PRESSURE)) : 0f;
 
-                double t1 = LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TEMP_INNER);
-                double t2 = LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TEMP_MID);
-                double t3 = LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TEMP_OUTER);
-                tireTemps[wi] = IsFinite(t1) && IsFinite(t2) && IsFinite(t3) ? (float)(((t1 + t2 + t3) / 3.0) - 273.15) : 0f;
+                double tempInner = LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TEMP_INNER);
+                double tempMid = LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TEMP_MID);
+                double tempOuter = LmuFieldReader.ReadF64(_rawBuffer, wOff + W_TEMP_OUTER);
+                tireTempInner[wi] = IsFinite(tempInner) ? (float)(tempInner - 273.15) : 0f;
+                tireTempMid[wi] = IsFinite(tempMid) ? (float)(tempMid - 273.15) : 0f;
+                tireTempOuter[wi] = IsFinite(tempOuter) ? (float)(tempOuter - 273.15) : 0f;
+                tireTemps[wi] = (tireTempInner[wi] + tireTempMid[wi] + tireTempOuter[wi]) / 3f;
                 tireWears[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_WEAR)) ? Math.Clamp((float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_WEAR), 0f, 1f) : 0f;
                 terrainNames[wi] = LmuFieldReader.ReadStr(_rawBuffer, wOff + W_TERRAIN_NAME, 16);
                 vertTireDefl[wi] = IsFinite(LmuFieldReader.ReadF64(_rawBuffer, wOff + W_VERT_TIRE_DEFLECTION)) ? (float)LmuFieldReader.ReadF64(_rawBuffer, wOff + W_VERT_TIRE_DEFLECTION) : 0f;
@@ -458,13 +464,6 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
 
             float totalForce = (float)(Math.Abs(steeringTorque) > 0.0001 ? steeringTorque : ffbTorque);
 
-            // ── Mz synthesis from steering shaft torque ──
-            float absForce = Math.Abs(totalForce);
-            float absSteer = (float)Math.Abs(steer);
-            float sgn = (float)(steer > 0 ? 1 : -1);
-            float blend = Math.Clamp(absSteer / 0.002f, 0f, 1f);
-            float centerDeg = Math.Abs((float)steer * 450f);
-            float cFactor = centerDeg < 3f ? MathF.Pow(centerDeg / 3f, 0.5f) : 1f;
             int mg = gear switch { -1 => 0, 0 => 1, _ => gear + 1 };
             float slipA = (float)(speedMs >= 0.5 ? Math.Clamp(Math.Atan2(vx, -vz), -0.30, 0.30) : 0);
             float speedKmh = (float)(speedMs * 3.6);
@@ -563,17 +562,6 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                 }
             }
 
-            // ── Mz synthesis ──
-            float mzMagnitude = absForce * blend * cFactor;
-            // Negate Mz to match AC EVO convention: Mz opposes steering direction.
-            // LMU's raw Mz (from -mzMagnitude * sgn) has the OPPOSITE sign — it points
-            // with the steer direction. Flipping here makes the existing channel mixer
-            // Gain=-0.40 produce correct centering force.
-            float mzFL = mzMagnitude * sgn * 18f;
-            float mzFR = mzMagnitude * sgn * 18f;
-            float mzRL = mzMagnitude * sgn * 12f;
-            float mzRR = mzMagnitude * sgn * 12f;
-
             // Log every ~100ms
             if (_lastReadTicks % (Stopwatch.Frequency / 10) < Stopwatch.Frequency / 250)
             {
@@ -600,7 +588,7 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                 FinalFf = totalForce,
                 SlipRatio = slipRatio,
                 SlipAngle = [slipA, slipA, slipA, slipA],
-                Mz = [mzFL, mzFR, mzRL, mzRR],
+                Mz = [totalForce, totalForce, 0f, 0f],
                 Fx = [synFx[0], synFx[1], synFx[2], synFx[3]],
                 Fy = [synFy[0], synFy[1], synFy[2], synFy[3]],
                 LocalAngularVel = [(float)rotX, (float)rotY, (float)rotZ],
@@ -609,9 +597,9 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                 RoadVibrations = roadVib,
                 AbsVibrations = absVib,
                 TyreTemp = [tireTemps[0], tireTemps[1], tireTemps[2], tireTemps[3]],
-                TyreTempI = [tireTemps[0], tireTemps[1], tireTemps[2], tireTemps[3]],
-                TyreTempM = [tireTemps[0], tireTemps[1], tireTemps[2], tireTemps[3]],
-                TyreTempO = [tireTemps[0], tireTemps[1], tireTemps[2], tireTemps[3]],
+                TyreTempI = [tireTempInner[0], tireTempInner[1], tireTempInner[2], tireTempInner[3]],
+                TyreTempM = [tireTempMid[0], tireTempMid[1], tireTempMid[2], tireTempMid[3]],
+                TyreTempO = [tireTempOuter[0], tireTempOuter[1], tireTempOuter[2], tireTempOuter[3]],
                 LocalVelocity = [(float)vx, (float)vy, (float)vz],
                 IsEngineRunning = 1,
                 TurboBoost = TurboBoostPressure,

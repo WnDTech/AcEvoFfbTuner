@@ -58,11 +58,25 @@ public sealed partial class MainViewModel
 
         try
         {
+            var logPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner", "save_debug.log");
+            System.IO.File.AppendAllText(logPath,
+                $"[SaveCurrentProfile] VM: MzFront={MzFrontGain:F4} FxFront={FxFrontGain:F4} FyFront={FyFrontGain:F4} " +
+                $"ForceScale={ForceScale:F4} CoreMult={CoreForceMultiplier:F4} OutGain={OutputGain:F4} " +
+                $"GripScale={GripScaleGain:F4} TyreTemp={TyreTempGain:F4} BrakeBoost={BrakeBoostGain:F4}\n" +
+                $"[SaveCurrentProfile] Pipeline before: MzFront={_pipeline.ChannelMixer.MzFrontGain:F4} " +
+                $"ForceScale={_pipeline.ForceScale:F4} CoreMult={_pipeline.CoreForceMultiplier:F4} OutGain={_pipeline.OutputGain:F4}\n");
             PushValuesToPipeline();
+            System.IO.File.AppendAllText(logPath,
+                $"[SaveCurrentProfile] Pipeline after push: MzFront={_pipeline.ChannelMixer.MzFrontGain:F4} " +
+                $"ForceScale={_pipeline.ForceScale:F4} CoreMult={_pipeline.CoreForceMultiplier:F4} OutGain={_pipeline.OutputGain:F4}\n");
             _profileManager.SaveProfileFromPipeline(_pipeline, SelectedProfile.Name);
             SaveNonPipelineSettings(SelectedProfile);
             _profileManager.SaveProfile(SelectedProfile);
             _profileManager.SetActiveProfile(SelectedProfile);
+            System.IO.File.AppendAllText(logPath,
+                $"[SaveCurrentProfile] Done. Profile: MzFront.Gain={SelectedProfile.MzFront.Gain:F4} " +
+                $"ForceScale={SelectedProfile.ForceScale:F4} AdvCoreMult={SelectedProfile.Advanced.CoreForceMultiplier:F4} SlipCoreMult={SelectedProfile.Slip.CoreForceMultiplier:F4} " +
+                $"OutputGain={SelectedProfile.OutputGain:F4} NormalizationScale={SelectedProfile.NormalizationScale:F4}\n");
         }
         catch (Exception ex)
         {
@@ -392,19 +406,19 @@ public sealed partial class MainViewModel
         HysteresisWatchdogFrames = profile.Advanced.HysteresisWatchdogFrames;
         CenterBlendDegrees = profile.Advanced.CenterBlendDegrees;
         CenterSharpnessDegrees = profile.Advanced.CenterSharpnessDegrees;
-        CoreForceMultiplier = _pipeline.CoreForceMultiplier;
-        TyreGripScale = _pipeline is R3eFfbPipeline r3eSave ? r3eSave.TyreGripScale : 1.0f;
-        FlatspotGain = _pipeline is R3eFfbPipeline r3eFs ? r3eFs.FlatspotGain : 1.0f;
-        SurfaceFeelGain = _pipeline is R3eFfbPipeline r3eSf ? r3eSf.SurfaceFeelGain : 1.0f;
-        EngineTorqueLfeMod = _pipeline is R3eFfbPipeline r3eEt ? r3eEt.EngineTorqueLfeMod : 1.0f;
-        BrakePressureGain = _pipeline is R3eFfbPipeline r3eBp ? r3eBp.BrakePressureGain : 1.0f;
-        TcFeelGain = _pipeline is R3eFfbPipeline r3eTc ? r3eTc.TcFeelGain : 1.0f;
-        CoreSmoothing = _pipeline is R3eFfbPipeline r3eCs ? r3eCs.CoreSmoothing : 0.0f;
-        DetailSmoothing = _pipeline is R3eFfbPipeline r3eDs ? r3eDs.DetailSmoothing : 0.0f;
-        BrakeBoostGain = _pipeline is R3eFfbPipeline r3eBg ? r3eBg.BrakeBoostGain : 0.15f;
-        BrakeBoostThreshold = _pipeline is R3eFfbPipeline r3eBt ? r3eBt.BrakeBoostThreshold : 0.1f;
-        GripScaleGain = _pipeline is LmuFfbPipeline lmuGs ? lmuGs.GripScaleGain : 0.6f;
-        TyreTempGain = _pipeline is LmuFfbPipeline lmuTt ? lmuTt.TyreTempGain : 0.0f;
+        CoreForceMultiplier = profile.Slip.CoreForceMultiplier;
+        TyreGripScale = profile.Slip.TyreGripScale;
+        FlatspotGain = profile.Slip.FlatspotGain;
+        SurfaceFeelGain = profile.Slip.SurfaceFeelGain;
+        EngineTorqueLfeMod = profile.Slip.EngineTorqueLfeMod;
+        BrakePressureGain = profile.Slip.BrakePressureGain;
+        TcFeelGain = profile.Slip.TcFeelGain;
+        CoreSmoothing = profile.Slip.CoreSmoothing;
+        DetailSmoothing = profile.Slip.DetailSmoothing;
+        BrakeBoostGain = profile.Slip.BrakeBoostGain;
+        BrakeBoostThreshold = profile.Slip.BrakeBoostThreshold;
+        GripScaleGain = profile.Slip.GripScaleGain;
+        TyreTempGain = profile.Slip.TyreTempGain;
         SteerVelocityReference = profile.Advanced.SteerVelocityReference;
         VelocityDeadzone = profile.Advanced.VelocityDeadzone;
         LowSpeedSmoothKmh = profile.Advanced.LowSpeedSmoothKmh;

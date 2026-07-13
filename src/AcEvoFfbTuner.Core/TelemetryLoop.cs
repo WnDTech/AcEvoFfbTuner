@@ -409,8 +409,9 @@ public sealed class TelemetryLoop : IDisposable
                         raw.TyreGrip = lmu.TireGrip;
                         raw.DisplayAccG = lmu.LocalAccelG;
                         raw.TyreTemp = physics.TyreTemp;
-                        raw.IsOnTrack = physics.WheelLoad[0] + physics.WheelLoad[1] > 100f
-                                     && physics.WheelLoad[2] + physics.WheelLoad[3] > 100f;
+                        raw.IsOnTrack = physics.SpeedKmh > 10f
+                                     || (physics.WheelLoad[0] + physics.WheelLoad[1] > 100f
+                                      && physics.WheelLoad[2] + physics.WheelLoad[3] > 100f);
                     }
 
                     IntegratePosition(raw, physics);

@@ -315,6 +315,10 @@ public sealed class FfbProfile
 
     public void UpdateFromPipeline(FfbPipeline pipeline)
     {
+        var ufpLog = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner", "save_debug.log");
+        System.IO.File.AppendAllText(ufpLog,
+            $"[UpdateFromPipeline] Pipeline: MzFront={pipeline.ChannelMixer.MzFrontGain:F6} FxFront={pipeline.ChannelMixer.FxFrontGain:F6} FyFront={pipeline.ChannelMixer.FyFrontGain:F6} " +
+            $"ForceScale={pipeline.ForceScale:F6} CoreMult={pipeline.CoreForceMultiplier:F6} OutGain={pipeline.OutputGain:F6} MasterGain={pipeline.MasterGain:F6}\n");
         MixMode = pipeline.ChannelMixer.MixMode switch
         {
             FfbMixMode.Replace => FfbMixModeDto.Replace,
@@ -356,10 +360,7 @@ public sealed class FfbProfile
             SlipAngleShapeGain = pipeline.SlipEnhancer.SlipAngleShapeGain,
             SlipThreshold = pipeline.SlipEnhancer.SlipThreshold,
             UseFrontOnly = pipeline.SlipEnhancer.UseFrontOnly,
-            GearChangeMuteEnabled = (pipeline as R3eFfbPipeline)?.GearChangeMuteEnabled
-                                  ?? (pipeline as LmuFfbPipeline)?.GearChangeMuteEnabled
-                                  ?? (pipeline as AcFfbPipeline)?.GearChangeMuteEnabled
-                                  ?? pipeline.GearShiftFilterEnabled,
+             GearChangeMuteEnabled = pipeline.GearShiftFilterEnabled,
             GearChangeMuteFrames = 20,
             GearSpikeThreshold = (pipeline as R3eFfbPipeline)?.GearSpikeThreshold
                                ?? (pipeline as LmuFfbPipeline)?.GearSpikeThreshold
@@ -373,9 +374,7 @@ public sealed class FfbProfile
                                  ?? (pipeline as LmuFfbPipeline)?.BrakeBoostThreshold
                                  ?? (pipeline as AcFfbPipeline)?.BrakeBoostThreshold
                                  ?? 0.1f,
-            CoreForceMultiplier = (pipeline as R3eFfbPipeline)?.CoreForceMultiplier
-                                 ?? (pipeline as LmuFfbPipeline)?.CoreForceMultiplier
-                                 ?? 1.0f,
+             CoreForceMultiplier = pipeline.CoreForceMultiplier,
             TyreGripScale = (pipeline as R3eFfbPipeline)?.TyreGripScale ?? 1.0f,
             FlatspotGain = (pipeline as R3eFfbPipeline)?.FlatspotGain ?? 1.0f,
             SurfaceFeelGain = (pipeline as R3eFfbPipeline)?.SurfaceFeelGain ?? 1.0f,
@@ -426,9 +425,7 @@ public sealed class FfbProfile
             HysteresisWatchdogFrames = pipeline.HysteresisWatchdogFrames,
             CenterBlendDegrees = pipeline.ChannelMixer.CenterBlendDegrees,
             CenterSharpnessDegrees = pipeline.CenterSharpnessDegrees,
-            CoreForceMultiplier = pipeline is R3eFfbPipeline or LmuFfbPipeline
-                ? 1.0f
-                : pipeline.CoreForceMultiplier,
+            CoreForceMultiplier = pipeline.CoreForceMultiplier,
             SteerVelocityReference = pipeline.Damping.SteerVelocityReference,
             VelocityDeadzone = pipeline.Damping.VelocityDeadzone,
             LowSpeedSmoothKmh = pipeline.ChannelMixer.LowSpeedSmoothKmh

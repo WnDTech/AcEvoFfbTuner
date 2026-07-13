@@ -79,8 +79,8 @@ public class FfbPipeline
     public int ReverseGearValue { get; set; } = 0;
 
     private float _prevDetailOutput;
-    private float _shiftMuteDuration = 1.500f;
-    private float _fadeInDuration = 0.500f;
+    private float _shiftMuteDuration = 0.120f;
+    private float _fadeInDuration = 0.120f;
     private float _shiftTimeTracker;
     private int _lastGear = 1;
     private float _gearShiftPrevForce;
@@ -400,7 +400,7 @@ public class FfbPipeline
 
         // Adaptive EMA: only smooth large deltas (>2%). Small changes pass through.
         float forceDelta = Math.Abs(currentForce - _gearShiftPrevForce);
-        float alpha = forceDelta > 0.02f ? 0.005f : 1.0f;
+        float alpha = forceDelta > 0.02f ? 0.05f : 1.0f;
         float smoothed = _gearShiftPrevForce + alpha * (currentForce - _gearShiftPrevForce);
 
         _gearShiftPrevForce = smoothed;

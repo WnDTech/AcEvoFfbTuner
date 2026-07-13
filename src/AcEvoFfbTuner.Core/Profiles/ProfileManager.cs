@@ -133,12 +133,18 @@ public sealed class ProfileManager
         {
             profile.SanitizeFloats();
             var filePath = GetProfileFilePath(profile.Name);
+            var logPath = Path.Combine(AppDataDirectory, "save_debug.log");
+            File.AppendAllText(logPath, $"[SaveProfile] '{profile.Name}' -> {filePath}\n" +
+                $"  Ch: MzFront={profile.MzFront.Gain:F6} FxFront={profile.FxFront.Gain:F6} FyFront={profile.FyFront.Gain:F6}\n" +
+                $"  Col: ForceScale={profile.ForceScale:F6} AdvCoreMult={profile.Advanced.CoreForceMultiplier:F6} SlipCoreMult={profile.Slip.CoreForceMultiplier:F6} OutGain={profile.OutputGain:F6} NormScale={profile.NormalizationScale:F6}\n" +
+                $"  LMU: GripScale={profile.Slip.GripScaleGain:F6} TyreTemp={profile.Slip.TyreTempGain:F6} BrakeBoost={profile.Slip.BrakeBoostGain:F6}\n");
             var json = JsonSerializer.Serialize(profile, JsonOptions);
             File.WriteAllText(filePath, json);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"SaveProfile failed: {ex.Message}");
+            var logPath = Path.Combine(AppDataDirectory, "save_debug.log");
+            File.AppendAllText(logPath, $"[SaveProfile] FAILED for '{profile.Name}': {ex.Message}\n");
         }
     }
 

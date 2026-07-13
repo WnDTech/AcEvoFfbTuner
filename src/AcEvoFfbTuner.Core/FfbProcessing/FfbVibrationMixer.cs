@@ -228,7 +228,7 @@ public sealed class FfbVibrationMixer
             else
             {
                 if (MathF.Abs(suspDelta) > CurbSuspDeltaThreshold)
-                    curbAccum += suspDelta * weight;
+                    curbAccum += suspDelta * weight * 10f;
                 else
                     roadAccum += suspDelta * weight;
             }

@@ -63,15 +63,12 @@ public sealed class LmuFfbPipeline : FfbPipeline
         float steerSign = raw.SteerAngle > 0f ? 1f : raw.SteerAngle < 0f ? -1f : 0f;
         float magnitude = Math.Abs(steeringForce);
 
-        // The profile's ForceScale (~1200) is calibrated for AC EVO's Mz values
-        // (hundreds of Nm). LMU provides column force (0-20 Nm range). Use a
-        // column-force-specific scale derived from ForceScale so the profile's
-        // global sensitivity slider still works but produces correct output levels.
-        // Effective divisor ≈ ForceScale / 20 → for FS=1200, divisor ≈ 60.
-        // At 20 Nm column force with OutputGain=0.65 × CM=3.0: 20/60×0.65×3 = 0.65
-        // normalized → ~3.6 Nm at wheel (~65% of 5.5 Nm max), matching column force
-        // range to wheel torque range.
-        float effectiveScale = Math.Max(ForceScale / 20f, 1f);
+        // LMU provides column force (0-20 Nm range). ForceScale from the profile
+        // is calibrated for EVO's Mz values (hundreds of Nm), so ForceScale=1 is
+        // meaningless for column force. Instead, ForceScale acts as a sensitivity
+        // multiplier: 1.0 = default (20 Nm torque → 0.5 normalized pre-gain).
+        // Higher = more sensitive, lower = less sensitive.
+        float effectiveScale = Math.Max(40f / Math.Max(ForceScale, 0.01f), 1f);
         float coreNorm = magnitude * steerSign * MasterGain / effectiveScale;
 
         // Centering override (smoothstep at small steer angles)
@@ -222,7 +219,7 @@ public sealed class LmuFfbPipeline : FfbPipeline
 
         // Noise floor gate
         float speedNoiseScale = raw.SpeedKmh < 10.0f
-            ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 2.0f
+            ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 0.5f
             : 1.0f;
         float effectiveNoiseFloor = NoiseFloor * speedNoiseScale;
         if (Math.Abs(finalOutput) < effectiveNoiseFloor)
@@ -256,9 +253,9 @@ public sealed class LmuFfbPipeline : FfbPipeline
         detailForce = dcBlocked;
 
         if (coreOutput > 0f && detailForce < 0f)
-            detailForce = Math.Max(detailForce, -coreOutput * 0.5f);
+            detailForce = Math.Max(detailForce, -coreOutput * 0.8f);
         else if (coreOutput < 0f && detailForce > 0f)
-            detailForce = Math.Min(detailForce, -coreOutput * 0.5f);
+            detailForce = Math.Min(detailForce, -coreOutput * 0.8f);
     }
 
     protected override float ApplyCenteringOverride(float coreOutput, FfbRawData raw)
