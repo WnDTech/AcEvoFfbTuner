@@ -52,6 +52,19 @@ public partial class MainWindow : Window
 
         InitializeComponent();
 
+        // When our window is activated (user alt-tabs to the app), suppress FFB output
+        // to prevent conflicting with the game's DirectInput FFB running in the background.
+        Activated += (_, _) =>
+        {
+            if (App.ViewModel?.TelemetryLoop is { } loop)
+                loop.SuppressOutput = true;
+        };
+        Deactivated += (_, _) =>
+        {
+            if (App.ViewModel?.TelemetryLoop is { } loop)
+                loop.SuppressOutput = false;
+        };
+
         CommandBindings.Add(new CommandBinding(OpenIconPreviewCommand, OpenIconPreview));
 
         Sidebar.NavigateRequested += OnNavigateRequested;

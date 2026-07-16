@@ -62,6 +62,12 @@ public sealed class TelemetryLoop : IDisposable
     private const int WatchdogTimeoutMs = 2000;
     private const int LogIntervalFrames = 30;
 
+    // Stale data detection: when shared memory freezes (game alt-tab/pause),
+    // FinalFf stops changing but TryReadPhysics still returns true.
+    // Zero force if data frozen for >500ms at a non-trivial value.
+    private float _lastFinalFf;
+    private int _staleFrameCount;
+
     private int _logFrameCounter;
     private bool _logHeaderWritten;
     private static readonly string LogPath = Path.Combine(
@@ -341,6 +347,27 @@ public sealed class TelemetryLoop : IDisposable
                     idleCount = 0;
                     _watchdog.Restart();
                     _latencyStopwatch.Restart();
+
+                    // Stale data detection: if FinalFf is frozen at a non-trivial value
+                    // for >500ms (125 frames at 250Hz), the game has lost focus or paused.
+                    // Zero force to prevent the wheel getting stuck with stale torque.
+                    if (Math.Abs(physics.FinalFf - _lastFinalFf) < 0.0001f
+                        && Math.Abs(physics.FinalFf) > 0.1f
+                        && physics.SpeedKmh < 1f)
+                    {
+                        _staleFrameCount++;
+                        if (_staleFrameCount > 125)
+                        {
+                            _ffbProvider?.ZeroTorque();
+                            _deviceManager.ZeroForce();
+                            _staleFrameCount = 0;
+                        }
+                    }
+                    else
+                    {
+                        _staleFrameCount = 0;
+                    }
+                    _lastFinalFf = physics.FinalFf;
 
                     _reader.TryReadGraphics(out SPageFileGraphicEvo graphics);
 

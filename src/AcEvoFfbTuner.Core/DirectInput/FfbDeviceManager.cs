@@ -30,6 +30,7 @@ public sealed class FfbDeviceManager : IDisposable
     private int _maxForceMagnitude = 10000;
     private bool _disposed;
     private int _lastCfMagnitude = int.MinValue;
+    private long _lastCfSendTime;
     private int _lastPeriodicMagnitude = int.MinValue;
     private bool _periodicEffectPlaying;
     private IntPtr _windowHandle;
@@ -622,10 +623,12 @@ public sealed class FfbDeviceManager : IDisposable
         {
             int magnitude = (int)(Math.Clamp(_invertForce ? -normalizedForce : normalizedForce, -1f, 1f) * _maxForceMagnitude);
 
-            if (magnitude == _lastCfMagnitude && _constantForceEffect != null)
-                return;
+            // Always send: LMU sends SetParameters(~0) every frame even with FFB=0.
+            // Without continuous re-send, LMU overwrites our effect and the force
+            // alternates between our value and zero — felt as "phasing."
 
             _lastCfMagnitude = magnitude;
+            _lastCfSendTime = System.Diagnostics.Stopwatch.GetTimestamp();
 
             if (_constantForceEffect != null)
             {
@@ -1278,6 +1281,7 @@ public sealed class FfbDeviceManager : IDisposable
         catch { }
         _constantForceEffect = null;
         _lastCfMagnitude = int.MinValue;
+        _lastCfSendTime = 0;
         _isCustomForceFallback = false;
     }
 

@@ -315,10 +315,15 @@ public sealed class FfbProfile
 
     public void UpdateFromPipeline(FfbPipeline pipeline)
     {
-        var ufpLog = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner", "save_debug.log");
-        System.IO.File.AppendAllText(ufpLog,
-            $"[UpdateFromPipeline] Pipeline: MzFront={pipeline.ChannelMixer.MzFrontGain:F6} FxFront={pipeline.ChannelMixer.FxFrontGain:F6} FyFront={pipeline.ChannelMixer.FyFrontGain:F6} " +
-            $"ForceScale={pipeline.ForceScale:F6} CoreMult={pipeline.CoreForceMultiplier:F6} OutGain={pipeline.OutputGain:F6} MasterGain={pipeline.MasterGain:F6}\n");
+        try
+        {
+            var ufpLog = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner", "save_debug.log");
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ufpLog)!);
+            System.IO.File.AppendAllText(ufpLog,
+                $"[UpdateFromPipeline] Pipeline: MzFront={pipeline.ChannelMixer.MzFrontGain:F6} FxFront={pipeline.ChannelMixer.FxFrontGain:F6} FyFront={pipeline.ChannelMixer.FyFrontGain:F6} " +
+                $"ForceScale={pipeline.ForceScale:F6} CoreMult={pipeline.CoreForceMultiplier:F6} OutGain={pipeline.OutputGain:F6} MasterGain={pipeline.MasterGain:F6}\n");
+        }
+        catch { }
         MixMode = pipeline.ChannelMixer.MixMode switch
         {
             FfbMixMode.Replace => FfbMixModeDto.Replace,

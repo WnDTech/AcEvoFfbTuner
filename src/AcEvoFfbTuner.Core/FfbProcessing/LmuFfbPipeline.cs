@@ -1,4 +1,4 @@
-using AcEvoFfbTuner.Core.FfbProcessing.Models;
+﻿using AcEvoFfbTuner.Core.FfbProcessing.Models;
 
 namespace AcEvoFfbTuner.Core.FfbProcessing;
 
@@ -60,7 +60,9 @@ public sealed class LmuFfbPipeline : FfbPipeline
         // centering direction because magnitude = |torque| (always positive) and
         // steerSign = -1 for left turns gives negative force → push RIGHT = center.
         // steerSign = +1 for right turns gives positive force → push LEFT = center.
-        float steerSign = raw.SteerAngle > 0f ? 1f : raw.SteerAngle < 0f ? -1f : 0f;
+        // Use tanh for steerSign to avoid a binary snap at zero crossing — the
+        // sigmoid blends from -1 to +1 smoothly over ~3% of steering range.
+        float steerSign = MathF.Tanh(raw.SteerAngle * 50f);
         float magnitude = Math.Abs(steeringForce);
 
         // LMU provides column force (0-20 Nm range). ForceScale from the profile
@@ -68,14 +70,18 @@ public sealed class LmuFfbPipeline : FfbPipeline
         // meaningless for column force. Instead, ForceScale acts as a sensitivity
         // multiplier: 1.0 = default (20 Nm torque → 0.5 normalized pre-gain).
         // Higher = more sensitive, lower = less sensitive.
-        float effectiveScale = Math.Max(40f / Math.Max(ForceScale, 0.01f), 1f);
+        float effectiveScale = Math.Max(120f / Math.Max(ForceScale, 0.01f), 1f);
         float coreNorm = magnitude * steerSign * MasterGain / effectiveScale;
+
 
         // Centering override (smoothstep at small steer angles)
         float corePostCenter = ApplyCenteringOverride(coreNorm, raw);
 
+        // Damping (viscous, friction, inertia) — skipped by base.Process bypass
+        float coreDamped = Damping.Apply(corePostCenter, raw.SpeedKmh, raw.SteerAngle);
+
         // Output gain
-        float coreOutput = corePostCenter * OutputGain;
+        float coreOutput = coreDamped * OutputGain;
 
         // Core multiplier
         coreOutput *= CoreForceMultiplier;
@@ -84,15 +90,14 @@ public sealed class LmuFfbPipeline : FfbPipeline
         coreOutput *= brakeBoost;
 
         // ── Grip-scaled centering ──
-        // LMU provides per-wheel grip fraction (gripFract@wOff+112, 0-1 scale
-        // where 1.0 = full friction). This is the real tire friction utilization
-        // from LMU's physics — when the front tires approach the adhesion limit,
-        // the centering force naturally fades, giving the driver an authentic
-        // feel of front grip loss through the wheel.
-        //
-        // Safe grip = load-weighted minimum across all four wheels. A wheel with
-        // zero load (airborne) doesn't contribute to grip.
-        if (raw.SpeedKmh > 5f)
+        // LMU may not populate gripFract (it reads 0.0 in snapshots across all
+        // speeds). Only apply grip scaling when actual grip data is available.
+        bool hasGripData = false;
+        for (int gi = 0; gi < 4; gi++)
+        {
+            if (Math.Abs(raw.TyreGrip[gi]) > 0.01f) { hasGripData = true; break; }
+        }
+        if (raw.SpeedKmh > 5f && hasGripData)
         {
             float gripSum = 0f, loadSum = 0f;
             for (int wi = 0; wi < 4; wi++)
@@ -106,9 +111,6 @@ public sealed class LmuFfbPipeline : FfbPipeline
                 }
             }
             float frontGrip = loadSum > 1f ? gripSum / loadSum : 1f;
-            // Apply grip as a multiplier: GripScaleGain controls fade depth.
-            // 0 = no grip scaling (full force always), 1 = full fade range.
-            // At zero grip → minimum 20% to prevent total force loss.
             if (GripScaleGain > 0.001f)
             {
                 float fade = (1f - frontGrip) * GripScaleGain * 0.8f;
