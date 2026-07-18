@@ -58,6 +58,7 @@ public sealed partial class MainViewModel
     // ── Slip enhancement ──────────────────────────────────────────────────
     partial void OnSlipRatioGainChanged(float value) => _pipeline.SlipEnhancer.SlipRatioGain = value;
     partial void OnSlipAngleGainChanged(float value) => _pipeline.SlipEnhancer.SlipAngleGain = value;
+    partial void OnSlipAngleShapeGainChanged(float value) => _pipeline.SlipEnhancer.SlipAngleShapeGain = value;
     partial void OnSlipThresholdChanged(float value) => _pipeline.SlipEnhancer.SlipThreshold = value;
     partial void OnSlipUseFrontOnlyChanged(bool value) => _pipeline.SlipEnhancer.UseFrontOnly = value;
 
@@ -217,6 +218,11 @@ public sealed partial class MainViewModel
     {
         if (_pipeline is R3eFfbPipeline r3e)
             r3e.BrakeBoostThreshold = value;
+    }
+    partial void OnForceGainChanged(float value)
+    {
+        if (_pipeline is AccFfbPipeline acc)
+            acc.ForceGain = value;
     }
     partial void OnSteerVelocityReferenceChanged(float value) => _pipeline.Damping.SteerVelocityReference = value;
     partial void OnVelocityDeadzoneChanged(float value) => _pipeline.Damping.VelocityDeadzone = value;

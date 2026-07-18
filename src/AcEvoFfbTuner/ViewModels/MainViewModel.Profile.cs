@@ -361,6 +361,7 @@ public sealed partial class MainViewModel
         DampingSpeedReference = profile.Damping.MaxSpeedReference;
         SlipRatioGain = profile.Slip.SlipRatioGain;
         SlipAngleGain = profile.Slip.SlipAngleGain;
+        SlipAngleShapeGain = profile.Slip.SlipAngleShapeGain;
         SlipThreshold = profile.Slip.SlipThreshold;
         SlipUseFrontOnly = profile.Slip.UseFrontOnly;
         GearChangeMuteEnabled = profile.Slip.GearChangeMuteEnabled;
@@ -417,6 +418,7 @@ public sealed partial class MainViewModel
         DetailSmoothing = profile.Slip.DetailSmoothing;
         BrakeBoostGain = profile.Slip.BrakeBoostGain;
         BrakeBoostThreshold = profile.Slip.BrakeBoostThreshold;
+        ForceGain = profile.Slip.ForceGain;
         GripScaleGain = profile.Slip.GripScaleGain;
         TyreTempGain = profile.Slip.TyreTempGain;
         SteerVelocityReference = profile.Advanced.SteerVelocityReference;

@@ -248,6 +248,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _slipAngleGain;
 
     [ObservableProperty]
+    private float _slipAngleShapeGain;
+
+    [ObservableProperty]
     private float _slipThreshold = 0.05f;
 
     [ObservableProperty]
@@ -457,6 +460,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private float _brakeBoostThreshold = 0.1f;
+
+    [ObservableProperty]
+    private float _forceGain = 2.5f;
 
     [ObservableProperty]
     private float _steerVelocityReference = 10.0f;

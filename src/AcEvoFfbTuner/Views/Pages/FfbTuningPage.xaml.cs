@@ -88,7 +88,9 @@ public partial class FfbTuningPage : UserControl
         {
             if (string.IsNullOrEmpty(query))
             {
-                card.Visibility = Visibility.Visible;
+                // No search active — clear any locally-set visibility so the
+                // XAML binding (game-specific visibility) controls the card.
+                card.ClearValue(VisibilityProperty);
                 _visibleCards.Add(card);
             }
             else
@@ -96,7 +98,7 @@ public partial class FfbTuningPage : UserControl
                 var titleMatch = card.Title?.IndexOf(query, System.StringComparison.OrdinalIgnoreCase) >= 0;
                 if (titleMatch)
                 {
-                    card.Visibility = Visibility.Visible;
+                    card.ClearValue(VisibilityProperty);
                     _visibleCards.Add(card);
                 }
                 else

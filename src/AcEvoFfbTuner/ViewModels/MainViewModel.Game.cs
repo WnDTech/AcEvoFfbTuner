@@ -56,6 +56,20 @@ public sealed partial class MainViewModel
     public bool IsColumnForceGame => SelectedGame is SupportedGame.Raceroom or SupportedGame.LeMansUltimate;
     public bool IsPerWheelGame => SelectedGame is SupportedGame.AcEvo or SupportedGame.AssettoCorsa or SupportedGame.AssettoCorsaCompetizione;
 
+    // Feature visibility — which sections/sliders actually have an effect per game
+    public bool IsTyreForceSectionVisible => IsPerWheelGame;
+    public bool IsTyreSlipFullVisible => IsPerWheelGame || IsRaceroom;
+    public bool IsLimitFeelSectionVisible => IsAcEvo || IsAssettoCorsa;
+    public bool IsTyreFlexSectionVisible => IsAcEvo || IsAssettoCorsa || IsRaceroom;
+    public bool IsStationaryFrictionSectionVisible => IsPerWheelGame;
+    public bool IsCrashSectionVisible => IsAcEvo || IsAssettoCorsa || IsAssettoCorsaCompetizione;
+    public bool IsVibrationSectionVisible => !IsAssettoCorsaCompetizione;
+    public bool IsDampingSectionVisible => IsAcEvo || IsAssettoCorsa || IsLeMansUltimate;
+    public bool IsDynamicEffectsSectionVisible => IsAcEvo || IsAssettoCorsa || IsRaceroom;
+    public bool IsAutoGainSectionVisible => IsAcEvo || IsAssettoCorsa || IsAssettoCorsaCompetizione;
+    public bool IsWetWeatherSectionVisible => IsAcEvo || IsAssettoCorsa || IsAssettoCorsaCompetizione;
+    public bool IsGripScaleAndTempVisible => IsLeMansUltimate;
+
     public int SelectedGameIndex
     {
         get => (int)SelectedGame;
@@ -103,6 +117,18 @@ public sealed partial class MainViewModel
         OnPropertyChanged(nameof(IsAssettoCorsaCompetizione));
         OnPropertyChanged(nameof(IsColumnForceGame));
         OnPropertyChanged(nameof(IsPerWheelGame));
+        OnPropertyChanged(nameof(IsTyreForceSectionVisible));
+        OnPropertyChanged(nameof(IsTyreSlipFullVisible));
+        OnPropertyChanged(nameof(IsLimitFeelSectionVisible));
+        OnPropertyChanged(nameof(IsTyreFlexSectionVisible));
+        OnPropertyChanged(nameof(IsStationaryFrictionSectionVisible));
+        OnPropertyChanged(nameof(IsCrashSectionVisible));
+        OnPropertyChanged(nameof(IsVibrationSectionVisible));
+        OnPropertyChanged(nameof(IsDampingSectionVisible));
+        OnPropertyChanged(nameof(IsDynamicEffectsSectionVisible));
+        OnPropertyChanged(nameof(IsAutoGainSectionVisible));
+        OnPropertyChanged(nameof(IsWetWeatherSectionVisible));
+        OnPropertyChanged(nameof(IsGripScaleAndTempVisible));
 
         _coachService.CurrentGame = value switch
         {
