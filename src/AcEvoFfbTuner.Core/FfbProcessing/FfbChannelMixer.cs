@@ -1,9 +1,14 @@
+using System.IO;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
 
 namespace AcEvoFfbTuner.Core.FfbProcessing;
 
 public sealed class FfbChannelMixer
 {
+    private static int _diagCounter;
+    private static readonly string DiagPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "AcEvoFfbTuner", "mixer_diag.log");
     public float MzScale { get; set; } = 30f;
     public float FxScale { get; set; } = 500f;
     public float FyScale { get; set; } = 5000f;
@@ -237,6 +242,28 @@ public sealed class FfbChannelMixer
         _smMzRear = _smMzRear * (1f - mzAlphaS) + mzRear * mzAlphaS;
         _smFxRear = _smFxRear * (1f - fxRearAlphaS) + fxRear * fxRearAlphaS;
         _smFyRear = _smFyRear * (1f - fyAlphaS) + fyRear * fyAlphaS;
+
+        if (++_diagCounter % 600 == 0)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(DiagPath)!);
+                File.AppendAllText(DiagPath,
+                    $"[{DateTime.Now:HH:mm:ss.fff}] " +
+                    $"spd={raw.SpeedKmh:F1} steer={raw.SteerAngle:F4} " +
+                    $"Mz0={raw.Mz[0]:F4} Mz1={raw.Mz[1]:F4} " +
+                    $"Fx0={raw.Fx[0]:F1} Fx1={raw.Fx[1]:F1} " +
+                    $"Fy0={raw.Fy[0]:F1} Fy1={raw.Fy[1]:F1} " +
+                    $"mzEn={MzFrontEnabled} mzG={MzFrontGain:F4} " +
+                    $"mzS={MzScale:F1} effS={effectiveMzScale:F2} " +
+                    $"rawMzF={rawMzFront:F4} mzF={mzFront:F6} " +
+                    $"smMz={_smMzFront:F8} " +
+                    $"mzPeak={_mzPeak:F4} alphaS={mzAlphaS:F4} " +
+                    $"fxEn={FxFrontEnabled} fyEn={FyFrontEnabled} " +
+                    $"rawCore={rawCoreForce:F6}\n");
+            }
+            catch { }
+        }
 
         float blendedFyFront = _smFyFront * centerBlend;
         float blendedFyRear = _smFyRear * centerBlend;

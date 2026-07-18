@@ -104,7 +104,8 @@ public partial class LiveTrackMapPage : UserControl
         if (_currentOsmData != null)
         {
             var pitText = _currentOsmData.Pit != null ? $" pit=yes" : "";
-            OsmDetail.Text = $"{_currentOsmData.Corners.Count} corners, {_currentOsmData.TrackLayout?.Count ?? 0} pts{pitText}";
+            var srcText = DataSourceLabelText(_currentOsmData.DataSource);
+            OsmDetail.Text = $"{srcText}: {_currentOsmData.Corners.Count} corners, {_currentOsmData.TrackLayout?.Count ?? 0} pts{pitText}";
         }
     }
 
@@ -160,11 +161,20 @@ public partial class LiveTrackMapPage : UserControl
         catch { }
     }
 
+    private static string DataSourceLabelText(TrackDataSource src) => src switch
+    {
+        TrackDataSource.OsmRelation => "Relation",
+        TrackDataSource.OsmBoundingBox => "OSM BBox",
+        TrackDataSource.Recorded => "Recorded",
+        _ => "?"
+    };
+
     private void OnTrackDataUpdated(TrackDetailedInfo data)
     {
         Dispatcher.Invoke(() =>
         {
             _currentOsmData = data;
+            DataSourceLabel.Text = DataSourceLabelText(data.DataSource);
 
             if (data.TrackLayout != null && data.TrackLayout.Count > 3)
             {
@@ -200,7 +210,7 @@ public partial class LiveTrackMapPage : UserControl
                     }
                 }
 
-                MapCtrl.SetGpsTrackOutline(data.TrackLayout, data.Corners);
+                MapCtrl.SetGpsTrackOutline(data.TrackLayout, data.Corners, data.SectorBoundaries);
 
                 if (data.Pit != null)
                     MapCtrl.AddPitMarkers(data.Pit);
@@ -208,7 +218,8 @@ public partial class LiveTrackMapPage : UserControl
                     MapCtrl.AddStartFinishMarker(data.StartFinish);
 
                 var pitText = data.Pit != null ? $" pit=yes" : "";
-                OsmStatusText.Text = $"OSM: {data.Corners.Count} corners, {data.TrackLayout.Count} pts{pitText}";
+                var srcName = DataSourceLabelText(data.DataSource);
+                OsmStatusText.Text = $"{srcName}: {data.Corners.Count} corners, {data.TrackLayout.Count} pts{pitText}";
                 OsmDataCount.Text = $"{data.Corners.Count} corners";
 
                 if (!_mapCentered)
@@ -219,16 +230,63 @@ public partial class LiveTrackMapPage : UserControl
             }
             else if (data.Corners.Count > 0)
             {
-                OsmStatusText.Text = $"OSM: {data.Corners.Count} corners (no layout)";
+                OsmStatusText.Text = $"{DataSourceLabelText(data.DataSource)}: {data.Corners.Count} corners (no layout)";
                 OsmDataCount.Text = $"{data.Corners.Count} corners";
             }
             else
             {
-                OsmStatusText.Text = "OSM: no track data found for this track";
+                OsmStatusText.Text = $"{DataSourceLabelText(data.DataSource)}: no track data found";
                 OsmDataCount.Text = "";
             }
         });
     }
 
     private void OnSatelliteToggled(object sender, RoutedEventArgs e) { }
+
+    private async void OnRefreshData(object sender, RoutedEventArgs e)
+    {
+        var trackName = _lastLoadedTrack;
+        if (string.IsNullOrEmpty(trackName))
+        {
+            OsmStatusText.Text = "No track loaded to refresh";
+            return;
+        }
+
+        // Disable button during refresh to prevent double-click
+        RefreshDataBtn.IsEnabled = false;
+        RefreshDataBtn.Content = "⟳ Refreshing...";
+        OsmStatusText.Text = $"Refreshing track data for {trackName}...";
+
+        try
+        {
+            // Delete cache files so the next load gets fresh data
+            _trackDataService.DeleteCache(trackName);
+
+            // Look up GPS for the force refresh
+            double? centerLat = null, centerLon = null;
+            var loc = TrackDatabase.LookupTrackLocation(trackName);
+            if (loc != null)
+            {
+                centerLat = loc.Value.lat;
+                centerLon = loc.Value.lon;
+            }
+
+            // Force a fresh fetch bypassing cache
+            await _trackDataService.ForceRefreshAsync(trackName, centerLat, centerLon);
+
+            // Reset map centering so it re-fits the new layout
+            _mapCentered = false;
+
+            OsmStatusText.Text = $"Track data refreshed for {trackName}";
+        }
+        catch (Exception ex)
+        {
+            OsmStatusText.Text = $"Refresh failed: {ex.Message}";
+        }
+        finally
+        {
+            RefreshDataBtn.IsEnabled = true;
+            RefreshDataBtn.Content = "⟳ Refresh Data";
+        }
+    }
 }

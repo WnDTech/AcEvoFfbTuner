@@ -52,7 +52,7 @@ public class TrackOsmService : IDisposable
         try
         {
             var json = File.ReadAllText(path);
-            // Quick check: old format has no "Surface" property
+            // Check old format (no "Surface" property)
             if (!json.Contains("\"Surface\""))
             {
                 StaticLog($"Old-format cache (no Surface): deleting {trackName}");
@@ -60,7 +60,17 @@ public class TrackOsmService : IDisposable
                 return null;
             }
             var data = JsonSerializer.Deserialize<TrackDetailedInfo>(json);
-            StaticLog($"Cache loaded: {trackName} ({data?.Corners.Count ?? 0} corners, {data?.TrackLayout?.Count ?? 0} layout pts)");
+            if (data == null) { StaticLog($"Deserialize returned null for {trackName}"); return null; }
+
+            // Check cache version — invalidate if outdated
+            if (data.CacheVersion < TrackDetailedInfo.CurrentCacheVersion)
+            {
+                StaticLog($"Old cache version ({data.CacheVersion} < {TrackDetailedInfo.CurrentCacheVersion}): deleting {trackName}");
+                try { File.Delete(path); } catch { }
+                return null;
+            }
+
+            StaticLog($"Cache loaded: {trackName} ({data.Corners.Count} corners, {data.TrackLayout?.Count ?? 0} layout pts)");
             return data;
         }
         catch (Exception ex) { StaticLog($"Cache load error for {trackName}: {ex.Message}"); return null; }
@@ -74,6 +84,7 @@ public class TrackOsmService : IDisposable
             var path = GetCachePath(trackName);
             info.TrackName = trackName;
             info.FetchedAt = DateTime.UtcNow;
+            info.CacheVersion = TrackDetailedInfo.CurrentCacheVersion;
             var json = JsonSerializer.Serialize(info);
             File.WriteAllText(path, json);
             Log($"Saved cache: {trackName} ({info.Corners.Count} corners)");
@@ -201,6 +212,7 @@ public class TrackOsmService : IDisposable
         // Build a map: nodeId -> (lat, lon)
         var nodeMap = new Dictionary<long, (double lat, double lon)>();
         var wayMap = new Dictionary<long, (string? name, string? service, string? highway, List<long> nodes, bool isPit)>();
+        var wayGeometries = new Dictionary<long, List<TrackPoint>>(); // Fallback geometry from out body geom
         var racewayNodeIds = new HashSet<long>();
         var surfaceTags = new HashSet<string>();
 
@@ -226,61 +238,107 @@ public class TrackOsmService : IDisposable
                 var id = el.GetProperty("id").GetInt64();
                 var tags = el.TryGetProperty("tags", out var t) ? t : default;
                 var highway = TryGetTag(tags, "highway");
-                if (highway != "raceway") continue;
-
                 var service = TryGetTag(tags, "service");
                 var racewayTag = TryGetTag(tags, "raceway");
                 var name = TryGetTag(tags, "name");
+
+                // Process raceway ways AND pit lane ways (which often have highway=service)
+                bool isRaceway = highway == "raceway";
+                bool isPitLane = service == "pit_lane" ||
+                                 (name != null && name.Contains("Pit Lane", StringComparison.OrdinalIgnoreCase));
+                if (!isRaceway && !isPitLane) continue;
+
+                // Extract nodes and geometry
                 var nodes = new List<long>();
+                var geomPts = new List<TrackPoint>();
+
                 if (el.TryGetProperty("nodes", out var nodesArr))
                 {
                     foreach (var n in nodesArr.EnumerateArray())
                     {
                         var nid = n.GetInt64();
                         nodes.Add(nid);
-                        racewayNodeIds.Add(nid);
+                        if (isRaceway)
+                            racewayNodeIds.Add(nid);
                     }
                 }
 
-                if (highway == "raceway")
+                // Extract inline geometry (available with out body geom)
+                if (el.TryGetProperty("geometry", out var geomArr))
+                {
+                    foreach (var pt in geomArr.EnumerateArray())
+                    {
+                        geomPts.Add(new TrackPoint(
+                            pt.GetProperty("lat").GetDouble(),
+                            pt.GetProperty("lon").GetDouble()));
+                    }
+                }
+
+                if (isRaceway)
                 {
                     // Check for start/finish on the way itself
                     if (racewayTag == "start-finish" || racewayTag == "start" || racewayTag == "finish")
                     {
                         double sumLat = 0, sumLon = 0; int cnt = 0;
-                        if (el.TryGetProperty("geometry", out var geom))
+                        foreach (var gp in geomPts)
                         {
-                            foreach (var pt in geom.EnumerateArray())
-                            {
-                                sumLat += pt.GetProperty("lat").GetDouble();
-                                sumLon += pt.GetProperty("lon").GetDouble();
-                                cnt++;
-                            }
+                            sumLat += gp.Latitude;
+                            sumLon += gp.Longitude;
+                            cnt++;
                         }
                         if (cnt > 0)
                             result.StartFinish ??= new TrackPoint(sumLat / cnt, sumLon / cnt);
                     }
                 }
 
-                bool isPit = service == "pit_lane" ||
-                             (name != null && name.Contains("Pit Lane", StringComparison.OrdinalIgnoreCase));
-                // Exclude non-main-track items
-                bool exclude = (name != null && (
-                    name.Contains("Go Kart", StringComparison.OrdinalIgnoreCase) ||
-                    name.Contains("Rally", StringComparison.OrdinalIgnoreCase) ||
-                    name.Contains("Disused", StringComparison.OrdinalIgnoreCase)));
-
-                wayMap[id] = (name, service, highway, nodes, isPit || exclude);
+                wayMap[id] = (name, service, highway, nodes, isPitLane);
+                if (geomPts.Count > 0)
+                    wayGeometries[id] = geomPts;
 
                 // Collect surface type from raceway ways
                 var surface = TryGetTag(tags, "surface");
-                if (!string.IsNullOrEmpty(surface))
+                if (!string.IsNullOrEmpty(surface) && isRaceway)
                     surfaceTags.Add(surface);
             }
         }
 
         if (wayMap.Count == 0) return null;
         result.Surface = surfaceTags.Count > 0 ? string.Join(", ", surfaceTags) : null;
+
+        // ---------------------------------------------------------------
+        // CRITICAL FILTER: Remove ways that are NOT part of this track.
+        // We know the track name — anything named "Kart", "Moto", "Rally",
+        // "Support", "Disused" etc. does NOT belong to the main circuit.
+        // Delete them entirely so they cannot contaminate the layout,
+        // corner names, or pit detection.
+        // ---------------------------------------------------------------
+        var trackNameLower = trackName.ToLowerInvariant();
+        var trackTokens = TokenizeTrackName(trackNameLower);
+        var foreignWayIds = new List<long>();
+
+        foreach (var kvp in wayMap)
+        {
+            var wName = kvp.Value.name;
+            if (string.IsNullOrEmpty(wName)) continue;
+
+            bool isForeign = IsForeignWay(wName, trackNameLower, trackTokens);
+            if (isForeign)
+                foreignWayIds.Add(kvp.Key);
+        }
+
+        foreach (var id in foreignWayIds)
+        {
+            var wName = wayMap.TryGetValue(id, out var we) ? we.name : "?";
+            wayMap.Remove(id);
+            wayGeometries.Remove(id);
+            StaticLog($"Removed foreign way {id}: \"{wName}\"");
+        }
+
+        if (wayMap.Count == 0)
+        {
+            StaticLog($"All ways removed from {trackName} after foreign filter");
+            return null;
+        }
 
         // Separate pit ways from main track ways
         var pitWayIds = wayMap.Where(kvp => kvp.Value.isPit).Select(kvp => kvp.Key).ToHashSet();
@@ -304,8 +362,11 @@ public class TrackOsmService : IDisposable
         if (mainWayIds.Count > 0)
         {
             var visited = new HashSet<long>();
-            // Walk forward from the first way
-            long? current = mainWayIds.First();
+
+            // Find the best starting way: prefer named corner ways with the most nodes.
+            // Named ways (Eau Rouge, Raidillon, etc.) are reliably part of the main circuit,
+            // while unnamed connector ways could connect anywhere.
+            long? current = FindBestStartWay(mainWayIds, wayMap, wayGeometries);
             while (current.HasValue && visited.Add(current.Value))
             {
                 orderedWayIds.Add(current.Value);
@@ -537,44 +598,11 @@ public class TrackOsmService : IDisposable
             }
         }
 
-        // Parse pit lane from pit way or named "Pit Lane" ways
-        foreach (var wid in pitWayIds.Concat(mainWayIds))
-        {
-            var (name, service, _, nodes, _) = wayMap[wid];
-            bool isPit = service == "pit_lane" ||
-                         (name != null && name.Contains("Pit Lane", StringComparison.OrdinalIgnoreCase));
-
-            if (isPit && nodes.Count >= 2 && nodeMap.Count > 0)
-            {
-                var first = nodeMap.GetValueOrDefault(nodes.First());
-                var last = nodeMap.GetValueOrDefault(nodes.Last());
-                var geom = new List<TrackPoint>();
-                foreach (var nid in nodes)
-                {
-                    if (nodeMap.TryGetValue(nid, out var pt))
-                        geom.Add(new TrackPoint(pt.lat, pt.lon));
-                }
-
-                if (first != default && last != default)
-                {
-                    result.Pit = new TrackPitInfo
-                    {
-                        EntryLatitude = first.lat,
-                        EntryLongitude = first.lon,
-                        ExitLatitude = last.lat,
-                        ExitLongitude = last.lon,
-                        Layout = geom.Count > 2 ? geom : null
-                    };
-                    break;
-                }
-            }
-        }
+        // Parse pit lane — merge multiple connected segments, filter non-primary pits
+        result.Pit = BuildPitLane(pitWayIds, mainWayIds, wayMap, wayGeometries, nodeMap, result.StartFinish);
 
         // Rotate corners so that T1 is the first corner AFTER start/finish
-        // Fall back to pit exit position if no SF data (pit exit is just before SF)
         TrackPoint? refPoint = result.StartFinish;
-        if (refPoint == null && result.Pit != null)
-            refPoint = new TrackPoint(result.Pit.ExitLatitude, result.Pit.ExitLongitude);
 
         if (refPoint != null && result.Corners.Count > 0 && fullLayout.Count > 0)
         {
@@ -632,6 +660,362 @@ public class TrackOsmService : IDisposable
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Build pit lane from OSM ways, merging connected segments and filtering secondary pits.
+    /// </summary>
+    private static TrackPitInfo? BuildPitLane(
+        HashSet<long> pitWayIds,
+        HashSet<long> mainWayIds,
+        Dictionary<long, (string? name, string? service, string? highway, List<long> nodes, bool isPit)> wayMap,
+        Dictionary<long, List<TrackPoint>> wayGeometries,
+        Dictionary<long, (double lat, double lon)> nodeMap,
+        TrackPoint? startFinish)
+    {
+        // Step 1: Collect all pit lane candidate geometries, skipping secondary pits
+        var segments = new List<List<TrackPoint>>();
+
+        foreach (var wid in pitWayIds.Concat(mainWayIds))
+        {
+            if (!wayMap.TryGetValue(wid, out var entry)) continue;
+            var (name, service, _, nodes, _) = entry;
+
+            bool isPit = service == "pit_lane" ||
+                         (name != null && name.Contains("Pit Lane", StringComparison.OrdinalIgnoreCase));
+            if (!isPit) continue;
+
+            // Skip non-primary pit lanes (Support, Secondary, Service Road)
+            if (name != null && IsNonPrimaryPitLane(name)) continue;
+
+            // Resolve geometry: try nodeMap first, fall back to inline geometry
+            var pts = ResolvePitGeometry(nodes, wid, wayGeometries, nodeMap);
+            if (pts.Count >= 2)
+                segments.Add(pts);
+        }
+
+        if (segments.Count == 0) return null;
+
+        // Step 2: Merge connected segments end-to-end
+        var merged = MergeConnectedPitSegments(segments);
+
+        if (merged.Count < 2) return null;
+
+        // Step 3: Determine entry vs exit using the start/finish reference
+        // Pit entry is typically BEFORE start/finish (where cars leave the track)
+        // Pit exit is typically AFTER start/finish (where cars rejoin)
+        TrackPoint? sfRef = startFinish;
+
+        // If no start/finish, use the centroid of the main layout (first layout point)
+        // as a rough reference — entry is usually on the approach to start/finish
+        if (sfRef == null && merged.Count > 0)
+        {
+            // Use the midpoint of the merged pit lane as anchor
+            int mid = merged.Count / 2;
+            sfRef = merged[mid];
+        }
+
+        // Distance from each pit end to start/finish
+        double distFirst = sfRef != null ? HaversineM(sfRef, merged[0]) : 0;
+        double distLast = sfRef != null ? HaversineM(sfRef, merged[^1]) : 0;
+
+        // The end closer to start/finish is typically the exit (cars rejoin near SF)
+        // The end farther from start/finish is the entry (cars leave earlier)
+        // But this depends on track layout — for most tracks, pit exit is near T1
+        // which is just after SF. So exit ≈ closer to SF.
+        bool exitIsFirst = distFirst < distLast;
+
+        return new TrackPitInfo
+        {
+            EntryLatitude = exitIsFirst ? merged[^1].Latitude : merged[0].Latitude,
+            EntryLongitude = exitIsFirst ? merged[^1].Longitude : merged[0].Longitude,
+            ExitLatitude = exitIsFirst ? merged[0].Latitude : merged[^1].Latitude,
+            ExitLongitude = exitIsFirst ? merged[0].Longitude : merged[^1].Longitude,
+            Layout = merged
+        };
+    }
+
+    /// <summary>
+    /// Check if a pit lane name indicates it's a non-primary (secondary/support) pit.
+    /// </summary>
+    private static bool IsNonPrimaryPitLane(string name)
+    {
+        return name.Contains("Support", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Secondary", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Service Road", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Old", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Find the best starting way for the circuit ordering walk.
+    /// Prefers ways that:
+    ///   1. Have a corner name (most reliable — these are definitely part of the main circuit)
+    ///   2. Have the most geometry points (longest = most likely main circuit)
+    ///   3. Are not unnamed short connectors (< 3 nodes or < 10 geom pts)
+    /// </summary>
+    private static long FindBestStartWay(
+        HashSet<long> mainWayIds,
+        Dictionary<long, (string? name, string? service, string? highway, List<long> nodes, bool isPit)> wayMap,
+        Dictionary<long, List<TrackPoint>> wayGeometries)
+    {
+        long bestId = mainWayIds.First();
+        int bestScore = -1;
+
+        foreach (var wid in mainWayIds)
+        {
+            var (name, _, _, nodes, _) = wayMap[wid];
+            int nodeCount = nodes?.Count ?? 0;
+
+            // Get geom point count from wayGeometries as secondary measure
+            int geomCount = 0;
+            if (wayGeometries.TryGetValue(wid, out var geom))
+                geomCount = geom.Count;
+
+            int score = 0;
+
+            // Named ways are most reliable (corner names = definitely part of main circuit)
+            if (!string.IsNullOrEmpty(name))
+                score += 100;
+
+            // Longer ways are more reliable
+            int length = Math.Max(nodeCount, geomCount);
+            if (length > 50) score += 50;
+            else if (length > 20) score += 30;
+            else if (length > 10) score += 10;
+
+            // Prefer ways with "Pit" or "Start"/"Finish" in the name (landmark ways)
+            if (name != null)
+            {
+                if (name.Contains("Start", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("Finish", StringComparison.OrdinalIgnoreCase))
+                    score += 50;
+            }
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestId = wid;
+            }
+        }
+
+        StaticLog($"Best start way: {bestId} (score={bestScore})");
+        return bestId;
+    }
+
+    /// <summary>
+    /// Resolve pit lane geometry from OSM nodes or fall back to inline geometry array.
+    /// </summary>
+    private static List<TrackPoint> ResolvePitGeometry(
+        List<long> nodes,
+        long wayId,
+        Dictionary<long, List<TrackPoint>> wayGeometries,
+        Dictionary<long, (double lat, double lon)> nodeMap)
+    {
+        var pts = new List<TrackPoint>();
+
+        // Try node-based resolution first (most accurate)
+        if (nodes.Count >= 2 && nodeMap.Count > 0)
+        {
+            int validNodes = 0;
+            foreach (var nid in nodes)
+            {
+                if (nodeMap.TryGetValue(nid, out var np))
+                {
+                    pts.Add(new TrackPoint(np.lat, np.lon));
+                    validNodes++;
+                }
+            }
+            if (validNodes >= 2)
+                return pts;
+        }
+
+        // Fallback: use pre-extracted geometry from the way element
+        if (wayGeometries.TryGetValue(wayId, out var geom) && geom.Count >= 2)
+        {
+            return new List<TrackPoint>(geom);
+        }
+
+        return pts;
+    }
+
+    /// <summary>
+    /// Merge connected pit lane segments end-to-end into one continuous lane.
+    /// Segments are connected if their endpoints are within 10m of each other.
+    /// </summary>
+    private static List<TrackPoint> MergeConnectedPitSegments(List<List<TrackPoint>> segments)
+    {
+        if (segments.Count == 0) return new List<TrackPoint>();
+        if (segments.Count == 1) return new List<TrackPoint>(segments[0]);
+
+        var merged = new List<TrackPoint>(segments[0]);
+        var remaining = new List<List<TrackPoint>>(segments.Skip(1));
+        const double connectThreshold = 0.0001; // ~10m at GPS scale
+
+        bool madeProgress = true;
+        while (madeProgress && remaining.Count > 0)
+        {
+            madeProgress = false;
+
+            for (int i = remaining.Count - 1; i >= 0; i--)
+            {
+                var seg = remaining[i];
+                if (seg.Count < 2) { remaining.RemoveAt(i); continue; }
+
+                double distFirstToFirst = DistSqPoints(merged[0], seg[0]);
+                double distFirstToLast = DistSqPoints(merged[0], seg[^1]);
+                double distLastToFirst = DistSqPoints(merged[^1], seg[0]);
+                double distLastToLast = DistSqPoints(merged[^1], seg[^1]);
+
+                double minDist = Math.Min(Math.Min(distFirstToFirst, distFirstToLast),
+                                          Math.Min(distLastToFirst, distLastToLast));
+
+                if (minDist > connectThreshold)
+                    continue; // Not connected
+
+                if (minDist == distLastToFirst)
+                {
+                    // seg starts where merged ends — simple append
+                    for (int j = 1; j < seg.Count; j++)
+                        merged.Add(seg[j]);
+                }
+                else if (minDist == distLastToLast)
+                {
+                    // seg ends where merged ends — reverse and append
+                    for (int j = seg.Count - 2; j >= 0; j--)
+                        merged.Add(seg[j]);
+                }
+                else if (minDist == distFirstToFirst)
+                {
+                    // seg starts where merged starts — reverse prepend
+                    var reversed = new List<TrackPoint>(seg);
+                    reversed.Reverse();
+                    for (int j = 0; j < reversed.Count - 1; j++)
+                        merged.Insert(0, reversed[j]);
+                }
+                else // distFirstToLast
+                {
+                    // seg ends where merged starts — prepend
+                    for (int j = 0; j < seg.Count - 1; j++)
+                        merged.Insert(0, seg[seg.Count - 1 - j]);
+                }
+
+                remaining.RemoveAt(i);
+                madeProgress = true;
+            }
+        }
+
+        // Append any remaining unconnected segments (in order of proximity)
+        foreach (var seg in remaining)
+        {
+            if (seg.Count >= 2)
+            {
+                double d1 = DistSqPoints(merged[^1], seg[0]);
+                double d2 = DistSqPoints(merged[^1], seg[^1]);
+                if (d1 <= d2)
+                {
+                    for (int j = 1; j < seg.Count; j++)
+                        merged.Add(seg[j]);
+                }
+                else
+                {
+                    for (int j = seg.Count - 2; j >= 0; j--)
+                        merged.Add(seg[j]);
+                }
+            }
+        }
+
+        return merged;
+    }
+
+    /// <summary>Squared distance between two TrackPoints (GPS coordinate space).</summary>
+    private static double DistSqPoints(TrackPoint a, TrackPoint b)
+    {
+        double dlat = a.Latitude - b.Latitude;
+        double dlon = a.Longitude - b.Longitude;
+        return dlat * dlat + dlon * dlon;
+    }
+
+    /// <summary>Haversine distance in meters between two TrackPoints.</summary>
+    private static double HaversineM(TrackPoint a, TrackPoint b)
+    {
+        const double R = 6371000.0;
+        double dLat = (b.Latitude - a.Latitude) * Math.PI / 180.0;
+        double dLon = (b.Longitude - a.Longitude) * Math.PI / 180.0;
+        double sinDLat = Math.Sin(dLat / 2);
+        double sinDLon = Math.Sin(dLon / 2);
+        double h = sinDLat * sinDLat +
+                   Math.Cos(a.Latitude * Math.PI / 180.0) *
+                   Math.Cos(b.Latitude * Math.PI / 180.0) *
+                   sinDLon * sinDLon;
+        return 2 * R * Math.Asin(Math.Sqrt(h));
+    }
+
+    /// <summary>
+    /// Check if an OSM way is NOT part of the target track circuit.
+    /// We know the track we're looking for — anything that doesn't belong
+    /// should be removed from consideration entirely.
+    ///
+    /// A way is "foreign" if its name suggests it belongs to a different
+    /// circuit (karting, rally, moto, etc.) or is a non-circuit facility.
+    /// </summary>
+    private static bool IsForeignWay(string wayName, string trackNameLower, HashSet<string> trackTokens)
+    {
+        var nameLower = wayName.ToLowerInvariant();
+
+        // Known non-circuit facility types
+        if (nameLower.Contains("kart") ||
+            nameLower.Contains("rally") ||
+            nameLower.Contains("disused") ||
+            nameLower.Contains("moto") ||
+            nameLower.Contains("support") ||
+            nameLower.Contains("secondary") ||
+            nameLower.Contains("service road") ||
+            nameLower.Contains("parking") ||
+            nameLower.Contains("access") ||
+            nameLower.Contains("camping") ||
+            nameLower.Contains("pedestrian"))
+            return true;
+
+        return false;
+    }
+
+    /// <summary>
+    /// Extract significant keywords from a track name for matching against OSM ways.
+    /// Removes common words like "circuit", "grand prix", etc.
+    /// </summary>
+    private static HashSet<string> TokenizeTrackName(string trackNameLower)
+    {
+        var tokens = new HashSet<string>();
+
+        // Split by common separators
+        var parts = trackNameLower.Split(new[] { ' ', '-', '_', ',', '.', '(', ')' },
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        // Common words to filter out
+        var stopWords = new HashSet<string>
+        {
+            "circuit", "de", "du", "des", "la", "le", "les", "l", "d",
+            "international", "auto", "racing", "park", "grand", "prix",
+            "ring", "speedway", "raceway", "track", "national", "club",
+            "autodromo", "automotodrom", "motorsport", "arena",
+            "nazionale", "internazionale", "circuito", "di",
+            "sports", "land", "centre", "center", "the",
+            "mount", "mountain", "panorama", "mt",
+            "and", "&", "gp", "f1", "fia"
+        };
+
+        foreach (var part in parts)
+        {
+            var trimmed = part.Trim().ToLowerInvariant();
+            if (trimmed.Length >= 3 && !stopWords.Contains(trimmed))
+                tokens.Add(trimmed);
+        }
+
+        // If we got no meaningful tokens, use the whole track name
+        if (tokens.Count == 0 && trackNameLower.Length >= 3)
+            tokens.Add(trackNameLower);
+
+        return tokens;
     }
 
     private static string? TryGetTag(JsonElement tags, string key)

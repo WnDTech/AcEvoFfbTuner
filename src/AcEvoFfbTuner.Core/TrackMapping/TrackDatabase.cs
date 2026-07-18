@@ -45,6 +45,14 @@ public class TrackPitInfo
     public List<TrackPoint>? Layout { get; set; }
 }
 
+public enum TrackDataSource
+{
+    Unknown = 0,
+    OsmRelation,      // Tier 1: OSM route relation query (curated, ordered circuit data)
+    OsmBoundingBox,   // Tier 3: Bounding-box way search (current implementation, fallback)
+    Recorded          // Tier 4: Self-recorded from driving history
+}
+
 public class TrackDetailedInfo
 {
     public string TrackName { get; set; } = "";
@@ -55,6 +63,30 @@ public class TrackDetailedInfo
     public string? Surface { get; set; }
     public string? MaxSpeed { get; set; }
     public DateTime FetchedAt { get; set; }
+
+    /// <summary>Which data source produced this track data.</summary>
+    public TrackDataSource DataSource { get; set; } = TrackDataSource.Unknown;
+
+    /// <summary>Confidence in the data accuracy (0.0 = unreliable, 1.0 = verified).</summary>
+    public float ConfidenceScore { get; set; } = 0.5f;
+
+    /// <summary>Official track length in meters (if known from the data source).</summary>
+    public double TrackLengthM { get; set; }
+
+    /// <summary>Npos values (0..1) for sector boundaries, e.g. [0.0, 0.333, 0.666, 1.0].</summary>
+    public double[] SectorBoundaries { get; set; } = Array.Empty<double>();
+
+    /// <summary>
+    /// Cache format version. Increment when cache structure changes to force refetch.
+    /// Default 0 means unversioned (old cache) — will be invalidated on load.
+    /// </summary>
+    public int CacheVersion { get; set; }
+
+    /// <summary>
+    /// Current cache version. Bump when the data model or processing changes.
+    /// v3: Added foreign way filtering (kart tracks, moto, etc.)
+    /// </summary>
+    public const int CurrentCacheVersion = 3;
 }
 
 public static class TrackDatabase

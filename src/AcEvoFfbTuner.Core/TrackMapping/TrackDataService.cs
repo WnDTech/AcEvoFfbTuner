@@ -1,11 +1,23 @@
 namespace AcEvoFfbTuner.Core.TrackMapping;
 
+/// <summary>
+/// Provides track data (corner names, layout GPS, pit info, start/finish) using
+/// a tiered fallback chain via <see cref="TieredTrackDataProvider"/>.
+///
+/// Tier 1: OSM route relations (most accurate)
+/// Tier 3: OSM bounding-box way search (current implementation, fallback)
+/// </summary>
 public class TrackDataService : IDisposable
 {
-    private readonly TrackOsmService _osm;
+    private readonly TieredTrackDataProvider _provider;
     private TrackDetailedInfo? _currentTrackData;
     private string? _currentTrackName;
 
+    /// <summary>The data source that produced the current track data.</summary>
+    public TrackDataSource CurrentDataSource =>
+        _currentTrackData?.DataSource ?? TrackDataSource.Unknown;
+
+    /// <summary>The current track data, or null if not loaded.</summary>
     public TrackDetailedInfo? CurrentTrackData => _currentTrackData;
 
     public event Action<TrackDetailedInfo>? TrackDataUpdated;
@@ -13,10 +25,14 @@ public class TrackDataService : IDisposable
 
     public TrackDataService()
     {
-        _osm = new TrackOsmService();
-        _osm.StatusLog = msg => StatusMessage?.Invoke(msg);
+        _provider = new TieredTrackDataProvider();
+        _provider.StatusMessage = msg => StatusMessage?.Invoke(msg);
     }
 
+    /// <summary>
+    /// Load track data for the given track. Checks the tiered cache first, then
+    /// fetches from the best available source if uncached.
+    /// </summary>
     public async Task LoadTrackDataAsync(string trackName,
         IList<TrackWaypoint>? waypoints = null,
         double? centerLat = null, double? centerLon = null,
@@ -24,30 +40,50 @@ public class TrackDataService : IDisposable
     {
         _currentTrackName = trackName;
 
-        // Try cache first
+        // Try cache first (checks all tiers' caches in priority order)
         if (!forceRefresh)
         {
-            var cached = _osm.LoadCached(trackName);
+            var cached = _provider.LoadBestCached(trackName);
             if (cached != null)
             {
                 _currentTrackData = cached;
                 TrackDataUpdated?.Invoke(cached);
+                StatusMessage?.Invoke($"Loaded cached track data ({cached.DataSource})");
                 return;
             }
         }
 
-        // Fetch from OSM
-        var data = await _osm.FetchTrackDataAsync(trackName, waypoints, centerLat, centerLon);
-        if (data != null && data.Corners.Count > 0)
+        // Fetch from tiered provider
+        var data = await _provider.FetchTrackDataAsync(trackName, waypoints, centerLat, centerLon);
+        if (data != null)
         {
-            _osm.SaveCache(trackName, data);
             _currentTrackData = data;
+            StatusMessage?.Invoke($"Loaded track data from {data.DataSource} ({data.Corners.Count} corners)");
             TrackDataUpdated?.Invoke(data);
         }
         else
         {
             _currentTrackData = null;
+            StatusMessage?.Invoke("No track data found for this track");
         }
+    }
+
+    /// <summary>
+    /// Force a refresh from the best available source, bypassing cache.
+    /// </summary>
+    public async Task ForceRefreshAsync(string trackName,
+        double? centerLat = null, double? centerLon = null)
+    {
+        await LoadTrackDataAsync(trackName, null, centerLat, centerLon, forceRefresh: true);
+    }
+
+    /// <summary>
+    /// Delete all cached track data for the given track name.
+    /// Call before <see cref="ForceRefreshAsync"/> to ensure a completely fresh fetch.
+    /// </summary>
+    public void DeleteCache(string trackName)
+    {
+        _provider.DeleteCache(trackName);
     }
 
     public void ApplyCornerNames(List<TrackCorner> corners)
@@ -94,6 +130,6 @@ public class TrackDataService : IDisposable
 
     public void Dispose()
     {
-        _osm?.Dispose();
+        _provider?.Dispose();
     }
 }

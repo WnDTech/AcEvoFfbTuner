@@ -150,32 +150,97 @@ public partial class MapsuiMapControl : UserControl
 
     public void SetGpsTrackOutline(List<TrackPoint> gpsPoints, List<TrackCornerInfo> corners)
     {
+        SetGpsTrackOutline(gpsPoints, corners, null);
+    }
+
+    public void SetGpsTrackOutline(List<TrackPoint> gpsPoints, List<TrackCornerInfo> corners,
+        double[]? sectorBoundaries)
+    {
         var features = new List<IFeature>();
 
         // Draw the track outline from GPS points directly
         if (gpsPoints != null && gpsPoints.Count > 3)
         {
             int step = Math.Max(1, gpsPoints.Count / 500);
-            var coords = new List<Coordinate>();
+            var sampled = new List<TrackPoint>();
             for (int i = 0; i < gpsPoints.Count; i += step)
-            {
-                var merc = ToMercator(gpsPoints[i].Longitude, gpsPoints[i].Latitude);
-                coords.Add(new Coordinate(merc.X, merc.Y));
-            }
-            if (coords.Count > 0)
-                coords.Add(new Coordinate(coords[0].X, coords[0].Y));
+                sampled.Add(gpsPoints[i]);
 
-            var lineString = new LineString(coords.ToArray());
-            var feature = new GeometryFeature { Geometry = lineString };
-            feature.Styles.Add(new VectorStyle
+            if (sampled.Count < 3) return;
+
+            if (sectorBoundaries != null && sectorBoundaries.Length >= 3)
             {
-                Line = new Pen { Color = Color.FromRgba(0x00, 0xE6, 0x76, 0x60), Width = 1.5 },
-                Outline = new Pen { Color = Color.FromRgba(0x00, 0xE6, 0x76, 0x20), Width = 3 }
-            });
-            features.Add(feature);
+                // Sector-colored rendering: split into sector segments
+                // High-opacity, vivid colors for visibility over satellite imagery
+                var sectorColors = new[]
+                {
+                    Color.FromRgba(0x00, 0xFF, 0x66, 0xDD), // Sector 1: bright green
+                    Color.FromRgba(0xFF, 0xDD, 0x00, 0xDD), // Sector 2: bright gold
+                    Color.FromRgba(0xFF, 0x44, 0x44, 0xDD)  // Sector 3: bright red
+                };
+                var sectorOutlines = new[]
+                {
+                    Color.FromRgba(0x00, 0x00, 0x00, 0x99), // Black outline for all sectors
+                    Color.FromRgba(0x00, 0x00, 0x00, 0x99),
+                    Color.FromRgba(0x00, 0x00, 0x00, 0x99)
+                };
+
+                // Compute cumulative distances along the sampled points
+                int n = sampled.Count;
+                var cumDist = new double[n];
+                cumDist[0] = 0;
+                for (int i = 1; i < n; i++)
+                    cumDist[i] = cumDist[i - 1] + HaversineDistance(sampled[i - 1], sampled[i]);
+
+                double totalDist = cumDist[n - 1] + HaversineDistance(sampled[n - 1], sampled[0]);
+                if (totalDist > 0)
+                {
+                    // For each sector pair (0→1, 1→2, 2→0 wrapping), build a line segment
+                    for (int s = 0; s < sectorBoundaries.Length - 1; s++)
+                    {
+                        double startNpos = sectorBoundaries[s];
+                        double endNpos = sectorBoundaries[s + 1];
+                        int colorIdx = s % sectorColors.Length;
+
+                        var segCoords = BuildSectorLineSegment(sampled, cumDist, totalDist, startNpos, endNpos);
+                        if (segCoords.Count >= 2)
+                        {
+                            var lineString = new LineString(segCoords.ToArray());
+                            var segFeature = new GeometryFeature { Geometry = lineString };
+                            segFeature.Styles.Add(new VectorStyle
+                            {
+                                Line = new Pen { Color = sectorColors[colorIdx], Width = 4 },
+                                Outline = new Pen { Color = sectorOutlines[colorIdx], Width = 6 }
+                            });
+                            features.Add(segFeature);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Single-color rendering (existing behavior)
+                var coords = new List<Coordinate>();
+                for (int i = 0; i < sampled.Count; i++)
+                {
+                    var merc = ToMercator(sampled[i].Longitude, sampled[i].Latitude);
+                    coords.Add(new Coordinate(merc.X, merc.Y));
+                }
+                if (coords.Count > 0)
+                    coords.Add(new Coordinate(coords[0].X, coords[0].Y));
+
+                var lineString = new LineString(coords.ToArray());
+                var feature = new GeometryFeature { Geometry = lineString };
+                feature.Styles.Add(new VectorStyle
+                {
+                    Line = new Pen { Color = Color.FromRgba(0x00, 0xE6, 0x76, 0x60), Width = 1.5 },
+                    Outline = new Pen { Color = Color.FromRgba(0x00, 0xE6, 0x76, 0x20), Width = 3 }
+                });
+                features.Add(feature);
+            }
         }
 
-        // Corner labels via overlay (not Mapsui LabelStyle — better appearance)
+        // Corner labels via overlay
         if (corners != null)
         {
             foreach (var corner in corners)
@@ -185,6 +250,96 @@ public partial class MapsuiMapControl : UserControl
         _gpsOutlineLayer.Features = features;
         _gpsOutlineLayer.FeaturesWereModified();
         BuildOverlay();
+    }
+
+    /// <summary>
+    /// Build a Mercator-projected coordinate list for a sector segment,
+    /// wrapping from startNpos to endNpos along the sampled GPS points.
+    /// </summary>
+    private static List<Coordinate> BuildSectorLineSegment(
+        List<TrackPoint> sampled, double[] cumDist, double totalDist,
+        double startNpos, double endNpos)
+    {
+        var coords = new List<Coordinate>();
+        int n = sampled.Count;
+        if (n < 2 || totalDist <= 0) return coords;
+
+        double startDist = startNpos * totalDist;
+        double endDist = endNpos * totalDist;
+
+        // Determine which way around the track the segment goes
+        // (some sectors may span the start/finish line — wrap around)
+        if (endNpos > startNpos)
+        {
+            // Normal case: sector does not wrap
+            coords.AddRange(GetPointsInRange(sampled, cumDist, totalDist, startDist, endDist));
+        }
+        else
+        {
+            // Wrapping case: sector spans across start/finish
+            // First half: startDist → end of track
+            coords.AddRange(GetPointsInRange(sampled, cumDist, totalDist, startDist, totalDist));
+            // Second half: start of track → endDist
+            coords.AddRange(GetPointsInRange(sampled, cumDist, totalDist, 0, endDist));
+        }
+
+        return coords;
+    }
+
+    /// <summary>
+    /// Extract Mercator-projected coordinates between two cumulative distances.
+    /// </summary>
+    private static List<Coordinate> GetPointsInRange(
+        List<TrackPoint> sampled, double[] cumDist, double totalDist,
+        double fromDist, double toDist)
+    {
+        var coords = new List<Coordinate>();
+        if (toDist <= fromDist) return coords;
+
+        int startIdx = FindIndexAtDist(cumDist, fromDist);
+        int endIdx = FindIndexAtDist(cumDist, toDist);
+
+        for (int i = startIdx; i <= endIdx && i < sampled.Count; i++)
+        {
+            var merc = ToMercator(sampled[i].Longitude, sampled[i].Latitude);
+            coords.Add(new Coordinate(merc.X, merc.Y));
+        }
+
+        return coords;
+    }
+
+    /// <summary>
+    /// Binary-search for the index in cumDist closest to the target distance.
+    /// </summary>
+    private static int FindIndexAtDist(double[] cumDist, double target)
+    {
+        if (target <= cumDist[0]) return 0;
+        if (target >= cumDist[^1]) return cumDist.Length - 1;
+
+        int lo = 0, hi = cumDist.Length - 1;
+        while (hi - lo > 1)
+        {
+            int mid = (lo + hi) / 2;
+            if (cumDist[mid] <= target) lo = mid;
+            else hi = mid;
+        }
+        // Return the closer index
+        return (target - cumDist[lo] < cumDist[hi] - target) ? lo : hi;
+    }
+
+    /// <summary>Haversine distance in meters between two GPS points.</summary>
+    private static double HaversineDistance(TrackPoint a, TrackPoint b)
+    {
+        const double R = 6371000.0;
+        double dLat = (b.Latitude - a.Latitude) * Math.PI / 180.0;
+        double dLon = (b.Longitude - a.Longitude) * Math.PI / 180.0;
+        double sinDLat = Math.Sin(dLat / 2);
+        double sinDLon = Math.Sin(dLon / 2);
+        double h = sinDLat * sinDLat +
+                   Math.Cos(a.Latitude * Math.PI / 180.0) *
+                   Math.Cos(b.Latitude * Math.PI / 180.0) *
+                   sinDLon * sinDLon;
+        return 2 * R * Math.Asin(Math.Sqrt(h));
     }
 
     public void ClearGpsTrackOutline()
