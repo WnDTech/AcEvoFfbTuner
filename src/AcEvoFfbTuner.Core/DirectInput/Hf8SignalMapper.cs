@@ -136,14 +136,32 @@ public sealed class Hf8SignalMapper
         float[] wheelSlip = ComputeWheelSlip(raw);
         float signedLateralG = raw.AccG.Length > 1 ? raw.AccG[1] : 0f;
         float rpmNorm = Math.Clamp(raw.RpmPercent / 100f, 0f, 1f);
-        float absActive = raw.AbsVibrations > 0.001f || raw.AbsInAction != 0 ? 1f : 0f;
         float kerbVib = raw.KerbVibration;
         float lfeOut = MathF.Abs(lfeGenerator.LfeOutput);
         float absMod = MathF.Abs(vibrationMixer.AbsForceModulation);
         float roadMod = MathF.Abs(vibrationMixer.RoadForceModulation);
         float scrubMod = MathF.Abs(vibrationMixer.ScrubModulation);
         float rearSlipMod = MathF.Abs(vibrationMixer.RearSlipModulation);
-        float slipVib = raw.SlipVibrations;
+
+        // Brake pressure haptics: per-wheel brake force → lower back vibration
+        float brakeMod = 0f;
+        if (raw.BrakePressure != null && raw.BrakeInput > 0.15f && raw.SpeedKmh > 10f)
+        {
+            float bpAvg = 0f;
+            for (int b = 0; b < 4; b++)
+                bpAvg += Math.Clamp(raw.BrakePressure[b] / 5f, 0f, 1f);
+            brakeMod = bpAvg / 4f * raw.BrakeInput * 0.3f;
+        }
+
+        // Traction control feel: TC cut → subtle rear slip vibe (>5% cut)
+        float tcMod = raw.TractionControlPercent > 5f
+            ? Math.Clamp(raw.TractionControlPercent / 100f, 0f, 0.3f) * speedFade : 0f;
+
+        // Flatspot: sharp per-revolution pulse (real per-wheel flatspot data)
+        float flatspotMod = 0f;
+        if (raw.TireFlatspot != null && raw.SpeedKmh > 15f)
+            for (int f = 0; f < 4; f++)
+                if (raw.TireFlatspot[f] > 0.5f) { flatspotMod = 0.3f; break; }
 
         float flSusp = Math.Clamp(suspDelta[0] * 80f, 0f, 0.6f);
         float flSlip = Math.Clamp(wheelSlip[0] * 2f, 0f, 0.4f);
@@ -175,10 +193,10 @@ public sealed class Hf8SignalMapper
         float leftSuspRearMix = rlSusp + flSusp * 0.4f;
         float rightSuspRearMix = rrSusp + frSusp * 0.4f;
 
-        float leftLowerEngineMix = absMod + rearSlipMod;
-        float rightLowerEngineMix = absMod + rearSlipMod;
-        float leftUpperEngineMix = lfeOut * 1.5f + rpmVib + rpmLimiter;
-        float rightUpperEngineMix = lfeOut * 1.5f + rpmVib + rpmLimiter;
+        float leftLowerEngineMix = absMod + rearSlipMod + tcMod + brakeMod;
+        float rightLowerEngineMix = absMod + rearSlipMod + tcMod + brakeMod;
+        float leftUpperEngineMix = lfeOut * 1.5f + rpmVib + rpmLimiter + flatspotMod;
+        float rightUpperEngineMix = lfeOut * 1.5f + rpmVib + rpmLimiter + flatspotMod;
 
         float[] zoneScale = [0.8f, 0.8f, 0.8f, 0.8f, 0.7f, 0.7f, 0.5f, 0.5f];
 
@@ -199,9 +217,11 @@ public sealed class Hf8SignalMapper
         ];
         float[] slipSignals =
         [
-            scrubMod * 0.5f + rearSlipMod * 0.5f, scrubMod * 0.5f + rearSlipMod * 0.5f,
-            scrubMod * 0.5f + rearSlipMod * 0.5f, scrubMod * 0.5f + rearSlipMod * 0.5f,
-            rearSlipMod, rearSlipMod,
+            scrubMod * 0.5f + rearSlipMod * 0.5f + tcMod * 0.2f,
+            scrubMod * 0.5f + rearSlipMod * 0.5f + tcMod * 0.2f,
+            scrubMod * 0.5f + rearSlipMod * 0.5f + tcMod * 0.3f,
+            scrubMod * 0.5f + rearSlipMod * 0.5f + tcMod * 0.3f,
+            rearSlipMod + tcMod * 0.5f, rearSlipMod + tcMod * 0.5f,
             scrubMod, scrubMod
         ];
         float[] kerbSignals =

@@ -440,7 +440,7 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
         var profile = _profileManager.ActiveProfile;
         DataSourceLabel = "Direct Chat";
 
-        var context = BuildSystemContext(profile: profile);
+        var context = BuildChatSystemPrompt(profile);
         _aiConversation =
         [
             new() { Role = "system", Content = context },
@@ -450,7 +450,7 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
         try
         {
             var aiResult = await _aiAnalyzer.ChatAsync(_aiConversation);
-            _aiConversation.Add(new ChatMessage { Role = "assistant", Content = JsonSerializer.Serialize(aiResult, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }) });
+            _aiConversation.Add(new ChatMessage { Role = "assistant", Content = aiResult.Reply });
 
             var messages = new List<CoachMessage>
             {
@@ -562,7 +562,16 @@ GripGuard: GripGuardEnabled, GripGuardPeakSlipAngle, GripGuardAttenuationStrengt
 Crash: CrashEnabled, CrashImpactGain, CrashSafetyClamp, CrashTriggerThresholdG
 TyreCondition: TyreConditionEnabled, BlowoutVibrationGain, PressureLossGain, DamageAsymmetryGain
 WetWeather: WetWeatherEnabled, WetRoadVibSuppression, WetPeakSlipAngleMultiplier, WetDampingReduction
-StaticFriction: StaticFrictionGain, StaticFrictionMaxElasticStretch, StaticFrictionSpringStiffness, StaticFrictionKineticFrictionBase, StaticFrictionEngineOffDamping, StaticFrictionEngineOnDamping, StaticFrictionEngineOffScale, StaticFrictionEngineOnScale, StaticFrictionActiveDecay, StaticFrictionReturnDecay, StaticFrictionOutputSmoothAlpha";
+StaticFriction: StaticFrictionGain, StaticFrictionMaxElasticStretch, StaticFrictionSpringStiffness, StaticFrictionKineticFrictionBase, StaticFrictionEngineOffDamping, StaticFrictionEngineOnDamping, StaticFrictionEngineOffScale, StaticFrictionEngineOnScale, StaticFrictionActiveDecay, StaticFrictionReturnDecay, StaticFrictionOutputSmoothAlpha
+
+## Current Profile Values
+```json
+{(profile != null ? BuildProfileFullJson(profile) : "No profile loaded")}
+```
+
+Profile name: {profile?.Name ?? "None"}
+Wheel max torque: {profile?.WheelMaxTorqueNm ?? 0} Nm
+Steering lock: {profile?.SteeringLockDegrees ?? 0}°";
     }
 
     private string BuildChatUserPrompt(FfbProfile? profile)
@@ -660,7 +669,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
 
             var aiResult = await _aiAnalyzer!.ChatAsync(_aiConversation);
 
-            _aiConversation.Add(new ChatMessage { Role = "assistant", Content = JsonSerializer.Serialize(aiResult) });
+            _aiConversation.Add(new ChatMessage { Role = "assistant", Content = aiResult.Reply });
 
             var messages = new List<CoachMessage>
             {

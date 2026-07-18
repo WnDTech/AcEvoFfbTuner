@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
@@ -2853,6 +2853,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             var history = CoachMessages.ToList();
             var result = await _coachService.ProcessAnswerAsync(answerId, history);
             CoachSessionState = result.State;
+            CoachDataSourceLabel = _coachService.DataSourceLabel;
             foreach (var msg in result.Messages)
                 CoachMessages.Add(msg);
             foreach (var rec in result.Recommendations ?? [])
@@ -2903,16 +2904,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         AiBaseUrl = baseUrl;
         RebuildAiCoach();
 
-        FfbAIAnalyzer.OnLog += msg =>
-        {
-            App.Current?.Dispatcher?.BeginInvoke(() =>
-            {
-                SystemLogEntries.Add(msg);
-                RecentSystemLogEntries.Add(msg);
-                if (RecentSystemLogEntries.Count > 50)
-                    RecentSystemLogEntries.RemoveAt(0);
-            });
-        };
+        // AI coach logs go to file only -- not the status bar (too verbose, contains JSON)
     }
 
     public void Dispose()

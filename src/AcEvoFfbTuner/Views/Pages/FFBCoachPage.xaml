@@ -1,4 +1,4 @@
-<UserControl x:Class="AcEvoFfbTuner.Views.Pages.FFBCoachPage"
+﻿<UserControl x:Class="AcEvoFfbTuner.Views.Pages.FFBCoachPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:AcEvoFfbTuner.Converters"
@@ -8,6 +8,8 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <converters:InverseBoolToVisibilityConverter x:Key="InvertBoolToVis" />
         <converters:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis" />
+        <converters:NullToVisibilityConverter x:Key="NullToVis" />
+
         <Style x:Key="CoachActionBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="#FF8B949E" />
@@ -47,26 +49,188 @@
             <Setter Property="BorderBrush" Value="#88F0883E" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
+
+        <Style x:Key="AnswerBtnStyle" TargetType="Button" BasedOn="{StaticResource CoachActionBtn}">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Margin" Value="0,2" />
+        </Style>
+
+        <Style x:Key="AnswerPrimaryStyle" TargetType="Button" BasedOn="{StaticResource CoachPrimaryBtn}">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Margin" Value="0,2" />
+        </Style>
+
+        <!-- Message Bubble Template -->
+        <DataTemplate x:Key="MessageTemplate">
+            <Border Name="Bubble"
+                    CornerRadius="8" Padding="14,10"
+                    MaxWidth="780"
+                    Margin="0,0,0,8"
+                    BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="HorizontalAlignment" Value="Left" />
+                        <Setter Property="Background" Value="#1AFFFFFF" />
+                        <Setter Property="BorderBrush" Value="#22FFFFFF" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsUser}" Value="True">
+                                <Setter Property="HorizontalAlignment" Value="Right" />
+                                <Setter Property="Background" Value="#30F0883E" />
+                                <Setter Property="BorderBrush" Value="#44F0883E" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel>
+                    <!-- Message text with icon -->
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Name="IconBlock" Text="{Binding Icon}"
+                                   FontSize="16" Margin="0,0,6,0"
+                                   Visibility="{Binding Icon, Converter={StaticResource NullToVis}}" />
+                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                   FontSize="15" LineHeight="22"
+                                   Foreground="#FFE6EDF3" />
+                    </StackPanel>
+
+                    <!-- Answer buttons -->
+                    <ItemsControl Name="AnswersPanel" ItemsSource="{Binding Answers}"
+                                  Margin="0,8,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Name="AnswerBtn" Cursor="Hand"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        BorderThickness="1"
+                                        Command="{Binding DataContext.CoachAnswerCommand,
+                                            RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding Id}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource AnswerBtnStyle}" />
+                                    </Button.Style>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Description}" FontSize="11"
+                                                   Foreground="#FF6B7682" Margin="0,2,0,0"
+                                                   Visibility="{Binding Description, Converter={StaticResource NotEmptyToVis}}" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.Style>
+                            <Style TargetType="ItemsControl">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Answers.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ItemsControl.Style>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-        <!-- Chat Area -->
-        <ScrollViewer Grid.Column="0" x:Name="ChatScrollViewer"
+        <!-- ===== HEADER ===== -->
+        <Border Grid.Row="0" Background="#FF151B23"
+                BorderThickness="0,0,0,1" BorderBrush="#FF30363D">
+            <Grid Margin="16,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Title -->
+                <TextBlock Text="FFB Coach" FontSize="22" FontWeight="Bold"
+                           Foreground="{DynamicResource AccentBrush}"
+                           VerticalAlignment="Center" />
+
+                <!-- Center: state badge + data source -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="20,0,0,0">
+                    <Border Name="StateBadge" CornerRadius="4" Padding="8,3">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#1AFFFFFF" />
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CoachIsBusy}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CoachSessionState}" Value="Questioning">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CoachSessionState}" Value="Analyzing">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CoachSessionState}" Value="Applying">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CoachSessionState}" Value="Summary">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Name="StateText" FontSize="11" FontWeight="SemiBold">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Idle" />
+                                    <Setter Property="Foreground" Value="#FF8B949E" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CoachIsBusy}" Value="True">
+                                            <Setter Property="Text" Value="⏳ Thinking..." />
+                                            <Setter Property="Foreground" Value="#FFFFD600" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding CoachSessionState}" Value="Questioning">
+                                            <Setter Property="Text" Value="💬 Chat Active" />
+                                            <Setter Property="Foreground" Value="#FF4CAF50" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding CoachSessionState}" Value="Applying">
+                                            <Setter Property="Text" Value="✓ Applying" />
+                                            <Setter Property="Foreground" Value="#FF00BCD4" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding CoachSessionState}" Value="Summary">
+                                            <Setter Property="Text" Value="📋 Summary" />
+                                            <Setter Property="Foreground" Value="#FFE03935" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+
+                    <TextBlock Text="{Binding CoachDataSourceLabel}" FontSize="12"
+                               Foreground="#FF6B7682" VerticalAlignment="Center" Margin="10,0,0,0"
+                               Visibility="{Binding CoachDataSourceLabel, Converter={StaticResource NotEmptyToVis}}" />
+                </StackPanel>
+
+                <!-- Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Content="🔄  Restart" Click="OnRestartSession"
+                            Style="{StaticResource CoachActionBtn}" Padding="10,6" FontSize="12" />
+                    <Button Content="📋  Summary" Click="OnShowSummary"
+                            Style="{StaticResource CoachActionBtn}" Padding="10,6" FontSize="12" Margin="6,0,0,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===== CHAT MESSAGES ===== -->
+        <ScrollViewer Grid.Row="1" x:Name="ChatScrollViewer"
                       VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                      Padding="24,16">
+                      Padding="24,16" PanningMode="VerticalOnly">
             <StackPanel>
-                <TextBlock Text="FFB Coach" FontSize="28" FontWeight="Bold"
-                           Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,4" />
-                <TextBlock Text="{Binding CoachDataSourceLabel}"
-                           FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,16"
-                           Visibility="{Binding CoachDataSourceLabel, Converter={StaticResource NotEmptyToVis}}" />
-
-                <!-- Loading -->
+                <!-- Loading indicator -->
                 <Border Background="#1AF0883E" CornerRadius="8" Padding="14,10" Margin="0,0,0,8"
                         Visibility="{Binding CoachIsBusy, Converter={StaticResource BoolToVis}}">
                     <StackPanel Orientation="Horizontal">
@@ -75,160 +239,59 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Chat messages container -->
-                <StackPanel x:Name="MessageContainer" />
-
-                <!-- Custom text input -->
-                <Border x:Name="TextInputArea" Background="#1AFFFFFF" CornerRadius="8" Padding="10,8" Margin="0,8,0,0">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox x:Name="CoachInputBox"
-                                 Text="{Binding CoachInput, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
-                                 FontSize="14" Padding="8,6"
-                                 Background="#0AFFFFFF" Foreground="#FFE6EDF3"
-                                 BorderBrush="#FF30363D" BorderThickness="1"
-                                 AcceptsReturn="False"
-                                 VerticalContentAlignment="Center"
-                                 Grid.Column="0"
-                                 KeyDown="OnInputKeyDown" />
-                        <Button Grid.Column="1" Content="Send"
-                                Command="{Binding CoachSendTextCommand}"
-                                FontSize="13" Padding="10,6" Margin="8,0,0,0"
-                                Background="#1AF0883E" Foreground="#FFF0883E"
-                                BorderBrush="#88F0883E" BorderThickness="1"
-                                Cursor="Hand" />
-                    </Grid>
-                </Border>
-
-                <!-- Empty state -->
-                <Border x:Name="EmptyState" Background="#1AFFFFFF" CornerRadius="8" Padding="24,20" Margin="0,8,0,0">
-                    <StackPanel HorizontalAlignment="Center" Margin="0,30">
-                        <TextBlock Text="🤖" FontSize="48" HorizontalAlignment="Center" />
-                        <TextBlock Text="Welcome to FFB Coach!" FontSize="20" FontWeight="Bold"
-                                   Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,12,0,6" />
-                        <TextBlock Text="I'll help you tune your FFB profile using telemetry data."
-                                   FontSize="14" Foreground="#FF8B949E" HorizontalAlignment="Center"
-                                   Margin="0,0,0,20" />
-                        <Button Content="💬  Chat with AI"
-                                Click="OnChatWithAi"
-                                Style="{StaticResource CoachPrimaryBtn}" Margin="0,4" Width="300" />
-                        <Button Content="🎯  Live Monitor"
-                                Click="OnUseLiveMonitor"
-                                Style="{StaticResource CoachActionBtn}" Margin="0,4" Width="300" />
-                        <Button Content="📂  Load Snapshot Data"
-                                Click="OnUseLatestSnapshot"
-                                Style="{StaticResource CoachActionBtn}" Margin="0,4" Width="300" />
-                    </StackPanel>
-                </Border>
+                <!-- Message list -->
+                <ItemsControl x:Name="MessageList"
+                              ItemsSource="{Binding CoachMessages}"
+                              ItemTemplate="{StaticResource MessageTemplate}" />
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Info Panel -->
-        <Border Grid.Column="1" Width="280" Background="#FF151B23"
-                BorderThickness="1,0,0,0" BorderBrush="#FF30363D">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="16">
-                <TextBlock Text="SESSION INFO" FontSize="11" FontWeight="Bold"
-                           Foreground="#FF8B949E" Margin="0,0,0,4" />
+        <!-- ===== INPUT BAR ===== -->
+        <Border Grid.Row="2" x:Name="InputBar"
+                Background="#FF151B23" BorderThickness="0,1,0,0" BorderBrush="#FF30363D"
+                Padding="16,10" Visibility="Collapsed">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="CoachInputBox"
+                         Text="{Binding CoachInput, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                         FontSize="14" Padding="10,8"
+                         Background="#0AFFFFFF" Foreground="#FFE6EDF3"
+                         BorderBrush="#FF30363D" BorderThickness="1"
+                         AcceptsReturn="False"
+                         VerticalContentAlignment="Center"
+                         KeyDown="OnInputKeyDown" />
+                <Button Grid.Column="1" Content="Send"
+                        Command="{Binding CoachSendTextCommand}"
+                        FontSize="13" Padding="12,8" Margin="10,0,0,0"
+                        Background="#1AF0883E" Foreground="#FFF0883E"
+                        BorderBrush="#88F0883E" BorderThickness="1"
+                        Cursor="Hand" />
+            </Grid>
+        </Border>
 
-                <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
-                    <StackPanel>
-                        <TextBlock Text="Active Profile" FontSize="11" Foreground="#FF6B7682" />
-                        <TextBlock x:Name="InfoProfileName"
-                                   Text="{Binding SelectedProfile.Name, FallbackValue='No profile selected'}"
-                                   FontSize="15" FontWeight="SemiBold" Foreground="#FFE6EDF3"
-                                   TextWrapping="Wrap" Margin="0,2,0,0" />
-                    </StackPanel>
-                </Border>
-
-                <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
-                    <StackPanel>
-                        <TextBlock Text="Data Source" FontSize="11" Foreground="#FF6B7682" />
-                        <TextBlock x:Name="InfoDataSource"
-                                   Text="Not started"
-                                   FontSize="13" Foreground="#FFE6EDF3" TextWrapping="Wrap"
-                                   Margin="0,2,0,0" />
-                    </StackPanel>
-                </Border>
-
-                <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
-                    <StackPanel>
-                        <TextBlock Text="Session State" FontSize="11" Foreground="#FF6B7682" />
-                        <TextBlock x:Name="InfoSessionState" Text="{Binding CoachLoadingText, FallbackValue=Idle}"
-                                   FontSize="13" Foreground="#FF8B949E" Margin="0,4,0,0"
-                                   Visibility="{Binding CoachIsBusy, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock x:Name="InfoSessionStateIdle" Text="Idle" FontSize="13"
-                                   Foreground="#FF8B949E" Margin="0,4,0,0"
-                                   Visibility="{Binding CoachIsBusy, Converter={StaticResource InvertBoolToVis}}" />
-                    </StackPanel>
-                </Border>
-
-                <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
-                    <StackPanel>
-                        <TextBlock Text="Controls" FontSize="11" Foreground="#FF6B7682" Margin="0,0,0,6" />
-                        <Button Content="🔄  Restart Session"
-                                Click="OnRestartSession"
-                                Style="{StaticResource CoachActionBtn}" Margin="0,3" />
-                        <Button Content="📋  Show Summary"
-                                Click="OnShowSummary"
-                                Style="{StaticResource CoachActionBtn}" Margin="0,3" />
-                    </StackPanel>
-                </Border>
-
-                <!-- PENDING CHANGES -->
-                <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,10" Margin="0,0,0,8"
-                        Visibility="{Binding CoachHasPendingRecs, Converter={StaticResource BoolToVis}}">
-                    <StackPanel>
-                        <TextBlock Text="PENDING CHANGES" FontSize="11" FontWeight="Bold"
-                                   Foreground="#FFF0883E" Margin="0,0,0,8" />
-                        <ItemsControl ItemsSource="{Binding CoachPendingRecs}" Margin="0,0,0,8">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="#0AFFFFFF" CornerRadius="4" Padding="8,6" Margin="0,0,0,4"
-                                            BorderThickness="1" BorderBrush="#FF30363D">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="#FFE6EDF3" TextWrapping="Wrap" />
-                                                <TextBlock Text="{Binding Description}" FontSize="11"
-                                                           Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
-                                            </StackPanel>
-                                            <Button Grid.Column="1" Content="✓"
-                                                    Command="{Binding DataContext.CoachApplyRecCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}"
-                                                    ToolTip="Apply this change"
-                                                    FontSize="12" Padding="4,2" Margin="4,0,0,0"
-                                                    Background="#1A2EA043" Foreground="#FF2EA043"
-                                                    BorderThickness="1" BorderBrush="#882EA043"
-                                                    Cursor="Hand" VerticalAlignment="Top" />
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Button Content="✓  Apply All Changes"
-                                Command="{Binding CoachApplyAllCommand}"
-                                FontSize="12" Padding="8,4" Margin="0,0,0,4"
-                                Background="#1A2EA043" Foreground="#FF2EA043"
-                                BorderThickness="1" BorderBrush="#882EA043"
-                                Cursor="Hand" />
-                        <Button Content="↩  Undo Last Change"
-                                Command="{Binding CoachUndoCommand}"
-                                FontSize="12" Padding="8,4"
-                                Background="#1ADB4343" Foreground="#FFDB4343"
-                                BorderThickness="1" BorderBrush="#88DB4343"
-                                Cursor="Hand" />
-                    </StackPanel>
-                </Border>
+        <!-- ===== EMPTY STATE (overlay when no messages) ===== -->
+        <Border Grid.Row="1" x:Name="EmptyState"
+                Background="#1AFFFFFF" CornerRadius="8" Padding="24,20" Margin="0,8,0,0">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,30">
+                <TextBlock Text="🤖" FontSize="48" HorizontalAlignment="Center" />
+                <TextBlock Text="Welcome to FFB Coach!" FontSize="20" FontWeight="Bold"
+                           Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,12,0,6" />
+                <TextBlock Text="I'll help you tune your FFB profile using telemetry data."
+                           FontSize="14" Foreground="#FF8B949E" HorizontalAlignment="Center"
+                           Margin="0,0,0,20" />
+                <Button Content="💬  Chat with AI"
+                        Click="OnChatWithAi"
+                        Style="{StaticResource CoachPrimaryBtn}" Margin="0,4" Width="300" />
+                <Button Content="🎯  Live Monitor"
+                        Click="OnUseLiveMonitor"
+                        Style="{StaticResource CoachActionBtn}" Margin="0,4" Width="300" />
+                <Button Content="📂  Load Snapshot Data"
+                        Click="OnUseLatestSnapshot"
+                        Style="{StaticResource CoachActionBtn}" Margin="0,4" Width="300" />
             </StackPanel>
-            </ScrollViewer>
         </Border>
     </Grid>
 </UserControl>

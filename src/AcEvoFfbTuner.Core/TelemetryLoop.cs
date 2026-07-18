@@ -497,8 +497,10 @@ public sealed class TelemetryLoop : IDisposable
                         // When deflection is RIGHT (positive), push LEFT (positive).
                         float targetForce = deflection * 15.0f;
                         float aiCenter = Math.Clamp(targetForce, -0.50f, 0.50f);
+#if DEBUG
                         Console.Clear();
                         Console.WriteLine($"[R3E AI-CENTER] WheelPos:{wheelPos:F4} Offset:{_wheelCenterOffset:F4} Defl:{deflection:F4} Force:{aiCenter:F4}");
+#endif
                         if (_ffbProvider != null && _ffbProvider.IsInitialized)
                             _ffbProvider.UpdateTorque(aiCenter);
                         else
