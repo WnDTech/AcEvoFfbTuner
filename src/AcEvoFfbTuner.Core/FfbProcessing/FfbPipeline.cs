@@ -79,8 +79,8 @@ public class FfbPipeline
     public int ReverseGearValue { get; set; } = 0;
 
     private float _prevDetailOutput;
-    private float _shiftMuteDuration = 0.120f;
-    private float _fadeInDuration = 0.120f;
+    private float _shiftMuteDuration = 0.030f;
+    private float _fadeInDuration = 0.030f;
     private float _shiftTimeTracker;
     private int _lastGear = 1;
     private float _gearShiftPrevForce;

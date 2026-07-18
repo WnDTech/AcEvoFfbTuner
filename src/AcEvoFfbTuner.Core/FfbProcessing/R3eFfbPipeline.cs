@@ -141,7 +141,7 @@ public sealed class R3eFfbPipeline : FfbPipeline
         float absSteer = Math.Abs(raw.SteerAngle);
         if (absSteer > 0.08f)
         {
-            float boost = 0.85f + 0.15f * Math.Clamp((absSteer - 0.08f) / 0.12f, 0f, 1f);
+            float boost = 1.0f + 0.15f * Math.Clamp((absSteer - 0.08f) / 0.12f, 0f, 1f);
             coreOutput *= boost;
         }
 
@@ -193,7 +193,15 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // Slip enhancer: force enhancement from tyre slip ratio/angle.
         // Provides the "tyre about to lose grip" warning — force builds as
         // slip approaches the threshold, then drops warning of lost grip.
-        detailForce += SlipEnhancer.Apply(0f, raw);
+        // Pass coreOutput so the Pacejka shape path works (Math.Sign(coreOutput))
+        // and the clamp scales with actual steering force instead of ±0.1.
+        detailForce += SlipEnhancer.Apply(coreOutput, raw);
+
+        // Enhanced slip vibration: speed-oscillating texture from per-wheel
+        // SlipRatio, modulated by wheel load and separated front/rear.
+        // Controlled by slipGain (front) and rearSlipGain sliders.
+        // Provides realistic "sliding on gravel" texture when tyres slip.
+        detailForce += SynthesizeSlipVibration(raw);
 
         // Dynamic effects: lateral/longitudinal G, suspension, yaw rate.
         // Adds cornering feel, brake dive, road texture from suspension.
@@ -276,11 +284,30 @@ public sealed class R3eFfbPipeline : FfbPipeline
         detailForce = dcBlocked;
 
         // Direction-based suppression: prevent detail from reversing core
-        // at small steer angles where core force is naturally weak
+        // at small steer angles where core force is naturally weak.
+        // Additionally, when the driver is actively steering with a clear
+        // direction (|SteerAngle| > 0.02), prevent detail from opposing it
+        // even if the core force has dropped out (SteeringForce near zero).
         if (coreOutput > 0f && detailForce < 0f)
             detailForce = Math.Max(detailForce, -coreOutput * 0.5f);
         else if (coreOutput < 0f && detailForce > 0f)
             detailForce = Math.Min(detailForce, -coreOutput * 0.5f);
+
+        float absSteerForSuppress = Math.Abs(raw.SteerAngle);
+        if (absSteerForSuppress > 0.04f)
+        {
+            float steerDir = Math.Sign(raw.SteerAngle);
+            float detailDir = Math.Sign(detailForce);
+            if (detailDir != 0f && detailDir != steerDir)
+            {
+                float steerStrength = Math.Clamp((absSteerForSuppress - 0.04f) / 0.16f, 0f, 1f);
+                float maxOpposing = -steerDir * steerStrength * 0.04f * MasterGain;
+                if (steerDir < 0f && detailForce > maxOpposing)
+                    detailForce = Math.Min(detailForce, maxOpposing);
+                else if (steerDir > 0f && detailForce < maxOpposing)
+                    detailForce = Math.Max(detailForce, maxOpposing);
+            }
+        }
 
         // Detail EMA smoothing: alpha is inverted so slider = 0 is none, higher = smoother.
         // alpha = 1 - DetailSmoothing: at 0 → alpha=1 (raw), at 0.6 → alpha=0.4, at 0.9 → alpha=0.1
@@ -329,7 +356,10 @@ public sealed class R3eFfbPipeline : FfbPipeline
             SteerAngle = raw.SteerAngle,
             PacketId = raw.PacketId,
             IsClipping = isClipping,
-            GearShiftMuteGain = GearShiftMuteGain
+            GearShiftMuteGain = GearShiftMuteGain,
+            ChannelMzFront = raw.Mz[0] + raw.Mz[1],
+            ChannelFxFront = raw.Fx[0] + raw.Fx[1],
+            ChannelFyFront = raw.Fy[0] + raw.Fy[1]
         };
     }
 
@@ -379,14 +409,83 @@ public sealed class R3eFfbPipeline : FfbPipeline
         return Math.Min(vibration, 1f);
     }
 
+    private float _rumblePhase;
+    private float _slipPhase;
+
+    /// <summary>
+    /// Synthesise enhanced slip vibration from per-wheel SlipRatio data.
+    /// Uses speed-proportional oscillation (higher speed = faster slip rattle),
+    /// load modulation (heavier wheels produce more texture),
+    /// and separates front vs rear (controlled by slipGain / rearSlipGain sliders).
+    /// </summary>
+    private float SynthesizeSlipVibration(FfbRawData raw)
+    {
+        if (raw.SlipRatio == null || raw.SpeedKmh < 1f) return 0f;
+
+        float totalFrontLoad = 0f, totalRearLoad = 0f;
+        float frontSlip = 0f, rearSlip = 0f;
+
+        for (int i = 0; i < 4; i++)
+        {
+            float absRatio = Math.Abs(raw.SlipRatio[i]);
+            float absAngle = Math.Abs(raw.SlipAngle?[i] ?? 0f);
+            // Combined slip: ratio dominates at low speed, angle at high speed
+            float combined = absRatio + absAngle * 0.5f;
+
+            if (i < 2) // front wheels
+            {
+                frontSlip += combined;
+                totalFrontLoad += raw.WheelLoad?[i] ?? 1f;
+            }
+            else // rear wheels
+            {
+                rearSlip += combined;
+                totalRearLoad += raw.WheelLoad?[i] ?? 1f;
+            }
+        }
+
+        frontSlip = Math.Clamp(frontSlip, 0f, 1f);
+        rearSlip = Math.Clamp(rearSlip, 0f, 1f);
+
+        // Speed-proportional oscillation frequency
+        float speedHz = Math.Clamp(raw.SpeedKmh * 0.3f, 5f, 80f);
+        _slipPhase += speedHz * (1f / 60f) * MathF.PI * 2f;
+        if (_slipPhase > MathF.PI * 200f) _slipPhase -= MathF.PI * 200f;
+
+        float wave = (MathF.Sin(_slipPhase) * 0.5f + 0.5f);
+
+        // Load modulation: more load = more powerful slip texture
+        float loadFactor = Math.Clamp((totalFrontLoad + totalRearLoad) / 20000f, 0.3f, 1.5f);
+
+        // Front slip vibration (controlled by slipGain slider)
+        float frontVib = 0f;
+        if (frontSlip > 0.05f)
+        {
+            float frontAmplitude = (frontSlip - 0.05f) * VibrationMixer.SlipGain * 2f * loadFactor;
+            frontVib = wave * Math.Min(frontAmplitude, 0.15f);
+        }
+
+        // Rear slip vibration (controlled by rearSlipGain slider)
+        float rearVib = 0f;
+        if (rearSlip > 0.05f)
+        {
+            float rearAmplitude = (rearSlip - 0.05f) * VibrationMixer.RearSlipGain * 2f * loadFactor;
+            rearVib = wave * Math.Min(rearAmplitude, 0.10f);
+        }
+
+        return frontVib + rearVib;
+    }
+
     /// <summary>
     /// Synthesise surface feel from R3E TireOnMtrl telemetry.
     /// 0=none, 1=tarmac, 2=grass, 3=dirt, 4=gravel, 5=rumble strip, 6=concrete.
-    /// Adds rumble when tyres leave the racing surface.
+    /// For rumble strips (code 5), generates a speed-proportional oscillation
+    /// gated by curbGain and curbSeverityScale sliders. Other surfaces use
+    /// flat amplitude.
     /// </summary>
     private float SynthesizeSurfaceVibration(FfbRawData raw, float gripScale)
     {
-        if (SurfaceFeelGain < 0.001f || raw.TireOnMtrl == null) return 0f;
+        if (raw.TireOnMtrl == null) return 0f;
 
         bool onGrass = false, onGravel = false, onDirt = false, onRumble = false;
         for (int i = 0; i < 4; i++)
@@ -399,13 +498,25 @@ public sealed class R3eFfbPipeline : FfbPipeline
         }
 
         float surface = 0f;
-        if (onRumble) surface = 0.50f;
+        if (onRumble)
+        {
+            float speedHz = Math.Clamp(raw.SpeedKmh * 0.5f, 10f, 100f);
+            _rumblePhase += speedHz * (1f / 60f) * MathF.PI * 2f;
+            if (_rumblePhase > MathF.PI * 200f) _rumblePhase -= MathF.PI * 200f;
+
+            float wave1 = MathF.Sin(_rumblePhase);
+            float wave2 = MathF.Sin(_rumblePhase * 0.7f);
+            float oscillating = (wave1 * 0.6f + wave2 * 0.4f) * 0.5f + 0.5f;
+
+            float amplitude = VibrationMixer.KerbGain * (VibrationMixer.CurbSeverityScale / 10f) * 0.12f;
+            surface = oscillating * amplitude;
+        }
         else if (onGravel) surface = 0.40f;
         else if (onDirt) surface = 0.30f;
         else if (onGrass) surface = 0.20f;
 
-        surface *= gripScale;
-        return surface * SurfaceFeelGain;
+        surface *= gripScale * SurfaceFeelGain;
+        return Math.Clamp(surface, 0f, 1f);
     }
 
     /// <summary>

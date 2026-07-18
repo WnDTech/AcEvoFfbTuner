@@ -11,22 +11,13 @@ public sealed class LmuFfbPipeline : FfbPipeline
     public bool GearChangeMuteEnabled
     {
         get => _gearChangeMuteEnabled;
-        set
-        {
-            _gearChangeMuteEnabled = value;
-            base.GearShiftFilterEnabled = value;
-        }
+        set { _gearChangeMuteEnabled = value; base.GearShiftFilterEnabled = value; }
     }
     public float GearSpikeThreshold { get; set; } = 3000f;
     public float BrakeBoostGain { get; set; } = 0.4f;
     public float BrakeBoostThreshold { get; set; } = 0.1f;
-
     public override float CoreForceMultiplier { get; set; } = 3.0f;
-
-    /// <summary>How much centering force fades as grip decreases. 0 = no scaling, 1 = full fade.</summary>
     public float GripScaleGain { get; set; } = 0.6f;
-
-    /// <summary>Gain for tyre temperature feel (cold marbles / hot graining). 0 = off.</summary>
     public float TyreTempGain { get; set; } = 0.0f;
 
     public override bool GearShiftFilterEnabled
@@ -37,195 +28,119 @@ public sealed class LmuFfbPipeline : FfbPipeline
 
     public override FfbProcessedData Process(FfbRawData raw)
     {
-        // LMU provides steering shaft torque (column force), not per-wheel Mz/Fx/Fy.
-        // DO NOT call base.Process(raw) — that runs the EVO Mz-based pipeline.
-        // Processing column force through EVO stages corrupts the signal.
-        // Instead, handle the column force directly (same approach as R3eFfbPipeline).
-
         float steeringForce = raw.FinalFf;
 
         // ═══════════════════════════════════════════════════════════════════════
-        // CORE PATH — Direct steering force to output
+        // CORE PATH — Fully standalone. No base.Process() — no EVO pipeline
+        // cross-contamination. Same isolation pattern as R3eFfbPipeline.
         // ═══════════════════════════════════════════════════════════════════════
 
-        float brakeBoost = 1f;
-        if (raw.BrakeInput > BrakeBoostThreshold)
-        {
-            float brakeIntensity = Math.Min((raw.BrakeInput - BrakeBoostThreshold) / (1f - BrakeBoostThreshold), 1f);
-            brakeBoost = 1f + BrakeBoostGain * brakeIntensity;
-        }
-
-        // Centering direction: Moza convention is positive force = wheel LEFT.
-        // The original column force magnitude × steerSign produces the correct
-        // centering direction because magnitude = |torque| (always positive) and
-        // steerSign = -1 for left turns gives negative force → push RIGHT = center.
-        // steerSign = +1 for right turns gives positive force → push LEFT = center.
-        // Use tanh for steerSign to avoid a binary snap at zero crossing — the
-        // sigmoid blends from -1 to +1 smoothly over ~3% of steering range.
+        // Centering direction via steer angle (smooth tanh to avoid snap at center)
         float steerSign = MathF.Tanh(raw.SteerAngle * 50f);
         float magnitude = Math.Abs(steeringForce);
 
-        // LMU provides column force (0-20 Nm range). ForceScale from the profile
-        // is calibrated for EVO's Mz values (hundreds of Nm), so ForceScale=1 is
-        // meaningless for column force. Instead, ForceScale acts as a sensitivity
-        // multiplier: 1.0 = default (20 Nm torque → 0.5 normalized pre-gain).
-        // Higher = more sensitive, lower = less sensitive.
+        // Column force normalization. ForceScale acts as sensitivity multiplier
+        // with 1.0 = safe default (20 Nm torque → low-moderate normalized force).
         float effectiveScale = Math.Max(120f / Math.Max(ForceScale, 0.01f), 1f);
         float coreNorm = magnitude * steerSign * MasterGain / effectiveScale;
 
+        // Damping (viscous, friction, inertia) with hardcoded minimum floors
+        // (MinViscous=0.04, MinFriction=0.02). This is the PRIMARY oscillation
+        // defense — velocity-opposing force bleeds energy from free oscillation.
+        // The signed output MUST be preserved intact.
+        float coreDamped = Damping.Apply(coreNorm, raw.SpeedKmh, raw.SteerAngle);
 
-        // Centering override (smoothstep at small steer angles)
-        float corePostCenter = ApplyCenteringOverride(coreNorm, raw);
-
-        // Damping (viscous, friction, inertia) — skipped by base.Process bypass
-        float coreDamped = Damping.Apply(corePostCenter, raw.SpeedKmh, raw.SteerAngle);
-
-        // Output gain
-        float coreOutput = coreDamped * OutputGain;
-
-        // Core multiplier
-        coreOutput *= CoreForceMultiplier;
+        // Output scaling
+        float coreForce = coreDamped * OutputGain;
+        coreForce *= CoreForceMultiplier;
 
         // Brake boost
-        coreOutput *= brakeBoost;
-
-        // ── Grip-scaled centering ──
-        // LMU may not populate gripFract (it reads 0.0 in snapshots across all
-        // speeds). Only apply grip scaling when actual grip data is available.
-        bool hasGripData = false;
-        for (int gi = 0; gi < 4; gi++)
+        float brakeBoost = 1f;
+        if (raw.BrakeInput > BrakeBoostThreshold)
         {
-            if (Math.Abs(raw.TyreGrip[gi]) > 0.01f) { hasGripData = true; break; }
+            float bi = Math.Min((raw.BrakeInput - BrakeBoostThreshold) / (1f - BrakeBoostThreshold), 1f);
+            brakeBoost = 1f + BrakeBoostGain * bi;
         }
-        if (raw.SpeedKmh > 5f && hasGripData)
+        coreForce *= brakeBoost;
+
+        // Grip-scaled centering (only when grip data is actually available)
+        bool hasGrip = false;
+        for (int gi = 0; gi < 4; gi++)
+            if (Math.Abs(raw.TyreGrip[gi]) > 0.01f) { hasGrip = true; break; }
+        if (raw.SpeedKmh > 5f && hasGrip)
         {
             float gripSum = 0f, loadSum = 0f;
             for (int wi = 0; wi < 4; wi++)
             {
                 float load = Math.Max(raw.WheelLoad[wi], 0f);
-                if (load > 50f)
-                {
-                    float grip = Math.Clamp(raw.TyreGrip[wi], 0f, 1f);
-                    gripSum += grip * load;
-                    loadSum += load;
-                }
+                if (load > 50f) { float g = Math.Clamp(raw.TyreGrip[wi], 0f, 1f); gripSum += g * load; loadSum += load; }
             }
             float frontGrip = loadSum > 1f ? gripSum / loadSum : 1f;
             if (GripScaleGain > 0.001f)
-            {
-                float fade = (1f - frontGrip) * GripScaleGain * 0.8f;
-                coreOutput *= Math.Clamp(1f - fade, 0.2f, 1f);
-            }
+                coreForce *= Math.Clamp(1f - (1f - frontGrip) * GripScaleGain * 0.8f, 0.2f, 1f);
         }
 
-        // Speed fade: zero below 0.5 km/h, ramp to full at 5 km/h
-        if (raw.SpeedKmh < 0.5f)
-        {
-            coreOutput = 0f;
-            _prevDetailOutput = 0f;
-        }
+        // Speed fade
+        if (raw.SpeedKmh < 0.5f) { coreForce = 0f; _prevDetailOutput = 0f; }
         else if (raw.SpeedKmh < 5.0f)
-        {
-            float speedFactor = (raw.SpeedKmh - 0.5f) / 4.5f;
-            coreOutput *= speedFactor;
-        }
+            coreForce *= (raw.SpeedKmh - 0.5f) / 4.5f;
 
         // ═══════════════════════════════════════════════════════════════════════
-        // DETAIL PATH — Texture, vibration, and road feel
+        // DETAIL PATH
         // ═══════════════════════════════════════════════════════════════════════
-
-        float deltaTime = 1f / 250f; // telemetry loop rate
+        float deltaTime = 1f / 250f;
         float detailForce = 0f;
 
-        // Vibration mixer (road, curb, slip, ABS, scrub, rear slip, offtrack)
         float vibration = VibrationMixer.Mix(raw);
         detailForce += vibration;
 
-        // ── Tyre temperature feel ──
-        // Cold tyres (< 75°C) produce a grainy/marbles texture as the tyre
-        // struggles to reach operating window. Overheated (> 105°C) adds a
-        // greasy vibration from thermal degradation. Both are subtle noise
-        // injected into the detail path. TyreTempGain = 0 disables entirely.
-        if (TyreTempGain > 0.001f && raw.TyreTemp != null && raw.TyreTemp.Length >= 4 && raw.SpeedKmh > 20f)
+        if (TyreTempGain > 0.001f && raw.TyreTemp is { Length: >= 4 } && raw.SpeedKmh > 20f)
         {
-            float avgTemp = (raw.TyreTemp[0] + raw.TyreTemp[1] + raw.TyreTemp[2] + raw.TyreTemp[3]) * 0.25f;
-            float coldFactor = avgTemp < 75f ? Math.Clamp((75f - avgTemp) / 35f, 0f, 1f) : 0f;
-            float hotFactor  = avgTemp > 105f ? Math.Clamp((avgTemp - 105f) / 25f, 0f, 1f) : 0f;
-            float tempNoise = (coldFactor + hotFactor) * TyreTempGain * 0.005f;
-            detailForce += tempNoise * (Math.Abs(raw.SteerAngle) > 0.003f ? 1f : 0.2f);
+            float avg = (raw.TyreTemp[0] + raw.TyreTemp[1] + raw.TyreTemp[2] + raw.TyreTemp[3]) * 0.25f;
+            float cold = avg < 75f ? Math.Clamp((75f - avg) / 35f, 0f, 1f) : 0f;
+            float hot  = avg > 105f ? Math.Clamp((avg - 105f) / 25f, 0f, 1f) : 0f;
+            detailForce += (cold + hot) * TyreTempGain * 0.005f * (Math.Abs(raw.SteerAngle) > 0.003f ? 1f : 0.2f);
         }
 
-        // NOTE: SlipEnhancer is NOT used for LMU. The reader computes slip angle
-        // as Atan2(vx, -vz) clamped to ±0.30 — this saturates during any cornering
-        // and is not based on real tire contact patch data. Slip ratio is based on
-        // wheel speed vs vehicle speed but is also clamped (±0.20) and unreliable
-        // for meaningful slip-based FFB effects. If slip tuning is desired later,
-        // the LMU reader's slip computation needs to be improved first.
-
-        // ABS force modulation
         float absMod = VibrationMixer.AbsForceModulation;
         if (Math.Abs(absMod) > 0.001f)
         {
-            float sign = coreOutput >= 0f ? 1f : -1f;
-            if (Math.Abs(coreOutput) < 0.01f)
+            float sign = coreForce >= 0f ? 1f : -1f;
+            if (Math.Abs(coreForce) < 0.01f)
                 sign = Math.Abs(raw.SteerAngle) > SteerDirDeadzone ? -Math.Sign(raw.SteerAngle) : 1f;
             detailForce += absMod * sign;
         }
 
-        // Road force modulation
-        float roadMod = VibrationMixer.RoadForceModulation;
-        if (Math.Abs(roadMod) > 0.001f)
-            detailForce += roadMod;
+        if (Math.Abs(VibrationMixer.RoadForceModulation) > 0.001f) detailForce += VibrationMixer.RoadForceModulation;
+        if (Math.Abs(VibrationMixer.RearSlipModulation) > 0.001f) detailForce += VibrationMixer.RearSlipModulation;
+        if (Math.Abs(VibrationMixer.OfftrackModulation) > 0.001f) detailForce += VibrationMixer.OfftrackModulation;
 
-        // Rear slip warning
-        float rearMod = VibrationMixer.RearSlipModulation;
-        if (Math.Abs(rearMod) > 0.001f)
-            detailForce += rearMod;
-
-        // Offtrack rumble
-        float offtrackMod = VibrationMixer.OfftrackModulation;
-        if (Math.Abs(offtrackMod) > 0.001f)
-            detailForce += offtrackMod;
-
-        // LFE (engine RPM / suspension)
         float lfe = LfeGenerator.Generate(raw);
-        if (Math.Abs(lfe) > 0.001f)
-            detailForce += lfe;
+        if (Math.Abs(lfe) > 0.001f) detailForce += lfe;
 
-        // EQ on detail path only
         detailForce = Equalizer.Process(detailForce);
 
-        // DC blocker + direction suppression handled by OnDetailForceProcessed hook below
-
-        // Slew rate limiter on detail path only
         if (raw.SpeedKmh >= 0.5f)
         {
-            float slewDelta = detailForce - _prevDetailOutput;
-            if (Math.Abs(slewDelta) > MaxSlewRate)
-                detailForce = _prevDetailOutput + Math.Sign(slewDelta) * MaxSlewRate;
+            float sd = detailForce - _prevDetailOutput;
+            if (Math.Abs(sd) > MaxSlewRate)
+                detailForce = _prevDetailOutput + Math.Sign(sd) * MaxSlewRate;
         }
         _prevDetailOutput = raw.SpeedKmh < 0.5f ? 0f : detailForce;
 
-        // Hook for subclasses — currently unused since this is the final subclass
-        OnDetailForceProcessed(coreOutput, ref detailForce);
+        OnDetailForceProcessed(coreForce, ref detailForce);
 
         // ═══════════════════════════════════════════════════════════════════════
         // FINAL MIX
         // ═══════════════════════════════════════════════════════════════════════
-
-        float filteredCore = ApplyGearShiftFilter(coreOutput, deltaTime, raw.Gear);
+        float filteredCore = ApplyGearShiftFilter(coreForce, deltaTime, raw.Gear);
         float finalOutput = filteredCore + detailForce;
 
-        // Soft clip
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
 
-        // Noise floor gate
         float speedNoiseScale = raw.SpeedKmh < 10.0f
-            ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 0.5f
-            : 1.0f;
-        float effectiveNoiseFloor = NoiseFloor * speedNoiseScale;
-        if (Math.Abs(finalOutput) < effectiveNoiseFloor)
-            finalOutput = 0f;
+            ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 0.5f : 1.0f;
+        if (Math.Abs(finalOutput) < NoiseFloor * speedNoiseScale) finalOutput = 0f;
 
         return new FfbProcessedData
         {
@@ -233,11 +148,11 @@ public sealed class LmuFfbPipeline : FfbPipeline
             VibrationForce = vibration * GearShiftMuteGain,
             RawFinalFf = steeringForce,
             PostCompressionForce = coreNorm,
-            PostLutForce = corePostCenter,
-            PostDampingForce = corePostCenter,
-            PostOutputGainForce = coreOutput,
+            PostLutForce = coreNorm,
+            PostDampingForce = coreDamped,
+            PostOutputGainForce = coreForce,
             PostDynamicForce = detailForce,
-            CoreForce = coreOutput,
+            CoreForce = coreForce,
             DetailForce = detailForce,
             AutoGainApplied = 1f,
             IsClipping = isClipping,
@@ -268,8 +183,7 @@ public sealed class LmuFfbPipeline : FfbPipeline
             if (lockHalf < 1f) lockHalf = 450f;
             float absSteerDeg = Math.Abs(raw.SteerAngle) * lockHalf;
             float t = Math.Clamp(absSteerDeg / CenterSharpnessDegrees, 0f, 1f);
-            float ramp = t * t * (3f - 2f * t);
-            return coreOutput * ramp;
+            return coreOutput * t * t * (3f - 2f * t);
         }
         return coreOutput;
     }

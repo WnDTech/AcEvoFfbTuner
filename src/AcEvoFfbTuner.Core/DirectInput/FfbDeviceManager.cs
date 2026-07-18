@@ -1220,6 +1220,32 @@ public sealed class FfbDeviceManager : IDisposable
                 long lastUpdate = System.Threading.Interlocked.Read(ref _lastTargetUpdateTicks);
                 float timeSinceLastPacket = (float)((nowTicks - lastUpdate) / ticksPerMs);
 
+                // SAFETY: if no physics packet received for >500ms, ramp force to zero.
+                // This prevents the wheel from holding a dangerous force if the app crashes
+                // or the telemetry loop stops unexpectedly.
+                if (timeSinceLastPacket > 500f)
+                {
+                    if (timeSinceLastPacket < 1000f)
+                    {
+                        try
+                        {
+                            var log = Path.Combine(
+                                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                                "AcEvoFfbTuner", "device_timeout.log");
+                            File.AppendAllText(log,
+                                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] SAFETY: {timeSinceLastPacket:F0}ms since last packet. Ramping force to zero.\n");
+                        }
+                        catch { }
+                    }
+                    float safetyFade = Math.Max(0f, 1f - (timeSinceLastPacket - 500f) / 500f);
+                    _currentForce *= safetyFade;
+                    SendConstantForceDirect(_currentForce);
+                    StopVibration();
+                    lastLoopTick = nowTicks;
+                    Thread.Sleep(10);
+                    continue;
+                }
+
                 // Time-based lerp: how far along the 3ms physics tick are we?
                 // If the packet just arrived, we're at 0%. If 3ms have passed, we're at 100%.
                 // Clamped to 1.0 to prevent overshooting if the physics engine hangs/stutters.

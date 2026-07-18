@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO.MemoryMappedFiles;
 using AcEvoFfbTuner.Core.SharedMemory.Structs;
 
@@ -534,7 +534,7 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                 float maxSuspF = 0f;
                 for (int wi = 0; wi < 4; wi++)
                     if (Math.Abs(suspForce[wi]) > maxSuspF) maxSuspF = Math.Abs(suspForce[wi]);
-                kerbVib = Math.Min(maxSuspF * 0.0002f, 1f);
+                kerbVib = Math.Min(maxSuspF * 0.00005f, 1f);
 
                 // Road vibration from vertical tire deflection
                 float maxVertDefl = 0f;

@@ -74,6 +74,10 @@ public sealed class FfbRawData
     public float[] TyreTemp { get; set; } = new float[4];
     public float EngineTorque { get; set; }
     public float[] TireFlatspot { get; set; } = new float[4];
+    public float GapAhead { get; set; }
+    public float GapBehind { get; set; }
+    public int RacePosition { get; set; }
+    public int TotalDrivers { get; set; }
     public int[] TireOnMtrl { get; set; } = new int[4];
     public float[] BrakePressure { get; set; } = new float[4];
     public float TractionControlPercent { get; set; }

@@ -11,7 +11,7 @@ namespace AcEvoFfbTuner.Core;
 public sealed class FfbLiveServer : IDisposable
 {
     private TcpListener? _tcpListener;
-    private readonly CancellationTokenSource _cts = new();
+    private CancellationTokenSource _cts = new();
     private Task? _listenTask;
     private readonly ConcurrentBag<SseClient> _clients = new();
 
@@ -49,6 +49,7 @@ public sealed class FfbLiveServer : IDisposable
     public void Start()
     {
         if (_tcpListener != null) return;
+        _cts = new CancellationTokenSource();
         NetworkAddresses = GetLocalNetworkAddresses();
         _tcpListener = new TcpListener(IPAddress.Any, Port);
         try
@@ -96,6 +97,27 @@ public sealed class FfbLiveServer : IDisposable
         }
         catch { }
         return ips;
+    }
+
+    public static string? GetActiveNetworkAddress()
+    {
+        try
+        {
+            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                var ipProps = ni.GetIPProperties();
+                if (ipProps.GatewayAddresses.Count == 0) continue;
+                foreach (var addr in ipProps.UnicastAddresses)
+                {
+                    if (addr.Address.AddressFamily == AddressFamily.InterNetwork)
+                        return addr.Address.ToString();
+                }
+            }
+        }
+        catch { }
+        return null;
     }
 
     public void Stop()
@@ -198,6 +220,18 @@ public sealed class FfbLiveServer : IDisposable
             _sb.Append(raw.CurrentLap.ToString());
             _sb.Append(",\"np\":");
             _sb.Append(raw.Npos.ToString("F4"));
+            _sb.Append(",\"gapA\":");
+            _sb.Append(raw.GapAhead.ToString("F3"));
+            _sb.Append(",\"gapB\":");
+            _sb.Append(raw.GapBehind.ToString("F3"));
+            _sb.Append(",\"pos\":");
+            _sb.Append(raw.RacePosition.ToString());
+            _sb.Append(",\"tot\":");
+            _sb.Append(raw.TotalDrivers.ToString());
+            _sb.Append(",\"latG\":");
+            _sb.Append(raw.AccG.Length > 0 ? raw.AccG[0].ToString("F3") : "0");
+            _sb.Append(",\"lonG\":");
+            _sb.Append(raw.AccG.Length > 1 ? raw.AccG[1].ToString("F3") : "0");
             _sb.Append('}');
 
             var payload = Encoding.UTF8.GetBytes("data: " + _sb.ToString() + "\n\n");
@@ -244,7 +278,7 @@ public sealed class FfbLiveServer : IDisposable
             }
             catch (OperationCanceledException) { break; }
             catch (ObjectDisposedException) { break; }
-            catch (SocketException) { break; }
+            catch (SocketException) { continue; }
         }
     }
 
@@ -254,7 +288,7 @@ public sealed class FfbLiveServer : IDisposable
         {
             var stream = tcpClient.GetStream();
             var (method, path, query) = await ReadHttpRequest(stream, ct);
-            if (method != "GET") return;
+            if (string.IsNullOrEmpty(method) || method != "GET") return;
 
             if (path == "/stream")
             {
@@ -262,17 +296,36 @@ public sealed class FfbLiveServer : IDisposable
                 _clients.Add(sseClient);
                 await SseWriter(sseClient, ct);
             }
+            else if (path == "/ping")
+            {
+                var body = Encoding.UTF8.GetBytes("pong");
+                await WriteResponse(stream, 200, "OK", "text/plain", body);
+            }
+            else if (path == "/history")
+            {
+                await ServeHistory(stream);
+            }
+            else if (path == "/overlay")
+            {
+                await ServeOverlay(stream, query);
+            }
             else
             {
-                if (path == "/history")
-                    await ServeHistory(stream);
-                else if (path == "/overlay")
-                    await ServeOverlay(stream, query);
-                else
-                    await ServeHtml(stream, query);
+                await ServeHtml(stream, query);
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            try
+            {
+                var err = Encoding.UTF8.GetBytes("500 Internal Error: " + ex.Message);
+                var header = $"HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\nContent-Length: {err.Length}\r\nConnection: close\r\n\r\n";
+                var headerBytes = Encoding.UTF8.GetBytes(header);
+                await tcpClient.GetStream().WriteAsync(headerBytes, 0, headerBytes.Length);
+                await tcpClient.GetStream().WriteAsync(err, 0, err.Length);
+            }
+            catch { }
+        }
         finally
         {
             try { tcpClient.Close(); } catch { }
@@ -303,7 +356,10 @@ public sealed class FfbLiveServer : IDisposable
 
             return (parts[0], path, query);
         }
-        catch { return ("", "", ""); }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw; // rethrow to HandleClient for 500 response
+        }
     }
 
     private static async Task WriteResponse(NetworkStream stream, int statusCode, string statusText, string contentType, byte[] body)
@@ -801,18 +857,21 @@ body{background:transparent;color:#fff;font-family:'Inter','Segoe UI',Arial,sans
 #p{background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.06);border-radius:clamp(12px,1.2vw,24px);padding:clamp(12px,2vw,32px);width:96vw;max-width:1400px;display:flex;flex-direction:column;gap:clamp(8px,1.2vh,20px);opacity:" + opacity + @"}
 #tr{display:flex;flex-wrap:wrap;align-items:center;gap:clamp(8px,1.5vw,24px)}
 #sg{display:flex;align-items:baseline;gap:clamp(6px,0.8vw,14px);flex-shrink:0}
-#sp{font-size:clamp(24px,6vw,96px);font-weight:700;line-height:1;letter-spacing:-0.03em}
+#sp{font-size:clamp(24px,6vw,96px);font-weight:700;line-height:1;letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
 #sp .u{font-size:clamp(10px,1.5vw,28px);font-weight:400;color:rgba(255,255,255,0.4);margin-left:clamp(2px,0.3vw,8px)}
-#ge{display:inline-flex;align-items:center;justify-content:center;min-width:clamp(26px,2.8vw,56px);height:clamp(26px,2.8vw,56px);border-radius:clamp(6px,0.6vw,12px);font-size:clamp(15px,2.5vw,48px);font-weight:700;background:rgba(255,255,255,0.08);color:#fff}
+#ge{display:inline-flex;align-items:center;justify-content:center;min-width:clamp(26px,2.8vw,56px);height:clamp(26px,2.8vw,56px);border-radius:clamp(6px,0.6vw,12px);font-size:clamp(15px,2.5vw,48px);font-weight:700;background:rgba(255,255,255,0.08);color:#fff;font-variant-numeric:tabular-nums}
 #rs{flex:1;min-width:clamp(60px,10vw,300px);display:flex;flex-direction:column;gap:clamp(2px,0.2vh,4px)}
 #rl{font-size:clamp(7px,0.65vw,13px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em}
 #rb{width:100%;height:clamp(4px,0.6vh,12px);background:rgba(255,255,255,0.06);border-radius:clamp(2px,0.3vw,6px);overflow:hidden}
 #rf{height:100%;border-radius:clamp(2px,0.3vw,6px);transition:width 40ms ease;background:linear-gradient(90deg,#22c55e,#eab308 45%,#ef4444 75%,#dc2626)}
-#lc{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0}
+#lc{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;min-width:clamp(30px,4vw,80px)}
 #ll{font-size:clamp(7px,0.65vw,13px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em}
-#lv{font-size:clamp(12px,1.4vw,26px);font-weight:600}
+#lv{font-size:clamp(12px,1.4vw,26px);font-weight:600;font-variant-numeric:tabular-nums}
+#pc{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;min-width:clamp(40px,5vw,100px)}
+#pl{font-size:clamp(7px,0.65vw,13px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em}
+#pv{font-size:clamp(12px,1.4vw,26px);font-weight:600;font-variant-numeric:tabular-nums}
 #fa{display:flex;flex-direction:column;gap:clamp(4px,0.5vh,10px)}
-#fv{font-size:clamp(14px,2.5vw,44px);font-weight:400;letter-spacing:-0.01em}
+#fv{font-size:clamp(14px,2.5vw,44px);font-weight:400;letter-spacing:-0.01em;font-variant-numeric:tabular-nums}
 #fv .n{font-size:clamp(9px,1vw,18px);font-weight:400;color:rgba(255,255,255,0.35);margin-left:clamp(4px,0.4vw,10px)}
 #fbw{width:100%;height:clamp(8px,1.2vh,24px);background:rgba(255,255,255,0.05);border-radius:clamp(4px,0.5vw,10px);overflow:hidden;position:relative}
 #fb{height:100%;border-radius:clamp(4px,0.5vw,10px);transition:width 40ms ease;position:absolute;top:0}
@@ -820,11 +879,13 @@ body{background:transparent;color:#fff;font-family:'Inter','Segoe UI',Arial,sans
 #fb.n{left:50%;background:linear-gradient(270deg,#f97316,#fb923c)}
 #cp{display:none;font-size:clamp(10px,1vw,20px);font-weight:700;color:#ef4444;text-shadow:0 0 clamp(6px,0.8vw,16px) rgba(239,68,68,0.5);animation:p 0.7s ease-in-out infinite}
 @keyframes p{0%,100%{opacity:1}50%{opacity:0.4}}
+#gp{display:flex;gap:clamp(10px,1.2vw,24px);font-size:clamp(10px,1vw,20px);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+#gA{color:#22c55e;min-width:4ch;display:inline-block}#gB{color:#f87171;min-width:4ch;display:inline-block}.gL{font-size:clamp(7px,0.55vw,11px);color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-right:clamp(2px,0.2vw,6px)}
 #ch{display:flex;flex-wrap:wrap;gap:clamp(10px,1.8vw,36px);align-items:center}
-.cg{display:flex;flex-direction:column;gap:0}
+.cg{display:flex;flex-direction:column;gap:0;min-width:clamp(28px,3.5vw,70px)}
 .cl{font-size:clamp(7px,0.6vw,12px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em}
-.cv{font-size:clamp(10px,1.1vw,22px);font-weight:600}
-.cv.mz{color:#fbbf24}.cv.fx{color:#f87171}.cv.fy{color:#34d399}.cv.ga{color:#fff}.cv.br{color:#f87171}
+.cv{font-size:clamp(10px,1.1vw,22px);font-weight:600;font-variant-numeric:tabular-nums}
+.cv.mz{color:#fbbf24}.cv.fx{color:#f87171}.cv.fy{color:#34d399}.cv.ga{color:#fff}.cv.br{color:#f87171}.cv.lt{color:#a78bfa}.cv.ln{color:#f59e0b}
 #btr{display:flex;flex-wrap:wrap;gap:clamp(8px,1vw,20px);align-items:flex-end;min-height:0;flex:1}
 #ww{flex:1;min-width:clamp(60px,20vw,400px);height:clamp(24px,4vh,70px);display:" + (opts.ShowWaveform ? "block" : "none") + @"}
 #ww canvas{width:100%;height:100%;border-radius:clamp(4px,0.4vw,10px);background:rgba(0,0,0,0.15);display:block}
@@ -836,17 +897,21 @@ body{background:transparent;color:#fff;font-family:'Inter','Segoe UI',Arial,sans
 <div id='sg'><div id='sp'>0<span class='u'>km/h</span></div><div id='ge'>N</div></div>
 <div id='rs'><div id='rl'>RPM</div><div id='rb'><div id='rf' style='width:0%'></div></div></div>
 <div id='lc'><div id='ll'>LAP</div><div id='lv'>0</div></div>
+<div id='pc'><div id='pl'>POS</div><div id='pv'>P0/0</div></div>
 </div>
 <div id='fa'>
 <div id='fv'>0.000<span class='n'>Nm</span></div>
 <div id='fbw'><div id='fb' class='p' style='width:0%'></div></div>
 <div id='cp'>CLIPPING</div>
+<div id='gp'><span><span class='gL'>Ahead</span><span id='gA'>+0.000</span></span><span><span class='gL'>Behind</span><span id='gB'>+0.000</span></span></div>
 <div id='ch'>
 <div class='cg'><span class='cl'>Mz</span><span class='cv mz' id='vMz'>0.000</span></div>
 <div class='cg'><span class='cl'>Fx</span><span class='cv fx' id='vFx'>0.000</span></div>
 <div class='cg'><span class='cl'>Fy</span><span class='cv fy' id='vFy'>0.000</span></div>
 <div class='cg'><span class='cl'>Gas</span><span class='cv ga' id='vGa'>0</span></div>
 <div class='cg'><span class='cl'>Brk</span><span class='cv br' id='vBr'>0</span></div>
+<div class='cg'><span class='cl'>Lat</span><span class='cv lt' id='vLt'>0.00</span></div>
+<div class='cg'><span class='cl'>Lon</span><span class='cv ln' id='vLn'>0.00</span></div>
 </div>
 </div>
 <div id='btr'>
@@ -890,7 +955,14 @@ $('vFx').textContent=(d.fx||0).toFixed(3);
 $('vFy').textContent=(d.fy||0).toFixed(3);
 $('vGa').textContent=(d.ga||0).toFixed(2);
 $('vBr').textContent=(d.br||0).toFixed(2);
+$('vLt').textContent=(d.latG||0).toFixed(2);
+$('vLn').textContent=(d.lonG||0).toFixed(2);
 $('lv').textContent=d.la||0;
+const p=d.pos||0,t=d.tot||0;
+$('pv').textContent='P'+p+'/'+t;
+const gA=d.gapA||0,gB=d.gapB||0;
+$('gA').textContent=(gA>=0?'+':'')+gA.toFixed(3);
+$('gB').textContent=(gB>=0?'+':'')+gB.toFixed(3);
 drawWave();
 drawTrack(d);
 };

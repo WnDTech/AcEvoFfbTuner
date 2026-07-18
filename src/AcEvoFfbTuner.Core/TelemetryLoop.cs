@@ -664,8 +664,17 @@ public sealed class TelemetryLoop : IDisposable
                     _watchdog.Restart();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                try
+                {
+                    var log = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "AcEvoFfbTuner", "telemetry_loop_errors.log");
+                    File.AppendAllText(log,
+                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] TelemetryLoop exception: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}\n");
+                }
+                catch { }
                 Thread.Sleep(100);
             }
         }
@@ -1082,7 +1091,11 @@ public sealed class TelemetryLoop : IDisposable
             SuspensionDamage = Arr4(physics.SuspensionDamage),
             AirTemp = physics.AirTemp,
             RoadTemp = physics.RoadTemp,
-            TyreDirtyLevel = Arr4(physics.TyreDirtyLevel)
+            TyreDirtyLevel = Arr4(physics.TyreDirtyLevel),
+            GapAhead = graphics.GapAhead,
+            GapBehind = graphics.GapBehind,
+            RacePosition = (int)graphics.CurrentPos,
+            TotalDrivers = (int)graphics.TotalDrivers
         };
     }
 

@@ -23,13 +23,18 @@ public sealed partial class OverlaysPage : UserControl
     {
         _loaded = false;
         var ips = FfbLiveServer.GetLocalNetworkAddresses();
+        var activeIp = FfbLiveServer.GetActiveNetworkAddress();
         foreach (var combo in new[] { SourceDashboard, SourceOverlay, SourceClipping })
         {
             combo.Items.Clear();
             combo.Items.Add("localhost");
+            int sel = 0;
             foreach (var ip in ips)
+            {
                 combo.Items.Add(ip);
-            combo.SelectedIndex = 0;
+                if (ip == activeIp) sel = combo.Items.Count - 1;
+            }
+            combo.SelectedIndex = sel;
         }
         _loaded = true;
         UpdateUrl(UrlDashboard, SourceDashboard, "/?theme=dark");
