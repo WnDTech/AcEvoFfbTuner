@@ -354,6 +354,7 @@ public sealed partial class MainViewModel
                     TrackLongitude,
                     TrackRotation);
             }
+
         }
 
         var racePhysics = _telemetryLoop.LatestPhysicsRaw;
@@ -370,6 +371,17 @@ public sealed partial class MainViewModel
 
         PacketsPerSecond = _telemetryLoop.PacketsPerSecond;
         IsGameConnected = _telemetryLoop.IsGameConnected;
+
+        IsWheelConnected = _deviceManager.IsLedControllerConnected;
+        WheelDisplayName = IsWheelConnected ? _deviceManager.LedVendorDisplayName : "No wheel detected";
+
+        IsPedalConnected = IsDeviceConnected && _telemetryLoop.LatestRaw != null &&
+            (_telemetryLoop.LatestRaw.GasInput > 0.01f || _telemetryLoop.LatestRaw.BrakeInput > 0.01f);
+        PedalName = IsPedalConnected ? "Pedals" : "No pedals";
+
+        Hf8Connected = _deviceManager.IsHf8Connected;
+
+        UpdateDeviceStatuses();
     }
 
     private void UpdateSignalMonitor(float lowFreqValue, float highFreqValue)

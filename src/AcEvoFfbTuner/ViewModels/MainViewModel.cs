@@ -17,6 +17,7 @@ using AcEvoFfbTuner.Core.Profiles;
 using AcEvoFfbTuner.Core.SharedMemory;
 using AcEvoFfbTuner.Core.TrackMapping;
 using AcEvoFfbTuner.Services;
+using AcEvoFfbTuner.Models;
 using AcEvoFfbTuner.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -83,6 +84,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _deviceName = "No device";
+
+    [ObservableProperty]
+    private bool _isWheelConnected;
+
+    [ObservableProperty]
+    private string _wheelDisplayName = "No wheel detected";
+
+    [ObservableProperty]
+    private bool _isPedalConnected;
+
+    [ObservableProperty]
+    private string _pedalName = "No pedals";
 
     [ObservableProperty]
     private int _packetsPerSecond;
@@ -1028,6 +1041,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
 
 
+    public ObservableCollection<DeviceStatus> DeviceStatuses { get; } = [];
+
     public ObservableCollection<FfbDeviceInfo> AvailableDevices { get; } = new();
     public ObservableCollection<FfbDeviceInfo> PanicDevices { get; } = new();
     public ObservableCollection<string> SnapshotButtonNames { get; } = new();
@@ -1440,6 +1455,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             });
             _gameDetector.Start();
         }
+
+        InitializeDeviceStatuses();
 
         AddSystemLog("Application initialized");
      }
@@ -2905,6 +2922,40 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         RebuildAiCoach();
 
         // AI coach logs go to file only -- not the status bar (too verbose, contains JSON)
+    }
+
+    private void InitializeDeviceStatuses()
+    {
+        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Wheelbase, Name = "No wheelbase" });
+        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Wheel, Name = "No wheel" });
+        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Pedals, Name = "No pedals" });
+        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Haptics, Name = "No haptics" });
+        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Game, Name = "No game" });
+    }
+
+    private void UpdateDeviceStatuses()
+    {
+        // Wheelbase
+        DeviceStatuses[0].IsConnected = IsDeviceConnected;
+        DeviceStatuses[0].Name = IsDeviceConnected ? DeviceName : "No wheelbase";
+
+        // Wheel (LED controller / rim)
+        DeviceStatuses[1].IsConnected = IsWheelConnected;
+        DeviceStatuses[1].Name = IsWheelConnected ? WheelDisplayName : "No wheel";
+
+        // Pedals
+        DeviceStatuses[2].IsConnected = IsPedalConnected;
+        DeviceStatuses[2].Name = IsPedalConnected ? PedalName : "No pedals";
+
+        // Haptics (HF8)
+        DeviceStatuses[3].IsConnected = Hf8Connected;
+        DeviceStatuses[3].Name = Hf8Connected ? "HF8 Haptic Pad" : "No haptics";
+
+        // Game
+        DeviceStatuses[4].IsConnected = IsGameConnected;
+        DeviceStatuses[4].Name = IsGameConnected ? GameDisplayName : "No game";
+
+        OnPropertyChanged(nameof(DeviceStatuses));
     }
 
     public void Dispose()

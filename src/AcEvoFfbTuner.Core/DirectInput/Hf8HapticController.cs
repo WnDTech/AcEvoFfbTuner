@@ -31,16 +31,19 @@ public sealed class Hf8HapticController : IDisposable
     [DllImport("winmm.dll")]
     private static extern uint timeEndPeriod(uint period);
 
-    private int _sendCount;
-    private int _sendFailCount;
+    private volatile int _sendCount;
+    private volatile int _sendFailCount;
     private readonly List<string> _diagnosticLog = new();
 
     public const int MotorCount = 8;
 
-    public bool IsConnected => _connected && _forceFeel != null;
+    public bool IsConnected => _connected && _forceFeel != null && HasHealthyCommunication;
     public string? LastError { get; private set; }
     public string DiagnosticSummary => string.Join("\n", _diagnosticLog);
     public string DeviceInfo { get; private set; } = "";
+
+    public bool HasHealthyCommunication => _sendCount < 5 || SendFailureRate < 0.8f;
+    public float SendFailureRate => _sendCount == 0 ? 0f : (float)_sendFailCount / _sendCount;
 
     public int OutputRateHz { get; set; } = 75;
 
