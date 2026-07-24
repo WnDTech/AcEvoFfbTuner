@@ -9,17 +9,19 @@ namespace AcEvoFfbTuner.ViewModels;
 
 public enum SupportedGame
 {
+    None,
     AcEvo,
     Raceroom,
     AssettoCorsa,
     LeMansUltimate,
-    AssettoCorsaCompetizione
+    AssettoCorsaCompetizione,
+    Unsupported
 }
 
 public sealed partial class MainViewModel
 {
     [ObservableProperty]
-    private SupportedGame _selectedGame = SupportedGame.AcEvo;
+    private SupportedGame _selectedGame = SupportedGame.None;
 
     [ObservableProperty]
     private bool _gameAutoMode = true;
@@ -29,16 +31,22 @@ public sealed partial class MainViewModel
         get
         {
             if (GameAutoMode && _lastAutoDetectedGame.HasValue)
+            {
+                if (_lastAutoDetectedGame.Value == SupportedGame.None)
+                    return "No game";
                 return _lastAutoDetectedGame.Value switch
                 {
                     SupportedGame.Raceroom => "RaceRoom (auto)",
                     SupportedGame.AssettoCorsa => "Assetto Corsa (auto)",
                     SupportedGame.LeMansUltimate => "Le Mans Ultimate (auto)",
                     SupportedGame.AssettoCorsaCompetizione => "ACC (auto)",
+                    SupportedGame.Unsupported => "Unsupported game",
                     _ => "AC EVO (auto)"
                 };
+            }
             return SelectedGame switch
             {
+                SupportedGame.None => "No game",
                 SupportedGame.Raceroom => "RaceRoom",
                 SupportedGame.AssettoCorsa => "Assetto Corsa",
                 SupportedGame.LeMansUltimate => "Le Mans Ultimate",
@@ -53,6 +61,7 @@ public sealed partial class MainViewModel
     public bool IsAssettoCorsa => SelectedGame == SupportedGame.AssettoCorsa;
     public bool IsLeMansUltimate => SelectedGame == SupportedGame.LeMansUltimate;
     public bool IsAssettoCorsaCompetizione => SelectedGame == SupportedGame.AssettoCorsaCompetizione;
+    public bool IsNoGame => SelectedGame == SupportedGame.None;
     public bool IsColumnForceGame => SelectedGame is SupportedGame.Raceroom or SupportedGame.LeMansUltimate;
     public bool IsPerWheelGame => SelectedGame is SupportedGame.AcEvo or SupportedGame.AssettoCorsa or SupportedGame.AssettoCorsaCompetizione;
 
@@ -98,8 +107,6 @@ public sealed partial class MainViewModel
 
     partial void OnSelectedGameChanged(SupportedGame value)
     {
-        _gameDetectorManualOverride = true;
-        GameAutoMode = false;
         var wasRunning = _telemetryLoop.IsRunning;
         if (wasRunning)
             _telemetryLoop.Stop();
@@ -115,6 +122,7 @@ public sealed partial class MainViewModel
         OnPropertyChanged(nameof(IsAssettoCorsa));
         OnPropertyChanged(nameof(IsLeMansUltimate));
         OnPropertyChanged(nameof(IsAssettoCorsaCompetizione));
+        OnPropertyChanged(nameof(IsNoGame));
         OnPropertyChanged(nameof(IsColumnForceGame));
         OnPropertyChanged(nameof(IsPerWheelGame));
         OnPropertyChanged(nameof(IsTyreForceSectionVisible));
@@ -136,11 +144,13 @@ public sealed partial class MainViewModel
             SupportedGame.AssettoCorsa => "Assetto Corsa",
             SupportedGame.LeMansUltimate => "Le Mans Ultimate",
             SupportedGame.AssettoCorsaCompetizione => "Assetto Corsa Competizione",
-            _ => "Assetto Corsa EVO"
+            SupportedGame.AcEvo => "Assetto Corsa EVO",
+            SupportedGame.Unsupported => "Unsupported game",
+            _ => "No game"
         };
         _coachService.IsColumnForceGame = value is SupportedGame.Raceroom or SupportedGame.LeMansUltimate;
 
-        if (_profileManager.ActiveProfile != null)
+        if (value != SupportedGame.None && _profileManager.ActiveProfile != null)
             _profileManager.ActiveProfile.ApplyToPipeline(_pipeline);
 
         var newLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);

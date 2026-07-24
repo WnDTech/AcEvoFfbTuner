@@ -10,9 +10,14 @@ public sealed class GameDetectorService : IDisposable
         ["acevo"] = SupportedGame.AcEvo,
         ["ac_evo"] = SupportedGame.AcEvo,
         ["ac_ev"] = SupportedGame.AcEvo,
+        ["ac2"] = SupportedGame.AcEvo,
+        ["assettocorsaevo"] = SupportedGame.AcEvo,
         ["raceroom"] = SupportedGame.Raceroom,
         ["raceroomracing"] = SupportedGame.Raceroom,
+        ["raceroomracingexperience"] = SupportedGame.Raceroom,
         ["rrre"] = SupportedGame.Raceroom,
+        ["rrre64"] = SupportedGame.Raceroom,
+        ["r3e"] = SupportedGame.Raceroom,
         ["acs"] = SupportedGame.AssettoCorsa,
         ["assettocorsa"] = SupportedGame.AssettoCorsa,
         ["lmu"] = SupportedGame.LeMansUltimate,
@@ -21,6 +26,30 @@ public sealed class GameDetectorService : IDisposable
         ["acc"] = SupportedGame.AssettoCorsaCompetizione,
         ["acc2"] = SupportedGame.AssettoCorsaCompetizione,
         ["assettocorsacompetizione"] = SupportedGame.AssettoCorsaCompetizione
+    };
+
+    private readonly HashSet<string> _unsupportedNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "irating",
+        "iracing",
+        "iracing64",
+        "rfactor2",
+        "rFactor2",
+        "ams2",
+        "automobilista2",
+        "pcars",
+        "pcars2",
+        "projectcars",
+        "projectcars2",
+        "dirtrally",
+        "dirtrally2",
+        "dirtrally2.0",
+        "lfs",
+        "liveforspeed",
+        "RichardBurnsRally",
+        "gtr2",
+        "gtlegends",
+        "race07"
     };
 
     private CancellationTokenSource? _cts;
@@ -66,7 +95,9 @@ public sealed class GameDetectorService : IDisposable
 
     private void DetectGames(CancellationToken ct)
     {
-        var detected = new List<SupportedGame>();
+        // 1. Check supported games
+        SupportedGame? foundSupported = null;
+        int supportedCount = 0;
 
         foreach (var kvp in _processMap)
         {
@@ -74,31 +105,50 @@ public sealed class GameDetectorService : IDisposable
             var processes = Process.GetProcessesByName(kvp.Key);
             if (processes.Length > 0)
             {
-                detected.Add(kvp.Value);
+                foundSupported = kvp.Value;
+                supportedCount++;
                 foreach (var p in processes) p.Dispose();
             }
         }
 
-        if (detected.Count == 0)
+        // Multiple supported games → ambiguous, skip
+        if (supportedCount > 1)
+            return;
+
+        // Exactly one supported game found
+        if (supportedCount == 1)
         {
-            if (_lastDetectedGame.HasValue)
+            var game = foundSupported!.Value;
+            if (_lastDetectedGame != game)
             {
-                _lastDetectedGame = null;
-                GameExitedAll?.Invoke();
+                _lastDetectedGame = game;
+                GameDetected?.Invoke(game);
             }
             return;
         }
 
-        if (detected.Count > 1)
+        // 2. No supported games — check for known unsupported sim racing games
+        foreach (var name in _unsupportedNames)
         {
-            return;
+            ct.ThrowIfCancellationRequested();
+            var processes = Process.GetProcessesByName(name);
+            if (processes.Length > 0)
+            {
+                foreach (var p in processes) p.Dispose();
+                if (_lastDetectedGame != SupportedGame.Unsupported)
+                {
+                    _lastDetectedGame = SupportedGame.Unsupported;
+                    GameDetected?.Invoke(SupportedGame.Unsupported);
+                }
+                return;
+            }
         }
 
-        var game = detected[0];
-        if (_lastDetectedGame != game)
+        // 3. Nothing game-related running at all
+        if (_lastDetectedGame.HasValue)
         {
-            _lastDetectedGame = game;
-            GameDetected?.Invoke(game);
+            _lastDetectedGame = null;
+            GameExitedAll?.Invoke();
         }
     }
 

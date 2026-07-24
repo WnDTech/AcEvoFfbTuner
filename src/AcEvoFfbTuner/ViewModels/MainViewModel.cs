@@ -1443,8 +1443,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             _gameDetector.GameDetected += game => Application.Current?.Dispatcher.Invoke(() =>
             {
                 SetDetectedGame(game);
-                if (SelectedGame == game) return;
                 if (_gameDetectorManualOverride) return;
+                if (game == SupportedGame.Unsupported)
+                {
+                    StatusText = "Unsupported game detected — FFB tuning not available for this title";
+                    AddSystemLog("Unsupported sim racing game detected");
+                    return;
+                }
+                if (SelectedGame == game)
+                {
+                    AddSystemLog($"Auto-detect confirmed: {GameDisplayName} running");
+                    return;
+                }
                 SelectedGame = game;
                 AddSystemLog($"Auto-detected game: {GameDisplayName}");
                 StatusText = $"Auto-detected: {GameDisplayName}";
@@ -1452,6 +1462,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             _gameDetector.GameExitedAll += () => Application.Current?.Dispatcher.Invoke(() =>
             {
                 _gameDetectorManualOverride = false;
+                _lastAutoDetectedGame = null;
+                if (GameAutoMode && SelectedGame != SupportedGame.None)
+                {
+                    SelectedGame = SupportedGame.None;
+                }
+                else
+                {
+                    OnPropertyChanged(nameof(GameDisplayName));
+                }
             });
             _gameDetector.Start();
         }

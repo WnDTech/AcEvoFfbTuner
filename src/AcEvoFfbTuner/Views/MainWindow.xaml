@@ -179,7 +179,7 @@
                 <!-- Game Pill -->
                 <Button Grid.Column="4" x:Name="GamePill" Click="OnGamePillClick"
                         Cursor="Hand" VerticalAlignment="Center"
-                        ToolTip="Switch between AC EVO, RaceRoom, Assetto Corsa, and Le Mans Ultimate">
+                        ToolTip="Click to switch game. Auto-detect selects the running game automatically.">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="PillBd" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderBrush}"

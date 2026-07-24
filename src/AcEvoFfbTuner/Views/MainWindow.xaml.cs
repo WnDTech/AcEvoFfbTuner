@@ -450,8 +450,10 @@ public partial class MainWindow : Window
             vm._gameDetectorManualOverride = true;
             return;
         }
+        vm._gameDetectorManualOverride = true;
         vm.SelectedGame = vm.SelectedGame switch
         {
+            SupportedGame.None => SupportedGame.AcEvo,
             SupportedGame.AcEvo => SupportedGame.Raceroom,
             SupportedGame.Raceroom => SupportedGame.AssettoCorsa,
             SupportedGame.AssettoCorsa => SupportedGame.LeMansUltimate,
