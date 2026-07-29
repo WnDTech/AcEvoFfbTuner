@@ -9,18 +9,22 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using AcEvoFfbTuner.Core;
+using AcEvoFfbTuner.Core.DeviceDetection;
 using AcEvoFfbTuner.Core.DirectInput;
 using AcEvoFfbTuner.Core.FfbProcessing;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
 using AcEvoFfbTuner.Core.FfbProviders;
+using AcEvoFfbTuner.Core.PedalInput.Sources;
 using AcEvoFfbTuner.Core.Profiles;
 using AcEvoFfbTuner.Core.SharedMemory;
 using AcEvoFfbTuner.Core.TrackMapping;
 using AcEvoFfbTuner.Services;
 using AcEvoFfbTuner.Models;
 using AcEvoFfbTuner.Views;
+using System.IO.Ports;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using AcEvoFfbTuner.Core.PedalHaptics.Providers;
 
 namespace AcEvoFfbTuner.ViewModels;
 
@@ -42,6 +46,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly GameDetectorService _gameDetector = new();
     internal bool _gameDetectorManualOverride;
     private FfbCoachService _coachService;
+
+    private readonly DeviceRegistry _deviceRegistry = new();
+    public HotPlugMonitor HotPlugMonitor { get; } = new();
 
     private float _profilerMinOut = float.MaxValue;
     private float _profilerMaxOut = float.MinValue;
@@ -96,6 +103,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _pedalName = "No pedals";
+
+    [ObservableProperty]
+    private string _dashboardWheelImageSource = "pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png";
 
     [ObservableProperty]
     private int _packetsPerSecond;
@@ -758,6 +768,103 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public bool Hf8CanCopyTo5 => Hf8CopySourceIndex >= 0 && Hf8CopySourceIndex != 5;
     public bool Hf8CanCopyTo6 => Hf8CopySourceIndex >= 0 && Hf8CopySourceIndex != 6;
     public bool Hf8CanCopyTo7 => Hf8CopySourceIndex >= 0 && Hf8CopySourceIndex != 7;
+
+    // ── Osoyoo Serial Pedal Haptic Device ──
+    private HapticPedalManager? _osyooDevice;
+
+    public ObservableCollection<string> OsoyooAvailablePorts { get; } = [];
+
+    private string _osyooSelectedPort = "";
+    public string OsoyooSelectedPort
+    {
+        get => _osyooSelectedPort;
+        set => SetProperty(ref _osyooSelectedPort, value);
+    }
+
+    private bool _osyooIsConnected;
+    public bool OsoyooIsConnected
+    {
+        get => _osyooIsConnected;
+        set => SetProperty(ref _osyooIsConnected, value);
+    }
+
+    private string _osyooConnectionStatus = "No device connected";
+    public string OsoyooConnectionStatus
+    {
+        get => _osyooConnectionStatus;
+        set => SetProperty(ref _osyooConnectionStatus, value);
+    }
+
+    public ICommand RefreshOsoyooPortsCommand { get; }
+    public ICommand ConnectOsoyooCommand { get; }
+    public ICommand DisconnectOsoyooCommand { get; }
+
+    private void OnRefreshOsoyooPorts()
+    {
+        OsoyooAvailablePorts.Clear();
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                "SELECT Name, DeviceID FROM Win32_PnPEntity WHERE Name LIKE '%(COM%'");
+            foreach (var obj in searcher.Get())
+            {
+                var name = obj["Name"]?.ToString();
+                if (!string.IsNullOrEmpty(name))
+                    OsoyooAvailablePorts.Add(name);
+            }
+        }
+        catch
+        {
+            foreach (var port in SerialPort.GetPortNames())
+                OsoyooAvailablePorts.Add(port);
+        }
+
+        if (OsoyooAvailablePorts.Count == 0)
+            OsoyooConnectionStatus = "No COM ports found";
+        else if (!string.IsNullOrEmpty(OsoyooSelectedPort) && OsoyooAvailablePorts.Contains(OsoyooSelectedPort))
+            OsoyooConnectionStatus = $"{OsoyooSelectedPort} available — ready to connect";
+        else
+            OsoyooConnectionStatus = "Select a COM port and connect";
+    }
+
+    private string ExtractComPort(string friendlyName)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(friendlyName, @"\((COM\d+)\)");
+        return match.Success ? match.Groups[1].Value : friendlyName;
+    }
+
+    private void OnConnectOsoyoo()
+    {
+        if (string.IsNullOrWhiteSpace(OsoyooSelectedPort)) return;
+
+        var portName = ExtractComPort(OsoyooSelectedPort);
+
+        _osyooDevice?.Dispose();
+        _osyooDevice = new HapticPedalManager();
+
+        if (_osyooDevice.ConnectToPedal(portName))
+        {
+            OsoyooIsConnected = true;
+            OsoyooConnectionStatus = $"Connected on {OsoyooSelectedPort}";
+        }
+        else
+        {
+            OsoyooIsConnected = false;
+            OsoyooConnectionStatus = $"Failed to connect on {OsoyooSelectedPort}";
+            _osyooDevice.Dispose();
+            _osyooDevice = null;
+        }
+    }
+
+    private void OnDisconnectOsoyoo()
+    {
+        _osyooDevice?.Dispose();
+        _osyooDevice = null;
+        OsoyooIsConnected = false;
+        OsoyooConnectionStatus = string.IsNullOrEmpty(OsoyooSelectedPort)
+            ? "No device connected"
+            : $"{OsoyooSelectedPort} disconnected";
+    }
 
     public bool Hf8CopyActive => Hf8CopySourceIndex >= 0;
 
@@ -1475,9 +1582,89 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             _gameDetector.Start();
         }
 
+        _deviceRegistry.AddDefault(DeviceCategory.WheelBase, "No wheelbase");
+        _deviceRegistry.AddDefault(DeviceCategory.WheelRim, "No wheel");
+        _deviceRegistry.AddDefault(DeviceCategory.Pedals, "No pedals");
+        _deviceRegistry.AddDefault(DeviceCategory.HapticPad, "No haptics");
+        _deviceRegistry.AddDefault(DeviceCategory.Game, "No game");
+
+        _deviceManager.DeviceConnected += productName => Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            var vendor = WheelbaseFactory.DetectVendor(productName);
+            _deviceRegistry.AddOrUpdate(new DetectedDevice
+            {
+                Category = DeviceCategory.WheelBase,
+                DeviceId = $"wheelbase_{vendor}_{productName}",
+                ProductName = productName,
+                VendorName = vendor.ToString(),
+                Vendor = vendor,
+                State = DeviceConnectionState.Connected,
+                DisplayName = productName,
+                Capabilities = DeviceCapabilities.Empty
+            });
+        });
+
+        _deviceManager.DeviceDisconnected += () => Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            _deviceRegistry.SetDisconnected(DeviceCategory.WheelBase);
+            _deviceRegistry.SetDisconnected(DeviceCategory.WheelRim);
+            _deviceRegistry.SetDisconnected(DeviceCategory.Pedals);
+            _deviceRegistry.SetDisconnected(DeviceCategory.HapticPad);
+        });
+
+        _deviceManager.DeviceRequiresReconnect += () =>
+        {
+            var wb = _deviceRegistry.WheelBase;
+            if (wb != null) wb.State = DeviceConnectionState.Detecting;
+            var rim = _deviceRegistry.WheelRim;
+            if (rim != null) rim.State = DeviceConnectionState.Detecting;
+        };
+
+        _telemetryLoop.GameConnectionChanged += () => Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            if (_telemetryLoop.IsGameConnected)
+            {
+                _deviceRegistry.AddOrUpdate(new DetectedDevice
+                {
+                    Category = DeviceCategory.Game,
+                    DeviceId = "game_active",
+                        ProductName = "Game",
+                    VendorName = "",
+                    Vendor = WheelbaseVendor.Unknown,
+                    State = DeviceConnectionState.Connected,
+                    DisplayName = GameDisplayName,
+                    Capabilities = DeviceCapabilities.Empty
+                });
+            }
+            else
+            {
+                _deviceRegistry.SetDisconnected(DeviceCategory.Game);
+            }
+        });
+
+        HotPlugMonitor.DeviceArrived += (_, _) =>
+        {
+            if (_deviceManager.IsDeviceAcquired)
+                RefreshDeviceRegistry();
+        };
+        HotPlugMonitor.DeviceRemoved += (_, _) =>
+        {
+            if (_deviceManager.IsDeviceAcquired)
+                RefreshDeviceRegistry();
+        };
+
+        _deviceRegistry.RegistryRefreshed += (_, _) => Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            UpdateDeviceStatuses();
+        });
+
         InitializeDeviceStatuses();
 
         AddSystemLog("Application initialized");
+
+        RefreshOsoyooPortsCommand = new RelayCommand(OnRefreshOsoyooPorts);
+        ConnectOsoyooCommand = new RelayCommand(OnConnectOsoyoo);
+        DisconnectOsoyooCommand = new RelayCommand(OnDisconnectOsoyoo);
      }
 
 
@@ -2945,36 +3132,145 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private void InitializeDeviceStatuses()
     {
-        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Wheelbase, Name = "No wheelbase" });
-        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Wheel, Name = "No wheel" });
-        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Pedals, Name = "No pedals" });
-        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Haptics, Name = "No haptics" });
-        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Game, Name = "No game" });
+        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Wheelbase, Name = "No wheelbase", TooltipText = "No wheelbase\nDisconnected" });
+        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Wheel, Name = "No wheel", TooltipText = "No wheel\nDisconnected" });
+        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Pedals, Name = "No pedals", TooltipText = "No pedals\nDisconnected" });
+        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Haptics, Name = "No haptics", TooltipText = "No haptics\nDisconnected" });
+        DeviceStatuses.Add(new DeviceStatus { IconType = DeviceIconType.Game, Name = "No game", TooltipText = "No game\nDisconnected" });
     }
 
     private void UpdateDeviceStatuses()
     {
-        // Wheelbase
-        DeviceStatuses[0].IsConnected = IsDeviceConnected;
-        DeviceStatuses[0].Name = IsDeviceConnected ? DeviceName : "No wheelbase";
+        var wb = _deviceRegistry.WheelBase;
+        DeviceStatuses[0].IsConnected = wb?.State == DeviceConnectionState.Connected;
+        DeviceStatuses[0].Name = wb?.DisplayName ?? "No wheelbase";
+        DeviceStatuses[0].TooltipText = BuildDeviceTooltip(wb);
 
-        // Wheel (LED controller / rim)
-        DeviceStatuses[1].IsConnected = IsWheelConnected;
-        DeviceStatuses[1].Name = IsWheelConnected ? WheelDisplayName : "No wheel";
+        var rim = _deviceRegistry.WheelRim;
+        bool rimConnected = rim?.State == DeviceConnectionState.Connected;
+        DeviceStatuses[1].IsConnected = rimConnected || _deviceManager.IsLedControllerConnected;
+        DeviceStatuses[1].Name = rimConnected ? rim!.DisplayName : WheelDisplayName;
+        DeviceStatuses[1].TooltipText = BuildWheelRimTooltip(rim);
 
-        // Pedals
-        DeviceStatuses[2].IsConnected = IsPedalConnected;
-        DeviceStatuses[2].Name = IsPedalConnected ? PedalName : "No pedals";
+        var diPedalSource = _telemetryLoop.PedalInput.Sources
+            .OfType<DirectInputPedalSource>().FirstOrDefault();
+        bool hasSeparateUsbPedals = diPedalSource?.DeviceCount > 0;
+        bool hasWheelbasePedals = IsDeviceConnected
+            && _telemetryLoop.LatestRaw is { } raw
+            && (raw.GasInput > 0.01f || raw.BrakeInput > 0.01f);
+        DeviceStatuses[2].IsConnected = hasSeparateUsbPedals || hasWheelbasePedals;
+        if (hasSeparateUsbPedals)
+        {
+            var pedalDevices = diPedalSource!.Devices;
+            int activeIdx = diPedalSource.ActiveDeviceIndex;
+            string pedalDeviceName = activeIdx >= 0 && activeIdx < pedalDevices.Count
+                ? pedalDevices[activeIdx].ProductName
+                : (pedalDevices.Count > 0 ? pedalDevices[0].ProductName : "Pedals");
+            DeviceStatuses[2].Name = "Pedals";
+            DeviceStatuses[2].TooltipText = $"{pedalDeviceName}\nConnected\nUSB pedal device";
+        }
+        else if (hasWheelbasePedals)
+        {
+            DeviceStatuses[2].Name = "Wheelbase-integrated pedals";
+            DeviceStatuses[2].TooltipText = "Wheelbase-integrated pedals\nConnected\nReads from wheelbase DI handle";
+        }
+        else
+        {
+            DeviceStatuses[2].Name = "No pedals";
+            DeviceStatuses[2].TooltipText = "No pedals\nDisconnected";
+        }
 
-        // Haptics (HF8)
-        DeviceStatuses[3].IsConnected = Hf8Connected;
-        DeviceStatuses[3].Name = Hf8Connected ? "HF8 Haptic Pad" : "No haptics";
+        var hap = _deviceRegistry.Haptics;
+        bool hapConnected = hap?.State == DeviceConnectionState.Connected || Hf8Connected;
+        DeviceStatuses[3].IsConnected = hapConnected;
+        DeviceStatuses[3].Name = hapConnected && hap?.State == DeviceConnectionState.Connected
+            ? hap!.DisplayName
+            : (Hf8Connected ? "HF8 Haptic Pad" : "No haptics");
+        DeviceStatuses[3].TooltipText = Hf8Connected
+            ? "HF8 Haptic Pad\nConnected\n8-zone haptic seat controller"
+            : (hap?.State == DeviceConnectionState.Connected ? BuildDeviceTooltip(hap) : "No haptics\nDisconnected");
 
-        // Game
-        DeviceStatuses[4].IsConnected = IsGameConnected;
-        DeviceStatuses[4].Name = IsGameConnected ? GameDisplayName : "No game";
+        var game = _deviceRegistry.Game;
+        bool gameConnected = game?.State == DeviceConnectionState.Connected || IsGameConnected;
+        DeviceStatuses[4].IsConnected = gameConnected;
+        DeviceStatuses[4].Name = gameConnected && game?.State == DeviceConnectionState.Connected
+            ? game!.DisplayName
+            : (IsGameConnected ? GameDisplayName : "No game");
+        DeviceStatuses[4].TooltipText = gameConnected ? BuildDeviceTooltip(game) : $"{GameDisplayName}\nDisconnected";
+
+        DashboardWheelImageSource = SelectDashboardWheelImage(_deviceRegistry.WheelRim, _deviceManager);
 
         OnPropertyChanged(nameof(DeviceStatuses));
+    }
+
+    private static string SelectDashboardWheelImage(DetectedDevice? rim, FfbDeviceManager deviceManager)
+    {
+        if (rim?.State == DeviceConnectionState.Connected)
+        {
+            var name = rim.DisplayName.ToUpperInvariant();
+            if (name.Contains("MOZA") || name.Contains("KS") || name.Contains("FSR"))
+                return "pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png";
+            if (name.Contains("FANATEC") || name.Contains("CSL") || name.Contains("CLUBSPORT"))
+                return "pack://application:,,,/Resources/splash-wheels/FanCSLElite.png";
+        }
+
+        if (deviceManager.LedVendorDisplayName.ToUpperInvariant() is { } vendor)
+        {
+            if (vendor.Contains("LOGITECH"))
+            {
+                string? prod = deviceManager.ConnectedDevice?.ProductName?.ToUpperInvariant();
+                if (prod?.Contains("G PRO") == true || prod?.Contains("G923") == true)
+                    return "pack://application:,,,/Resources/splash-wheels/GPro.png";
+                if (prod?.Contains("G27") == true)
+                    return "pack://application:,,,/Resources/splash-wheels/G27.png";
+            }
+            if (vendor.Contains("FANATEC"))
+                return "pack://application:,,,/Resources/splash-wheels/FanCSLElite.png";
+        }
+
+        string[] fallback =
+        [
+            "pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png",
+            "pack://application:,,,/Resources/splash-wheels/FanCSLElite.png",
+            "pack://application:,,,/Resources/splash-wheels/GPro.png",
+            "pack://application:,,,/Resources/splash-wheels/G27.png",
+        ];
+        return fallback[Random.Shared.Next(fallback.Length)];
+    }
+
+    private static string BuildDeviceTooltip(DetectedDevice? d)
+    {
+        if (d == null) return "Disconnected";
+        return d.State switch
+        {
+            DeviceConnectionState.Connected =>
+                $"{d.DisplayName}\nConnected\n{d.VendorName} | {CapabilitiesSummary(d.Capabilities)}",
+            DeviceConnectionState.Error =>
+                $"{d.DisplayName}\nError: {d.ErrorMessage}",
+            _ => $"{d.DisplayName}\n{d.State}"
+        };
+    }
+
+    private string BuildWheelRimTooltip(DetectedDevice? rim)
+    {
+        if (rim?.State == DeviceConnectionState.Connected)
+            return $"{rim.DisplayName}\nConnected\nRim: {rim.ProductName}\n{CapabilitiesSummary(rim.Capabilities)}";
+        if (_deviceManager.IsLedControllerConnected)
+            return $"{_deviceManager.LedVendorDisplayName}\nConnected\nLED controller active, rim model unknown";
+        return "No wheel\nDisconnected";
+    }
+
+    private static string CapabilitiesSummary(DeviceCapabilities c)
+    {
+        var parts = new List<string>();
+        if (c.HasLeds) parts.Add($"{c.LedCount} LEDs" + (c.SupportsRgb ? " RGB" : ""));
+        if (c.HasScreen) parts.Add("Screen");
+        if (c.HasRumbleMotors) parts.Add("Rumble");
+        if (c.HasGearDisplay) parts.Add("Gear display");
+        if (c.SupportsBrightnessControl) parts.Add("Dimming");
+        if (c.SupportsFlagIndicators) parts.Add("Flags");
+        if (c.SupportsFullForce) parts.Add("FullForce");
+        return parts.Count > 0 ? string.Join(" | ", parts) : "DirectInput";
     }
 
     public void Dispose()

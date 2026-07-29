@@ -3,7 +3,7 @@ using AcEvoFfbTuner.Core.FfbProcessing.Models;
 
 namespace AcEvoFfbTuner.Core.DirectInput;
 
-public sealed class Hf8SignalMapper
+public class Hf8SignalMapper
 {
     public const int ZoneCount = 8;
     public const int SourceCount = 5;
@@ -117,7 +117,7 @@ public sealed class Hf8SignalMapper
     private float[] _suspDelta = new float[4];
     private float[] _prevCombinedSlip = new float[4];
 
-    public float[] Map(
+    public virtual float[] Map(
         FfbRawData raw,
         FfbProcessedData processed,
         FfbVibrationMixer vibrationMixer,
@@ -136,7 +136,11 @@ public sealed class Hf8SignalMapper
         float[] wheelSlip = ComputeWheelSlip(raw);
         float signedLateralG = raw.AccG.Length > 1 ? raw.AccG[1] : 0f;
         float rpmNorm = Math.Clamp(raw.RpmPercent / 100f, 0f, 1f);
-        float kerbVib = raw.KerbVibration;
+        // Gate raw KerbVibration before gain so the KerbGain slider doesn't amplify
+        // the shared-memory noise floor (especially critical for R3E's synthesized data).
+        float rawKerb = raw.KerbVibration;
+        if (rawKerb < 0.02f) rawKerb = 0f;
+        float kerbVib = rawKerb * vibrationMixer.KerbGain;
         float lfeOut = MathF.Abs(lfeGenerator.LfeOutput);
         float absMod = MathF.Abs(vibrationMixer.AbsForceModulation);
         float roadMod = MathF.Abs(vibrationMixer.RoadForceModulation);
@@ -261,7 +265,7 @@ public sealed class Hf8SignalMapper
         return intensities;
     }
 
-    private float[] ComputeSuspensionDelta(FfbRawData raw)
+    protected float[] ComputeSuspensionDelta(FfbRawData raw)
     {
         for (int i = 0; i < 4; i++)
         {
@@ -272,7 +276,7 @@ public sealed class Hf8SignalMapper
         return _suspDelta;
     }
 
-    private float[] ComputeWheelSlip(FfbRawData raw)
+    protected float[] ComputeWheelSlip(FfbRawData raw)
     {
         var slip = new float[4];
         for (int i = 0; i < 4; i++)
@@ -288,7 +292,7 @@ public sealed class Hf8SignalMapper
         return slip;
     }
 
-    public void Reset()
+    public virtual void Reset()
     {
         Array.Clear(_prevSuspTravel);
         Array.Clear(_suspDelta);

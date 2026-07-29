@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using AcEvoFfbTuner.Core;
+using AcEvoFfbTuner.Core.PedalInput.Sources;
 using AcEvoFfbTuner.Core.DirectInput;
 using AcEvoFfbTuner.Core.FfbProcessing;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
@@ -60,6 +61,20 @@ public sealed partial class MainViewModel
         });
     }
 
+    private void RefreshDeviceRegistry()
+    {
+        _deviceRegistry.UpdateFromProvider(_telemetryLoop.ActiveProvider);
+
+        var diPedalSource = _telemetryLoop.PedalInput.Sources
+            .OfType<DirectInputPedalSource>().FirstOrDefault();
+        diPedalSource?.RefreshDevices();
+
+        if (_deviceManager.IsHf8Connected)
+            _deviceManager.Hf8Controller.TryConnect();
+
+        _deviceRegistry.TryRefresh();
+    }
+
     [RelayCommand]
     private void RefreshDevices()
     {
@@ -107,6 +122,7 @@ public sealed partial class MainViewModel
             if (!_uiUpdateTimer.IsEnabled)
                 _uiUpdateTimer.Start();
             _telemetryLoop.AutoDetectAndSetProvider();
+            _deviceRegistry.UpdateFromProvider(_telemetryLoop.ActiveProvider);
             RefreshProviderFeatures();
             string providerInfo = _telemetryLoop.ActiveProviderName != "DirectInput (Built-in)"
                 ? $" | Provider: {_telemetryLoop.ActiveProviderName}"
@@ -135,6 +151,7 @@ public sealed partial class MainViewModel
     private void DisconnectDevice()
     {
         _telemetryLoop.SetFfbProvider(null);
+        _deviceRegistry.UpdateFromProvider(null);
         RefreshProviderFeatures();
         _deviceManager.DisconnectDevice();
         IsDeviceConnected = false;

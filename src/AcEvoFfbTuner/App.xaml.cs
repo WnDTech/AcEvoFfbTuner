@@ -125,7 +125,11 @@ public partial class App : Application
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        WriteCrashLog("DispatcherUnhandled", e.Exception);
+        try
+        {
+            WriteCrashLog("DispatcherUnhandled", e.Exception);
+        }
+        catch { }
         e.Handled = true;
         ShowErrorAndShutdown(e.Exception);
     }
@@ -140,25 +144,50 @@ public partial class App : Application
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(CrashLogPath)!);
+            var dir = Path.GetDirectoryName(CrashLogPath);
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
+            var typeName = ex?.GetType().FullName ?? "null";
+            var message = ex?.Message ?? "null";
+            var stackTrace = ex?.StackTrace ?? "null";
+            string inner = "";
+            if (ex?.InnerException != null)
+            {
+                inner = $"--- Inner ---\n{ex.InnerException.GetType().FullName}: {ex.InnerException.Message}\n{ex.InnerException.StackTrace ?? "null"}\n";
+            }
             File.AppendAllText(CrashLogPath,
                 $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] CRASH ({source}):\n" +
-                $"{ex.GetType().FullName}: {ex.Message}\n" +
-                $"{ex.StackTrace}\n" +
-                (ex.InnerException != null ? $"--- Inner ---\n{ex.InnerException.GetType().FullName}: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}\n" : "") +
+                $"{typeName}: {message}\n" +
+                $"{stackTrace}\n" +
+                inner +
                 "\n");
         }
-        catch { }
+        catch (Exception logEx)
+        {
+            try
+            {
+                File.WriteAllText(CrashLogPath + ".fail.txt",
+                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] WriteCrashLog failed:\n{logEx}\n" +
+                    $"Original exception type: {ex?.GetType().FullName}\n" +
+                    $"Original message: {ex?.Message}\n");
+            }
+            catch { }
+        }
     }
 
     private static void ShowErrorAndShutdown(Exception ex)
     {
-        var msg = $"AcEvoFfbTuner crashed:\n\n{ex.GetType().Name}: {ex.Message}";
-        if (ex.InnerException != null)
-            msg += $"\n\nInner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}";
-        msg += $"\n\nCrash log: {CrashLogPath}";
-        try { MessageBox.Show(msg, "AcEvoFfbTuner — Fatal Error", MessageBoxButton.OK, MessageBoxImage.Error); } catch { }
-        Current.Shutdown(1);
+        try
+        {
+            var msg = $"AcEvoFfbTuner crashed:\n\n{ex?.GetType().Name ?? "unknown"}: {ex?.Message ?? "no message"}";
+            if (ex?.InnerException != null)
+                msg += $"\n\nInner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}";
+            msg += $"\n\nCrash log: {CrashLogPath}";
+            try { MessageBox.Show(msg, "AcEvoFfbTuner — Fatal Error", MessageBoxButton.OK, MessageBoxImage.Error); } catch { }
+        }
+        catch { }
+        try { Application.Current?.Shutdown(1); } catch { }
+        try { Environment.Exit(1); } catch { }
     }
 
     protected override void OnExit(ExitEventArgs e)

@@ -3,6 +3,8 @@ using AcEvoFfbTuner.Core.DirectInput;
 using AcEvoFfbTuner.Core.FfbProcessing;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
 using AcEvoFfbTuner.Core.FfbProviders;
+using AcEvoFfbTuner.Core.PedalInput;
+using AcEvoFfbTuner.Core.PedalInput.Sources;
 using AcEvoFfbTuner.Core.Profiles;
 using AcEvoFfbTuner.Core.SharedMemory;
 using AcEvoFfbTuner.Core.SharedMemory.Structs;
@@ -95,6 +97,10 @@ public sealed class TelemetryLoop : IDisposable
     private float _latestPhysicalWheelNorm;
     private int _pitLimiterLatch;
 
+    public readonly PedalInputManager PedalInput = new();
+    private readonly KeyboardPedalSource _keyboardPedalSource = new();
+    private readonly DirectInputPedalSource _directInputPedalSource = new();
+
 
     public float LatestPhysicalWheelNormalized => _latestPhysicalWheelNorm;
     public bool IsR3eAiControlled { get; private set; }
@@ -106,6 +112,22 @@ public sealed class TelemetryLoop : IDisposable
         _reader = reader;
         _pipeline = pipeline;
         _deviceManager = deviceManager;
+
+        // FfbDevicePedalSource reads pedals from the wheelbase via the
+        // existing exclusive DirectInput handle — no second DI connection
+        // needed, so it always works even while FfbDeviceManager holds
+        // exclusive access.
+        PedalInput.RegisterSource(new FfbDevicePedalSource(_deviceManager));
+
+        // DirectInputPedalSource detects USB-only pedals that have their
+        // own DirectInput device (not shared with the wheelbase).
+        // It will skip the wheelbase device since that's already handled.
+        if (_directInputPedalSource.Initialize())
+            PedalInput.RegisterSource(_directInputPedalSource);
+        LogDiag("--- DirectInputPedalSource enumeration ---\n" +
+                _directInputPedalSource.GetEnumerationLog());
+
+        PedalInput.RegisterSource(_keyboardPedalSource);
     }
 
     public bool IsRunning => _running;
@@ -207,8 +229,12 @@ public sealed class TelemetryLoop : IDisposable
         if (_running) return;
         _running = true;
 
+        LiveServer.PedalInputManager = PedalInput;
+        LiveServer.FfbDeviceManager = _deviceManager;
         DataUpdated += LiveServer.OnData;
         LiveServer.Start();
+
+        LogDiag($"=== TelemetryLoop started ===\n{PedalInput.GetDiagnosticSummary()}");
 
         _loopThread = new Thread(Loop)
         {
@@ -410,6 +436,17 @@ public sealed class TelemetryLoop : IDisposable
 
                     var raw = MapRawData(physics, graphics);
 
+                    // Override BrakeInput/GasInput with physical pedal values when available.
+                    if (PedalInput.TryGetState(out var pedalState))
+                    {
+                        bool changed = Math.Abs(raw.BrakeInput - pedalState.BrakeInput) > 0.01f
+                                    || Math.Abs(raw.GasInput - pedalState.GasInput) > 0.01f;
+                        raw.BrakeInput = pedalState.BrakeInput;
+                        raw.GasInput = pedalState.GasInput;
+                        if (changed && _logFrameCounter % LogIntervalFrames == 0)
+                            LogDiag($"PEDAL: src={pedalState.Source} telem_b={_latestPhysicsRaw.Brake:F3} phys_b={pedalState.BrakeInput:F3} telem_g={_latestPhysicsRaw.Gas:F3} phys_g={pedalState.GasInput:F3}");
+                    }
+
                     // Inject R3E tyre grip data (unavailable from AC EVO struct)
                     if (_reader is RaceroomSharedMemoryReader r3e)
                     {
@@ -598,8 +635,27 @@ public sealed class TelemetryLoop : IDisposable
 
                         if (_deviceManager.IsHf8Connected)
                         {
-                            var motorIntensities = _pipeline.Hf8SignalMapper.Map(raw, processed, _pipeline.VibrationMixer, _pipeline.LfeGenerator);
+                            var motorIntensities = _pipeline.MapHf8Motors(raw, processed);
                             _deviceManager.UpdateHf8Motors(motorIntensities);
+
+                            if (_packetCount % 120 == 0)
+                            {
+                                string gameTag;
+                                if (_reader is RaceroomSharedMemoryReader r3eReader)
+                                {
+                                    string mtrl = r3eReader.TireOnMtrl != null
+                                        ? $" mtrl={r3eReader.TireOnMtrl[0]}/{r3eReader.TireOnMtrl[1]}/{r3eReader.TireOnMtrl[2]}/{r3eReader.TireOnMtrl[3]}"
+                                        : "";
+                                    gameTag = $"R3E kerb={raw.KerbVibration:F4} slip={raw.SlipVibrations:F4} road={raw.RoadVibrations:F4} abs={raw.AbsVibrations:F4} bp={raw.BrakePressure?[0]:F2}/{raw.BrakePressure?[1]:F2} tc={raw.TractionControlPercent:F1}{mtrl}";
+                                }
+                                else
+                                {
+                                    gameTag = "AC";
+                                }
+                                string motors = string.Join(",", motorIntensities.Select(m => $"{m * 1000:F0}"));
+                                string vib = $"absMod={_pipeline.VibrationMixer.AbsForceModulation:F4} roadMod={_pipeline.VibrationMixer.RoadForceModulation:F4} scrubMod={_pipeline.VibrationMixer.ScrubModulation:F4} rearSlipMod={_pipeline.VibrationMixer.RearSlipModulation:F4} offtrackMod={_pipeline.VibrationMixer.OfftrackModulation:F4}";
+                                LogDiag($"HF8 [{gameTag}] motors=[{motors}] spd={raw.SpeedKmh:F1} {vib}");
+                            }
                         }
                     }
 
@@ -616,6 +672,15 @@ public sealed class TelemetryLoop : IDisposable
                     }
 
                     DataUpdated?.Invoke(raw, processed);
+
+                    // Push live haptic signals to the live server for the pedal API
+                    LiveServer.LiveAbsModulation = _pipeline.VibrationMixer.AbsForceModulation;
+                    LiveServer.LiveScrubModulation = _pipeline.VibrationMixer.ScrubModulation;
+                    LiveServer.LiveRearSlipModulation = _pipeline.VibrationMixer.RearSlipModulation;
+                    LiveServer.LiveRoadForceModulation = _pipeline.VibrationMixer.RoadForceModulation;
+                    LiveServer.LiveOfftrackModulation = _pipeline.VibrationMixer.OfftrackModulation;
+                    LiveServer.LiveTcRumble = processed.VibrationForce * 0.3f; // rough TC proxy
+                    LiveServer.LiveBrakePressure = raw.BrakeInput;
 
                     _logFrameCounter++;
                     if (_logFrameCounter >= LogIntervalFrames)
@@ -1146,6 +1211,7 @@ public sealed class TelemetryLoop : IDisposable
         Stop();
         _ffbProvider?.Dispose();
         _ffbProvider = null;
+        PedalInput.Dispose();
     }
 
     private static void LogDiag(string msg)

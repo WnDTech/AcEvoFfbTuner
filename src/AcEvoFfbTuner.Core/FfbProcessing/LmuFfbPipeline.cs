@@ -1,10 +1,12 @@
-﻿using AcEvoFfbTuner.Core.FfbProcessing.Models;
+﻿using AcEvoFfbTuner.Core.DirectInput;
+using AcEvoFfbTuner.Core.FfbProcessing.Models;
 
 namespace AcEvoFfbTuner.Core.FfbProcessing;
 
 public sealed class LmuFfbPipeline : FfbPipeline
 {
     private float _dcBlockSmooth;
+    private readonly LmuHf8SignalMapper _lmuHf8Mapper = new();
     private float _prevDetailOutput;
 
     private bool _gearChangeMuteEnabled = true;
@@ -163,6 +165,17 @@ public sealed class LmuFfbPipeline : FfbPipeline
         };
     }
 
+    /// <summary>
+    /// LMU-specific HF8 haptic pad mapping. Uses LmuHf8SignalMapper which
+    /// computes slip feel from raw wheel slip ratio+angle (LMU's Mz is
+    /// approximated as total column force, making VibrationMixer scrub/rear-slip
+    /// modulations unreliable).
+    /// </summary>
+    public override float[] MapHf8Motors(FfbRawData raw, FfbProcessedData processed)
+    {
+        return _lmuHf8Mapper.Map(raw, processed, VibrationMixer, LfeGenerator);
+    }
+
     protected override void OnDetailForceProcessed(float coreOutput, ref float detailForce)
     {
         float dcBlocked = detailForce - _dcBlockSmooth;
@@ -190,6 +203,14 @@ public sealed class LmuFfbPipeline : FfbPipeline
 
     public void ResetDetail()
     {
+        _prevDetailOutput = 0f;
+        _dcBlockSmooth = 0f;
+    }
+
+    public new void Reset()
+    {
+        base.Reset();
+        _lmuHf8Mapper.Reset();
         _prevDetailOutput = 0f;
         _dcBlockSmooth = 0f;
     }

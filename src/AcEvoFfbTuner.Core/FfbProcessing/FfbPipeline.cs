@@ -21,6 +21,16 @@ public class FfbPipeline
     public FfbTyreCondition TyreCondition { get; } = new();
     public FfbWetWeather WetWeather { get; } = new();
 
+    /// <summary>
+    /// Maps raw + processed telemetry to HF8 haptic pad motor intensities.
+    /// Virtual so game-specific pipelines can provide their own mapping.
+    /// Base implementation delegates to Hf8SignalMapper.
+    /// </summary>
+    public virtual float[] MapHf8Motors(FfbRawData raw, FfbProcessedData processed)
+    {
+        return Hf8SignalMapper.Map(raw, processed, VibrationMixer, LfeGenerator);
+    }
+
     public TyreCompoundCategory CurrentTyreCategory { get; private set; } = TyreCompoundCategory.Unknown;
     public string CurrentTyreCompoundFront { get; private set; } = "";
     public string CurrentTyreCompoundRear { get; private set; } = "";

@@ -95,6 +95,9 @@ public sealed partial class MainViewModel
             UpdateSignalMonitor(processed.MainForce, highFreqHaptics);
 
             _gameRecordingService.OnTelemetryTick(processed.SpeedKmh);
+
+            UpdatePedalLiveState();
+
             IsScreenRecording = _gameRecordingService.IsRecording;
 
             if (IsGameConnected && raw.FfbStrength > 0.01f && !ShowGameFfbWarning && _ffbWarningDismissed != true)
@@ -355,6 +358,38 @@ public sealed partial class MainViewModel
                     TrackRotation);
             }
 
+        }
+
+        // ── Osoyoo Pedal Haptic Feed: reacts to ABS engagement and wheel lockup ──
+        if (_osyooDevice?.IsAvailable == true)
+        {
+            byte brakeIntensity = 0;
+            byte gasIntensity = 0;
+
+            if (raw != null && raw.SpeedKmh > 5f)
+            {
+                const float slipThreshold = 0.10f;
+                bool absActive = raw.AbsInAction > 0 || raw.AbsVibrations > 0.01f;
+
+                float maxSlip = 0f;
+                for (int i = 0; i < 4; i++)
+                {
+                    float abs = Math.Abs(raw.SlipRatio[i]);
+                    if (abs > maxSlip) maxSlip = abs;
+                }
+
+                bool slipping = maxSlip > slipThreshold;
+
+                if (absActive || slipping)
+                {
+                    float absIntensity = raw.AbsVibrations * 1.5f;
+                    float slipIntensity = Math.Clamp(maxSlip / 0.30f, 0f, 1f);
+                    float combined = Math.Max(absIntensity, slipIntensity);
+                    brakeIntensity = (byte)Math.Clamp(combined * 255f, 50f, 255f);
+                }
+            }
+
+            _osyooDevice.SendHapticPacket(brakeIntensity, gasIntensity);
         }
 
         var racePhysics = _telemetryLoop.LatestPhysicsRaw;

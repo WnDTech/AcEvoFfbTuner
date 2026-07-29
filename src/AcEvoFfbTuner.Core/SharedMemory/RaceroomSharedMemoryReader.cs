@@ -226,12 +226,12 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
                 physics.SlipRatio[2] = CalculateSlipRatio(_lastData.TireSpeed.RearLeft, carSpeedMs);
                 physics.SlipRatio[3] = CalculateSlipRatio(_lastData.TireSpeed.RearRight, carSpeedMs);
 
-                // Synthesize slip vibration from front tyre slip ratio.
-                // GT3 feel: subtle buzz through the wheel as tyres approach the limit.
-                // Threshold 0.08 (~8% slip) — below this the tyre is gripping.
-                float maxFrontSlip = Math.Max(Math.Abs(physics.SlipRatio[0]), Math.Abs(physics.SlipRatio[1]));
-                float slipVib = maxFrontSlip > 0.08f ? Math.Min((maxFrontSlip - 0.08f) * 5f, 1f) : 0f;
-                physics.SlipVibrations = slipVib;
+                // SlipVibrations deliberately zeroed: R3eFfbPipeline.SynthesizeSlipVibration
+                // handles R3E slip texture with bipolar oscillation, speed-frequency
+                // modulation, load weighting, and front/rear separation. The flat
+                // amplitude-ramp approach (Path A in VibrationMixer) would double-count
+                // slip vibration alongside the synthesized texture.
+                physics.SlipVibrations = 0f;
 
                 // Chassis slip angle from local-space velocity vectors.
                 // R3E doesn't expose per-wheel slip angle, but calculates chassis-level

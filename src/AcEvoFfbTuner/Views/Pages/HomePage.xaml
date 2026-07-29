@@ -294,7 +294,7 @@
                                            HorizontalAlignment="Center" Margin="0,0,0,10" />
                                 <Viewbox Stretch="Uniform" MaxWidth="100" MaxHeight="100" Margin="0,0,0,10">
                                     <Image x:Name="DashboardWheelImage"
-                                           Source="pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png"
+                                           Source="{Binding DashboardWheelImageSource}"
                                            Width="80" Height="80" Stretch="Uniform"
                                            RenderOptions.BitmapScalingMode="HighQuality"
                                            RenderTransformOrigin="0.5,0.5">

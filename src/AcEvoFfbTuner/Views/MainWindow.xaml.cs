@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
 using AcEvoFfbTuner.Core.Profiles;
 using AcEvoFfbTuner.Core.TrackMapping;
+using System.Windows.Interop;
 using AcEvoFfbTuner.ViewModels;
 using AcEvoFfbTuner.Views.Pages;
 
@@ -63,6 +64,13 @@ public partial class MainWindow : Window
         {
             if (App.ViewModel?.TelemetryLoop is { } loop)
                 loop.SuppressOutput = false;
+        };
+
+        SourceInitialized += (_, _) =>
+        {
+            var hwndSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+            if (hwndSource != null && App.ViewModel is MainViewModel vm)
+                vm.HotPlugMonitor.Register(hwndSource);
         };
 
         CommandBindings.Add(new CommandBinding(OpenIconPreviewCommand, OpenIconPreview));

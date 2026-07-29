@@ -12,14 +12,6 @@ public sealed partial class HomePage : UserControl
 {
     public event EventHandler? SetupWizardRequested;
 
-    private static readonly string[] DashboardWheelUris =
-    [
-        "pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png",
-        "pack://application:,,,/Resources/splash-wheels/FanCSLElite.png",
-        "pack://application:,,,/Resources/splash-wheels/GPro.png",
-        "pack://application:,,,/Resources/splash-wheels/G27.png",
-    ];
-
     private const double GForceDotCenterX = 50;
     private const double GForceDotCenterY = 50;
     private const double GForceDotHalf = 5;
@@ -38,9 +30,6 @@ public sealed partial class HomePage : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        var idx = Random.Shared.Next(DashboardWheelUris.Length);
-        DashboardWheelImage.Source = new BitmapImage(new Uri(DashboardWheelUris[idx]));
-
         if (DataContext is MainViewModel vm)
         {
             vm.PropertyChanged += OnViewModelPropertyChanged;

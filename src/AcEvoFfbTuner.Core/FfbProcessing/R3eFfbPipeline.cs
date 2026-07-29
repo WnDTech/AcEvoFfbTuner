@@ -1,3 +1,4 @@
+using AcEvoFfbTuner.Core.DirectInput;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
 
 namespace AcEvoFfbTuner.Core.FfbProcessing;
@@ -63,6 +64,8 @@ public sealed class R3eFfbPipeline : FfbPipeline
 
     /// <summary>Detail smoothing factor (EMA alpha). 0 = no smoothing. 0.2 = light. 0.8 = very smooth. Smoothes vibration/texture feel.</summary>
     public float DetailSmoothing { get; set; } = 0.0f;
+
+    private readonly R3eHf8SignalMapper _r3eHf8Mapper = new();
 
     private float[] _flatspotPhase = new float[4];
     private float _prevSmoothedCore;
@@ -364,6 +367,18 @@ public sealed class R3eFfbPipeline : FfbPipeline
     }
 
     /// <summary>
+    /// R3E-specific HF8 haptic pad mapping. Uses R3eHf8SignalMapper which
+    /// compensates for R3E's lack of Mz/Fy data (no scrub/rear-slip modulations)
+    /// by computing slip feel from raw wheel slip ratio + angle, and leverages
+    /// R3E's real BrakePressure, TractionControlPercent, TireFlatspot, and
+    /// TireOnMtrl data for richer haptic pad feel.
+    /// </summary>
+    public override float[] MapHf8Motors(FfbRawData raw, FfbProcessedData processed)
+    {
+        return _r3eHf8Mapper.Map(raw, processed, VibrationMixer, LfeGenerator);
+    }
+
+    /// <summary>
     /// Center sharpness: smoothstep ramp from 0 to full force over
     /// CenterSharpnessDegrees. Lower = sharper on-center, higher = softer.
     /// </summary>
@@ -417,6 +432,11 @@ public sealed class R3eFfbPipeline : FfbPipeline
     /// Uses speed-proportional oscillation (higher speed = faster slip rattle),
     /// load modulation (heavier wheels produce more texture),
     /// and separates front vs rear (controlled by slipGain / rearSlipGain sliders).
+    ///
+    /// Bipolar oscillation (sine) avoids the DC bias that unipolar (sine*0.5+0.5)
+    /// introduced — real slip vibration oscillates symmetrically around zero.
+    /// Phase resets when slip drops below threshold so the texture restarts
+    /// cleanly on re-engagement instead of beginning at an arbitrary waveform position.
     /// </summary>
     private float SynthesizeSlipVibration(FfbRawData raw)
     {
@@ -429,15 +449,14 @@ public sealed class R3eFfbPipeline : FfbPipeline
         {
             float absRatio = Math.Abs(raw.SlipRatio[i]);
             float absAngle = Math.Abs(raw.SlipAngle?[i] ?? 0f);
-            // Combined slip: ratio dominates at low speed, angle at high speed
             float combined = absRatio + absAngle * 0.5f;
 
-            if (i < 2) // front wheels
+            if (i < 2)
             {
                 frontSlip += combined;
                 totalFrontLoad += raw.WheelLoad?[i] ?? 1f;
             }
-            else // rear wheels
+            else
             {
                 rearSlip += combined;
                 totalRearLoad += raw.WheelLoad?[i] ?? 1f;
@@ -447,14 +466,21 @@ public sealed class R3eFfbPipeline : FfbPipeline
         frontSlip = Math.Clamp(frontSlip, 0f, 1f);
         rearSlip = Math.Clamp(rearSlip, 0f, 1f);
 
-        // Speed-proportional oscillation frequency
+        bool slipActive = frontSlip > 0.05f || rearSlip > 0.05f;
+        if (!slipActive)
+        {
+            _slipPhase = 0f;
+            return 0f;
+        }
+
+        // Speed-proportional oscillation frequency (bipolar sine wave)
         float speedHz = Math.Clamp(raw.SpeedKmh * 0.3f, 5f, 80f);
         _slipPhase += speedHz * (1f / 60f) * MathF.PI * 2f;
         if (_slipPhase > MathF.PI * 200f) _slipPhase -= MathF.PI * 200f;
 
-        float wave = (MathF.Sin(_slipPhase) * 0.5f + 0.5f);
+        float wave = MathF.Sin(_slipPhase);
 
-        // Load modulation: more load = more powerful slip texture
+        // Load modulation
         float loadFactor = Math.Clamp((totalFrontLoad + totalRearLoad) / 20000f, 0.3f, 1.5f);
 
         // Front slip vibration (controlled by slipGain slider)
@@ -569,5 +595,15 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // Subtle force reduction when TC is active: brief torque pull-back
         // Higher TC cut = more noticeable
         return -tcNorm * 0.05f * TcFeelGain;
+    }
+
+    public new void Reset()
+    {
+        base.Reset();
+        _r3eHf8Mapper.Reset();
+        _prevSmoothedCore = 0f;
+        _prevSmoothedDetail = 0f;
+        _prevDetailOutput = 0f;
+        _dcBlockSmooth = 0f;
     }
 }

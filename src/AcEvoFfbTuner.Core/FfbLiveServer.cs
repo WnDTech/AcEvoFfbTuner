@@ -4,7 +4,9 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using AcEvoFfbTuner.Core.Config;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
+using AcEvoFfbTuner.Core.PedalHaptics;
 
 namespace AcEvoFfbTuner.Core;
 
@@ -40,6 +42,24 @@ public sealed class FfbLiveServer : IDisposable
     public bool IsRunning => _tcpListener != null;
     public bool IsNetworkEnabled { get; private set; }
     public List<string> NetworkAddresses { get; private set; } = new();
+
+    /// <summary>Optional: set by TelemetryLoop to expose pedal state via API.</summary>
+    public PedalInput.PedalInputManager? PedalInputManager { get; set; }
+
+    /// <summary>Optional: set by TelemetryLoop to read raw wheelbase axes.</summary>
+    public DirectInput.FfbDeviceManager? FfbDeviceManager { get; set; }
+
+    /// <summary>Latest pedal haptic signal values, updated by TelemetryLoop each tick.</summary>
+    public volatile float LiveAbsModulation;
+    public volatile float LiveScrubModulation;
+    public volatile float LiveRearSlipModulation;
+    public volatile float LiveRoadForceModulation;
+    public volatile float LiveOfftrackModulation;
+    public volatile float LiveTcRumble;
+    public volatile float LiveBrakePressure;
+
+    /// <summary>Pedal haptic routing gains, settable via API from PedalTest GUI.</summary>
+    public PedalHapticRouteConfig HapticRouteConfig { get; set; } = new();
 
     public FfbLiveServer(int port = 8321)
     {
@@ -305,6 +325,26 @@ public sealed class FfbLiveServer : IDisposable
             {
                 await ServeHistory(stream);
             }
+            else if (path == "/api/pedal-status")
+            {
+                LogApi($"GET /api/pedal-status from {tcpClient.Client.RemoteEndPoint}");
+                await ServePedalApi(stream);
+            }
+            else if (path == "/api/pedal-select")
+            {
+                LogApi($"GET /api/pedal-select?{query}");
+                await ServePedalSelect(stream, query);
+            }
+            else if (path == "/api/pedal-mapping")
+            {
+                LogApi($"GET /api/pedal-mapping?{query}");
+                await ServePedalMapping(stream, query);
+            }
+            else if (path == "/api/pedal-haptic")
+            {
+                LogApi($"GET /api/pedal-haptic?{query}");
+                await ServePedalHaptic(stream, query);
+            }
             else if (path == "/overlay")
             {
                 await ServeOverlay(stream, query);
@@ -462,6 +502,386 @@ public sealed class FfbLiveServer : IDisposable
             _sb.Append(arr[(start + i) % MaxHistory].ToString("F5"));
         }
         _sb.Append(']');
+    }
+
+    // ── Pedal API ─────────────────────────────────────────────────────────
+
+    private void LogApi(string msg)
+    {
+        var ts = DateTime.Now.ToString("HH:mm:ss.fff");
+        System.Diagnostics.Debug.WriteLine($"[LIVEAPI] {msg}");
+        // Also write to diagnostic log if available
+        try
+        {
+            var logPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "AcEvoFfbTuner", "pedal_api.log");
+            File.AppendAllText(logPath, $"{ts} {msg}\n");
+        }
+        catch { }
+    }
+
+    private async Task ServePedalApi(NetworkStream stream)
+    {
+        if (PedalInputManager == null)
+        {
+            LogApi("  → no pedal input manager");
+            var err = Encoding.UTF8.GetBytes("{\"error\":\"no pedal input manager\"}");
+            await WriteResponse(stream, 200, "OK", "application/json", err);
+            return;
+        }
+
+        var sb = new StringBuilder(1024);
+        sb.Append("{\"pedalInputEnabled\":");
+        sb.Append(PedalConfigManager.Instance.Config.Enabled ? "true" : "false");
+        sb.Append(",\"hasPedalInput\":");
+        sb.Append(PedalInputManager.TryGetState(out var state) ? "true" : "false");
+
+        if (state.Source != 0)
+        {
+            sb.Append(",\"source\":\"");
+            sb.Append(state.Source.ToString());
+            sb.Append("\",\"gasInput\":");
+            sb.Append(state.GasInput.ToString("F4"));
+            sb.Append(",\"brakeInput\":");
+            sb.Append(state.BrakeInput.ToString("F4"));
+            sb.Append(",\"clutchInput\":");
+            sb.Append(state.ClutchInput.ToString("F4"));
+        }
+
+        // Device info from DI source
+        PedalInput.Sources.DirectInputPedalSource? diSource = null;
+        foreach (var src in PedalInputManager.Sources)
+        {
+            if (src is PedalInput.Sources.DirectInputPedalSource di)
+                diSource = di;
+        }
+
+        sb.Append(",\"devices\":[");
+        if (diSource != null)
+        {
+            bool first = true;
+            foreach (var dev in diSource.Devices)
+            {
+                if (!first) sb.Append(',');
+                first = false;
+                sb.Append("{\"index\":");
+                sb.Append(dev.Index);
+                sb.Append(",\"name\":\"");
+                sb.Append(        EscapeJson(dev.ProductName));
+                sb.Append("\",\"axisCount\":");
+                sb.Append(dev.AxisCount);
+                sb.Append(",\"isFfbCapable\":");
+                sb.Append(dev.IsFfbCapable ? "true" : "false");
+                sb.Append('}');
+            }
+        }
+        sb.Append("],\"activeDeviceName\":\"");
+        sb.Append(        EscapeJson(diSource?.DeviceName ?? ""));
+        sb.Append("\",\"diAvailable\":");
+        sb.Append(diSource?.IsAvailable == true ? "true" : "false");
+
+        // Current axis values from active DI device
+        if (diSource != null)
+        {
+            var axes = diSource.ReadAllDeviceAxes();
+            sb.Append(",\"axisSnapshots\":{");
+            bool first = true;
+            foreach (var kv in axes)
+            {
+                if (!first) sb.Append(',');
+                first = false;
+                sb.Append('"');
+                sb.Append(        EscapeJson(kv.Key));
+                sb.Append("\":{\"x\":");
+                sb.Append(kv.Value.X.ToString("F3"));
+                sb.Append(",\"y\":");
+                sb.Append(kv.Value.Y.ToString("F3"));
+                sb.Append(",\"z\":");
+                sb.Append(kv.Value.Z.ToString("F3"));
+                sb.Append(",\"rx\":");
+                sb.Append(kv.Value.RotationX.ToString("F3"));
+                sb.Append(",\"ry\":");
+                sb.Append(kv.Value.RotationY.ToString("F3"));
+                sb.Append(",\"rz\":");
+                sb.Append(kv.Value.RotationZ.ToString("F3"));
+                sb.Append(",\"sl0\":");
+                sb.Append(kv.Value.Sliders.Length > 0 ? kv.Value.Sliders[0].ToString("F3") : "null");
+                sb.Append(",\"sl1\":");
+                sb.Append(kv.Value.Sliders.Length > 1 ? kv.Value.Sliders[1].ToString("F3") : "null");
+                sb.Append(",\"axisCount\":");
+                sb.Append(kv.Value.AxisCount);
+                sb.Append(",\"isFfb\":");
+                sb.Append(kv.Value.IsFfbCapable ? "true" : "false");
+                sb.Append('}');
+            }
+            sb.Append('}');
+
+            // Axis mapping
+            sb.Append(",\"mapping\":{\"gasAxis\":\"");
+            sb.Append(diSource.Mapping.GasAxis);
+            sb.Append("\",\"brakeAxis\":\"");
+            sb.Append(diSource.Mapping.BrakeAxis);
+            sb.Append("\",\"clutchAxis\":\"");
+            sb.Append(diSource.Mapping.ClutchAxis);
+            sb.Append("\",\"gasInvert\":");
+            sb.Append(diSource.Mapping.GasInvert ? "true" : "false");
+            sb.Append(",\"brakeInvert\":");
+            sb.Append(diSource.Mapping.BrakeInvert ? "true" : "false");
+            sb.Append(",\"clutchInvert\":");
+            sb.Append(diSource.Mapping.ClutchInvert ? "true" : "false");
+            sb.Append('}');
+        }
+
+        // Available axis names
+        sb.Append(",\"availableAxes\":[");
+        var axesArr = PedalInput.Sources.DirectInputPedalSource.AxisMap.AvailableAxes;
+        for (int i = 0; i < axesArr.Length; i++)
+        {
+            if (i > 0) sb.Append(',');
+            sb.Append('"');
+            sb.Append(axesArr[i]);
+            sb.Append('"');
+        }
+        sb.Append(']');
+
+        // Calibration from global config
+        var cfg = PedalConfigManager.Instance.Config;
+        sb.Append(",\"calibration\":{");
+        sb.Append("\"gasDeadzone\":").Append(cfg.Gas.Deadzone.ToString("F3"));
+        sb.Append(",\"brakeDeadzone\":").Append(cfg.Brake.Deadzone.ToString("F3"));
+        sb.Append(",\"gasMin\":").Append(cfg.Gas.Min.ToString("F3"));
+        sb.Append(",\"gasMax\":").Append(cfg.Gas.Max.ToString("F3"));
+        sb.Append(",\"brakeMin\":").Append(cfg.Brake.Min.ToString("F3"));
+        sb.Append(",\"brakeMax\":").Append(cfg.Brake.Max.ToString("F3"));
+        sb.Append(",\"gasInvert\":").Append(cfg.Gas.Invert ? "true" : "false");
+        sb.Append(",\"brakeInvert\":").Append(cfg.Brake.Invert ? "true" : "false");
+        sb.Append(",\"gasSmoothing\":").Append(cfg.Gas.Smoothing.ToString("F2"));
+        sb.Append(",\"brakeSmoothing\":").Append(cfg.Brake.Smoothing.ToString("F2"));
+        sb.Append('}');
+
+        // Wheelbase RAW axis snapshot (from FfbDeviceManaged — always works).
+        // Returns unmapped X/Y/Z/Rx/Ry/Rz so the client can apply its own mapping.
+        foreach (var src in PedalInputManager.Sources)
+        {
+            if (src is PedalInput.Sources.FfbDevicePedalSource fbSrc)
+            {
+                var snapshot = FfbDeviceManager?.ReadAllAxes();
+                if (snapshot != null)
+                {
+                    sb.Append(",\"wheelbaseAxes\":{\"x\":");
+                    sb.Append(snapshot.X.ToString("F3"));
+                    sb.Append(",\"y\":");
+                    sb.Append(snapshot.Y.ToString("F3"));
+                    sb.Append(",\"z\":");
+                    sb.Append(snapshot.Z.ToString("F3"));
+                    sb.Append(",\"rx\":");
+                    sb.Append(snapshot.RotationX.ToString("F3"));
+                    sb.Append(",\"ry\":");
+                    sb.Append(snapshot.RotationY.ToString("F3"));
+                    sb.Append(",\"rz\":");
+                    sb.Append(snapshot.RotationZ.ToString("F3"));
+                    sb.Append(",\"sl0\":");
+                    sb.Append(snapshot.Sliders.Length > 0 ? snapshot.Sliders[0].ToString("F3") : "null");
+                    sb.Append(",\"sl1\":");
+                    sb.Append(snapshot.Sliders.Length > 1 ? snapshot.Sliders[1].ToString("F3") : "null");
+                    sb.Append("}");
+                    LogApi("  → wheelbaseAxes OK");
+                }
+                else
+                {
+                    LogApi("  → wheelbaseAxes: ReadAllAxes returned null");
+                }
+
+                // Also report FfbDevicePedalSource mapping
+                sb.Append(",\"wheelbaseMapping\":{\"gasAxis\":\"");
+                sb.Append(fbSrc.Mapping.GasAxis);
+                sb.Append("\",\"brakeAxis\":\"");
+                sb.Append(fbSrc.Mapping.BrakeAxis);
+                sb.Append("\",\"clutchAxis\":\"");
+                sb.Append(fbSrc.Mapping.ClutchAxis);
+                sb.Append("\",\"gasInvert\":");
+                sb.Append(fbSrc.Mapping.GasInvert ? "true" : "false");
+                sb.Append(",\"brakeInvert\":");
+                sb.Append(fbSrc.Mapping.BrakeInvert ? "true" : "false");
+                sb.Append(",\"clutchInvert\":");
+                sb.Append(fbSrc.Mapping.ClutchInvert ? "true" : "false");
+                sb.Append('}');
+
+                break;
+            }
+        }
+
+        // Simulated pedal haptics (from FfbVibrationMixer live signals)
+        sb.Append(",\"pedalHaptics\":{");
+        sb.Append("\"absModulation\":").Append(LiveAbsModulation.ToString("F4"));
+        sb.Append(",\"scrubModulation\":").Append(LiveScrubModulation.ToString("F4"));
+        sb.Append(",\"rearSlipModulation\":").Append(LiveRearSlipModulation.ToString("F4"));
+        sb.Append(",\"roadForceModulation\":").Append(LiveRoadForceModulation.ToString("F4"));
+        sb.Append(",\"curbModulation\":").Append(LiveOfftrackModulation.ToString("F4"));
+        sb.Append(",\"tcRumble\":").Append(LiveTcRumble.ToString("F4"));
+        sb.Append(",\"brakePressure\":").Append(LiveBrakePressure.ToString("F4"));
+
+        // Routed haptic values (raw × per-signal gain × master gain)
+        var rh = HapticRouteConfig;
+        float GetRouteGain(string signal)
+        {
+            foreach (var r in rh.Routes)
+                if (r.Signal == signal) return r.Gain;
+            return 1f;
+        }
+        float routedAbs = LiveAbsModulation * GetRouteGain("abs") * rh.BrakeHapticGain;
+        float routedTc = LiveTcRumble * GetRouteGain("tc") * rh.GasHapticGain;
+        float routedCurb = LiveOfftrackModulation * GetRouteGain("curb") * Math.Max(rh.BrakeHapticGain, rh.GasHapticGain);
+        float routedRoad = LiveRoadForceModulation * GetRouteGain("road") * rh.BrakeHapticGain;
+        float routedScrub = LiveScrubModulation * GetRouteGain("scrub") * rh.GasHapticGain;
+        float routedBrakePress = LiveBrakePressure * rh.BrakeHapticGain;
+
+        sb.Append(",\"routedAbs\":").Append(routedAbs.ToString("F4"));
+        sb.Append(",\"routedTc\":").Append(routedTc.ToString("F4"));
+        sb.Append(",\"routedCurb\":").Append(routedCurb.ToString("F4"));
+        sb.Append(",\"routedRoad\":").Append(routedRoad.ToString("F4"));
+        sb.Append(",\"routedScrub\":").Append(routedScrub.ToString("F4"));
+        sb.Append(",\"routedBrakePressure\":").Append(routedBrakePress.ToString("F4"));
+
+        // Haptic routing gains (settable via /api/pedal-haptic)
+        sb.Append(",\"routing\":{");
+        sb.Append("\"brakeHapticGain\":").Append(rh.BrakeHapticGain.ToString("F2"));
+        sb.Append(",\"gasHapticGain\":").Append(rh.GasHapticGain.ToString("F2"));
+        sb.Append(",\"routes\":[");
+        for (int i = 0; i < rh.Routes.Count; i++)
+        {
+            if (i > 0) sb.Append(',');
+            var r = rh.Routes[i];
+            sb.Append("{\"signal\":\"").Append(r.Signal);
+            sb.Append("\",\"targetPedal\":\"").Append(r.TargetPedal);
+            sb.Append("\",\"gain\":").Append(r.Gain.ToString("F2"));
+            sb.Append(",\"mode\":\"").Append(r.Mode).Append("\"}");
+        }
+        sb.Append(']');
+        sb.Append('}');
+
+        sb.Append('}');
+
+        sb.Append('}');
+
+        var json = sb.ToString();
+        var snippet = json.Length > 120 ? json[..120] : json;
+        LogApi($"  → {json.Length} bytes: {snippet}...");
+
+        var buf = Encoding.UTF8.GetBytes(json);
+        try { System.Text.Json.JsonDocument.Parse(json); }
+        catch (Exception jex)
+        {
+            try { File.AppendAllText(
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "AcEvoFfbTuner", "pedal_json_error.log"),
+                $"{DateTime.Now:HH:mm:ss.fff} JSON ERROR: {jex.Message}\nFull JSON ({json.Length} chars):\n{json}\n\n");
+            } catch { }
+        }
+        await WriteResponse(stream, 200, "OK", "application/json", buf);
+    }
+
+    private async Task ServePedalSelect(NetworkStream stream, string query)
+    {
+        var body = Encoding.UTF8.GetBytes("ok");
+
+        if (PedalInputManager == null)
+        {
+            body = Encoding.UTF8.GetBytes("no pedal manager");
+            await WriteResponse(stream, 200, "OK", "text/plain", body);
+            return;
+        }
+
+        // Parse ?index=X from query
+        var qParts = query.TrimStart('?').Split('&');
+        foreach (var part in qParts)
+        {
+            var kv = part.Split('=');
+            if (kv.Length == 2 && kv[0] == "index" && int.TryParse(kv[1], out var idx))
+            {
+                // Find the DI source and set its active device
+                foreach (var src in PedalInputManager.Sources)
+                {
+                    if (src is PedalInput.Sources.DirectInputPedalSource di)
+                    {
+                        di.ActiveDeviceIndex = idx - 1; // -1 = auto
+                        body = Encoding.UTF8.GetBytes($"selected={idx}");
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
+        await WriteResponse(stream, 200, "OK", "text/plain", body);
+    }
+
+    private async Task ServePedalMapping(NetworkStream stream, string query)
+    {
+        var body = Encoding.UTF8.GetBytes("ok");
+        if (PedalInputManager == null)
+        {
+            body = Encoding.UTF8.GetBytes("no pedal manager");
+            await WriteResponse(stream, 200, "OK", "text/plain", body);
+            return;
+        }
+
+        foreach (var src in PedalInputManager.Sources)
+        {
+            if (src is PedalInput.Sources.FfbDevicePedalSource fbSrc)
+            {
+                var parts = query.TrimStart('?').Split('&');
+                foreach (var p in parts)
+                {
+                    var kv = p.Split('=');
+                    if (kv.Length != 2) continue;
+                    switch (kv[0])
+                    {
+                        case "gasAxis": fbSrc.Mapping.GasAxis = Uri.UnescapeDataString(kv[1]); break;
+                        case "brakeAxis": fbSrc.Mapping.BrakeAxis = Uri.UnescapeDataString(kv[1]); break;
+                        case "clutchAxis": fbSrc.Mapping.ClutchAxis = Uri.UnescapeDataString(kv[1]); break;
+                        case "gasInvert": fbSrc.Mapping.GasInvert = kv[1] == "true"; break;
+                        case "brakeInvert": fbSrc.Mapping.BrakeInvert = kv[1] == "true"; break;
+                        case "clutchInvert": fbSrc.Mapping.ClutchInvert = kv[1] == "true"; break;
+                    }
+                }
+                body = Encoding.UTF8.GetBytes($"mapping updated: {fbSrc.Mapping.GasAxis}→Gas {fbSrc.Mapping.BrakeAxis}→Brake {fbSrc.Mapping.ClutchAxis}→Clutch");
+                break;
+            }
+        }
+
+        await WriteResponse(stream, 200, "OK", "text/plain", body);
+    }
+
+    private async Task ServePedalHaptic(NetworkStream stream, string query)
+    {
+        var parts = query.TrimStart('?').Split('&');
+        var rh = HapticRouteConfig;
+        foreach (var p in parts)
+        {
+            var kv = p.Split('=');
+            if (kv.Length != 2) continue;
+            switch (kv[0])
+            {
+                case "brakeGain": rh.BrakeHapticGain = float.TryParse(kv[1], out var bg) ? bg : 1f; break;
+                case "gasGain": rh.GasHapticGain = float.TryParse(kv[1], out var gg) ? gg : 1f; break;
+                case "routeIdx": _hapticRouteIdx = int.TryParse(kv[1], out var ri) ? ri : -1; break;
+                case "signal": if (_hapticRouteIdx >= 0 && _hapticRouteIdx < rh.Routes.Count) rh.Routes[_hapticRouteIdx].Signal = Uri.UnescapeDataString(kv[1]); break;
+                case "targetPedal": if (_hapticRouteIdx >= 0 && _hapticRouteIdx < rh.Routes.Count) rh.Routes[_hapticRouteIdx].TargetPedal = Uri.UnescapeDataString(kv[1]); break;
+                case "gain": if (_hapticRouteIdx >= 0 && _hapticRouteIdx < rh.Routes.Count && float.TryParse(kv[1], out var gn)) rh.Routes[_hapticRouteIdx].Gain = gn; break;
+                case "mode": if (_hapticRouteIdx >= 0 && _hapticRouteIdx < rh.Routes.Count) rh.Routes[_hapticRouteIdx].Mode = Uri.UnescapeDataString(kv[1]); break;
+            }
+        }
+        var body = Encoding.UTF8.GetBytes($"haptic routing updated: brakeGain={rh.BrakeHapticGain:F2} gasGain={rh.GasHapticGain:F2}");
+        await WriteResponse(stream, 200, "OK", "text/plain", body);
+    }
+    private int _hapticRouteIdx = -1;
+
+    private static string EscapeJson(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return "";
+        return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r").Replace("\t", "\\t");
     }
 
     // ── OBS Overlay Options ──────────────────────────────────────────────

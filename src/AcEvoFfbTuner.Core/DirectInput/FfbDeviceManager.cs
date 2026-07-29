@@ -153,6 +153,55 @@ public sealed class FfbDeviceManager : IDisposable
         _axisDetectionSamples = 0;
     }
 
+    /// <summary>
+    /// Reads all axis values from the already-acquired exclusive device handle.
+    /// This is the ONLY way to read pedal axes from the wheelbase device,
+    /// because a second DirectInput handle cannot acquire the same device
+    /// while FfbDeviceManager holds it exclusively.
+    /// </summary>
+    public DeviceAxisSnapshot? ReadAllAxes()
+    {
+        if (_device == null) { ConnLog("ReadAllAxes: _device is null"); return null; }
+        if (!_isAcquired) { ConnLog("ReadAllAxes: !_isAcquired"); return null; }
+        try
+        {
+            _device.Poll();
+            var js = _device.GetCurrentState() as DI.JoystickState;
+            if (js == null) { ConnLog("ReadAllAxes: GetCurrentState returned null"); return null; }
+
+            return new DeviceAxisSnapshot
+            {
+                X = NormalizeDiAxisRaw(js.X),
+                Y = NormalizeDiAxisRaw(js.Y),
+                Z = NormalizeDiAxisRaw(js.Z),
+                RotationX = NormalizeDiAxisRaw(js.RotationX),
+                RotationY = NormalizeDiAxisRaw(js.RotationY),
+                RotationZ = NormalizeDiAxisRaw(js.RotationZ),
+                Sliders = js.Sliders?.Select(NormalizeDiAxisRaw).ToArray() ?? Array.Empty<float>(),
+            };
+        }
+        catch (Exception ex) { ConnLog($"ReadAllAxes error: {ex.Message}"); return null; }
+    }
+
+    /// <summary>Normalize a raw DI axis value (-32768..32767 or 0..65535) to 0..1.</summary>
+    private static float NormalizeDiAxisRaw(int raw)
+    {
+        if (raw >= 0) return raw / 65535f;
+        return (raw + 32768f) / 32767f;
+    }
+
+    /// <summary>Snapshot of all DI axis values from the wheelbase device.</summary>
+    public sealed class DeviceAxisSnapshot
+    {
+        public float X { get; init; }
+        public float Y { get; init; }
+        public float Z { get; init; }
+        public float RotationX { get; init; }
+        public float RotationY { get; init; }
+        public float RotationZ { get; init; }
+        public float[] Sliders { get; init; } = [];
+    }
+
     public static bool? DetectForceInversionKnown(string productName)
     {
         if (string.IsNullOrEmpty(productName)) return null;

@@ -29,5 +29,10 @@ public sealed class DeviceStatus : ObservableObject
         set => SetProperty(ref _name, value);
     }
 
-    public string TooltipText => $"{Name}\n{(IsConnected ? "Connected" : "Disconnected")}";
+    private string _tooltipText = "";
+    public string TooltipText
+    {
+        get => _tooltipText;
+        set => SetProperty(ref _tooltipText, value);
+    }
 }

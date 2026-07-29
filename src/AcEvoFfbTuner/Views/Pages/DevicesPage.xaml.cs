@@ -52,6 +52,7 @@ public partial class DevicesPage : UserControl
         LedPanel.Visibility = rb == LedTab ? Visibility.Visible : Visibility.Collapsed;
         HapticPanel.Visibility = rb == HapticTab ? Visibility.Visible : Visibility.Collapsed;
         ButtonsPanel.Visibility = rb == ButtonsTab ? Visibility.Visible : Visibility.Collapsed;
+        PedalPanel.Visibility = rb == PedalsTab ? Visibility.Visible : Visibility.Collapsed;
 
         if (rb == LedTab)
             UpdateLedPreview();
@@ -132,7 +133,7 @@ public partial class DevicesPage : UserControl
             SidebarCol.Width = new GridLength(50);
             HeaderLabel.Visibility = Visibility.Collapsed;
 
-            foreach (var btn in new[] { LedTab, HapticTab, ButtonsTab })
+            foreach (var btn in new[] { LedTab, HapticTab, ButtonsTab, PedalsTab })
                 SetTemplateLabelVisibility(btn, "TabLabel", Visibility.Collapsed);
 
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Collapsed);
@@ -146,7 +147,7 @@ public partial class DevicesPage : UserControl
             SidebarCol.Width = new GridLength(200);
             HeaderLabel.Visibility = Visibility.Visible;
 
-            foreach (var btn in new[] { LedTab, HapticTab, ButtonsTab })
+            foreach (var btn in new[] { LedTab, HapticTab, ButtonsTab, PedalsTab })
                 SetTemplateLabelVisibility(btn, "TabLabel", Visibility.Visible);
 
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Visible);
@@ -166,5 +167,10 @@ public partial class DevicesPage : UserControl
     private void OnOpenMotorTest(object sender, RoutedEventArgs e)
     {
         Hf8MotorTestRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnSavePedalConfig(object sender, RoutedEventArgs e)
+    {
+        _vm?.SavePedalConfig();
     }
 }

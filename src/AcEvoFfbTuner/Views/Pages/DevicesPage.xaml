@@ -8,6 +8,7 @@
         <converters:InverseBoolToVisibilityConverter x:Key="InvertBoolToVis" />
         <converters:NullToVisibilityConverter x:Key="NullToVis" />
         <converters:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis" />
+        <converters:BoolToOpacityConverter x:Key="BoolToOpacity" />
     </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
@@ -92,6 +93,29 @@
                                     <Trigger Property="IsChecked" Value="True">
                                         <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
                                         <Setter TargetName="TabBd" Property="BorderBrush" Value="#FFE3B341" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </RadioButton.Template>
+                    </RadioButton>
+
+                    <RadioButton x:Name="PedalsTab" GroupName="DeviceTab"
+                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="Pedals">
+                        <RadioButton.Template>
+                            <ControlTemplate TargetType="RadioButton">
+                                <Border x:Name="TabBd" Background="Transparent" Padding="12,10" BorderThickness="3,0,0,0" BorderBrush="Transparent">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🦶" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock x:Name="TabLabel" Text="Pedals" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
+                                    </Trigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
+                                        <Setter TargetName="TabBd" Property="BorderBrush" Value="#FF56D4A0" />
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -868,7 +892,199 @@
             </ScrollViewer>
 
             <!-- ═══════════════════════════════════════════ -->
-            <!-- PANEL 3: BUTTON ASSIGNMENTS               -->
+            <!-- PANEL 3: PEDALS                            -->
+            <!-- ═══════════════════════════════════════════ -->
+            <ScrollViewer x:Name="PedalPanel" VerticalScrollBarVisibility="Auto" Padding="24,20" Visibility="Collapsed">
+                <StackPanel>
+                    <!-- Osoyoo Serial Pedal Haptic Device -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16" Margin="0,0,0,20"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                        <StackPanel>
+                            <DockPanel VerticalAlignment="Center" Margin="0,0,0,12">
+                                <Ellipse Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center"
+                                         Fill="#FF4CAF50"
+                                         Opacity="{Binding OsoyooIsConnected, Converter={StaticResource BoolToOpacity}}" />
+                                <TextBlock Text="PEDAL HAPTIC DEVICE" FontSize="16" FontWeight="Bold" Foreground="#FF9800" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBlock Text="Connect an Osoyoo Arduino Uno (or compatible serial device) for pedal vibration feedback."
+                                       FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,12" />
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" Text="COM Port:" FontSize="13" Foreground="{StaticResource TextDimBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding OsoyooAvailablePorts}"
+                                          SelectedItem="{Binding OsoyooSelectedPort, Mode=TwoWay}"
+                                          MinWidth="120" Height="30" VerticalAlignment="Center"
+                                          Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}" />
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                                    <Button Content="⟳" Command="{Binding RefreshOsoyooPortsCommand}"
+                                            Width="30" Height="30" Padding="0"
+                                            Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}"
+                                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
+                                            Cursor="Hand" FontSize="16" ToolTip="Refresh COM ports" />
+
+                                    <Button Content="Connect" Command="{Binding ConnectOsoyooCommand}"
+                                            Visibility="{Binding OsoyooIsConnected, Converter={StaticResource InvertBoolToVis}}"
+                                            Width="90" Height="30" Margin="6,0,0,0" Padding="8,0"
+                                            Background="#FF9800" Foreground="#FF1A1D24"
+                                            BorderThickness="0" Cursor="Hand" FontSize="13" FontWeight="SemiBold" />
+
+                                    <Button Content="Disconnect" Command="{Binding DisconnectOsoyooCommand}"
+                                            Visibility="{Binding OsoyooIsConnected, Converter={StaticResource BoolToVis}}"
+                                            Width="90" Height="30" Margin="6,0,0,0" Padding="8,0"
+                                            Background="#FF5252" Foreground="White"
+                                            BorderThickness="0" Cursor="Hand" FontSize="13" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="{Binding OsoyooConnectionStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                       Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Enable Toggle -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16" Margin="0,0,0,20"
+                            BorderThickness="1" BorderBrush="#3356D4A0">
+                        <StackPanel>
+                            <DockPanel VerticalAlignment="Center" Margin="0,0,0,12">
+                                <CheckBox IsChecked="{Binding PedalInputEnabled, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <TextBlock Text="Physical Pedal Input" FontSize="16" FontWeight="Bold" Foreground="#FF56D4A0" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBlock Text="When enabled, pedal values come from physical devices instead of game telemetry. Keyboard (W/S/A) simulation is also available."
+                                       FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <TextBlock Text="{Binding PedalDiagnosticInfo, StringFormat='Diagnostics: {0}'}" FontSize="11" Foreground="{StaticResource TextDimBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Source & Live Values -->
+                    <Grid Margin="0,0,0,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                            <StackPanel>
+                                <TextBlock Text="LIVE PEDAL STATE" FontSize="11" FontWeight="Bold" Foreground="#FF56D4A0" Margin="0,0,0,12" />
+
+                                <DockPanel Margin="0,4">
+                                    <TextBlock Text="Source:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
+                                    <TextBlock Text="{Binding PedalLiveSource}" FontSize="13" FontWeight="Bold" Foreground="#FF56D4A0" />
+                                </DockPanel>
+
+                                <DockPanel Margin="0,4">
+                                    <TextBlock Text="Gas:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
+                                    <ProgressBar Value="{Binding PedalLiveGas}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="#FF4CAF50" />
+                                    <TextBlock Text="{Binding PedalLiveGas, StringFormat=' {0:P0}'}" FontSize="13" Foreground="#FF4CAF50" Margin="4,0,0,0" />
+                                </DockPanel>
+
+                                <DockPanel Margin="0,4">
+                                    <TextBlock Text="Brake:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
+                                    <ProgressBar Value="{Binding PedalLiveBrake}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="#FFE53935" />
+                                    <TextBlock Text="{Binding PedalLiveBrake, StringFormat=' {0:P0}'}" FontSize="13" Foreground="#FFE53935" Margin="4,0,0,0" />
+                                </DockPanel>
+
+                                <TextBlock Text="Press W/S/A keys to test keyboard pedal simulation."
+                                           FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                            <StackPanel>
+                                <TextBlock Text="HAPTIC OUTPUT ROUTING" FontSize="11" FontWeight="Bold" Foreground="#FFE53935" Margin="0,0,0,8" />
+                                <TextBlock Text="Per-signal gain sent to each pedal (0-2x)."
+                                           FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                                <controls:LabeledSlider Value="{Binding PedalMasterBrakeGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                    Label="Master Brake Gain" StringFormat="{}{0:F2}" SectionColor="#FFE53935" />
+                                <controls:LabeledSlider Value="{Binding PedalMasterGasGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                    Label="Master Gas Gain" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" Margin="0,4,0,0" />
+                                <Separator Margin="0,8,0,6" Opacity="0.3" />
+                                <controls:LabeledSlider Value="{Binding PedalAbsBrakeGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                    Label="ABS → Brake" StringFormat="{}{0:F2}" SectionColor="#FFE53935" />
+                                <controls:LabeledSlider Value="{Binding PedalTcGasGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                    Label="TC → Gas" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" Margin="0,4,0,0" />
+                                <controls:LabeledSlider Value="{Binding PedalCurbBothGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                    Label="Curb → Both" StringFormat="{}{0:F2}" SectionColor="#FF9800" Margin="0,4,0,0" />
+                                <controls:LabeledSlider Value="{Binding PedalRoadBrakeGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                    Label="Road → Brake" StringFormat="{}{0:F2}" SectionColor="#FFE53935" Margin="0,4,0,0" />
+                                <controls:LabeledSlider Value="{Binding PedalScrubGasGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                    Label="Scrub → Gas" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" Margin="0,4,0,0" />
+                                <controls:LabeledSlider Value="{Binding PedalBrakePressureGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                    Label="Brake Pressure → Brake" StringFormat="{}{0:F2}" SectionColor="#9C27B0" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Calibration Section -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                        <StackPanel>
+                            <TextBlock Text="CALIBRATION" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,12" />
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="20" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Gas Column -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="GAS" FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" Margin="0,0,0,4" />
+                                    <controls:LabeledSlider Value="{Binding PedalGasDeadzone, Mode=TwoWay}" Minimum="0" Maximum="0.3" TickFrequency="0.005"
+                                        Label="Deadzone" StringFormat="{}{0:F3}" SectionColor="#FF4CAF50" />
+                                    <controls:LabeledSlider Value="{Binding PedalGasMin, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.005"
+                                        Label="Min Range" StringFormat="{}{0:F3}" SectionColor="#FF4CAF50" />
+                                    <controls:LabeledSlider Value="{Binding PedalGasMax, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.005"
+                                        Label="Max Range" StringFormat="{}{0:F3}" SectionColor="#FF4CAF50" />
+                                    <DockPanel Margin="0,4">
+                                        <CheckBox IsChecked="{Binding PedalGasInvert, Mode=TwoWay}" VerticalAlignment="Center" />
+                                        <TextBlock Text="Invert" FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <controls:LabeledSlider Value="{Binding PedalGasSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.99" TickFrequency="0.01"
+                                        Label="Smoothing α" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" />
+                                </StackPanel>
+
+                                <!-- Brake Column -->
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="BRAKE" FontSize="12" FontWeight="Bold" Foreground="#FFE53935" Margin="0,0,0,4" />
+                                    <controls:LabeledSlider Value="{Binding PedalBrakeDeadzone, Mode=TwoWay}" Minimum="0" Maximum="0.3" TickFrequency="0.005"
+                                        Label="Deadzone" StringFormat="{}{0:F3}" SectionColor="#FFE53935" />
+                                    <controls:LabeledSlider Value="{Binding PedalBrakeMin, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.005"
+                                        Label="Min Range" StringFormat="{}{0:F3}" SectionColor="#FFE53935" />
+                                    <controls:LabeledSlider Value="{Binding PedalBrakeMax, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.005"
+                                        Label="Max Range" StringFormat="{}{0:F3}" SectionColor="#FFE53935" />
+                                    <DockPanel Margin="0,4">
+                                        <CheckBox IsChecked="{Binding PedalBrakeInvert, Mode=TwoWay}" VerticalAlignment="Center" />
+                                        <TextBlock Text="Invert" FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <controls:LabeledSlider Value="{Binding PedalBrakeSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.99" TickFrequency="0.01"
+                                        Label="Smoothing α" StringFormat="{}{0:F2}" SectionColor="#FFE53935" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Button Content="Save Pedal Configuration" x:Name="SavePedalBtn" Click="OnSavePedalConfig"
+                                    Margin="0,16,0,0" Padding="16,8" HorizontalAlignment="Left"
+                                    Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}"
+                                    BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
+                                    Cursor="Hand" FontSize="14" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- PANEL 4: BUTTONS                           -->
             <!-- ═══════════════════════════════════════════ -->
             <ScrollViewer x:Name="ButtonsPanel" VerticalScrollBarVisibility="Auto" Padding="24,20" Visibility="Collapsed">
                 <StackPanel>
