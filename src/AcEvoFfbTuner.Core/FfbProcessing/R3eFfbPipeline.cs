@@ -569,8 +569,10 @@ public sealed class R3eFfbPipeline : FfbPipeline
         avgPressure /= count;
 
         // Map brake pressure to vibration intensity.
-        // R3E brake pressure in kN, typical max ~2-5 kN under hard braking.
-        float pressureNorm = Math.Clamp(avgPressure / 5f, 0f, 1f);
+        // Empirically verified (2026-08-01 logs): R3E sends brake pressure in
+        // NEWTONS (e.g. 3653 N = 3.65 kN under braking), not kN as the header
+        // comment claims. Typical max ~4-6 kN under hard braking.
+        float pressureNorm = Math.Clamp(avgPressure / 5000f, 0f, 1f);
         // Subtle texture — use cos at frame rate for a light buzz proportional to pressure
         float buzz = MathF.Cos((float)(Environment.TickCount) * 0.015f) * 0.5f + 0.5f;
         float vibration = buzz * pressureNorm * 0.08f; // subtle, 8% max at full brake

@@ -438,7 +438,9 @@ tc / abs / esp / countersteer / cornering:
 
 - `TireRps` (rad/s), `TireSpeed` (m/s), `TireGrip` (0.0–1.0), `TireLoad` (N),
   `TirePressure` (KPa), `TireWear` (0.0–1.0), `TireFlatspot` (0 false / 1 true per wheel),
-  `BrakePressure` (kN), `TireOnMtrl` (see tire material enum), `TireTemp` (°C).
+  `BrakePressure` (N — EMPIRICALLY VERIFIED 2026-08-01 logs: SDK header claims kN but the
+  shipped game sends Newtons, e.g. 3653 N ≈ 3.65 kN under braking; normalize by ~5000 N,
+  NOT by 5), `TireOnMtrl` (see tire material enum), `TireTemp` (°C).
 - `tire_temp[4]` is `r3e_tire_temp` per wheel: `current_temp[3]` (left/center/right),
   `optimal_temp`, `cold_temp`, `hot_temp`.
 - `brake_temp[4]` is `r3e_brake_temp` per wheel: `current_temp`, `optimal_temp`,

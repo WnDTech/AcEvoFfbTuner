@@ -147,13 +147,14 @@ public class Hf8SignalMapper
         float scrubMod = MathF.Abs(vibrationMixer.ScrubModulation);
         float rearSlipMod = MathF.Abs(vibrationMixer.RearSlipModulation);
 
-        // Brake pressure haptics: per-wheel brake force → lower back vibration
+        // Brake pressure haptics: per-wheel brake force → lower back vibration.
+        // R3E sends Newtons (3653 N verified in logs), not kN — normalize at 5000 N.
         float brakeMod = 0f;
         if (raw.BrakePressure != null && raw.BrakeInput > 0.15f && raw.SpeedKmh > 10f)
         {
             float bpAvg = 0f;
             for (int b = 0; b < 4; b++)
-                bpAvg += Math.Clamp(raw.BrakePressure[b] / 5f, 0f, 1f);
+                bpAvg += Math.Clamp(raw.BrakePressure[b] / 5000f, 0f, 1f);
             brakeMod = bpAvg / 4f * raw.BrakeInput * 0.3f;
         }
 

@@ -173,13 +173,14 @@ public sealed class R3eHf8SignalMapper : Hf8SignalMapper
         float r3eRearSlipFeel = rearSlipCombined > 0.03f
             ? rearSlipCombined * slipWave * 0.12f * vibrationMixer.RearSlipGain : 0f;
 
-        // ── Brake pressure: R3E has real per-wheel brake force in kN ──
+        // ── Brake pressure: R3E sends per-wheel brake force in NEWTONS (verified
+        // from logs: 3653 N under braking), not kN as the SDK header claims ──
         float brakeMod = 0f;
         if (raw.BrakePressure != null && raw.SpeedKmh > 5f)
         {
             float maxBP = 0f;
             for (int b = 0; b < 4; b++)
-                maxBP = Math.Max(maxBP, Math.Clamp(raw.BrakePressure[b] / 5f, 0f, 1f));
+                maxBP = Math.Max(maxBP, Math.Clamp(raw.BrakePressure[b] / 5000f, 0f, 1f));
             if (maxBP > 0.01f && raw.BrakeInput > 0.05f)
                 brakeMod = maxBP * raw.BrakeInput * 0.5f;
         }
