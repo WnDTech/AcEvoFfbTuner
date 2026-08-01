@@ -24,6 +24,24 @@ namespace AcEvoFfbTuner.ViewModels;
 
 public sealed partial class MainViewModel
 {
+    private long _hapticFrameTicks;
+    private int _lastPedalGear;
+    private int _shiftPulseFramesRemaining;
+    private int _tcDiagCounter;
+    private int _curbDiagCounter;
+
+    private void LogPedalDiag(string entry)
+    {
+        try
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(Path.Combine(dir, "osoyoo_serial_log.txt"),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {entry}{Environment.NewLine}");
+        }
+        catch { }
+    }
+
     private void WireTelemetryLoopEvents(TelemetryLoop newLoop)
     {
         newLoop.StatusChanged += status => Application.Current?.Dispatcher.Invoke(() => StatusText = status);
@@ -150,6 +168,7 @@ public sealed partial class MainViewModel
                 $"Vendor:         {_deviceManager.LedControllerVendor}\n" +
                 $"RPM:            {raw.RpmPercent:F1}%  ShiftUp={raw.IsChangeUpRpm}  Limiter={raw.IsRpmLimiterOn}\n" +
                 $"ABS:  InAction={raw.AbsInAction}  Level={raw.AbsLevel:F3}  Gfx={raw.AbsActiveGfx}  Vib={raw.AbsVibrations:F4}  Brake={raw.BrakeInput:F3}\n" +
+                $"TC:   Gfx={raw.TcActiveGfx}  TcinAction={raw.TcinAction}  Pct={raw.TractionControlPercent:F1}  AidTc={raw.AidSettingsTc}  Gas={raw.GasInput:F3}\n" +
                 $"LED Config:     Brightness={LedBrightness}% FlashRate={LedFlashRate} AbsFlash={LedAbsFlashEnabled}\n" +
                 $"{_deviceManager.LedDiagnosticInfo}";
 
@@ -360,36 +379,182 @@ public sealed partial class MainViewModel
 
         }
 
-        // ── Osoyoo Pedal Haptic Feed: reacts to ABS engagement and wheel lockup ──
-        if (_osyooDevice?.IsAvailable == true)
+        // ── Osoyoo Pedal Haptic Feed — high-fidelity mechanical feedback ──
+        // Motor test mode holds the manual test packet, so the telemetry feed is skipped.
+        if (_osyooDevice?.IsAvailable == true && !OsoyooTestActive)
         {
-            byte brakeIntensity = 0;
-            byte gasIntensity = 0;
+            _hapticFrameTicks++;
 
-            if (raw != null && raw.SpeedKmh > 5f)
+            // Raw pedal positions — prefer true game physics telemetry (never overridden
+            // by the pedal-source override in TelemetryLoop), fall back to the pedal
+            // input system when no game is running.
+            float brakeInput = 0f, throttleInput = 0f;
+            var livePhysics = _telemetryLoop.LatestPhysicsRaw;
+            if (livePhysics.HasValue)
             {
-                const float slipThreshold = 0.10f;
-                bool absActive = raw.AbsInAction > 0 || raw.AbsVibrations > 0.01f;
-
-                float maxSlip = 0f;
-                for (int i = 0; i < 4; i++)
-                {
-                    float abs = Math.Abs(raw.SlipRatio[i]);
-                    if (abs > maxSlip) maxSlip = abs;
-                }
-
-                bool slipping = maxSlip > slipThreshold;
-
-                if (absActive || slipping)
-                {
-                    float absIntensity = raw.AbsVibrations * 1.5f;
-                    float slipIntensity = Math.Clamp(maxSlip / 0.30f, 0f, 1f);
-                    float combined = Math.Max(absIntensity, slipIntensity);
-                    brakeIntensity = (byte)Math.Clamp(combined * 255f, 50f, 255f);
-                }
+                brakeInput = livePhysics.Value.Brake;
+                throttleInput = livePhysics.Value.Gas;
+            }
+            else if (_telemetryLoop.PedalInput.TryGetState(out var pedalState))
+            {
+                brakeInput = pedalState.BrakeInput;
+                throttleInput = pedalState.GasInput;
+            }
+            else if (raw != null)
+            {
+                brakeInput = raw.BrakeInput;
+                throttleInput = raw.GasInput;
             }
 
-            _osyooDevice.SendHapticPacket(brakeIntensity, gasIntensity);
+            double finalBrakeForce = 0;
+            double finalThrottleForce = 0;
+
+            if (raw != null)
+            {
+                // ── Shared sources ──
+                float peakFrontSlip = Math.Max(Math.Abs(raw.SlipRatio[0]), Math.Abs(raw.SlipRatio[1]));
+
+                // Per-side curb detection: LEFT wheels (FL+RL) → brake pedal,
+                // RIGHT wheels (FR+RR) → gas pedal. R3E's synthesized suspension-
+                // velocity values are small (observed 0.01-0.03 on kerbs), so the
+                // deadzone is low and the per-side scale (x6) brings kerbs into
+                // usable range. Falls back to the shared kerb value for both
+                // pedals when a game has no per-side data.
+                float curbLeftRaw = raw.KerbVibrationLeft > 0f ? raw.KerbVibrationLeft : raw.KerbVibration;
+                float curbRightRaw = raw.KerbVibrationRight > 0f ? raw.KerbVibrationRight : raw.KerbVibration;
+                float curbLeft = curbLeftRaw > 0.03f ? curbLeftRaw : 0f;
+                float curbRight = curbRightRaw > 0.03f ? curbRightRaw : 0f;
+
+                // Curb diagnostics — every 30 frames in R3E, so we can see the actual
+                // synthesized kerb values vs the deadzone when driving over curbs.
+                if (IsRaceroom && _curbDiagCounter++ % 30 == 0)
+                    LogPedalDiag($"CURB: L={curbLeftRaw:F4}->{curbLeft:F4} R={curbRightRaw:F4}->{curbRight:F4} shared={raw.KerbVibration:F4}");
+
+                // Authoritative ABS sources only:
+                //  - AbsActiveGfx: EVO's live ABS flag from the graphics instrumentation page
+                //  - AbsVibrations: game-native (ACC) or synthesized from lockup evidence (R3E/LMU)
+                // NOT AbsInAction — EVO's physics-page read is unreliable and R3E's is a static
+                // assist setting, both of which read non-zero permanently and cause fake pulses.
+                bool absActive = raw.AbsActiveGfx || raw.AbsVibrations > 0.01f;
+
+                // ── BRAKE CHANNEL ──
+                if (brakeInput > 0.05f && absActive)
+                {
+                    // ABS square-wave pulse → PedalAbsBrakeGain
+                    if ((_hapticFrameTicks / 2) % 2 == 0)
+                    {
+                        float slipSeverity = Math.Clamp((peakFrontSlip - 0.10f) * 6.0f, 0.4f, 1.0f);
+                        finalBrakeForce = 255 * slipSeverity * PedalAbsBrakeGain;
+                    }
+                }
+                // Brake pressure hum → PedalBrakePressureGain
+                finalBrakeForce += brakeInput * 255f * 0.35f * PedalBrakePressureGain;
+                // Road texture → PedalRoadBrakeGain
+                finalBrakeForce += Math.Clamp(raw.RoadVibrations, 0f, 1f) * 255f * 0.25f * PedalRoadBrakeGain;
+                // LEFT-side curb bumps → PedalCurbBothGain (brake pedal)
+                finalBrakeForce += curbLeft * 255f * PedalCurbBothGain;
+
+                // ── THROTTLE CHANNEL ──
+                if (throttleInput > 0.02f)
+                {
+                    float peakRearSlip = Math.Max(Math.Abs(raw.SlipRatio[2]), Math.Abs(raw.SlipRatio[3]));
+
+                    // Authoritative TC sources, gated per game:
+                    //  - R3E: AidSettings.Tc == 5 (TcActiveGfx) = LIVE cut — empirically
+                    //    verified from logs: the value flips 1 → 5 during actual cuts.
+                    //    TractionControlPercent is stuck at 100.0 in this game build
+                    //    (use it only for intensity scaling, never as a gate).
+                    //  - EVO/classic AC: TcActiveGfx = live flag from graphics instrumentation
+                    //  - ACC: TcinAction inferred from TC level + front slip by its reader
+                    //  - LMU: no TC flag → real wheelspin check below.
+                    bool tcActive = raw.TcActiveGfx
+                                 || (IsAssettoCorsaCompetizione && raw.TcinAction > 0);
+
+                    if (tcActive)
+                    {
+                        // Ignition-cut chatter → PedalTcGasGain.
+                        // R3E: scale intensity by TractionControlPercent when it has a
+                        // meaningful value (stuck at 100.0 in the shipped build → 1.0).
+                        float magnitude = IsRaceroom && raw.TractionControlPercent is > 5f and < 95f
+                            ? Math.Clamp(raw.TractionControlPercent / 100f, 0.3f, 1f)
+                            : 1f;
+                        if (_hapticFrameTicks % 3 != 0)
+                            finalThrottleForce = 230 * magnitude * PedalTcGasGain;
+
+                        if (IsRaceroom && _tcDiagCounter++ % 30 == 0)
+                            LogPedalDiag($"TC ACTIVE: AidTc={raw.AidSettingsTc} Pct={raw.TractionControlPercent:F1} slipRear={peakRearSlip:F3} force={finalThrottleForce:F0}");
+                    }
+                    else
+                    {
+                        if (IsRaceroom && _tcDiagCounter++ % 30 == 0)
+                            LogPedalDiag($"TC idle:   AidTc={raw.AidSettingsTc} Pct={raw.TractionControlPercent:F1} slipRear={peakRearSlip:F3}");
+                    }
+
+                    // Real driven-wheel spin fallback — ONLY for games with no TC
+                    // signal (LMU). R3E has the authoritative TractionControlPercent
+                    // and its synthesized slip ratio is garbage (2.0-9.8 observed,
+                    // physically impossible) — the fallback would fire at full
+                    // intensity constantly. EVO/ACC use their real TC flags.
+                    if (!tcActive && IsLeMansUltimate && peakRearSlip > 0.10f)
+                    {
+                        float slipDelta = Math.Clamp((peakRearSlip - 0.10f) * 8.0f, 0f, 1f);
+                        finalThrottleForce = 255 * slipDelta * PedalTcGasGain;
+                    }
+
+                    // 30% baseline accelerator feel tied to raw throttle position
+                    finalThrottleForce += throttleInput * 76.5 * PedalThrottlePositionGain;
+
+                    // Engine texture: RPM buzz scales with revs + throttle
+                    finalThrottleForce += raw.RpmPercent * throttleInput * 40f * PedalEngineRpmGain;
+
+                    // Gear-shift pulse: sharp kick on upshift (throttle-cut moment)
+                    if (raw.Gear != _lastPedalGear && raw.Gear > _lastPedalGear)
+                    {
+                        _shiftPulseFramesRemaining = 3;
+                        _lastPedalGear = raw.Gear;
+                    }
+                    if (_shiftPulseFramesRemaining > 0)
+                    {
+                        _shiftPulseFramesRemaining--;
+                        finalThrottleForce += 60f;
+                    }
+                }
+                else if (raw.Gear != _lastPedalGear)
+                {
+                    _lastPedalGear = raw.Gear; // track gear changes even off-throttle
+                }
+
+                // ── Gas channel physics events — NOT gated on throttle position ──
+                // Curb and scrub are road events, not pedal events: the gas motor must
+                // react to them even when the throttle reads 0 (garage, N/A, replay).
+                // Scrub deadzone: only real corner slip passes, baseline noise is cut.
+                float scrubRaw = Math.Clamp(raw.SlipVibrations, 0f, 1f);
+                float scrubValue = scrubRaw > 0.15f ? scrubRaw : 0f;
+                // Scrub / corner slip → PedalScrubGasGain
+                finalThrottleForce += scrubValue * 255f * 0.25f * PedalScrubGasGain;
+                // RIGHT-side curb bumps → PedalCurbBothGain (gas pedal)
+                finalThrottleForce += curbRight * 255f * PedalCurbBothGain;
+            }
+
+            // ── OUTPUT STAGE: hard zero-clamp speed gate ──
+            if (raw?.SpeedKmh < 5.0f)
+            {
+                finalBrakeForce = 0;
+                finalThrottleForce = 0;
+            }
+
+            byte brakeByte = (byte)Math.Clamp(finalBrakeForce * PedalMasterBrakeGain, 0, 255);
+            byte throttleByte = (byte)Math.Clamp(finalThrottleForce * PedalMasterGasGain, 0, 255);
+
+            // Minimum motor spin duty — DC vibration motors do not rotate below
+            // ~15-20% PWM (they just hum). Any non-zero effect must be boosted to
+            // at least this floor so the driver actually feels it. Zero stays zero.
+            const byte minBrakeSpinDuty = 50;
+            const byte minGasSpinDuty = 50;
+            if (brakeByte > 0 && brakeByte < minBrakeSpinDuty) brakeByte = minBrakeSpinDuty;
+            if (throttleByte > 0 && throttleByte < minGasSpinDuty) throttleByte = minGasSpinDuty;
+
+            _osyooDevice.SendHapticPacket(brakeByte, throttleByte);
         }
 
         var racePhysics = _telemetryLoop.LatestPhysicsRaw;

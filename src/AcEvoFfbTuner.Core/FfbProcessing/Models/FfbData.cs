@@ -23,15 +23,20 @@ public sealed class FfbRawData
     public float[] AccG { get; set; } = new float[3];
     public float[] DisplayAccG { get; set; } = new float[3];
     public float[] LocalAngularVel { get; set; } = new float[3];
+    public float YawAccel { get; set; }
     public float SteerAngle { get; set; }
     public float SpeedKmh { get; set; }
     public float KerbVibration { get; set; }
+    public float KerbVibrationLeft { get; set; }
+    public float KerbVibrationRight { get; set; }
     public float SlipVibrations { get; set; }
     public float RoadVibrations { get; set; }
     public float AbsVibrations { get; set; }
     public int AbsInAction { get; set; }
     public float AbsLevel { get; set; }
     public bool AbsActiveGfx { get; set; }
+    public bool TcActiveGfx { get; set; }
+    public int TcinAction { get; set; }
     public float BrakeInput { get; set; }
     public float GasInput { get; set; }
     public float FfbStrength { get; set; }
@@ -81,6 +86,7 @@ public sealed class FfbRawData
     public int[] TireOnMtrl { get; set; } = new int[4];
     public float[] BrakePressure { get; set; } = new float[4];
     public float TractionControlPercent { get; set; }
+    public int AidSettingsTc { get; set; }
 }
 
 public sealed class FfbProcessedData

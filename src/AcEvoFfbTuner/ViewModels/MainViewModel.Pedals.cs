@@ -35,6 +35,8 @@ public sealed partial class MainViewModel
     [ObservableProperty] private float _pedalRoadBrakeGain = 0.3f;
     [ObservableProperty] private float _pedalScrubGasGain = 0.4f;
     [ObservableProperty] private float _pedalBrakePressureGain = 1.0f;
+    [ObservableProperty] private float _pedalThrottlePositionGain = 0.0f;
+    [ObservableProperty] private float _pedalEngineRpmGain = 0.0f;
 
     // ── Methods ──
 

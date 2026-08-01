@@ -16,7 +16,6 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
     private R3eShared _lastData;
 
     private float[] _prevTireSpeed = new float[4];
-    private double[] _prevSuspensionDeflection = new double[4];
 
     public float SteeringCenterTrimDeg { get; set; } = 0.0f;
 
@@ -50,6 +49,30 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
         : new float[4];
 
     public float TractionControlPercent => _mmf != null ? _lastData.TractionControlPercent : 0f;
+
+    /// <summary>
+    /// Raw AidSettings.Tc value (-1..5). Empirically verified from real logs
+    /// (2026-08-01): the value FLIPS between 1 (armed, not cutting) and 5
+    /// (actively cutting) while driving — value 5 IS the live-cut flag, exactly
+    /// as the official SDK documents. TractionControlPercent is stuck at 100.0
+    /// in this game build and is unusable as a gate (use it only for intensity).
+    /// </summary>
+    public int AidSettingsTc => _mmf != null ? _lastData.AidSettings.Tc : -1;
+
+    /// <summary>
+    /// LIVE TC CUT detection. Empirically verified from real logs: AidSettings.Tc
+    /// flips 1 → 5 during actual cuts (SDK: "5 = currently active"). This is the
+    /// ONLY reliable live-cut gate in the shipped game. TractionControlPercent
+    /// stays at 100.0 and must not be used to gate.
+    /// </summary>
+    public bool IsTcActive => _mmf != null && _lastData.AidSettings.Tc == 5;
+
+    /// <summary>
+    /// Real yaw angular acceleration (rad/s²) from Player.AngularAcceleration
+    /// (world-space Y axis). Used by the rear-slip warning instead of
+    /// differentiating LocalAngularVel at a fixed assumed tick rate.
+    /// </summary>
+    public float YawAcceleration => _mmf != null ? (float)_lastData.Player.AngularAcceleration.Y : 0f;
 
     public bool TryConnect()
     {
@@ -119,8 +142,8 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
             physics = new SPageFilePhysicsEvo
             {
                 PacketId = _lastData.Player.GameSimulationTicks,
-                Gas = Clamp01(_lastData.Throttle),
-                Brake = Clamp01(_lastData.Brake),
+                Gas = Clamp01(R3eSafePedal(_lastData.Throttle, _lastData.ThrottleRaw)),
+                Brake = Clamp01(R3eSafePedal(_lastData.Brake, _lastData.BrakeRaw)),
                 Fuel = _lastData.FuelLeft,
                 Gear = _lastData.Gear,
                 Rpms = (int)(_lastData.EngineRps * 60f / (2f * MathF.PI)),
@@ -249,10 +272,18 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
             }
 
             physics.KerbVibration = SynthesizeKerbVibration();
+            physics.KerbVibrationLeft = SynthesizeKerbVibrationSide(true);
+            physics.KerbVibrationRight = SynthesizeKerbVibrationSide(false);
             physics.RoadVibrations = SynthesizeRoadVibration();
 
             var absState = _lastData.AidSettings.Abs;
-            physics.AbsInAction = (absState == 1 || absState == 5) ? 1 : 0;
+            // AidSettings.Abs: -1 = N/A, 0 = off, 1 = on, 5 = currently active.
+            // Value 5 is the ONLY reliable "ABS is cycling right now" flag.
+            // AbsInAction must NOT be set for value 1 — ABS merely being enabled
+            // is static configuration, and setting it would make the shared
+            // VibrationMixer run its synthetic 15 Hz ABS pulse on every brake
+            // application (FfbVibrationMixer fallback path at AbsInAction != 0).
+            physics.AbsInAction = absState == 5 ? 1 : 0;
             physics.AbsVibrations = SynthesizeAbsVibration(absState);
 
             var tireLoads = new float[4]
@@ -463,6 +494,18 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
 
     private static float Clamp01(float v) => Math.Max(0f, Math.Min(1f, v));
 
+    /// <summary>
+    /// Prefer the RAW pedal value when valid — it is the unprocessed device input
+    /// (0.0 at rest, matching what Pit House reports). R3E's processed value can
+    /// carry the game's own controller calibration offset (e.g. 0.1378 at rest).
+    /// Falls back to the processed value when raw is N/A (-1.0) or out of range.
+    /// </summary>
+    private static float R3eSafePedal(float processed, float raw)
+    {
+        if (raw >= 0f && raw <= 1f) return raw;
+        return processed;
+    }
+
     private static float[] MapTireDataFloat(R3eTireData<float> td) => new float[4]
     {
         td.FrontLeft < 0 ? 0f : td.FrontLeft,
@@ -496,19 +539,41 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
 
     private float SynthesizeKerbVibration()
     {
-        double[] currentDeflection = { _lastData.Player.SuspensionDeflection.FrontLeft, _lastData.Player.SuspensionDeflection.FrontRight, _lastData.Player.SuspensionDeflection.RearLeft, _lastData.Player.SuspensionDeflection.RearRight };
+        // R3E exposes REAL suspension travel velocity (m/s) via
+        // Player.SuspensionVelocity — use it directly. The previous approach
+        // differentiated SuspensionDeflection (delta * 400) which overstates
+        // velocity whenever reads fall behind the 400 Hz physics rate, because
+        // each read delta spans multiple physics ticks.
+        float maxVelocity = Math.Max(
+            Math.Max(
+                Math.Abs((float)_lastData.Player.SuspensionVelocity.FrontLeft),
+                Math.Abs((float)_lastData.Player.SuspensionVelocity.FrontRight)),
+            Math.Max(
+                Math.Abs((float)_lastData.Player.SuspensionVelocity.RearLeft),
+                Math.Abs((float)_lastData.Player.SuspensionVelocity.RearRight)));
 
-        float maxAcceleration = 0f;
+        // Scale: smooth track ≈ 0.01-0.05 m/s (near silence), bumps ≈ 0.1-0.3,
+        // kerb strikes ≈ 0.5-2.0 m/s (full intensity at ~3.3 m/s).
+        return Math.Min(maxVelocity * 0.3f, 1f);
+    }
 
-        for (int i = 0; i < 4; i++)
-        {
-            double delta = Math.Abs(currentDeflection[i] - _prevSuspensionDeflection[i]);
-            float accel = (float)(delta * 400d);
-            if (accel > maxAcceleration) maxAcceleration = accel;
-            _prevSuspensionDeflection[i] = currentDeflection[i];
-        }
+    /// <summary>
+    /// Per-side kerb vibration (left = FL+RL, right = FR+RR) for pedal haptics —
+    /// left kerb strikes feed the brake pedal, right kerb strikes feed the gas
+    /// pedal. Scale is stronger than the shared SynthesizeKerbVibration (0.3)
+    /// because the pedal feed needs usable intensity from R3E's small
+    /// suspension-velocity values (observed ~0.01-0.03 on kerbs).
+    /// </summary>
+    private float SynthesizeKerbVibrationSide(bool left)
+    {
+        float v1 = left
+            ? Math.Abs((float)_lastData.Player.SuspensionVelocity.FrontLeft)
+            : Math.Abs((float)_lastData.Player.SuspensionVelocity.FrontRight);
+        float v2 = left
+            ? Math.Abs((float)_lastData.Player.SuspensionVelocity.RearLeft)
+            : Math.Abs((float)_lastData.Player.SuspensionVelocity.RearRight);
 
-        return Math.Min(maxAcceleration * 0.3f, 1f);
+        return Math.Min(Math.Max(v1, v2) * 6.0f, 1f);
     }
 
     private float SynthesizeAbsVibration(int absState)

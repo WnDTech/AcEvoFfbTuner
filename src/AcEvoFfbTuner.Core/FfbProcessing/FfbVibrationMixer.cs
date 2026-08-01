@@ -325,7 +325,12 @@ public sealed class FfbVibrationMixer
         float yawAccel = 0f;
         if (_yawInitialized)
         {
-            yawAccel = (yawRate - _prevYawRate) / TickSeconds;
+            // Prefer real yaw angular acceleration telemetry when a game
+            // provides it (R3E exposes Player.AngularAcceleration). Zero means
+            // "not provided" → fall back to differentiating yaw rate.
+            yawAccel = raw.YawAccel != 0f
+                ? raw.YawAccel
+                : (yawRate - _prevYawRate) / TickSeconds;
         }
         _prevYawRate = yawRate;
         _yawInitialized = true;

@@ -587,6 +587,12 @@ public sealed class R3eFfbPipeline : FfbPipeline
     {
         if (TcFeelGain < 0.001f || raw.SpeedKmh < 5f) return 0f;
 
+        // Live-cut gate: AidSettings.Tc == 5 (TcActiveGfx) is the ONLY reliable
+        // "TC is cutting power RIGHT NOW" flag. TractionControlPercent reads a
+        // constant high value when TC is enabled but idle on some builds, so it
+        // must not gate the effect — intensity only.
+        if (!raw.TcActiveGfx) return 0f;
+
         float tcCut = raw.TractionControlPercent;
         if (tcCut < 1f) return 0f;
 
@@ -607,3 +613,4 @@ public sealed class R3eFfbPipeline : FfbPipeline
         _dcBlockSmooth = 0f;
     }
 }
+

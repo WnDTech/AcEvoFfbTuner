@@ -795,6 +795,23 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         set => SetProperty(ref _osyooConnectionStatus, value);
     }
 
+    private int _osyooTestIntensity = 200;
+    public int OsoyooTestIntensity
+    {
+        get => _osyooTestIntensity;
+        set => SetProperty(ref _osyooTestIntensity, value);
+    }
+
+    private bool _osyooTestActive;
+    public bool OsoyooTestActive
+    {
+        get => _osyooTestActive;
+        set => SetProperty(ref _osyooTestActive, value);
+    }
+
+    public ICommand OsoyooTestBrakeCommand { get; }
+    public ICommand OsoyooTestGasCommand { get; }
+    public ICommand OsoyooStopTestCommand { get; }
     public ICommand RefreshOsoyooPortsCommand { get; }
     public ICommand ConnectOsoyooCommand { get; }
     public ICommand DisconnectOsoyooCommand { get; }
@@ -864,6 +881,40 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OsoyooConnectionStatus = string.IsNullOrEmpty(OsoyooSelectedPort)
             ? "No device connected"
             : $"{OsoyooSelectedPort} disconnected";
+    }
+
+    private void OnOsoyooTestBrake()
+    {
+        if (_osyooDevice?.IsAvailable != true)
+        {
+            AddSystemLog("OSOYOO TEST BRAKE: device not available — nothing sent");
+            return;
+        }
+        OsoyooTestActive = true;
+        _osyooDevice.SendHapticPacket((byte)OsoyooTestIntensity, 0);
+        AddSystemLog($"OSOYOO TEST BRAKE: sent brake={OsoyooTestIntensity} gas=0");
+        OsoyooConnectionStatus = $"TEST: Brake motor at {OsoyooTestIntensity}/255 — press Stop to halt";
+    }
+
+    private void OnOsoyooTestGas()
+    {
+        if (_osyooDevice?.IsAvailable != true)
+        {
+            AddSystemLog("OSOYOO TEST GAS: device not available — nothing sent");
+            return;
+        }
+        OsoyooTestActive = true;
+        _osyooDevice.SendHapticPacket(0, (byte)OsoyooTestIntensity);
+        AddSystemLog($"OSOYOO TEST GAS: sent brake=0 gas={OsoyooTestIntensity}");
+        OsoyooConnectionStatus = $"TEST: Gas motor at {OsoyooTestIntensity}/255 — press Stop to halt";
+    }
+
+    private void OnOsoyooStopTest()
+    {
+        _osyooDevice?.SendHapticPacket(0, 0);
+        OsoyooTestActive = false;
+        AddSystemLog("OSOYOO STOP TEST: sent brake=0 gas=0");
+        OsoyooConnectionStatus = "Motor test stopped";
     }
 
     public bool Hf8CopyActive => Hf8CopySourceIndex >= 0;
@@ -1665,6 +1716,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         RefreshOsoyooPortsCommand = new RelayCommand(OnRefreshOsoyooPorts);
         ConnectOsoyooCommand = new RelayCommand(OnConnectOsoyoo);
         DisconnectOsoyooCommand = new RelayCommand(OnDisconnectOsoyoo);
+        OsoyooTestBrakeCommand = new RelayCommand(OnOsoyooTestBrake);
+        OsoyooTestGasCommand = new RelayCommand(OnOsoyooTestGas);
+        OsoyooStopTestCommand = new RelayCommand(OnOsoyooStopTest);
      }
 
 

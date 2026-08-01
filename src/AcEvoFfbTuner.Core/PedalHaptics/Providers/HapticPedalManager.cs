@@ -19,6 +19,21 @@ public sealed class HapticPedalManager : IPedalHapticProvider
     public bool IsGasSupported => true;
     public bool IsClutchSupported => false;
 
+    private static readonly string SerialLogPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "AcEvoFfbTuner", "osoyoo_serial_log.txt");
+
+    private static void LogSerial(string entry)
+    {
+        try
+        {
+            var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {entry}";
+            File.AppendAllText(SerialLogPath, line + Environment.NewLine);
+            System.Diagnostics.Debug.WriteLine(line);
+        }
+        catch { }
+    }
+
     public bool ConnectToPedal(string comPortName)
     {
         Disconnect();
@@ -40,18 +55,23 @@ public sealed class HapticPedalManager : IPedalHapticProvider
                 _serialPort = port;
             }
 
+            LogSerial($"CONNECT OK on {comPortName} (115200 8N1, IsOpen={port.IsOpen})");
             return true;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[HapticPedalManager] Connect failed on {comPortName}: {ex.Message}");
+            LogSerial($"CONNECT FAILED on {comPortName}: {ex.GetType().Name}: {ex.Message}");
             return false;
         }
     }
 
     public void SendHapticPacket(byte brakeIntensity, byte throttleIntensity)
     {
-        if (!IsAvailable) return;
+        if (!IsAvailable)
+        {
+            LogSerial($"SEND SKIPPED (not available): brake={brakeIntensity} gas={throttleIntensity} port={_serialPort?.PortName ?? "null"} isOpen={_serialPort?.IsOpen}");
+            return;
+        }
 
         byte[] packet = [HeaderByte, brakeIntensity, throttleIntensity, FooterByte];
 
@@ -60,10 +80,11 @@ public sealed class HapticPedalManager : IPedalHapticProvider
             try
             {
                 _serialPort!.Write(packet, 0, PacketLength);
+                LogSerial($"SEND OK: brake={brakeIntensity} gas={throttleIntensity} bytes={BitConverter.ToString(packet)}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[HapticPedalManager] Send failed: {ex.Message}");
+                LogSerial($"SEND FAILED: brake={brakeIntensity} gas={throttleIntensity} bytes={BitConverter.ToString(packet)} — {ex.GetType().Name}: {ex.Message}");
             }
         }
     }
@@ -99,19 +120,21 @@ public sealed class HapticPedalManager : IPedalHapticProvider
                 {
                     byte[] stopPacket = [HeaderByte, 0, 0, FooterByte];
                     _serialPort.Write(stopPacket, 0, PacketLength);
+                    LogSerial($"DISCONNECT: stop packet sent ({BitConverter.ToString(stopPacket)})");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[HapticPedalManager] Stop packet write failed: {ex.Message}");
+                    LogSerial($"DISCONNECT: stop packet failed — {ex.GetType().Name}: {ex.Message}");
                 }
 
                 try
                 {
                     _serialPort.Close();
+                    LogSerial($"DISCONNECT: port {_serialPort.PortName} closed");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[HapticPedalManager] Close failed: {ex.Message}");
+                    LogSerial($"DISCONNECT: close failed — {ex.GetType().Name}: {ex.Message}");
                 }
 
                 try
@@ -120,7 +143,7 @@ public sealed class HapticPedalManager : IPedalHapticProvider
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[HapticPedalManager] Dispose failed: {ex.Message}");
+                    LogSerial($"DISCONNECT: dispose failed — {ex.GetType().Name}: {ex.Message}");
                 }
             }
 

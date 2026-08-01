@@ -119,6 +119,8 @@ public struct SPageFilePhysicsEvo
     public int StarterEngineOn;
     public int IsEngineRunning;
     public float KerbVibration;
+    public float KerbVibrationLeft;
+    public float KerbVibrationRight;
     public float SlipVibrations;
     public float RoadVibrations;
     public float AbsVibrations;

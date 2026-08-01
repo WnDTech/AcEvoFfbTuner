@@ -457,6 +457,9 @@ public sealed class TelemetryLoop : IDisposable
                         raw.TireOnMtrl = r3e.TireOnMtrl;
                         raw.BrakePressure = r3e.BrakePressure;
                         raw.TractionControlPercent = r3e.TractionControlPercent;
+                        raw.TcActiveGfx = r3e.IsTcActive;
+                        raw.AidSettingsTc = r3e.AidSettingsTc;
+                        raw.YawAccel = r3e.YawAcceleration;
                     }
 
                     // Inject AC tyre grip data
@@ -1107,12 +1110,16 @@ public sealed class TelemetryLoop : IDisposable
             SteerAngle = (float)physics.SteerAngle,
             SpeedKmh = physics.SpeedKmh,
             KerbVibration = physics.KerbVibration,
+            KerbVibrationLeft = physics.KerbVibrationLeft,
+            KerbVibrationRight = physics.KerbVibrationRight,
             SlipVibrations = physics.SlipVibrations,
             RoadVibrations = physics.RoadVibrations,
             AbsVibrations = physics.AbsVibrations,
             AbsInAction = physics.AbsInAction,
             AbsLevel = physics.Abs,
             AbsActiveGfx = graphics.AbsActive,
+            TcActiveGfx = graphics.TcActive,
+            TcinAction = physics.TcinAction,
             BrakeInput = physics.Brake,
             GasInput = physics.Gas,
             FfbStrength = graphics.FfbStrength,

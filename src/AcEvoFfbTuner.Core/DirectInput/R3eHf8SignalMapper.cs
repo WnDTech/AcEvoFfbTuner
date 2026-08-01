@@ -185,10 +185,12 @@ public sealed class R3eHf8SignalMapper : Hf8SignalMapper
         }
 
         // ── Traction control: real TC cut % from R3E ──
-        // R3E sends TractionControlPercent = 100 as a sentinel meaning "TC is
-        // available/enabled but NOT actively cutting" — NOT "100% power cut."
-        // Gate values above 95% as idle. Typical active cuts are 5-80%.
-        float tcMod = raw.TractionControlPercent > 5f && raw.TractionControlPercent < 95f
+        // Live-cut gate is AidSettings.Tc == 5 (raw.TcActiveGfx) — the ONLY
+        // reliable "TC is cutting engine power RIGHT NOW" flag.
+        // TractionControlPercent (0-100) is intensity-only; it reads a constant
+        // high value (e.g. 100) when TC is enabled but NOT cutting on some
+        // builds, so it must never be used as the on/off gate.
+        float tcMod = raw.TcActiveGfx && raw.TractionControlPercent > 0.5f
             ? Math.Clamp(raw.TractionControlPercent / 100f, 0f, 0.4f) * speedFade : 0f;
 
         // ── Flatspot: real per-wheel boolean detection ──
@@ -352,3 +354,4 @@ public sealed class R3eHf8SignalMapper : Hf8SignalMapper
         _slipPhase = 0f;
     }
 }
+

@@ -946,6 +946,47 @@
 
                             <TextBlock Text="{Binding OsoyooConnectionStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
                                        Margin="0,8,0,0" />
+
+                            <!-- Motor Test Panel -->
+                            <Border Background="#FF1E2227" CornerRadius="6" Padding="14,12" Margin="0,14,0,0"
+                                    BorderThickness="1" BorderBrush="#3347A15C">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,8">
+                                        <TextBlock Text="MOTOR TEST" FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" VerticalAlignment="Center" />
+                                        <TextBlock Text="Tests each motor directly — telemetry feed is paused" FontSize="11"
+                                                   Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Intensity:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="255" TickFrequency="5"
+                                                Value="{Binding OsoyooTestIntensity, Mode=TwoWay}"
+                                                VerticalAlignment="Center" Height="26" />
+                                        <TextBlock Grid.Column="2" Text="{Binding OsoyooTestIntensity, StringFormat='{}{0}'}"
+                                                   FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0" Width="36" TextAlignment="Right" />
+                                    </Grid>
+                                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                        <Button Content="TEST BRAKE" Command="{Binding OsoyooTestBrakeCommand}"
+                                                Height="32" Padding="12,0"
+                                                Background="#FFE53935" Foreground="White"
+                                                BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
+                                        <Button Content="TEST GAS" Command="{Binding OsoyooTestGasCommand}"
+                                                Height="32" Padding="12,0" Margin="8,0,0,0"
+                                                Background="#FF4CAF50" Foreground="White"
+                                                BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
+                                        <Button Content="STOP" Command="{Binding OsoyooStopTestCommand}"
+                                                Height="32" Padding="12,0" Margin="8,0,0,0"
+                                                Background="#FF525252" Foreground="White"
+                                                BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 
@@ -1001,26 +1042,51 @@
                         <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
                                 BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                             <StackPanel>
-                                <TextBlock Text="HAPTIC OUTPUT ROUTING" FontSize="11" FontWeight="Bold" Foreground="#FFE53935" Margin="0,0,0,8" />
-                                <TextBlock Text="Per-signal gain sent to each pedal (0-2x)."
-                                           FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
-                                <controls:LabeledSlider Value="{Binding PedalMasterBrakeGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
-                                    Label="Master Brake Gain" StringFormat="{}{0:F2}" SectionColor="#FFE53935" />
-                                <controls:LabeledSlider Value="{Binding PedalMasterGasGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
-                                    Label="Master Gas Gain" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" Margin="0,4,0,0" />
-                                <Separator Margin="0,8,0,6" Opacity="0.3" />
-                                <controls:LabeledSlider Value="{Binding PedalAbsBrakeGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
-                                    Label="ABS → Brake" StringFormat="{}{0:F2}" SectionColor="#FFE53935" />
-                                <controls:LabeledSlider Value="{Binding PedalTcGasGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
-                                    Label="TC → Gas" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" Margin="0,4,0,0" />
-                                <controls:LabeledSlider Value="{Binding PedalCurbBothGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
-                                    Label="Curb → Both" StringFormat="{}{0:F2}" SectionColor="#FF9800" Margin="0,4,0,0" />
-                                <controls:LabeledSlider Value="{Binding PedalRoadBrakeGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
-                                    Label="Road → Brake" StringFormat="{}{0:F2}" SectionColor="#FFE53935" Margin="0,4,0,0" />
-                                <controls:LabeledSlider Value="{Binding PedalScrubGasGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
-                                    Label="Scrub → Gas" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" Margin="0,4,0,0" />
-                                <controls:LabeledSlider Value="{Binding PedalBrakePressureGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
-                                    Label="Brake Pressure → Brake" StringFormat="{}{0:F2}" SectionColor="#9C27B0" Margin="0,4,0,0" />
+                                <TextBlock Text="HAPTIC OUTPUT ROUTING" FontSize="11" FontWeight="Bold" Foreground="#FFE53935" Margin="0,0,0,4" />
+                                <TextBlock Text="Each signal routes through its pedal column, then the master gain scales the whole channel (0-2x)."
+                                           FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- ── BRAKE PEDAL column ── -->
+                                    <StackPanel Grid.Column="0">
+                                        <Border Background="#26E53935" CornerRadius="4" Padding="8,5" Margin="0,0,0,8">
+                                            <TextBlock Text="BRAKE PEDAL" FontSize="12" FontWeight="Bold" Foreground="#FFE53935" HorizontalAlignment="Center" />
+                                        </Border>
+                                        <controls:LabeledSlider Value="{Binding PedalMasterBrakeGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="Master Gain" StringFormat="{}{0:F2}" SectionColor="#FFE53935" />
+                                        <controls:LabeledSlider Value="{Binding PedalAbsBrakeGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="ABS Pulse" StringFormat="{}{0:F2}" SectionColor="#FFE53935" Margin="0,4,0,0" />
+                                        <controls:LabeledSlider Value="{Binding PedalBrakePressureGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="Brake Pressure Hum" StringFormat="{}{0:F2}" SectionColor="#FF9800" Margin="0,4,0,0" />
+                                        <controls:LabeledSlider Value="{Binding PedalRoadBrakeGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="Road Texture" StringFormat="{}{0:F2}" SectionColor="#FFE53935" Margin="0,4,0,0" />
+                                    </StackPanel>
+
+                                    <!-- ── GAS PEDAL column ── -->
+                                    <StackPanel Grid.Column="2">
+                                        <Border Background="#264CAF50" CornerRadius="4" Padding="8,5" Margin="0,0,0,8">
+                                            <TextBlock Text="GAS PEDAL" FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" HorizontalAlignment="Center" />
+                                        </Border>
+                                        <controls:LabeledSlider Value="{Binding PedalMasterGasGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="Master Gain" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" />
+                                        <controls:LabeledSlider Value="{Binding PedalTcGasGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="TC Ignition Cut" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" Margin="0,4,0,0" />
+                                        <controls:LabeledSlider Value="{Binding PedalScrubGasGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="Corner Scrub" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" Margin="0,4,0,0" />
+                                        <controls:LabeledSlider Value="{Binding PedalThrottlePositionGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="Throttle Position" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" Margin="0,4,0,0" />
+                                        <controls:LabeledSlider Value="{Binding PedalEngineRpmGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="Engine RPM Buzz" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" Margin="0,4,0,0" />
+                                        <controls:LabeledSlider Value="{Binding PedalCurbBothGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="Curb (Shared)" StringFormat="{}{0:F2}" SectionColor="#FF9800" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
                         </Border>
                     </Grid>

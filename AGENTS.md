@@ -256,3 +256,249 @@ for wi in 0..3:
   never Marshal-based reading for this struct.
 - The wheel dump diagnostic guard `tirePressures[0] > 50f` will silent-skip if tire data reads
   zero — make the first-frame dump unconditional when investigating.
+
+## R3E Shared Memory — Authoritative Field Semantics (KW Studios r3e-api)
+
+Source of truth: the official `kwstudios-sweden/r3e-api` repo (`sample-c/src/r3e.h`,
+`sample-csharp/src/R3E.cs`) + KW Studios forum thread "Shared Memory API".
+Community mirror: `Yuvix25/r3e-python-api` (`data.cs`). Cross-checked against
+`mrbelowski/R3EMemoryTranslator` and Crew Chief.
+
+**ALWAYS consult this section before using any R3E telemetry field in FFB effects,
+haptics (pedals, HF8), or diagnostics. These semantics are verified against the
+official SDK and this app's own telemetry logs — do not guess or copy from memory.**
+
+### Shared memory layout facts
+
+- MMF name: `$R3E`, version `R3E_VERSION_MAJOR = 3`, `R3E_VERSION_MINOR = 5`.
+- Struct is `#pragma pack(push, 1)` — all fields tightly packed, NO padding.
+- `R3E_NUM_DRIVERS_MAX = 128` — `all_drivers_data_1[128]` at end of struct.
+- Header fields: `version_major`, `version_minor`, `all_drivers_offset` (offset to
+  num_cars), `driver_data_size` (size of the driver data struct).
+- High-detail player vehicle data is in the `player` substruct (`r3e_playerdata`),
+  which contains the double-precision vectors and steering force.
+
+### Enumerations (State Definitions)
+
+**Game mode** (`game_mode`): -1 unavailable, 0 tracktest, 1 leaderboardchallenge,
+2 competition, 3 singlerace, 4 championship, 5 multiplayer, 6 multiplayerranked,
+7 trybeforeyoubuy.
+
+**Session type** (`session_type`): -1 unavailable, 0 practice, 1 qualify, 2 race,
+3 warmup.
+
+**Session phase** (`session_phase`): -1 unavailable, 1 garage (MP countdown),
+2 gridwalk, 3 formation lap, 4 countdown, 5 green (racing), 6 checkered.
+
+**Control type** (`control_type`): -1 unavailable, 0 player, 1 AI, 2 remote
+(network), 3 replay/ghost.
+
+**Pit window** (`pit_window_status`): -1 unavailable, 0 disabled, 1 closed,
+2 open, 3 stopped (performing changes), 4 completed.
+
+**Pit menu selection** (`pit_menu_selection`): -1 unavailable, 0 preset,
+1 penalty, 2 driverchange, 3 fuel, 4 fronttires, 5 reartires, 6 body,
+7 frontwing, 8 rearwing, 9 suspension, 10 button_top, 11 button_bottom, 12 max.
+
+**Tire type** (`tire_type`): -1 unavailable, 0 option, 1 prime.
+**Tire subtype** (`tire_subtype`): -1 unavailable, 0 primary, 1 alternate,
+2 soft, 3 medium, 4 hard.
+**Tire material** (`tire_on_mtrl`): -1 unavailable, 0 none, 1 tarmac, 2 grass,
+3 dirt, 4 gravel, 5 rumble strip, 6 concrete.
+**Tire index**: 0 FL, 1 FR, 2 RL, 3 RR. **Tire temp index**: 0 left, 1 center, 2 right.
+**Engine type**: 0 combustion, 1 electric, 2 hybrid.
+**Finish status**: -1 unavailable, 0 none (still on track), 1 finished, 2 DNF,
+3 DNQ, 4 DNS, 5 DQ.
+**Session length format**: -1 unavailable, 0 time based, 1 lap based,
+2 time+lap (extra lap after time runs out).
+**Pitstop status**: -1 unavailable, 0 two tyres unserved, 1 four tyres unserved,
+2 served.
+**Pit state** (`pit_state`): -1 N/A, 0 none, 1 requested stop, 2 entered pitlane,
+3 stopped at pitspot, 4 exiting pitspot.
+**Pit action** (`pit_action`): -1 N/A, 0 none, 1 preparing, bitmask:
+2 penalty serve, 4 driver change, 8 refueling, 16 front tires, 32 rear tires,
+64 body, 128 front wing, 256 rear wing, 512 suspension.
+**Engine state** (`engineState`): -1 unavailable, 0 ignition off, 1 ignition on
+not running, 2 ignition on starter running, 3 ignition on and running.
+**Penalty type**: -1 unavailable, 0 DriveThrough, 1 StopAndGo, 2 Pitstop,
+3 Time, 4 Slowdown, 5 Disqualify.
+**Start lights**: -1 unavailable, 0 off, 1-5 redlight countdown, 6 greenlight.
+
+### Flags struct (r3e_flags) — all -1 = no data, 0 = not active, 1 = active
+
+- `yellow`, `yellowCausedIt`, `yellowOvertake`, `yellowPositionsGained` (n = positions),
+  `sector_yellow[3]`, `closest_yellow_distance_into_track` (meters, -1.0 = none),
+  `blue`, `black`, `green`, `checkered`, `white`.
+- `black_and_white`: 0 not active, 1 blue flag 1st warning, 2 blue flag 2nd warning,
+  3 wrong way, 4 cutting track.
+
+### AidSettings (R3eAidSettings struct) — LIVE AID STATE FLAGS
+
+```
+tc / abs / esp / countersteer / cornering:
+  -1 = N/A (field unavailable)
+   0 = off
+   1 = on (enabled but NOT actively intervening)
+   5 = currently active (intervening right now)
+```
+
+- **Value 5 is the ONLY reliable "aid is actively cutting/intervening this frame" flag.**
+- Values 0/1 are STATIC configuration, not live activity. NEVER use `== 1` or `!= 0`
+  to detect active intervention — it will be permanently true whenever the assist is enabled.
+- `RaceroomSharedMemoryReader.IsTcActive` (`AidSettings.Tc == 5`) is the reference
+  implementation for this pattern (added for pedal haptics TC trigger).
+- ESP is special: `2 = on low, 3 = on medium` (levels), still `5 = currently active`.
+- ABS equivalent: `AidSettings.Abs == 5` = ABS actively cycling. The legacy line
+  `physics.AbsInAction = (absState == 1 || absState == 5) ? 1 : 0` is WRONG for
+  live-activity detection (1 = just enabled) — see the pedal feed fix which uses
+  authoritative graphics flags instead.
+
+### TractionControlPercent (float) — EMPIRICALLY VERIFIED (2026-08-01 logs)
+
+```
+-1.0      = N/A (field unavailable)
+ 0.0      = no cut (build 3.1+ behavior when TC off/stationary)
+ 5–95     = actual % of engine power being cut RIGHT NOW
+ 100.0    = STUCK AT 100.0 IN THE SHIPPED GAME BUILD — do NOT gate on this
+```
+
+- **REAL-WORLD BEHAVIOR (verified from this app's own serial log, osoyoo_serial_log.txt)**: in the
+  shipped game build, `TractionControlPercent` stays pinned at **100.0** even during
+  actual TC cuts. It is unusable as a live-cut gate — use it only for intensity
+  scaling (value / 100) when a cut is confirmed by the aid flag.
+- **Live-cut gate for R3E: `AidSettings.Tc == 5` (`TcActiveGfx`)** — empirically
+  verified: the value FLIPS between 1 (armed, not cutting) and 5 (actively cutting)
+  during real driving. Exactly as the official SDK documents.
+- `AidSettings.tc` observed flipping 1 ↔ 5 in the same logs — value 5 IS live activity.
+- **This is a shared-memory field semantic, not a pipeline detail.** Each haptics
+  pipeline (pedal, HF8, steering) reads the same field from `RaceroomSharedMemoryReader`
+  and applies this gate independently in its own code. Pipelines must NOT share code
+  or state — only the raw telemetry field.
+
+### TractionControlSetting / AbsSetting / EngineMapSetting / EngineBrakeSetting (int)
+
+```
+-1 = N/A, otherwise a STATIC setup/config value (0 = off, 1+ = level).
+```
+
+- These are driver configuration, NOT live activity. Do not drive effects from them.
+- `abs_setting` (int, -1 = N/A) is the standalone ABS setup value.
+
+### DRS / Push-to-Pass
+
+- `r3e_drs`: `equipped` (0/1/-1), `available` (0/1/-1), `numActivationsLeft`
+  (int32::max = endless; -1 N/A), `engaged` (0/1/-1).
+- `drs_state` (per-driver): -1 unavailable, 0 not engaged, 1 engaged.
+- `r3e_push_to_pass`: `available` (1 exists, 2 charging, 3 charged, -1 N/A),
+  `engaged`, `amount_left`, `engaged_time_left`, `wait_time_left` (seconds).
+
+### Damage (r3e_car_damage) — float 0.0–1.0, -1.0 = N/A
+
+- `engine`, `transmission`, `aerodynamics` (0.0 doesn't necessarily mean destroyed),
+  `suspension` (+ 2 reserved floats).
+
+### Player data (r3e_playerdata — high precision, player vehicle only)
+
+- `user_id`, `game_simulation_ticks` (1 tick = 1/400 s), `game_simulation_time` (s).
+- `position`, `velocity`, `local_velocity`, `acceleration`, `local_acceleration`
+  (vec3_f64, m/s, m/s²), `orientation`, `rotation`, `angular_acceleration`,
+  `angular_velocity`, `local_angular_velocity` (rad/s).
+- `local_g_force` (driver g-force local to car).
+- **`steering_force`** and **`steering_force_percentage`** (r3e_float64) — total
+  steering force through the steering bars; the FFB app derives centering force
+  from `SteeringForcePercentage` (0-100%) with direction from steer input.
+- `engine_torque` (current engine torque), `current_downforce` (N), `voltage`,
+  `ers_level`, `power_mgu_h`, `power_mgu_k`, `torque_mgu_k` (currently unused).
+- Suspension (radians/meters/m/s): `suspension_deflection[4]`,
+  `suspension_velocity[4]`, `camber[4]`, `ride_height[4]`,
+  `front_wing_height`, `front_roll_angle`, `rear_roll_angle`,
+  `third_spring_suspension_deflection_front/rear`, `third_spring_suspension_velocity_front/rear`.
+
+### Vehicle state (main struct) — units and ranges
+
+- `car_speed` (m/s), `engine_rps` (rad/s), `max_engine_rps`, `upshift_rps`.
+- `gear`: -2 N/A, -1 reverse, 0 neutral, 1 first... (electric: 2 = regen braking).
+- `car_cg_location` (vec3_f32, Y up), `car_orientation` (pitch/yaw/roll, radians).
+- `local_acceleration` (vec3_f32, +X=left, +Y=up, +Z=back, m/s²).
+- `total_mass` (kg = car + penalty weight + fuel), `fuel_left`/`fuel_capacity`/
+  `fuel_per_lap` (liters), `virtual_energy_left/capacity/per_lap` (MJ).
+- `engine_temp`, `engine_oil_temp` (°C), `fuel_pressure`, `engine_oil_pressure`
+  (KPa), `turbo_pressure` (Bar, -1.0 N/A).
+- `throttle`/`throttle_raw`, `brake`/`brake_raw`, `clutch`/`clutch_raw`
+  (0.0–1.0, -1.0 N/A), `steer_input_raw` (-1.0..1.0).
+- `steer_lock_degrees` (center to full lock), `steer_wheel_range_degrees`,
+  `steer_wheel_max_rotation` (-1 N/A, 0 auto, 180–1800 manual).
+- `brake_bias` (0.3 = 30% rear, -1.0 N/A), `pit_limiter` (-1 N/A, 0 inactive, 1 active).
+- `battery_soc` (0.0–100.0, -1.0 N/A), `water_left` (brake water tank, liters),
+  `headlights` (-1 N/A, 0 off, 1 on, 2 strobing).
+- `tire_wear_active` / `fuel_use_active`: -1 N/A, 0 off, 1-4 = multiplier x1-x4.
+- `session_pit_speed_limit` (m/s), `session_time_duration`, `session_time_remaining` (s).
+
+### Per-wheel fields (R3eTireData<T>)
+
+- `TireRps` (rad/s), `TireSpeed` (m/s), `TireGrip` (0.0–1.0), `TireLoad` (N),
+  `TirePressure` (KPa), `TireWear` (0.0–1.0), `TireFlatspot` (0 false / 1 true per wheel),
+  `BrakePressure` (kN), `TireOnMtrl` (see tire material enum), `TireTemp` (°C).
+- `tire_temp[4]` is `r3e_tire_temp` per wheel: `current_temp[3]` (left/center/right),
+  `optimal_temp`, `cold_temp`, `hot_temp`.
+- `brake_temp[4]` is `r3e_brake_temp` per wheel: `current_temp`, `optimal_temp`,
+  `cold_temp`, `hot_temp` (°C).
+- `TireFlatspot` per-wheel > 0.5 = flatspot active (field semantic shared by all pipelines).
+- `BrakePressure` asymmetry (left vs right) is NOT by itself an ABS signal —
+  normal cornering braking produces asymmetric pressure.
+
+### Driver data (r3e_driver_data[128], all drivers in place order)
+
+- `driver_info` (name[64] utf8, car_number, class_id, model_id, team_id, livery_id,
+  manufacturer_id, user_id, slot_id, class_performance_index, engine_type,
+  car_width, car_length, rating, reputation).
+- `finish_status`, `place`, `place_class`, `lap_distance`, `lap_distance_fraction`,
+  `position` (vec3_f32), `track_sector`, `completed_laps`, `current_lap_valid`.
+- Timing (seconds): `lap_time_current_self`, `sector_time_current_self[3]`,
+  `sector_time_previous_self[3]`, `sector_time_best_self[3]`, `time_delta_front`,
+  `time_delta_behind`, `car_speed`.
+- `pitstop_status`, `in_pitlane`, `num_pitstops`, `penalties` (cut track),
+  `tire_type_front/rear`, `tire_subtype_front/rear`, `base_penalty_weight`,
+  `aid_penalty_weight`, `drs_state`, `ptp_state`, `virtual_energy`, `penaltyType`,
+  `penaltyReason`, `engineState`, `orientation`.
+- `penaltyReason` values per penalty type (drive-through: 0 invalid, 1 cut track,
+  2 pit speeding, 3 false start, 4 ignored blue, 5 driving too slow,
+  6 illegally passed before green, 7 illegally passed before finish,
+  8 illegally passed before pit entrance, 9 ignored slow down, 10 max).
+
+### Session/event fields
+
+- `track_name[64]`, `layout_name[64]` (utf8), `track_id`, `layout_id`,
+  `layout_length` (m), `sector_start_factors` (sector1/2/3).
+- `race_session_laps[3]`, `race_session_minutes[3]` (index 0-2 = race 1-3;
+  if both > 0, session starts with minutes then adds laps).
+- `event_index` (0-indexed, -1 N/A), `session_type`, `session_iteration`
+  (1 = first...), `session_length_format`, `session_phase`.
+- `number_of_laps` (or -1 in practice/test), `max_incident_points`, `incident_points`.
+- `lap_time_best_leader`, `lap_time_best_leader_class`, `session_best_lap_sector_times[3]`,
+  `lap_time_best_self`, `sector_time_best_self[3]`, `lap_time_previous_self`,
+  `sector_time_previous_self[3]`, `lap_time_current_self`, `sector_time_current_self[3]`,
+  `lap_time_delta_leader`, `lap_time_delta_leader_class`, `time_delta_front`,
+  `time_delta_behind`, `time_delta_best_self` (-1000.0 = N/A),
+  `best_individual_sector_time_self[3]`, `best_individual_sector_time_leader[3]`,
+  `best_individual_sector_time_leader_class[3]`.
+- `lap_valid_state` (-1 N/A, 0 this and next valid, 1 this invalid,
+  2 this and next invalid), `prev_lap_valid` (-1 N/A, 0 invalid, 1 valid).
+- `discharge_rate`, `brake_regen` (-1.0 N/A, 0.0–1.0).
+
+### Application rules (enforced)
+
+1. **R3E live-activity detection** must use `AidSettings.X == 5` (tc/abs/esp) or
+   `TractionControlPercent > 5f && < 95f` for TC cuts. Never `setting != 0`.
+   NOTE: `AidSettings.X == 5` IS empirically verified as the live-cut flag
+   (observed flipping 1 ↔ 5 during driving, 2026-08-01 logs).
+2. **Percent magnitude fields** (TractionControlPercent) drive intensity scaling,
+   never the on/off gate.
+3. If a new R3E effect is being built (steering FFB, HF8, pedal haptics), re-read this
+   section and verify against the official SDK comments before wiring any field.
+4. When in doubt about an R3E field, search the official `r3e-api` source first —
+   do not rely on community forum guesses or older code comments in this repo.
+5. **Struct is pack(1)** — C# structs must use `[StructLayout(LayoutKind.Sequential, Pack = 1)]`
+   and Marshal.SizeOf must match the native layout exactly; verify offsets with
+   hex dumps when reading late fields (e.g., `traction_control_percent`).
+
