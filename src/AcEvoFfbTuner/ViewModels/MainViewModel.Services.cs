@@ -820,7 +820,21 @@ public sealed partial class MainViewModel
             WriteDiagLog("STEP", "Auto-saving profile...");
             AutoSaveDiagnosticProfile();
             WriteDiagLog("STEP", "Auto-saving snapshot...");
-            (mainWin as Views.MainWindow)?.AutoSaveSnapshot();
+            string? snapPath = (mainWin as Views.MainWindow)?.AutoSaveSnapshot();
+            if (snapPath == null)
+            {
+                WriteDiagLog("WARN", "No telemetry frames captured; snapshot omitted from pack");
+                var res = MessageBox.Show(mainWin,
+                    "No telemetry data was captured (the game may not be running or connected).\n\nThe diagnostic pack will contain NO FFB snapshot data.\n\nSend the pack anyway?",
+                    "No Telemetry Data", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (res != MessageBoxResult.Yes)
+                {
+                    StatusText = "Diagnostic pack cancelled - no telemetry data captured";
+                    DiagnosticPackStatus = "Cancelled";
+                    WriteDiagLog("CANCELLED", "User cancelled pack after empty-snapshot warning");
+                    return;
+                }
+            }
 
             StatusText = "Sending diagnostic pack...";
             DiagnosticPackStatus = "Sending...";
@@ -831,9 +845,15 @@ public sealed partial class MainViewModel
                 WriteDiagLog("PROGRESS", msg);
             });
             WriteDiagLog("STEP", "Calling DiagnosticPackService.SendAsync...");
-            var (success, message) = await DiagnosticPackService.SendAsync(dialog.Feedback, progress);
+            var (success, message, reportId) = await DiagnosticPackService.SendAsync(dialog.Feedback, progress);
             StatusText = message;
             WriteDiagLog("RESULT", $"Success={success}, Message={message}");
+
+            if (success && reportId != null)
+            {
+                _feedbackPollTimer.Start();
+                _ = PollFeedbackRepliesAsync();
+            }
 
             if (!success)
             {
@@ -862,6 +882,55 @@ public sealed partial class MainViewModel
     {
         return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "AcEvoFfbTuner", "diag_send.log");
+    }
+
+    private async Task PollFeedbackRepliesAsync()
+    {
+        if (_feedbackPolling) return;
+        _feedbackPolling = true;
+        try
+        {
+            if (FeedbackRelayService.GetActiveReports().Count == 0)
+            {
+                _feedbackPollTimer.Stop();
+                return;
+            }
+
+            var replies = await FeedbackRelayService.PollForRepliesAsync();
+            if (replies.Count > 10) replies = replies[^10..];
+            foreach (var (reportId, msg) in replies)
+            {
+                Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    if (Application.Current.MainWindow is not Views.MainWindow mw) return;
+                    var preview = msg.Content.Replace("\r", " ").Replace("\n", " ").Trim();
+                    if (preview.Length > 140) preview = preview[..140] + "…";
+                    if (msg.IsFix)
+                    {
+                        mw.ShowToast($"Fix available — Report {reportId}", preview, 8000);
+                        _ = CheckForUpdatesAsync();
+                    }
+                    else
+                    {
+                        mw.ShowToast($"Support reply — Report {reportId}", preview, 6000);
+                    }
+                });
+            }
+        }
+        catch { }
+        finally
+        {
+            _feedbackPolling = false;
+        }
+    }
+
+    [RelayCommand]
+    private void ShowFeedbackChat()
+    {
+        var mainWin = Application.Current?.MainWindow;
+        if (mainWin == null) return;
+        var dialog = new Views.FeedbackChatDialog { Owner = mainWin };
+        dialog.ShowDialog();
     }
 
     private static void WriteDiagLog(string category, string detail)
@@ -893,6 +962,8 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private async Task CheckForUpdatesAsync()
     {
+        if (_updateCheckRunning) return;
+        _updateCheckRunning = true;
         UpdateStatusText = "Checking for updates...";
         IsUpdateAvailable = false;
 
@@ -921,6 +992,10 @@ public sealed partial class MainViewModel
         {
             UpdateStatusText = "Update check failed";
             LogUpdate($"CheckForUpdates FAILED: {ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            _updateCheckRunning = false;
         }
     }
 

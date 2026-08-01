@@ -8,6 +8,18 @@ using System.Text.Json;
 
 namespace AcEvoFfbTuner.Services;
 
+public sealed class FeedbackReport
+{
+    public string ReportId { get; set; } = "";
+    public string ThreadId { get; set; } = "";
+    public string ChannelId { get; set; } = "";
+    public string WebhookUrl { get; set; } = "";
+    public string LastSeenMessageId { get; set; } = "";
+    public string LastReplyMessageId { get; set; } = "";
+    public string LastPollUtc { get; set; } = "";
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+
 public sealed class DiagnosticPackService
 {
     private static readonly byte[] _k = { 0x4A, 0xE7, 0x31, 0xC5, 0xB2, 0x09, 0xF8, 0x6D };
@@ -33,8 +45,9 @@ public sealed class DiagnosticPackService
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "AcEvoFfbTuner");
 
-    public static async Task<(bool Success, string Message)> SendAsync(string feedback, IProgress<string>? progress = null)
+    public static async Task<(bool Success, string Message, string? ReportId)> SendAsync(string feedback, IProgress<string>? progress = null)
     {
+        var reportId = NewReportId();
         try
         {
             progress?.Report("Collecting files...");
@@ -71,18 +84,31 @@ public sealed class DiagnosticPackService
             var zipBytes = File.ReadAllBytes(zipPath);
             var zipSizeMb = zipBytes.Length / (1024.0 * 1024.0);
 
-            var emailTask = SendEmailAsync(feedback, zipPath, zipSizeMb, videoLink);
-            var discordTask = PostToDiscordAsync(feedback, zipSizeMb, videoLink);
+            var emailTask = SendEmailAsync(feedback, zipPath, zipSizeMb, videoLink, reportId);
 
             await emailTask;
 
             try { File.Delete(zipPath); } catch { }
 
             progress?.Report("Posting to Discord...");
-            try { await discordTask; } catch { }
-
-            progress?.Report("Sent successfully!");
-            return (true, $"Diagnostic pack sent ({zipSizeMb:F1} MB)");
+            try
+            {
+                var (threadId, channelId, starterMessageId) = await PostToDiscordAsync(feedback, zipSizeMb, videoLink, reportId);
+                try
+                {
+                    await FeedbackRelayService.RegisterAsync(reportId, threadId, channelId,
+                        DiscordWebhookUrl, starterMessageId);
+                }
+                catch { }
+                progress?.Report("Sent successfully!");
+                return (true, $"Diagnostic pack sent ({zipSizeMb:F1} MB) — Report ID: {reportId}", reportId);
+            }
+            catch (Exception ex)
+            {
+                LogError(ex);
+                progress?.Report("Discord unavailable — pack sent via email only");
+                return (true, $"Diagnostic pack sent via email only ({zipSizeMb:F1} MB) — Report ID: {reportId} (Discord unavailable)", null);
+            }
         }
         catch (Exception ex)
         {
@@ -91,11 +117,11 @@ public sealed class DiagnosticPackService
                 : ex.Message;
             LogError(ex);
             progress?.Report($"Failed: {detail}");
-            return (false, $"Send failed: {detail}");
+            return (false, $"Send failed: {detail}", reportId);
         }
     }
 
-    private static async Task SendEmailAsync(string feedback, string zipPath, double zipSizeMb, string? videoLink)
+    private static async Task SendEmailAsync(string feedback, string zipPath, double zipSizeMb, string? videoLink, string reportId)
     {
         using var client = new SmtpClient(SmtpHost, SmtpPort);
         client.EnableSsl = true;
@@ -105,13 +131,14 @@ public sealed class DiagnosticPackService
         using var mail = new MailMessage();
         mail.From = new MailAddress(FromAddress);
         mail.To.Add(ToAddress);
-        mail.Subject = $"AC EVO FFB Tuner - Diagnostic Pack ({DateTime.Now:yyyy-MM-dd HH:mm})";
+        mail.Subject = $"AC EVO FFB Tuner - Diagnostic Pack ({reportId}) - {DateTime.Now:yyyy-MM-dd HH:mm}";
 
         string videoSection = videoLink != null
             ? $"\n\n--- SESSION VIDEO ---\n{videoLink}\n(Download to view the recorded driving session)"
             : "\n\n--- SESSION VIDEO ---\nNo video uploaded (no recording found or upload failed)";
 
         mail.Body = $"AC EVO FFB Tuner Diagnostic Pack\n" +
+                     $"Report ID: {reportId}\n" +
                      $"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
                      $"Package size: {zipSizeMb:F1} MB\n\n" +
                      $"Contains: Profiles, Track Maps, Snapshots, Recording Manifest, and Log files." +
@@ -125,14 +152,14 @@ public sealed class DiagnosticPackService
         await client.SendMailAsync(mail);
     }
 
-    private static async Task PostToDiscordAsync(string feedback, double zipSizeMb, string? videoLink)
+    private static async Task<(string ThreadId, string ChannelId, string StarterMessageId)> PostToDiscordAsync(string feedback, double zipSizeMb, string? videoLink, string reportId)
     {
         var truncatedFeedback = feedback.Length > 1500 ? feedback[..1500] + "..." : feedback;
 
         var payload = new Dictionary<string, object>
         {
-            ["thread_name"] = $"Diagnostic Pack — {DateTime.Now:yyyy-MM-dd HH:mm}",
-            ["content"] = $"**New diagnostic pack submitted** ({zipSizeMb:F1} MB)" +
+            ["thread_name"] = $"Diag Pack {reportId} — {DateTime.Now:yyyy-MM-dd HH:mm}",
+            ["content"] = $"**New diagnostic pack submitted** — Report ID: **`{reportId}`** ({zipSizeMb:F1} MB)" +
                           (videoLink != null ? $"\n📹 [Session Video]({videoLink})" : "") +
                           $"\n\n**Feedback:**\n{truncatedFeedback}",
             ["embeds"] = new[]
@@ -142,6 +169,7 @@ public sealed class DiagnosticPackService
                     ["color"] = 0x00D4AA,
                     ["fields"] = new object[]
                     {
+                        new Dictionary<string, object> { ["name"] = "Report ID", ["value"] = reportId, ["inline"] = true },
                         new Dictionary<string, object> { ["name"] = "Package Size", ["value"] = $"{zipSizeMb:F1} MB", ["inline"] = true },
                         new Dictionary<string, object> { ["name"] = "Video", ["value"] = videoLink != null ? "Included" : "None", ["inline"] = true },
                     },
@@ -152,8 +180,10 @@ public sealed class DiagnosticPackService
         };
 
         var logsZipPath = Path.Combine(Path.GetTempPath(), $"AcEvoFfbTuner_Logs_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+        const long maxAttachmentBytes = 7L * 1024 * 1024;
         try
         {
+            long totalBytes = 0;
             using (var fs = new FileStream(logsZipPath, FileMode.Create))
             using (var zip = new ZipArchive(fs, ZipArchiveMode.Create))
             {
@@ -165,10 +195,12 @@ public sealed class DiagnosticPackService
                         try
                         {
                             if (File.GetLastWriteTime(file).Date != today) continue;
+                            if (totalBytes + new FileInfo(file).Length > maxAttachmentBytes) continue;
                             var entry = zip.CreateEntry($"Logs/{Path.GetFileName(file)}", CompressionLevel.Optimal);
                             using var source = File.OpenRead(file);
                             using var dest = entry.Open();
                             source.CopyTo(dest);
+                            totalBytes += new FileInfo(file).Length;
                         }
                         catch { }
                     }
@@ -178,10 +210,12 @@ public sealed class DiagnosticPackService
                         try
                         {
                             if (File.GetLastWriteTime(file).Date != today) continue;
+                            if (totalBytes + new FileInfo(file).Length > maxAttachmentBytes) continue;
                             var entry = zip.CreateEntry($"Logs/{Path.GetFileName(file)}", CompressionLevel.Optimal);
                             using var source = File.OpenRead(file);
                             using var dest = entry.Open();
                             source.CopyTo(dest);
+                            totalBytes += new FileInfo(file).Length;
                         }
                         catch { }
                     }
@@ -193,17 +227,45 @@ public sealed class DiagnosticPackService
             form.Add(new StringContent(json, System.Text.Encoding.UTF8, "application/json"), "payload_json");
 
             var fileBytes = File.ReadAllBytes(logsZipPath);
-            var fileContent = new ByteArrayContent(fileBytes);
-            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
-            form.Add(fileContent, "files[0]", $"AcEvoFfbTuner_Logs_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+            if (fileBytes.Length > 0 && fileBytes.Length <= maxAttachmentBytes)
+            {
+                var fileContent = new ByteArrayContent(fileBytes);
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
+                form.Add(fileContent, "files[0]", $"AcEvoFfbTuner_Logs_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+            }
 
             var response = await _discordHttp.PostAsync(DiscordWebhookUrl, form);
             response.EnsureSuccessStatusCode();
+
+            var responseBody = await response.Content.ReadAsStringAsync();
+            string threadId = "", channelId = "", starterMessageId = "";
+            try
+            {
+                using var doc = JsonDocument.Parse(responseBody);
+                if (doc.RootElement.TryGetProperty("channel_id", out var t)) threadId = t.GetString() ?? "";
+                if (doc.RootElement.TryGetProperty("id", out var m)) starterMessageId = m.GetString() ?? "";
+                channelId = threadId;
+            }
+            catch { }
+            return (threadId, channelId, starterMessageId);
         }
         finally
         {
             try { if (File.Exists(logsZipPath)) File.Delete(logsZipPath); } catch { }
         }
+    }
+
+    private static string NewReportId()
+    {
+        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        var rand = new Random();
+        Span<char> chars = stackalloc char[9];
+        for (int i = 0; i < 9; i++)
+        {
+            if (i == 4) { chars[i] = '-'; continue; }
+            chars[i] = alphabet[rand.Next(alphabet.Length)];
+        }
+        return new string(chars);
     }
 
     private static void AddDirectoryToZip(ZipArchive zip, string dirPath, string entryPrefix, IProgress<string>? progress)

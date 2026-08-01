@@ -69,3 +69,7 @@ src/AcEvoFfbTuner/Resources/Gemini_Generated*
 
 ## Website (deployed separately)
 website/
+
+## Relay runtime state & caches
+relay/relay.db
+relay/__pycache__/

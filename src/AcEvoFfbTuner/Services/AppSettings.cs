@@ -32,6 +32,7 @@ public sealed class AppSettings
     public string? OpenAiApiKey { get; set; }
     public string OpenAiModel { get; set; } = "deepseek-v4-flash";
     public string AiBaseUrl { get; set; } = "https://opencode.ai/zen/go/v1";
+    public string FeedbackRelayUrl { get; set; } = "http://127.0.0.1:8090";
 
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");

@@ -688,6 +688,12 @@ public sealed partial class MainViewModel
 
         _ = CheckForUpdatesAsync();
         _ = EnsureFfmpegAsync();
+
+        if (FeedbackRelayService.GetActiveReports().Count > 0)
+        {
+            _feedbackPollTimer.Start();
+            _ = PollFeedbackRepliesAsync();
+        }
     }
 
     public void LoadAppSettings()
