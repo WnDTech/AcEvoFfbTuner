@@ -16,6 +16,9 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
     private R3eShared _lastData;
 
     private float[] _prevTireSpeed = new float[4];
+    private double[] _prevSuspensionDeflection = new double[4];
+    private int _suspVelocityZeroFrames;
+    private bool _suspVelocityValid;
 
     public float SteeringCenterTrimDeg { get; set; } = 0.0f;
 
@@ -87,6 +90,10 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
             System.Diagnostics.Debug.WriteLine($"[R3E] Connected to shared memory '{SharedMemoryName}'");
             
             _lastTicks = -1;
+            _suspVelocityZeroFrames = 0;
+            _suspVelocityValid = false;
+            Array.Clear(_prevTireSpeed);
+            Array.Clear(_prevSuspensionDeflection);
             GameConnected?.Invoke();
             return true;
         }
@@ -539,11 +546,12 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
 
     private float SynthesizeKerbVibration()
     {
-        // R3E exposes REAL suspension travel velocity (m/s) via
-        // Player.SuspensionVelocity — use it directly. The previous approach
-        // differentiated SuspensionDeflection (delta * 400) which overstates
-        // velocity whenever reads fall behind the 400 Hz physics rate, because
-        // each read delta spans multiple physics ticks.
+        double[] currentDeflection = {
+            _lastData.Player.SuspensionDeflection.FrontLeft,
+            _lastData.Player.SuspensionDeflection.FrontRight,
+            _lastData.Player.SuspensionDeflection.RearLeft,
+            _lastData.Player.SuspensionDeflection.RearRight };
+
         float maxVelocity = Math.Max(
             Math.Max(
                 Math.Abs((float)_lastData.Player.SuspensionVelocity.FrontLeft),
@@ -552,15 +560,50 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
                 Math.Abs((float)_lastData.Player.SuspensionVelocity.RearLeft),
                 Math.Abs((float)_lastData.Player.SuspensionVelocity.RearRight)));
 
-        // Scale: smooth track ≈ 0.01-0.05 m/s (near silence), bumps ≈ 0.1-0.3,
-        // kerb strikes ≈ 0.5-2.0 m/s (full intensity at ~3.3 m/s).
-        return Math.Min(maxVelocity * 0.3f, 1f);
+        // R3E populates SuspensionVelocity with small magnitudes (observed
+        // ~0.01-0.03 m/s on kerbs). A sustained all-zero read means the field
+        // is not populated on this build → fall back to deflection deltas.
+        if (maxVelocity > 0.0005f)
+        {
+            _suspVelocityZeroFrames = 0;
+            _suspVelocityValid = true;
+        }
+        else
+        {
+            _suspVelocityZeroFrames++;
+            // Warm-up allowance: stationary car / garage reads zero legitimately.
+            _suspVelocityValid = _suspVelocityZeroFrames < 60;
+        }
+
+        // Keep the deflection baseline fresh every frame so the fallback
+        // never uses a stale delta after a method switch.
+        float maxDeflectionDelta = 0f;
+        for (int i = 0; i < 4; i++)
+        {
+            float delta = Math.Abs((float)(currentDeflection[i] - _prevSuspensionDeflection[i]));
+            if (delta > maxDeflectionDelta) maxDeflectionDelta = delta;
+            _prevSuspensionDeflection[i] = currentDeflection[i];
+        }
+
+        if (_suspVelocityValid)
+        {
+            // Scale 3.0 compensates R3E's small real velocity values (observed
+            // ~0.01-0.03 m/s on kerbs) to reproduce the tuned deflection-derived
+            // output range (~0.02-0.10 from the pre-change telemetry log), while
+            // smooth-road noise (~0.002-0.005 m/s → 0.006-0.015) stays below the
+            // 0.02 HF8 noise gate.
+            return Math.Min(maxVelocity * 3.0f, 1f);
+        }
+
+        // Fallback: differentiate SuspensionDeflection (delta * 400 Hz tick rate),
+        // matching the original tuned behavior.
+        return Math.Min(maxDeflectionDelta * 400f * 0.3f, 1f);
     }
 
     /// <summary>
     /// Per-side kerb vibration (left = FL+RL, right = FR+RR) for pedal haptics —
     /// left kerb strikes feed the brake pedal, right kerb strikes feed the gas
-    /// pedal. Scale is stronger than the shared SynthesizeKerbVibration (0.3)
+    /// pedal. Scale is stronger than the shared SynthesizeKerbVibration (3.0)
     /// because the pedal feed needs usable intensity from R3E's small
     /// suspension-velocity values (observed ~0.01-0.03 on kerbs).
     /// </summary>
