@@ -20,6 +20,12 @@ Our goal is to **fix the code** so we can establish a reliable baseline profile 
 - Incremental builds can cache stale XAML/code-behind artifacts, hiding mismatches until runtime. Always clean first.
 - Run lint/typecheck if available
 
+### Release Notes — ALWAYS Update What's New
+- **Every release MUST ship full What's New release notes** (features / improvements / fixes). NEVER leave the auto-generated "Full Changelog" link-only body — a link is not release notes.
+- Format release notes with `### Features` / `### Improvements` / `### Fixes` headings and `- ` bullets — `ChangeLogService.ParseMarkdownBody` parses GitHub release bodies into the in-app What's New dialog, so keep that format.
+- When bumping the version: update (1) the csproj version, (2) the hardcoded entry in `ChangeLogService.cs`, (3) the GitHub release notes via `gh release edit <tag> --notes-file`, and (4) the README feature list.
+- Keep release notes and the hardcoded changelog entry in sync — same content, same wording.
+
 ### Local Backups
 - The official local backup directory is: `C:\Users\paul_\OneDrive\Documents\APP\ACEVO - Telemetry FFB\backups\YYYY-MM-DD\src`
 - Always create a dated backup before making sweeping or experimental changes: `Copy-Item -Path src -Destination "backups\$(Get-Date -Format 'yyyy-MM-dd')\src" -Recurse`

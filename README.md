@@ -6,7 +6,7 @@
 
 **Website:** [ffbtuner.wndtech.tips](https://ffbtuner.wndtech.tips/)
 
-A Windows desktop application that intercepts, processes, and enhances Force Feedback signals from **Assetto Corsa EVO**, **RaceRoom Racing Experience**, and **Assetto Corsa** before sending them to your DirectInput-compatible steering wheel.
+A Windows desktop application that intercepts, processes, and enhances Force Feedback signals from **Assetto Corsa EVO**, **RaceRoom Racing Experience**, **Assetto Corsa**, **Assetto Corsa Competizione**, and **Le Mans Ultimate** before sending them to your DirectInput-compatible steering wheel.
 
 Instead of relying on the game's native FFB output, this tool reads raw physics telemetry from each game's shared memory — tire forces, slip data, suspension travel, G-forces, vibrations — runs it through a fully configurable DSP pipeline with game-specific overrides, and sends the processed result directly to the wheel via a 1 kHz interpolation thread for buttery-smooth force output.
 
@@ -33,6 +33,8 @@ Select your game from a dropdown — the app automatically switches to the corre
 | **Assetto Corsa EVO** | `SharedMemoryReader` | `FfbPipeline` (base) | `LocalSurface` memory-mapped file |
 | **RaceRoom Racing Experience** | `RaceroomSharedMemoryReader` | `R3eFfbPipeline` | `$R3E` memory-mapped file |
 | **Assetto Corsa** | `AssettoCorsaSharedMemoryReader` | `AcFfbPipeline` | AC shared memory |
+| **Assetto Corsa Competizione** | `AccSharedMemoryReader` | `AccFfbPipeline` | AC `acpmf` shared memory |
+| **Le Mans Ultimate** | `LmuSharedMemoryReader` | `LmuFfbPipeline` | `LMU_Data` memory-mapped file |
 
 ### Multi-Stage FFB Processing Pipeline
 
@@ -67,6 +69,19 @@ Each game's pipeline extends the base with game-specific force shaping:
 - **Gear Shift Filter** — Mutes force spikes during gear changes
 - **Brake Boost** — Configurable weight-transfer boost for braking zones
 - **Simplified Pipeline** — Skips detail path (dynamic effects, tyre flex, EQ) for AC's lower-fidelity telemetry
+
+**Assetto Corsa Competizione (`AccFfbPipeline`):**
+- **Mz Channel Scale** — 5× self-aligning torque scaling tuned for ACC's force data
+- **Gear Shift Filter** — Mutes force spikes during gear changes
+- **Brake Boost** — Configurable weight-transfer boost for braking zones
+- **Trimmed Vibration Path** — Kerb/road/slip vibration gains zeroed to avoid noisy synthetic signals
+
+**Le Mans Ultimate (`LmuFfbPipeline`):**
+- **Standalone Core Path** — fully isolated processing (no EVO cross-contamination, same pattern as R3E)
+- **Gear Shift Filter** — Mutes force spikes during gear changes
+- **Brake Boost** — Configurable weight-transfer boost for braking zones
+- **Grip Scale** — Grip-based force scaling with optional tyre temperature gain
+- **Dedicated HF8 Mapping** — LMU-specific haptic signal mapper
 
 ### 10-Band FFB Equalizer
 
@@ -129,6 +144,19 @@ Direct support for the **ButtKicker HF8** haptic seat pad via the ForceFeel SDK:
 
 Source weights are mapped intelligently: seat zones emphasize suspension and slip feedback, back zones emphasize engine RPM and lateral G for maximum immersion.
 
+### Pedal Haptics
+
+Vibration feedback for the pedals via an Osoyoo Arduino Uno (or compatible serial device):
+
+| Feature | Details |
+|---------|---------|
+| **Per-Pedal Columns** | Independent brake and gas haptic routing with master gain per channel |
+| **Telemetry Sources** | ABS, brake pressure, TC cuts, throttle position, engine RPM, curb strikes, road texture, scrubbing |
+| **Live Pedal Input** | Physical pedal input mode (DirectInput) with keyboard (W/S/A) simulation fallback |
+| **Calibration** | Per-pedal deadzone, min/max, inversion, and smoothing |
+
+Work in progress — the Pedals tab is tagged **WIP** in the Devices page.
+
 ### Auto Setup & Wheel Detection
 
 - **Auto Setup** generates a complete baseline profile tuned for the detected wheel type and torque
@@ -158,6 +186,7 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 - Hardcoded GPS coordinates for 25+ known tracks (Nurburgring, Spa, Monza, Suzuka, etc.)
 - Force heatmap and diagnostic heatmap overlay (snap events, oscillations, clipping, anomalies)
 - Popout overlay window for second-screen use during track creation
+- **Live Map page** — real-time car position on OSM satellite tiles with Npos-based start/finish auto-calibration on line crossing (work in progress)
 - Generates actionable tuning recommendations with one-click apply
 
 ### Telemetry Profiler
@@ -195,7 +224,7 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 
 ### Additional Features
 
-- **Multi-Game Selection** — Switch between AC EVO, RaceRoom, and Assetto Corsa from a dropdown; pipeline and reader auto-switch
+- **Multi-Game Selection** — Switch between AC EVO, RaceRoom, Assetto Corsa, ACC, and Le Mans Ultimate from a dropdown; pipeline and reader auto-switch
 - **What's New Dialog** — Versioned changelog shown on startup after updates
 - **1 kHz Output Interpolation** — Dedicated thread interpolating between 333 Hz physics frames for smooth force transitions
 - **Auto-Update** — Downloads and installs new releases automatically
