@@ -50,6 +50,33 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.24.0",
+            Date = new DateTime(2026, 8, 2),
+            Title = "Track Map Rework, Live Map Auto-Calibration & Sidebar Overhaul",
+            Features =
+            [
+                "OSM relation-based circuit ordering (node-ID adjacency) — accurate track layouts, corner names, and start/finish for circuits where bounding-box search produced contaminated data",
+                "Live Map page: real-time car position on OSM satellite tiles with Npos-based start/finish auto-calibration on line crossing",
+                "Saved corner alignment shared between Track Map and Live Map pages",
+                "Sidebar reorder with WIP badges for in-progress features (Live Map, Track Map, Pedals)",
+                "Splash screen: modern redesign with version display, theme-aware colors, and smooth wheel rotation via Stopwatch"
+            ],
+            Improvements =
+            [
+                "Overpass API rate limiting (60s gate) and non-retryable 429 handling to avoid IP blocks",
+                "EVO shared memory: raw Npos read at corrected offset + last-known-good graphics returned on duplicate packets",
+                "Wheel snapshot button now warns when no live telemetry is captured instead of saving stale data"
+            ],
+            Fixes =
+            [
+                "Fixed circuit walk dropping or mirroring track segments when OSM ways connect in reverse orientation",
+                "Fixed Live Map auto-calibration firing on non-crossing frames (Npos wrap detection fully guarded)",
+                "Fixed snapshot no-data guard never detecting a disconnected game",
+                "Removed unused bounding-box track search tier (TrackOsmService)"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.23.61",
             Date = new DateTime(2026, 6, 14),
             Title = "CAMMUS C5 FFB fixes + steering angle snap fix",

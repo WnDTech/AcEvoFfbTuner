@@ -12,6 +12,8 @@ Instead of relying on the game's native FFB output, this tool reads raw physics 
 
 Each game has its own isolated FFB pipeline, shared memory reader, and haptic synthesis path, so tuning one game never affects another.
 
+Beyond the wheel, it drives pedal haptics, an HF8 haptic seat pad, wheel LEDs, and a full satellite track-map suite — all from the same telemetry stream.
+
 ## Download & Install
 
 Download the latest installer from [GitHub Releases](https://github.com/WnDTech/AcEvoFfbTuner/releases/latest).
@@ -301,6 +303,18 @@ Game Shared Memory (selected via dropdown)
       → WheelLedController → LED shift lights / ABS flash / flags
     → Hf8SignalMapper → HF8 Haptic Pad (8-zone seat vibration)
 ```
+
+## About Us
+
+**AC Evo FFB Tuner** is developed by **WnDTech** — a solo project built from a simple frustration: a BMW GT3 on a Moza R5 whose force feedback felt wrong, and no tool to fix it.
+
+What started as a fix for one car grew into a full multi-game FFB platform. Every pipeline stage, profile, and preset is validated against real telemetry — the app captures snapshots, animated HTML replays, and diagnostic packs so tuning decisions are driven by driving data, not guesswork.
+
+Sim racing is a hobby, and this project is made for the community: if a feature feels off, press the wheel button, grab a snapshot, and send it over — recordings and telemetry are what make the FFB better for everyone.
+
+- **Report issues:** [GitHub Issues](https://github.com/WnDTech/AcEvoFfbTuner/issues)
+- **Latest release:** [GitHub Releases](https://github.com/WnDTech/AcEvoFfbTuner/releases/latest)
+- **Website:** [ffbtuner.wndtech.tips](https://ffbtuner.wndtech.tips/)
 
 ## License
 
