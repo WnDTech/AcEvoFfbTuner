@@ -19,13 +19,13 @@
         </Border.Effect>
 
         <Grid>
-            <Border x:Name="GlowBorder" CornerRadius="14" BorderThickness="2"
+            <Border x:Name="DashBorder" CornerRadius="14" BorderThickness="2"
                     IsHitTestVisible="False"
                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                     Panel.ZIndex="1">
                 <Border.RenderTransformOrigin>0.5,0.5</Border.RenderTransformOrigin>
                 <Border.RenderTransform>
-                    <RotateTransform x:Name="GlowSweepRotation" Angle="0" />
+                    <RotateTransform x:Name="DashRotation" Angle="0" />
                 </Border.RenderTransform>
             </Border>
 

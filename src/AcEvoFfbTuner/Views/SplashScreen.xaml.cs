@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -27,7 +28,7 @@ public partial class SplashScreen : Window
     private double _angle;
     private int _progressStep;
     private int _fadeOutTicks;
-    private readonly Random _rng = new();
+    private readonly Stopwatch _spinStopwatch = new();
 
     public event Action? LoadingComplete;
 
@@ -81,6 +82,7 @@ public partial class SplashScreen : Window
         ApplyThemeColors();
         PlayEngineStartup();
         RunEntranceAnimations();
+        _spinStopwatch.Start();
         _spinTimer.Start();
         _progressStep = 0;
         _progressTimer.Start();
@@ -96,20 +98,23 @@ public partial class SplashScreen : Window
         RootShadow.Color = accent;
         ProgressShadow.Color = accent;
 
-        var a = accent.A / 255.0;
-        GlowBorder.BorderBrush = new LinearGradientBrush
+        var dashBrush = new LinearGradientBrush
         {
             StartPoint = new Point(0, 0),
-            EndPoint = new Point(1, 1),
+            EndPoint = new Point(1, 0),
             GradientStops =
             {
                 new GradientStop(Color.FromArgb(0, accent.R, accent.G, accent.B), 0),
-                new GradientStop(Color.FromArgb((byte)(0x44 * a), accent.R, accent.G, accent.B), 0.45),
-                new GradientStop(Color.FromArgb((byte)(0x88 * a), accent.R, accent.G, accent.B), 0.5),
-                new GradientStop(Color.FromArgb((byte)(0x44 * a), accent.R, accent.G, accent.B), 0.55),
+                new GradientStop(Color.FromArgb(0, accent.R, accent.G, accent.B), 0.42),
+                new GradientStop(Color.FromArgb((byte)(accent.A * 0.6), accent.R, accent.G, accent.B), 0.47),
+                new GradientStop(accent, 0.5),
+                new GradientStop(Color.FromArgb((byte)(accent.A * 0.6), accent.R, accent.G, accent.B), 0.53),
+                new GradientStop(Color.FromArgb(0, accent.R, accent.G, accent.B), 0.58),
                 new GradientStop(Color.FromArgb(0, accent.R, accent.G, accent.B), 1),
             }
         };
+        dashBrush.RelativeTransform = new RotateTransform(0, 0.5, 0.5);
+        DashBorder.BorderBrush = dashBrush;
     }
 
     private void RunEntranceAnimations()
@@ -131,7 +136,7 @@ public partial class SplashScreen : Window
         AnimateElement(StatusText, 0.7, 0.4);
         AnimateElement(ProgressContainer, 0.85, 0.4);
 
-        StartGlowSweep();
+        StartDashTravel();
         StartShimmer();
     }
 
@@ -156,13 +161,15 @@ public partial class SplashScreen : Window
         target.BeginAnimation(property, anim);
     }
 
-    private void StartGlowSweep()
+    private void StartDashTravel()
     {
-        var sweep = new DoubleAnimation(0, 360, TimeSpan.FromSeconds(3))
+        if (DashBorder.BorderBrush is not LinearGradientBrush { RelativeTransform: RotateTransform rt })
+            return;
+        var dash = new DoubleAnimation(0, 360, TimeSpan.FromSeconds(2))
         {
             RepeatBehavior = RepeatBehavior.Forever
         };
-        GlowSweepRotation.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, sweep);
+        rt.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, dash);
     }
 
     private void StartShimmer()
@@ -177,58 +184,12 @@ public partial class SplashScreen : Window
 
     private void OnSpinTick(object? sender, EventArgs e)
     {
-        var t = _progressStep * 0.09;
-
-        var phase = t % 7.0;
-
-        double target;
-
-        if (phase < 0.5)
-        {
-            target = Math.Sin(phase * 2 * Math.PI) * 10;
-        }
-        else if (phase < 1.5)
-        {
-            var p = (phase - 0.5) / 1.0;
-            target = EaseInOut(p) * 130;
-        }
-        else if (phase < 3.5)
-        {
-            var p = (phase - 1.5) / 2.0;
-            var baseAngle = 130 - p * 25;
-            var slip = Math.Sin(p * Math.PI * 5) * 20;
-            var selfAlign = Math.Sin(p * Math.PI * 13) * 12;
-            var rumble = Math.Sin(p * Math.PI * 40) * 7;
-            target = baseAngle + slip + selfAlign + rumble;
-        }
-        else if (phase < 5.0)
-        {
-            var p = (phase - 3.5) / 1.5;
-            var unwind = EaseInOut(p);
-            var baseAngle = 105 * (1.0 - unwind);
-            var rumble = Math.Sin(p * Math.PI * 45) * 10 * (1 - p);
-            target = baseAngle + rumble;
-        }
-        else
-        {
-            var p = (phase - 5.0) / 2.0;
-            target = Math.Sin(p * Math.PI) * 8;
-        }
-
-        _angle += (target - _angle) * 0.7;
+        var t = _spinStopwatch.Elapsed.TotalSeconds;
+        var target = Math.Sin(t * 4) * 60 + Math.Sin(t * 9) * 15;
+        _angle += (target - _angle) * 0.15;
         WheelRotation.Angle = _angle;
         WheelShake.X = 0;
         WheelShake.Y = 0;
-    }
-
-    private static double EaseInOut(double t) =>
-        t < 0.5 ? 2 * t * t : 1 - Math.Pow(-2 * t + 2, 2) / 2;
-
-    private double NextGaussian()
-    {
-        var u1 = 1.0 - _rng.NextDouble();
-        var u2 = 1.0 - _rng.NextDouble();
-        return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
     }
 
     private void OnProgressTick(object? sender, EventArgs e)
