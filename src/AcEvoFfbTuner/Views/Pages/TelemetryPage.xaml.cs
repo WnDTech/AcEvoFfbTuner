@@ -107,6 +107,22 @@ public partial class TelemetryPage : UserControl
             _timeLabels.Add(tb);
             ProfilerOverlayCanvas.Children.Add(tb);
         }
+
+        // Reset the profiler stats when the game disconnects so the "no telemetry
+        // data" guards reflect the CURRENT session instead of a previous one.
+        Loaded += (_, _) =>
+        {
+            if (DataContext is MainViewModel vm)
+                vm.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(MainViewModel.IsGameConnected) && !vm.IsGameConnected)
+                    {
+                        _pStatIdx = 0;
+                        _pStatFrames = 0;
+                        _pStatClips = 0;
+                    }
+                };
+        };
     }
 
     private int _steeringLockDeg = 900;
@@ -316,11 +332,26 @@ public partial class TelemetryPage : UserControl
         string text = BuildAnalysisText();
         Clipboard.SetText(text);
         if (DataContext is ViewModels.MainViewModel vm)
-            vm.StatusText = "Profiler snapshot copied to clipboard (includes graph data)";
+            vm.StatusText = HasLiveProfilerData()
+                ? "Profiler snapshot copied to clipboard (includes graph data)"
+                : "Warning: no telemetry data captured - start the game and drive first";
     }
 
-    public string AutoSaveSnapshot()
+    /// <summary>
+    /// True when the profiler has captured frames AND the game is currently connected —
+    /// prevents saving stale snapshots after the game has closed.
+    /// </summary>
+    private bool HasLiveProfilerData()
     {
+        if (_pStatFrames == 0) return false;
+        return DataContext is MainViewModel vm && vm.IsGameConnected;
+    }
+
+    public string? AutoSaveSnapshot()
+    {
+        if (!HasLiveProfilerData())
+            return null;
+
         string dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner", "snapshots");
         Directory.CreateDirectory(dir);
         string ts = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
@@ -399,6 +430,9 @@ public partial class TelemetryPage : UserControl
         sb.AppendLine($"TyreCompoundRear:  {vm?.CurrentTyreCompoundRear ?? ""}");
         sb.AppendLine($"WetnessFactor:     {vm?.WetWeatherCurrentFactor ?? 0f:F3}");
         sb.AppendLine();
+
+        if (_pStatFrames == 0)
+            sb.AppendLine("!!! WARNING: No telemetry frames captured - this snapshot contains NO FFB data (is the game running?) !!!");
 
         sb.AppendLine($"=== PROFILER STATISTICS (last ~{count} frames, global peak across {_pStatFrames}) ===");
         sb.AppendLine($"OutputMin:          {_pPkOutMin:F6}  ({_pPkOutMin * torqueNm:F2} Nm)");

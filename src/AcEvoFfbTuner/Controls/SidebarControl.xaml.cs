@@ -49,8 +49,11 @@ public partial class SidebarControl : UserControl
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Collapsed);
             CollapseBtn.ToolTip = "Expand sidebar";
 
-            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn })
+            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn, NavOverlaysBtn })
                 SetTemplateLabelVisibility(btn, "ItemLabel", Visibility.Collapsed);
+
+            SetTemplateLabelVisibility(NavLiveMapBtn, "WipBadge", Visibility.Collapsed);
+            SetTemplateLabelVisibility(NavMapBtn, "WipBadge", Visibility.Collapsed);
 
             if (CollapseBtn.Template.FindName("CollapseArrow", CollapseBtn) is System.Windows.Shapes.Path arrow)
                 arrow.Data = PathGeometry.Parse("M9,5 L16,12 L9,19");
@@ -63,8 +66,11 @@ public partial class SidebarControl : UserControl
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Visible);
             CollapseBtn.ToolTip = null;
 
-            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn })
+            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn, NavOverlaysBtn })
                 SetTemplateLabelVisibility(btn, "ItemLabel", Visibility.Visible);
+
+            SetTemplateLabelVisibility(NavLiveMapBtn, "WipBadge", Visibility.Visible);
+            SetTemplateLabelVisibility(NavMapBtn, "WipBadge", Visibility.Visible);
 
             if (CollapseBtn.Template.FindName("CollapseArrow", CollapseBtn) is System.Windows.Shapes.Path arrow)
                 arrow.Data = PathGeometry.Parse("M15,19 L8,12 L15,5");
@@ -88,5 +94,6 @@ public partial class SidebarControl : UserControl
         NavCoachBtn.IsChecked = page == NavPage.FfbCoach;
         NavDevicesBtn.IsChecked = page == NavPage.Devices;
         NavProfilesBtn.IsChecked = page == NavPage.Profiles;
+        NavOverlaysBtn.IsChecked = page == NavPage.Overlays;
     }
 }

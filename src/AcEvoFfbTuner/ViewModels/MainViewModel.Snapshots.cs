@@ -90,10 +90,18 @@ public sealed partial class MainViewModel
                 {
                     if (Application.Current?.MainWindow is MainWindow mw3)
                     {
-                        string path = mw3.AutoSaveSnapshot();
-                        StatusText = $"Wheel snapshot saved: {Path.GetFileName(path)}";
-                        _telemetryLoop.LiveServer.TriggerSnapshot();
-                        _voiceService.Speak("Snapshot saved");
+                        string? path = mw3.AutoSaveSnapshot();
+                        if (path == null)
+                        {
+                            StatusText = "Snapshot NOT saved - no telemetry data (is the game running?)";
+                            _voiceService.Speak("No telemetry data. Snapshot not saved.");
+                        }
+                        else
+                        {
+                            StatusText = $"Wheel snapshot saved: {Path.GetFileName(path)}";
+                            _telemetryLoop.LiveServer.TriggerSnapshot();
+                            _voiceService.Speak("Snapshot saved");
+                        }
                     }
                 }
             }

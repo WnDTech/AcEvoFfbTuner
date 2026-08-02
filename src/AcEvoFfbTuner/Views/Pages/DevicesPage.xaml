@@ -100,14 +100,20 @@
                     </RadioButton>
 
                     <RadioButton x:Name="PedalsTab" GroupName="DeviceTab"
-                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="Pedals">
+                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="Pedals (work in progress)">
                         <RadioButton.Template>
                             <ControlTemplate TargetType="RadioButton">
                                 <Border x:Name="TabBd" Background="Transparent" Padding="12,10" BorderThickness="3,0,0,0" BorderBrush="Transparent">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="🦶" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                        <TextBlock x:Name="TabLabel" Text="Pedals" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    </StackPanel>
+                                    <Grid>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="🦶" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <TextBlock x:Name="TabLabel" Text="Pedals" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <Border x:Name="PedalsWipBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,-6,-6,0">
+                                            <TextBlock Text="WIP" FontSize="9" FontWeight="Bold" Foreground="#FFF0A030" />
+                                        </Border>
+                                    </Grid>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">

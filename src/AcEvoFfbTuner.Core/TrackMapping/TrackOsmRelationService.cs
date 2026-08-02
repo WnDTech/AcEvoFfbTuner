@@ -16,8 +16,8 @@ namespace AcEvoFfbTuner.Core.TrackMapping;
 /// Cache: AppData/Roaming/AcEvoFfbTuner/TrackData/{trackName}_relation.json
 ///
 /// NOTE: Relation-based circuit data is NOT available for all tracks in OSM.
-/// When this returns null, the caller should fall through to the bounding-box
-/// way search (TrackOsmService).
+/// When this returns null, the caller should fall through to cached data
+/// or report that no track data was found.
 /// </summary>
 public sealed class TrackOsmRelationService : IDisposable
 {
@@ -30,18 +30,19 @@ public sealed class TrackOsmRelationService : IDisposable
         "AcEvoFfbTuner", "trackdata_relation.log");
 
     private readonly HttpClient _http;
-    private const string OverpassUrl = "https://overpass-api.de/api/interpreter";
     private DateTime _lastFetchAttempt = DateTime.MinValue;
 
-    /// <summary>Minimum raceway member ways required to accept a relation as valid.</summary>
-    private const int MinRacewayMembers = 8;
+    /// <summary>Overpass API endpoints — use as fallbacks if primary returns 429/504.</summary>
+    private const int MinRacewayMembers = 5;
+
+    private const string OverpassUrl = "https://overpass-api.de/api/interpreter";
 
     public TrackOsmRelationService()
     {
         _http = new HttpClient();
         _http.DefaultRequestHeaders.Add("User-Agent", "AcEvoFfbTuner/1.0 (relation-fetcher)");
         _http.DefaultRequestHeaders.Add("Accept", "application/json");
-        _http.Timeout = TimeSpan.FromSeconds(30);
+        _http.Timeout = TimeSpan.FromSeconds(45);
         Directory.CreateDirectory(CacheDir);
     }
 
@@ -155,56 +156,58 @@ public sealed class TrackOsmRelationService : IDisposable
     {
         if (string.IsNullOrWhiteSpace(trackName)) return null;
 
-        // Rate limiting: don't retry more than once per 60 seconds
+        // Look up GPS from TrackDatabase if not provided
+        if (!centerLat.HasValue || !centerLon.HasValue)
+        {
+            var loc = TrackDatabase.LookupTrackLocation(trackName);
+            if (loc.HasValue)
+            {
+                centerLat = loc.Value.lat;
+                centerLon = loc.Value.lon;
+            }
+        }
+
+        if (!centerLat.HasValue || !centerLon.HasValue)
+        {
+            Log($"No GPS for {trackName}, can't query relations");
+            return null;
+        }
+
+        // Rate limiting: at most one Overpass request per 60 seconds
         var elapsed = DateTime.UtcNow - _lastFetchAttempt;
-        if (elapsed.TotalSeconds < 60 && _lastFetchAttempt != DateTime.MinValue)
+        if (_lastFetchAttempt != DateTime.MinValue && elapsed.TotalSeconds < 60)
         {
             Log($"Rate-limited: skipping relation fetch for {trackName} (wait {60 - elapsed.TotalSeconds:F0}s)");
             return null;
         }
         _lastFetchAttempt = DateTime.UtcNow;
 
+        // Use a larger bounding box for relation search (relations can extend beyond the track itself)
+        double radiusDeg = 0.12; // ~13km — covers most circuits
+        double minLat = centerLat.Value - radiusDeg;
+        double maxLat = centerLat.Value + radiusDeg;
+        double minLon = centerLon.Value - radiusDeg;
+        double maxLon = centerLon.Value + radiusDeg;
+
+        var query = BuildRelationQuery(trackName, minLat, minLon, maxLat, maxLon);
+        Log($"Relation fetch: {trackName} at ({centerLat:F3}, {centerLon:F3})");
+
+        // Try fetching from the Overpass API
         try
         {
-            // Look up GPS from TrackDatabase if not provided
-            if (!centerLat.HasValue || !centerLon.HasValue)
-            {
-                var loc = TrackDatabase.LookupTrackLocation(trackName);
-                if (loc.HasValue)
-                {
-                    centerLat = loc.Value.lat;
-                    centerLon = loc.Value.lon;
-                }
-            }
-
-            if (!centerLat.HasValue || !centerLon.HasValue)
-            {
-                Log($"No GPS for {trackName}, can't query relations");
-                return null;
-            }
-
-            // Use a larger bounding box for relation search (relations can extend beyond the track itself)
-            double radiusDeg = 0.12; // ~13km — covers most circuits
-            double minLat = centerLat.Value - radiusDeg;
-            double maxLat = centerLat.Value + radiusDeg;
-            double minLon = centerLon.Value - radiusDeg;
-            double maxLon = centerLon.Value + radiusDeg;
-
-            var query = BuildRelationQuery(trackName, minLat, minLon, maxLat, maxLon);
-            Log($"Relation fetch: {trackName} at ({centerLat:F3}, {centerLon:F3}) radius={radiusDeg:F2}°");
-
             var content = new FormUrlEncodedContent(
                 new[] { new KeyValuePair<string, string>("data", query) });
             content.Headers.ContentType =
                 new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded");
 
             var response = await _http.PostAsync(OverpassUrl, content);
-            Log($"HTTP {(int)response.StatusCode} for {trackName} (relation)");
+            Log($"HTTP {(int)response.StatusCode} for {trackName}");
 
             if (!response.IsSuccessStatusCode)
             {
+                Log($"Overpass returned {(int)response.StatusCode} for {trackName}");
                 if ((int)response.StatusCode == 429)
-                    Log($"Rate limited by Overpass API — will wait 60s before retry");
+                    throw new OverpassRateLimitedException("Overpass API rate limit exceeded");
                 return null;
             }
 
@@ -213,26 +216,30 @@ public sealed class TrackOsmRelationService : IDisposable
 
             if (string.IsNullOrEmpty(json) || json.Length < 100)
             {
-                Log($"Empty/too-small relation response for {trackName}");
+                Log($"Empty/too-small response for {trackName}");
                 return null;
             }
 
             var result = ParseRelationResponse(json, trackName);
             if (result != null)
             {
-                Log($"Relation parsed: {result.Corners.Count} corners, pit={(result.Pit != null ? "yes" : "no")}, layout={result.TrackLayout?.Count ?? 0} pts for {trackName}");
+                Log($"Relation parsed: {result.Corners.Count} corners, {result.TrackLayout?.Count ?? 0} pts for {trackName}");
                 SaveCache(trackName, result);
             }
             else
             {
                 Log($"Failed to parse relation response for {trackName}");
             }
-
             return result;
         }
         catch (TaskCanceledException)
         {
-            Log($"Timeout for {trackName} (30s)");
+            Log($"Timeout for {trackName} (45s)");
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            Log($"Connection error: {ex.Message}");
             return null;
         }
         catch (Exception ex)
@@ -550,64 +557,47 @@ public sealed class TrackOsmRelationService : IDisposable
             return null;
         }
 
-        // Step 5: Use node-adjacency to find the correct circuit order
-        // Build node → way adjacency from the circuit member ways
+        // Step 5: Use OSM node-ID adjacency to find the correct circuit order.
+        // The Overpass query (out body geom) includes the "nodes" array on each way,
+        // giving us actual OSM node IDs. Two ways share a node if they both reference
+        // the same node ID — this is the ONLY reliable way to determine connection,
+        // because coordinate proximity creates false edges (parallel roads, pit lanes).
         var relNodeToWays = new Dictionary<long, List<long>>();
-        var relWayNodes = new Dictionary<long, List<long>>();
+        var relWayNodeIds = new Dictionary<long, List<long>>();
 
         foreach (var wid in circuitWayIds)
         {
             var wayEl = ways[wid];
-            var wayPts = ExtractWayGeometry(wayEl);
-            if (wayPts.Count < 2) continue;
+            var nodeIds = ExtractWayNodeIds(wayEl);
+            relWayNodeIds[wid] = nodeIds;
 
-            // Extract nodes from geometry (we need node IDs for adjacency, but
-            // with out body geom we only have lat/lon. Use endpoint lat/lon as the connection key.)
-            relWayNodes[wid] = new List<long>(); // placeholder — we'll use coordinate-based adjacency instead
+            if (nodeIds.Count < 2) continue;
+
+            // Register first and last nodes for adjacency
+            long firstNid = nodeIds[0];
+            long lastNid = nodeIds[^1];
+
+            if (!relNodeToWays.ContainsKey(firstNid))
+                relNodeToWays[firstNid] = new List<long>();
+            relNodeToWays[firstNid].Add(wid);
+
+            if (!relNodeToWays.ContainsKey(lastNid))
+                relNodeToWays[lastNid] = new List<long>();
+            relNodeToWays[lastNid].Add(wid);
         }
 
-        // Since we may not have OSM node IDs (only geometry coordinates from out body geom),
-        // use coordinate-based adjacency: two ways are connected if their endpoints are within ~5m
+        StaticLog($"Node-based adjacency: {relNodeToWays.Count} shared nodes across {circuitWayIds.Count} ways");
+
+        // Build endpoint info for angle calculations and layout assembly
         var wayEndpoints = new Dictionary<long, (TrackPoint first, TrackPoint last)>();
         foreach (var wid in circuitWayIds)
         {
-            var wayEl = ways[wid];
-            var pts = ExtractWayGeometry(wayEl);
+            var pts = ExtractWayGeometry(ways[wid]);
             if (pts.Count >= 2)
                 wayEndpoints[wid] = (pts[0], pts[^1]);
         }
 
-        const double connectThreshold = 0.00005; // ~5m at GPS scale
-
-        // Build adjacency: for each way, find ways connected at its first/last endpoint
-        var wayAdjacency = new Dictionary<long, List<(long neighbor, bool connectAtFirst)>>();
-        foreach (var wid in circuitWayIds)
-            wayAdjacency[wid] = new List<(long, bool)>();
-
-        foreach (var wid in circuitWayIds)
-        {
-            if (!wayEndpoints.TryGetValue(wid, out var ep)) continue;
-
-            foreach (var otherId in circuitWayIds)
-            {
-                if (otherId == wid || !wayEndpoints.TryGetValue(otherId, out var otherEp)) continue;
-
-                // wid's LAST connects to other's FIRST
-                if (DistSq(ep.last, otherEp.first) < connectThreshold)
-                    wayAdjacency[wid].Add((otherId, false));
-                // wid's LAST connects to other's LAST
-                if (DistSq(ep.last, otherEp.last) < connectThreshold)
-                    wayAdjacency[wid].Add((otherId, true));
-                // wid's FIRST connects to other's LAST
-                if (DistSq(ep.first, otherEp.last) < connectThreshold)
-                    wayAdjacency[wid].Insert(0, (otherId, false));
-                // wid's FIRST connects to other's FIRST
-                if (DistSq(ep.first, otherEp.first) < connectThreshold)
-                    wayAdjacency[wid].Insert(0, (otherId, true));
-            }
-        }
-
-        // Walk the circuit: start from the best starting way, follow adjacency
+        // Walk the circuit using node-based adjacency (same proven approach as bounding-box service)
         var orderedCircuitWays = new List<(long wayId, bool reversed)>();
         var visitedWays = new HashSet<long>();
 
@@ -616,117 +606,195 @@ public sealed class TrackOsmRelationService : IDisposable
         int bestConnections = -1;
         foreach (var wid in circuitWayIds)
         {
-            int conns = wayAdjacency.ContainsKey(wid) ? wayAdjacency[wid].Count : 0;
-            int ptCount = wayEndpoints.ContainsKey(wid)
-                ? (wayEndpoints[wid].first != default ? 10 : 0) + (wayEndpoints[wid].last != default ? 10 : 0)
-                : 0;
-            var wayEl = ways.ContainsKey(wid) ? ways[wid] : default;
-            var wayName = wayEl.ValueKind != JsonValueKind.Undefined
-                ? TryGetTag(TryGetObject(wayEl, "tags"), "name")
-                : null;
-            int score = conns * 10 + ptCount + (wayName != null ? 200 : 0);
+            var nodeIds = relWayNodeIds.ContainsKey(wid) ? relWayNodeIds[wid] : new List<long>();
+            int nodeConnections = 0;
+            foreach (var nid in nodeIds)
+            {
+                if (relNodeToWays.ContainsKey(nid) && relNodeToWays[nid].Count > 1)
+                    nodeConnections++;
+            }
+            var wayName = TryGetTag(TryGetObject(ways[wid], "tags"), "name");
+            int score = nodeConnections + (wayName != null ? 200 : 0);
             if (score > bestConnections) { bestConnections = score; startWay = wid; }
         }
 
         StaticLog($"Circuit walk starting from way {startWay}: \"{TryGetTag(TryGetObject(ways.ContainsKey(startWay) ? ways[startWay] : default, "tags"), "name") ?? "?"}\"");
 
-        // Walk forward from startWay
+        // Forward walk from startWay
         long? current = startWay;
+        bool currentReversed = false;
         while (current.HasValue && visitedWays.Add(current.Value))
         {
-            if (!wayEndpoints.TryGetValue(current.Value, out var curEp))
-                break;
+            var curNodes = relWayNodeIds.ContainsKey(current.Value) ? relWayNodeIds[current.Value] : new List<long>();
+            if (curNodes.Count < 2) break;
 
-            orderedCircuitWays.Add((current.Value, false));
+            orderedCircuitWays.Add((current.Value, currentReversed));
 
-            // Find next unvisited connected way
+            // Exit node: forward traversal exits at the LAST node, reversed at the FIRST
+            long exitNid = currentReversed ? curNodes[0] : curNodes[^1];
             long? nextWay = null;
             bool nextReversed = false;
 
-            if (wayAdjacency.TryGetValue(current.Value, out var neighbors))
+            if (relNodeToWays.TryGetValue(exitNid, out var connectedWays) &&
+                wayEndpoints.TryGetValue(current.Value, out var curEp))
             {
-                foreach (var (neighbor, needsReverse) in neighbors)
+                // Direction of travel when arriving at the exit node
+                double curDx, curDy;
+                if (currentReversed)
                 {
-                    if (!visitedWays.Contains(neighbor))
+                    curDx = curEp.first.Longitude - curEp.last.Longitude;
+                    curDy = curEp.first.Latitude - curEp.last.Latitude;
+                }
+                else
+                {
+                    curDx = curEp.last.Longitude - curEp.first.Longitude;
+                    curDy = curEp.last.Latitude - curEp.first.Latitude;
+                }
+                bool haveDir = curDx != 0 || curDy != 0;
+                double bestAngle = double.MaxValue;
+
+                foreach (var cwid in connectedWays)
+                {
+                    if (visitedWays.Contains(cwid)) continue;
+                    var cNodes = relWayNodeIds.ContainsKey(cwid) ? relWayNodeIds[cwid] : new List<long>();
+                    if (cNodes.Count < 2) continue;
+
+                    // Determine which end connects to our exit node
+                    if (!wayEndpoints.TryGetValue(cwid, out var nEp)) continue;
+
+                    bool rev;
+                    double candDx, candDy;
+                    if (cNodes[0] == exitNid)
                     {
-                        nextWay = neighbor;
-                        nextReversed = needsReverse;
-                        break;
+                        // Connects at first node → direction is toward last node
+                        rev = false;
+                        candDx = nEp.last.Longitude - nEp.first.Longitude;
+                        candDy = nEp.last.Latitude - nEp.first.Latitude;
+                    }
+                    else if (cNodes[^1] == exitNid)
+                    {
+                        // Connects at last node → traverse the way in reverse
+                        rev = true;
+                        candDx = nEp.first.Longitude - nEp.last.Longitude;
+                        candDy = nEp.first.Latitude - nEp.last.Latitude;
+                    }
+                    else continue;
+
+                    if (haveDir)
+                    {
+                        double dot = curDx * candDx + curDy * candDy;
+                        double cross = Math.Abs(curDx * candDy - curDy * candDx);
+                        double angle = Math.Atan2(cross, dot + 1e-10);
+                        if (angle < bestAngle)
+                        {
+                            bestAngle = angle;
+                            nextWay = cwid;
+                            nextReversed = rev;
+                        }
+                    }
+                    else if (nextWay == null)
+                    {
+                        nextWay = cwid;
+                        nextReversed = rev;
                     }
                 }
             }
 
             current = nextWay;
+            currentReversed = nextReversed;
         }
 
-        // Walk backward from startWay (to pick up the other half of the circuit)
+        // Backward walk from startWay to get the other half
         if (visitedWays.Count < circuitWayIds.Count)
         {
-            // Find an unvisited way that connects to the startWay's first endpoint
-            foreach (var wid in circuitWayIds)
+            var startNodes = relWayNodeIds.ContainsKey(startWay) ? relWayNodeIds[startWay] : new List<long>();
+            if (startNodes.Count >= 2)
             {
-                if (visitedWays.Contains(wid)) continue;
-                if (!wayEndpoints.TryGetValue(wid, out var ep)) continue;
-                if (!wayEndpoints.TryGetValue(startWay, out var startEp)) break;
+                // The backward half meets the start way at its FIRST node
+                long curWay = startWay;
+                bool curReversed = false;
+                long junction = startNodes[0];
 
-                if (DistSq(ep.last, startEp.first) < connectThreshold ||
-                    DistSq(ep.first, startEp.first) < connectThreshold)
+                while (true)
                 {
-                    bool needsReverse = DistSq(ep.first, startEp.first) < DistSq(ep.last, startEp.first);
-
-                    // Walk backward from this way
-                    var revCurrent = (long?)wid;
-                    var revPath = new List<(long wayId, bool reversed)>();
-                    var revVisited = new HashSet<long>();
-
-                    while (revCurrent.HasValue && revVisited.Add(revCurrent.Value))
+                    // Direction the car takes leaving the junction along curWay
+                    double exitDx = 0, exitDy = 0;
+                    if (wayEndpoints.TryGetValue(curWay, out var curEp2))
                     {
-                        if (!wayEndpoints.TryGetValue(revCurrent.Value, out var revEp))
-                            break;
-
-                        bool isReversed = needsReverse;
-                        revPath.Add((revCurrent.Value, isReversed));
-
-                        // Find predecessor: a way whose LAST connects to revCurrent's FIRST
-                        long? predWay = null;
-                        bool predReversed = false;
-                        foreach (var predId in circuitWayIds)
+                        if (curReversed)
                         {
-                            if (revVisited.Contains(predId) || visitedWays.Contains(predId)) continue;
-                            if (!wayEndpoints.TryGetValue(predId, out var predEp)) continue;
-
-                            if (DistSq(predEp.last, isReversed ? revEp.first : revEp.last) < connectThreshold)
-                            {
-                                predWay = predId;
-                                predReversed = false;
-                                break;
-                            }
-                            if (DistSq(predEp.first, isReversed ? revEp.first : revEp.last) < connectThreshold)
-                            {
-                                predWay = predId;
-                                predReversed = true;
-                                break;
-                            }
+                            exitDx = curEp2.first.Longitude - curEp2.last.Longitude;
+                            exitDy = curEp2.first.Latitude - curEp2.last.Latitude;
                         }
-
-                        if (predWay.HasValue)
+                        else
                         {
-                            needsReverse = predReversed;
+                            exitDx = curEp2.last.Longitude - curEp2.first.Longitude;
+                            exitDy = curEp2.last.Latitude - curEp2.first.Latitude;
                         }
-                        revCurrent = predWay;
                     }
 
-                    // Insert the backward path before the forward path
-                    revPath.Reverse();
-                    foreach (var (wayId, reversed) in revPath)
+                    long? nextPred = null;
+                    bool nextPredReversed = false;
+                    double bestAngle = double.MaxValue;
+                    if (relNodeToWays.TryGetValue(junction, out var predConnected))
                     {
-                        if (!visitedWays.Contains(wayId))
+                        foreach (var pid in predConnected)
                         {
-                            orderedCircuitWays.Insert(0, (wayId, reversed));
-                            visitedWays.Add(wayId);
+                            if (visitedWays.Contains(pid)) continue;
+                            var pNodes = relWayNodeIds.ContainsKey(pid) ? relWayNodeIds[pid] : new List<long>();
+                            if (pNodes.Count < 2) continue;
+                            if (!wayEndpoints.TryGetValue(pid, out var pEp)) continue;
+
+                            bool rev;
+                            double appDx, appDy;
+                            if (pNodes[0] == junction)
+                            {
+                                // Arrives at its first node → driven last→first
+                                rev = true;
+                                appDx = pEp.first.Longitude - pEp.last.Longitude;
+                                appDy = pEp.first.Latitude - pEp.last.Latitude;
+                            }
+                            else if (pNodes[^1] == junction)
+                            {
+                                // Arrives at its last node → driven first→last
+                                rev = false;
+                                appDx = pEp.last.Longitude - pEp.first.Longitude;
+                                appDy = pEp.last.Latitude - pEp.first.Latitude;
+                            }
+                            else continue;
+
+                            if (appDx != 0 || appDy != 0)
+                            {
+                                double dot = exitDx * appDx + exitDy * appDy;
+                                double cross = Math.Abs(exitDx * appDy - exitDy * appDx);
+                                double angle = Math.Atan2(cross, dot + 1e-10);
+                                if (angle < bestAngle)
+                                {
+                                    bestAngle = angle;
+                                    nextPred = pid;
+                                    nextPredReversed = rev;
+                                }
+                            }
+                            else if (nextPred == null)
+                            {
+                                nextPred = pid;
+                                nextPredReversed = rev;
+                            }
                         }
                     }
-                    break;
+
+                    if (nextPred == null || !visitedWays.Add(nextPred.Value))
+                        break;
+
+                    orderedCircuitWays.Insert(0, (nextPred.Value, nextPredReversed));
+
+                    // Continue from the way's far end (where the car enters it)
+                    var npNodes = relWayNodeIds.ContainsKey(nextPred.Value) ? relWayNodeIds[nextPred.Value] : new List<long>();
+                    if (npNodes.Count < 2) break;
+
+                    curWay = nextPred.Value;
+                    curReversed = nextPredReversed;
+                    junction = curReversed ? npNodes[^1] : npNodes[0];
                 }
             }
         }
@@ -887,6 +955,47 @@ public sealed class TrackOsmRelationService : IDisposable
         // Step 8: Extract pit lane — merge connected segments, filter secondary pits
         result.Pit = BuildPitLaneFromRelation(pitWayIds, orderedCircuitWays, ways, result.StartFinish);
 
+        // CRITICAL: The start/finish line is on the straight JUST BEFORE the first
+        // corner (T1). Strategy:
+        //   1. If a pit lane exists AND its exit is within 300m of corner 1, use the
+        //      pit exit as the start line anchor — the pit exit merges right at the
+        //      start/finish line on most circuits.
+        //   2. Otherwise walk back a fixed distance from corner 1 along the layout.
+        if (result.Corners.Count > 0)
+        {
+            var corner1 = result.Corners[0];
+            int corner1Idx = FindNearestLayoutIndex(corner1.Latitude, corner1.Longitude, fullLayout);
+
+            bool usedPitExit = false;
+            if (result.Pit != null)
+            {
+                var pitExit = new TrackPoint(result.Pit.ExitLatitude, result.Pit.ExitLongitude);
+                double exitToT1 = HaversineMRelation(pitExit, new TrackPoint(corner1.Latitude, corner1.Longitude));
+                if (exitToT1 < 300.0)
+                {
+                    int sfIdx = FindNearestLayoutIndex(pitExit.Latitude, pitExit.Longitude, fullLayout);
+                    result.StartFinish = new TrackPoint(fullLayout[sfIdx].Latitude, fullLayout[sfIdx].Longitude);
+                    usedPitExit = true;
+                    StaticLog($"Start/finish from pit exit (exitToT1={exitToT1:F0}m): layout idx {sfIdx} " +
+                              $"({result.StartFinish.Latitude:F5},{result.StartFinish.Longitude:F5})");
+                }
+            }
+
+            if (!usedPitExit)
+            {
+                int sfIdx = WalkBackFromIndex(corner1Idx, fullLayout, 80.0); // ~80m before T1
+                result.StartFinish = new TrackPoint(fullLayout[sfIdx].Latitude, fullLayout[sfIdx].Longitude);
+                StaticLog($"Start/finish walked back from corner 1 \"{corner1.Name}\": layout idx {sfIdx} " +
+                          $"({result.StartFinish.Latitude:F5},{result.StartFinish.Longitude:F5})");
+            }
+        }
+        else if (result.Pit != null)
+        {
+            // No corners — fall back to pit exit (approximate)
+            result.StartFinish = new TrackPoint(result.Pit.ExitLatitude, result.Pit.ExitLongitude);
+            StaticLog($"Start/finish fallback to pit exit position (no corners)");
+        }
+
         // Step 9: Compute track length and sector boundaries
         result.TrackLengthM = ComputeTrackLength(fullLayout);
         result.SectorBoundaries = ComputeSectorBoundaries(fullLayout, result.TrackLengthM);
@@ -930,6 +1039,18 @@ public sealed class TrackOsmRelationService : IDisposable
         }
 
         return pts;
+    }
+
+    /// <summary>Extract OSM node IDs from a way element (from the "nodes" array in out body geom).</summary>
+    private static List<long> ExtractWayNodeIds(JsonElement wayEl)
+    {
+        var nodeIds = new List<long>();
+        if (wayEl.TryGetProperty("nodes", out var nodesArr))
+        {
+            foreach (var n in nodesArr.EnumerateArray())
+                nodeIds.Add(n.GetInt64());
+        }
+        return nodeIds;
     }
 
     /// <summary>
@@ -988,21 +1109,54 @@ public sealed class TrackOsmRelationService : IDisposable
         var merged = MergeConnectedPitSegments(segments);
         if (merged.Count < 2) return null;
 
-        // Determine entry vs exit using start/finish reference
+        // Determine entry vs exit.
+        // The pit EXIT is where cars rejoin the track — right at/near the start/finish
+        // line on the pit straight. The pit ENTRY is at the end of the lap (chicane area).
+        // Reference: the START of the circuit layout (the first circuit way in the walk),
+        // which for well-formed relations is the start/finish straight. The pit lane end
+        // CLOSEST to the layout start is the EXIT.
         TrackPoint? sfRef = startFinish;
-        if (sfRef == null)
+        double distFirstToStart = double.MaxValue, distLastToStart = double.MaxValue;
+        double distFirstToSf = double.MaxValue, distLastToSf = double.MaxValue;
+
+        // Prefer the circuit layout start (first point of the first circuit way)
+        // as the primary reference for pit exit detection.
+        if (circuitWays.Count > 0)
         {
-            int mid = merged.Count / 2;
-            sfRef = merged[mid];
+            var firstWayId = circuitWays[0].wayId;
+            if (ways.TryGetValue(firstWayId, out var firstWayEl))
+            {
+                var firstPts = ExtractWayGeometry(firstWayEl);
+                if (firstPts.Count > 0)
+                {
+                    var startPt = firstPts[0];
+                    distFirstToStart = HaversineMRelation(startPt, merged[0]);
+                    distLastToStart = HaversineMRelation(startPt, merged[^1]);
+                    StaticLog($"Pit exit check vs layout start ({startPt.Latitude:F5},{startPt.Longitude:F5}): " +
+                              $"pitFirst={distFirstToStart:F0}m pitLast={distLastToStart:F0}m");
+                }
+            }
         }
 
-        double distFirst = sfRef != null ? HaversineMRelation(sfRef, merged[0]) : 0;
-        double distLast = sfRef != null ? HaversineMRelation(sfRef, merged[^1]) : 0;
+        // Fallback: use provided start/finish estimate
+        if (sfRef != null)
+        {
+            distFirstToSf = HaversineMRelation(sfRef, merged[0]);
+            distLastToSf = HaversineMRelation(sfRef, merged[^1]);
+        }
 
-        // Exit is closer to start/finish (cars rejoin near SF), entry is farther
-        bool exitIsFirst = distFirst < distLast;
+        // Determine exit: the pit lane end closest to the layout start (or SF reference)
+        bool exitIsFirst;
+        if (distFirstToStart < double.MaxValue)
+        {
+            exitIsFirst = distFirstToStart < distLastToStart;
+        }
+        else
+        {
+            exitIsFirst = distFirstToSf < distLastToSf;
+        }
 
-        StaticLog($"Pit lane merged: {segments.Count} segments into {merged.Count} pts");
+        StaticLog($"Pit lane merged: {segments.Count} segments into {merged.Count} pts, exitIsFirst={exitIsFirst}");
         return new TrackPitInfo
         {
             EntryLatitude = exitIsFirst ? merged[^1].Latitude : merged[0].Latitude,
@@ -1192,6 +1346,44 @@ public sealed class TrackOsmRelationService : IDisposable
                    Math.Cos(b.Latitude * Math.PI / 180.0) *
                    sinDLon * sinDLon;
         return 2 * R * Math.Asin(Math.Sqrt(h));
+    }
+
+    /// <summary>Find the layout index closest to a GPS position.</summary>
+    private static int FindNearestLayoutIndex(double lat, double lon, List<TrackPoint> layout)
+    {
+        int nearest = 0;
+        double best = double.MaxValue;
+        for (int i = 0; i < layout.Count; i++)
+        {
+            double dlat = lat - layout[i].Latitude;
+            double dlon = lon - layout[i].Longitude;
+            double d = dlat * dlat + dlon * dlon;
+            if (d < best) { best = d; nearest = i; }
+        }
+        return nearest;
+    }
+
+    /// <summary>
+    /// Walk BACKWARD from a layout index (decreasing index, wrapping around the loop)
+    /// until the accumulated distance reaches the target meters. Used to place the
+    /// start/finish line a short distance before corner 1 (T1).
+    /// </summary>
+    private static int WalkBackFromIndex(int startIdx, List<TrackPoint> layout, double targetMeters)
+    {
+        int n = layout.Count;
+        if (n < 3) return startIdx;
+
+        double walked = 0;
+        int idx = startIdx;
+        for (int steps = 0; steps < n; steps++)
+        {
+            int prev = (idx - 1 + n) % n;
+            walked += HaversineMRelation(layout[idx], layout[prev]);
+            if (walked >= targetMeters)
+                return prev;
+            idx = prev;
+        }
+        return idx;
     }
 
     private static TrackPoint? EstimateStartFinish(List<TrackPoint> layout)
@@ -1449,4 +1641,11 @@ public sealed class TrackOsmRelationService : IDisposable
     #endregion
 
     public void Dispose() => _http.Dispose();
+}
+
+/// <summary>Thrown when the Overpass API rate-limits a request (HTTP 429). Not retryable.</summary>
+public sealed class OverpassRateLimitedException : Exception
+{
+    public OverpassRateLimitedException() { }
+    public OverpassRateLimitedException(string message) : base(message) { }
 }

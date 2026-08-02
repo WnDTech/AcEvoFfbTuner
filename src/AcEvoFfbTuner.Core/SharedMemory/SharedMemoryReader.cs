@@ -20,6 +20,7 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
 
     private int _lastPhysicsPacketId = -1;
     private int _lastGraphicsPacketId = -1;
+    private SPageFileGraphicEvo _lastGoodGraphics;
 
     public bool IsConnected => _physicsMmf != null;
 
@@ -310,7 +311,15 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
             }
 
             if (graphics.PacketId == _lastGraphicsPacketId)
+            {
+                // Duplicate packet — return the last known-good data instead of
+                // leaving the caller with a default (all-zero) struct. The game
+                // updates graphics slower than physics, so without this the caller
+                // sees Npos=0 and other fields zeroed on most frames.
+                graphics = _lastGoodGraphics;
                 return false;
+            }
+            _lastGraphicsPacketId = graphics.PacketId;
 
             if (graphics.PacketId % 100 == 0)
                 DumpGraphicsBytes(buffer);
@@ -320,6 +329,20 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
                 graphics.FfbStrength = BitConverter.ToSingle(buffer, 96);
                 graphics.CarFfbMultiplier = BitConverter.ToSingle(buffer, 100);
             }
+
+            // Npos: our C# struct's tyre struct is 251 bytes but the real game
+            // tyre state is 256 bytes per corner (5 bytes × 4 tyres = 20 bytes drift),
+            // so struct-based Npos reads the WRONG offset (always 0).
+            // Verified against graphics hex dump: real Npos is at offset 1244.
+            if (buffer.Length >= 1248)
+            {
+                float rawNpos = BitConverter.ToSingle(buffer, 1244);
+                if (!float.IsNaN(rawNpos) && !float.IsInfinity(rawNpos))
+                    graphics.Npos = rawNpos;
+            }
+
+            // Cache the fully-populated struct for duplicate-packet frames
+            _lastGoodGraphics = graphics;
 
 
 

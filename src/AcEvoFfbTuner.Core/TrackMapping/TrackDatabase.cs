@@ -84,9 +84,10 @@ public class TrackDetailedInfo
 
     /// <summary>
     /// Current cache version. Bump when the data model or processing changes.
+    /// v4: Switched to OSM node-ID adjacency for circuit ordering (replaces coordinate proximity)
     /// v3: Added foreign way filtering (kart tracks, moto, etc.)
     /// </summary>
-    public const int CurrentCacheVersion = 3;
+    public const int CurrentCacheVersion = 9;
 }
 
 public static class TrackDatabase

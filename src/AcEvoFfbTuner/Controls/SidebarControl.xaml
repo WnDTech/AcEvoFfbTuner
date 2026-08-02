@@ -155,59 +155,18 @@
                 </RadioButton.Style>
             </RadioButton>
 
-            <RadioButton x:Name="NavMapBtn" GroupName="SidebarNav" Content="Track Map" Margin="4,1"
-                         Tag="{x:Static vm:NavPage.TrackMap}" Click="OnNavClick" Cursor="Hand"
-                         ToolTip="Track Map — track layout, FFB diagnostics, and live satellite view with GPS">
+            <!-- Nav: FFB Coach -->
+            <RadioButton x:Name="NavCoachBtn" GroupName="SidebarNav" Content="FFB Coach" Margin="4,1"
+                         Tag="{x:Static vm:NavPage.FfbCoach}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="FFB Coach — interactive tuning assistant using telemetry data">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
-                                        <Path Data="M5,18 C5,8 10,4 14,4 C18,4 20,8 20,12 C20,16 16,20 12,20 C8,20 5,18 5,14"
-                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
-                                              StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                                    </Canvas>
-                                </Viewbox>
-                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
-                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
-                            </Trigger>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </RadioButton.Template>
-                <RadioButton.Style>
-                    <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
-                        <Style.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </RadioButton.Style>
-            </RadioButton>
-
-            <RadioButton x:Name="NavLiveMapBtn" GroupName="SidebarNav" Content="Live Map" Margin="4,1"
-                         Tag="{x:Static vm:NavPage.LiveTrackMap}" Click="OnNavClick" Cursor="Hand"
-                         ToolTip="Live Map — OSM track data with satellite view">
-                <RadioButton.Template>
-                    <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
-                            <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Data="M3,17 L3,7 L21,7 L21,17 Z M7,12 A3,3,0,1,0 13,12 A3,3,0,1,0 7,12 M15,9 L19,9 M15,12 L19,12 M15,15 L17,15"
-                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
-                                              StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                        <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 L22,22 L22,12 C22,6.48 17.52,2 12,2 Z M12,18 C11.45,18 11,17.55 11,17 C11,16.45 11.45,16 12,16 C12.55,16 13,16.45 13,17 C13,17.55 12.55,18 12,18 Z M13,14 L11,14 L11,8 L13,8 L13,14 Z"
+                                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
                                     </Canvas>
                                 </Viewbox>
                                 <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
@@ -238,6 +197,7 @@
             </RadioButton>
 
             <RadioButton x:Name="NavTelemetryBtn" GroupName="SidebarNav" Content="Telemetry" Margin="4,1"
+
                          Tag="{x:Static vm:NavPage.Telemetry}" Click="OnNavClick" Cursor="Hand"
                          ToolTip="Telemetry — live profiler and signal analysis">
                 <RadioButton.Template>
@@ -249,47 +209,6 @@
                                         <Path Data="M4,18 V4 M4,18 H20 M6,14 L9,8 L12,12 L16,6 L20,10"
                                               Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                               StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                                    </Canvas>
-                                </Viewbox>
-                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
-                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
-                            </Trigger>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </RadioButton.Template>
-                <RadioButton.Style>
-                    <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
-                        <Style.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </RadioButton.Style>
-            </RadioButton>
-
-            <!-- Nav: FFB Coach -->
-            <RadioButton x:Name="NavCoachBtn" GroupName="SidebarNav" Content="FFB Coach" Margin="4,1"
-                         Tag="{x:Static vm:NavPage.FfbCoach}" Click="OnNavClick" Cursor="Hand"
-                         ToolTip="FFB Coach — interactive tuning assistant using telemetry data">
-                <RadioButton.Template>
-                    <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
-                            <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 L22,22 L22,12 C22,6.48 17.52,2 12,2 Z M12,18 C11.45,18 11,17.55 11,17 C11,16.45 11.45,16 12,16 C12.55,16 13,16.45 13,17 C13,17.55 12.55,18 12,18 Z M13,14 L11,14 L11,8 L13,8 L13,14 Z"
-                                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
                                     </Canvas>
                                 </Viewbox>
                                 <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
@@ -423,6 +342,102 @@
                                            VerticalAlignment="Center" />
                             </StackPanel>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </RadioButton.Template>
+                <RadioButton.Style>
+                    <Style TargetType="RadioButton">
+                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="#FFF0883E" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </RadioButton.Style>
+            </RadioButton>
+
+            <Border Background="#FF30363D" Height="1" Margin="12,8,12,4" />
+
+            <RadioButton x:Name="NavLiveMapBtn" GroupName="SidebarNav" Content="Live Map" Margin="4,1"
+                         Tag="{x:Static vm:NavPage.LiveTrackMap}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Live Map — OSM track data with satellite view (work in progress)">
+                <RadioButton.Template>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal">
+                                    <Viewbox Width="24" Height="24" Margin="0,0,12,0">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Data="M3,17 L3,7 L21,7 L21,17 Z M7,12 A3,3,0,1,0 13,12 A3,3,0,1,0 7,12 M15,9 L19,9 M15,12 L19,12 M15,15 L17,15"
+                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                                  StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <Border x:Name="WipBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,-4,-6,0">
+                                    <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="#FFF0A030" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </RadioButton.Template>
+                <RadioButton.Style>
+                    <Style TargetType="RadioButton">
+                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="#FFF0883E" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </RadioButton.Style>
+            </RadioButton>
+
+            <RadioButton x:Name="NavMapBtn" GroupName="SidebarNav" Content="Track Map" Margin="4,1"
+                         Tag="{x:Static vm:NavPage.TrackMap}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Track Map — track layout, FFB diagnostics, and live satellite view with GPS (work in progress)">
+                <RadioButton.Template>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                            <Grid>
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M5,18 C5,8 10,4 14,4 C18,4 20,8 20,12 C20,16 16,20 12,20 C8,20 5,18 5,14"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Border x:Name="WipBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                    Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,-4,-6,0">
+                                <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="#FFF0A030" />
+                            </Border>
+                        </Grid>
+                    </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />

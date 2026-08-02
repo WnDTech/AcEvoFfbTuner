@@ -107,6 +107,31 @@ namespace AcEvoFfbTuner.Core.TrackMapping
     private static string SanitizeFileName(string name) =>
         string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
 
+    /// <summary>
+    /// Apply the saved corner alignment for a track: computes the rigid transform,
+    /// anchors it on the first alignment point, and applies the geo-reference.
+    /// Shared by TrackMapPage and LiveTrackMapPage so rotation/anchor semantics
+    /// cannot drift between the two pages.
+    /// </summary>
+    public static bool TryApplyAlignment(SatelliteMapService service, string trackName,
+        out float anchorLat, out float anchorLon, out float rotationDeg)
+    {
+        anchorLat = 0;
+        anchorLon = 0;
+        rotationDeg = 0;
+
+        var alignment = LoadAlignment(trackName);
+        if (alignment == null || alignment.Points.Count < 2) return false;
+        if (!TryComputeRigidTransform(alignment.Points, out _, out _, out var rotRad)) return false;
+
+        var anchor = alignment.Points[0];
+        anchorLat = (float)anchor.Latitude;
+        anchorLon = (float)anchor.Longitude;
+        rotationDeg = (float)(-rotRad * 180.0 / Math.PI);
+        service.SetGeoReference(anchorLat, anchorLon, rotationDeg);
+        return true;
+    }
+
         public static bool TryComputeRigidTransform(List<GroundControlPoint> points, out float gameCenterX, out float gameCenterZ, out float rotationRad)
         {
             gameCenterX = 0;

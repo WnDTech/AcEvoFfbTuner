@@ -136,6 +136,8 @@ public partial class DevicesPage : UserControl
             foreach (var btn in new[] { LedTab, HapticTab, ButtonsTab, PedalsTab })
                 SetTemplateLabelVisibility(btn, "TabLabel", Visibility.Collapsed);
 
+            SetTemplateLabelVisibility(PedalsTab, "PedalsWipBadge", Visibility.Collapsed);
+
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Collapsed);
             CollapseBtn.ToolTip = "Expand sidebar";
 
@@ -149,6 +151,8 @@ public partial class DevicesPage : UserControl
 
             foreach (var btn in new[] { LedTab, HapticTab, ButtonsTab, PedalsTab })
                 SetTemplateLabelVisibility(btn, "TabLabel", Visibility.Visible);
+
+            SetTemplateLabelVisibility(PedalsTab, "PedalsWipBadge", Visibility.Visible);
 
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Visible);
             CollapseBtn.ToolTip = "Collapse sidebar";

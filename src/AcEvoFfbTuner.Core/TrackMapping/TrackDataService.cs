@@ -2,10 +2,7 @@ namespace AcEvoFfbTuner.Core.TrackMapping;
 
 /// <summary>
 /// Provides track data (corner names, layout GPS, pit info, start/finish) using
-/// a tiered fallback chain via <see cref="TieredTrackDataProvider"/>.
-///
-/// Tier 1: OSM route relations (most accurate)
-/// Tier 3: OSM bounding-box way search (current implementation, fallback)
+/// <see cref="TieredTrackDataProvider"/> with automatic retry on failure.
 /// </summary>
 public class TrackDataService : IDisposable
 {

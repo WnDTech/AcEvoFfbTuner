@@ -1,63 +1,45 @@
 namespace AcEvoFfbTuner.Core.TrackMapping;
 
 /// <summary>
-/// Orchestrates the fallback chain for track data:
+/// Provides track data (corner names, layout GPS, pit info, start/finish) via
+/// OSM Overpass relation queries with retry logic.
 ///
-///   Tier 1: OSM Route Relations (most accurate, curated circuit data)
-///   Tier 2: [reserved for future RacingCircuits.info or similar]
-///   Tier 3: OSM Bounding-Box Way Search (current implementation)
-///   Tier 4: Self-recorded driving data [future]
-///
-/// Each tier returns a <see cref="TrackDetailedInfo"/> with its <see cref="TrackDetailedInfo.DataSource"/>
-/// populated. The highest-accuracy available data wins.
+/// The bounding-box OSM approach has been removed — it produced contaminated
+/// data from kart tracks, service roads, and incorrectly ordered ways.
+/// Only relation-based queries are used, which give correct circuit data.
 /// </summary>
 public sealed class TieredTrackDataProvider : IDisposable
 {
     private readonly TrackOsmRelationService _relationService;
-    private readonly TrackOsmService _osmService;
+
+    /// <summary>Maximum number of retries when the Overpass API fails.</summary>
+    private const int MaxRetries = 3;
+
+    /// <summary>Base delay between retries (doubles each attempt).</summary>
+    private static readonly TimeSpan RetryBaseDelay = TimeSpan.FromSeconds(5);
 
     public TieredTrackDataProvider()
     {
         _relationService = new TrackOsmRelationService();
-        _osmService = new TrackOsmService();
     }
 
     public Action<string>? StatusMessage
     {
-        set
-        {
-            _relationService.StatusLog = value;
-            _osmService.StatusLog = value;
-        }
+        set { _relationService.StatusLog = value; }
     }
 
     /// <summary>
-    /// Load from any tier's cache without fetching. Returns the best cached data available.
-    /// Checks in priority order: Relation → OSM BBox.
+    /// Load from the relation cache without fetching.
     /// </summary>
     public TrackDetailedInfo? LoadBestCached(string trackName)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return null;
-
-        // Tier 1 cache
-        var cached = _relationService.LoadCached(trackName);
-        if (cached != null)
-            return cached;
-
-        // Tier 3 cache
-        cached = _osmService.LoadCached(trackName);
-        if (cached != null)
-        {
-            cached.DataSource = TrackDataSource.OsmBoundingBox;
-            return cached;
-        }
-
-        return null;
+        return _relationService.LoadCached(trackName);
     }
 
     /// <summary>
-    /// Fetch track data by trying each tier in priority order.
-    /// Returns the best available result, or null if all tiers fail.
+    /// Fetch track data from OSM relations with automatic retry on failure.
+    /// Returns validated track data, or null if all attempts fail.
     /// </summary>
     public async Task<TrackDetailedInfo?> FetchTrackDataAsync(
         string trackName,
@@ -78,39 +60,55 @@ public sealed class TieredTrackDataProvider : IDisposable
             }
         }
 
-        // Tier 1: OSM Route Relations
-        var relationData = await _relationService.FetchTrackDataAsync(trackName, centerLat, centerLon);
-        if (relationData != null && ValidateTrackData(relationData, trackName))
+        // Try fetching with retry logic
+        for (int attempt = 1; attempt <= MaxRetries; attempt++)
         {
-            relationData.DataSource = TrackDataSource.OsmRelation;
-            relationData.ConfidenceScore = 0.8f;
-            return relationData;
-        }
-
-        // Tier 3: OSM Bounding-Box Way Search (current implementation)
-        var bboxData = await _osmService.FetchTrackDataAsync(trackName, waypoints, centerLat, centerLon);
-        if (bboxData != null && bboxData.TrackLayout != null && bboxData.TrackLayout.Count >= 10)
-        {
-            bboxData.DataSource = TrackDataSource.OsmBoundingBox;
-            bboxData.ConfidenceScore = ComputeBboxConfidence(bboxData, trackName);
-
-            // Final validation: reject if corner names suggest contamination
-            if (!ValidateTrackData(bboxData, trackName))
+            TrackDetailedInfo? data;
+            try
             {
-                StaticLog($"Bounding-box data for {trackName} failed validation (contaminated with non-circuit ways)");
+                data = await _relationService.FetchTrackDataAsync(trackName, centerLat, centerLon);
+            }
+            catch (OverpassRateLimitedException)
+            {
+                StaticLog($"Rate limited by Overpass API for {trackName} — not retrying");
+                _relationService.StatusLog?.Invoke("Overpass rate-limited — try again in about a minute");
                 return null;
             }
 
-            return bboxData;
+            if (data != null && ValidateTrackData(data, trackName))
+            {
+                data.DataSource = TrackDataSource.OsmRelation;
+                data.ConfidenceScore = 0.8f;
+
+                if (attempt > 1)
+                    StaticLog($"Track data for {trackName} fetched on attempt {attempt}");
+
+                return data;
+            }
+
+            if (data != null)
+            {
+                // Data was returned but failed validation — don't retry
+                StaticLog($"Track data for {trackName} failed validation, not retrying");
+                return null;
+            }
+
+            // No data returned — retry with increasing delay
+            if (attempt < MaxRetries)
+            {
+                var delay = RetryBaseDelay * Math.Pow(2, attempt - 1);
+                StaticLog($"Attempt {attempt}/{MaxRetries} failed for {trackName}, retrying in {delay.TotalSeconds:F0}s...");
+                _relationService.StatusLog?.Invoke($"Retry {attempt}/{MaxRetries} for {trackName}...");
+                await Task.Delay(delay);
+            }
         }
 
-        // All tiers exhausted
+        StaticLog($"All {MaxRetries} attempts failed for {trackName}");
         return null;
     }
 
     /// <summary>
-    /// Validate that track data doesn't contain known contamination signals
-    /// (kart tracks, moto layouts, etc. that weren't properly excluded).
+    /// Validate that track data doesn't contain known contamination signals.
     /// </summary>
     private static bool ValidateTrackData(TrackDetailedInfo data, string trackName)
     {
@@ -128,70 +126,35 @@ public sealed class TieredTrackDataProvider : IDisposable
 
             if (contaminatedCorners.Count > 0)
             {
-                StaticLog($"REJECTED {trackName}: corner name contamination detected ({string.Join(", ", contaminatedCorners.Select(c => c.Name))})");
+                StaticLog($"REJECTED {trackName}: contamination ({string.Join(", ", contaminatedCorners.Select(c => c.Name))})");
                 return false;
             }
 
-            // If the only "corner" is the track name itself, the data is likely wrong
             int realCornerCount = data.Corners.Count(c =>
                 !string.IsNullOrEmpty(c.Name) &&
                 !c.Name.Contains(trackName, StringComparison.OrdinalIgnoreCase));
             if (realCornerCount == 0 && data.Corners.Count > 0)
             {
-                StaticLog($"REJECTED {trackName}: all corners match track name (likely wrong relation)");
+                StaticLog($"REJECTED {trackName}: all corners match track name");
                 return false;
             }
         }
 
-        // Check track length sanity (most circuits are between 1km and 30km)
+        // Track length sanity
         if (data.TrackLengthM > 0 && (data.TrackLengthM < 500 || data.TrackLengthM > 60000))
         {
             StaticLog($"REJECTED {trackName}: implausible track length {data.TrackLengthM:F0}m");
             return false;
         }
 
-        // Check for minimum number of layout points
-        if (data.TrackLayout == null || data.TrackLayout.Count < 20)
+        // Minimum layout points
+        if (data.TrackLayout == null || data.TrackLayout.Count < 10)
         {
             StaticLog($"REJECTED {trackName}: too few layout points ({data.TrackLayout?.Count ?? 0})");
             return false;
         }
 
         return true;
-    }
-
-    /// <summary>
-    /// Compute a confidence score for bounding-box data based on way count, layout density, and agreement with known track length.
-    /// </summary>
-    private static float ComputeBboxConfidence(TrackDetailedInfo data, string trackName)
-    {
-        float confidence = 0.5f; // baseline
-
-        // More layout points → more detail
-        if (data.TrackLayout != null)
-        {
-            int ptCount = data.TrackLayout.Count;
-            if (ptCount > 200) confidence += 0.15f;
-            else if (ptCount > 100) confidence += 0.10f;
-            else if (ptCount > 50) confidence += 0.05f;
-        }
-
-        // Corners increase confidence
-        if (data.Corners.Count >= 5) confidence += 0.10f;
-
-        // Pit lane data increases confidence
-        if (data.Pit != null) confidence += 0.05f;
-
-        // Start/finish increases confidence
-        if (data.StartFinish != null) confidence += 0.05f;
-
-        // Penalize if any corner names suggest it's not a real circuit
-        if (data.Corners.Any(c =>
-            c.Name.Contains("Kart", StringComparison.OrdinalIgnoreCase) ||
-            c.Name.Contains("Moto", StringComparison.OrdinalIgnoreCase)))
-            confidence -= 0.3f;
-
-        return Math.Clamp(confidence, 0.0f, 1.0f);
     }
 
     private static void StaticLog(string msg)
@@ -201,7 +164,6 @@ public sealed class TieredTrackDataProvider : IDisposable
 
     /// <summary>
     /// Delete all cached track data files for the given track.
-    /// This forces a fresh fetch from the best available source on next request.
     /// </summary>
     public void DeleteCache(string trackName)
     {
@@ -221,15 +183,7 @@ public sealed class TieredTrackDataProvider : IDisposable
                 StaticLog($"Deleted relation cache: {safe}_relation.json");
             }
 
-            // Delete bounding-box cache
-            var bboxPath = Path.Combine(cacheDir, $"{safe}.json");
-            if (File.Exists(bboxPath))
-            {
-                File.Delete(bboxPath);
-                StaticLog($"Deleted bbox cache: {safe}.json");
-            }
-
-            // Also delete any alias-named cache files (look for partial matches)
+            // Also delete any old bounding-box caches for this track
             if (Directory.Exists(cacheDir))
             {
                 foreach (var f in Directory.GetFiles(cacheDir, $"{safe}*.json"))
@@ -247,6 +201,5 @@ public sealed class TieredTrackDataProvider : IDisposable
     public void Dispose()
     {
         _relationService.Dispose();
-        _osmService.Dispose();
     }
 }

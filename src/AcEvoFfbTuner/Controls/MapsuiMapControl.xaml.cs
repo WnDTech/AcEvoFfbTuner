@@ -185,24 +185,32 @@ public partial class MapsuiMapControl : UserControl
                     Color.FromRgba(0x00, 0x00, 0x00, 0x99)
                 };
 
-                // Compute cumulative distances along the sampled points
+                // Compute cumulative distances along the sampled points (circular — loop closes)
                 int n = sampled.Count;
-                var cumDist = new double[n];
-                cumDist[0] = 0;
-                for (int i = 1; i < n; i++)
-                    cumDist[i] = cumDist[i - 1] + HaversineDistance(sampled[i - 1], sampled[i]);
+                var circularPts = new List<TrackPoint>(sampled);
+                circularPts.Add(sampled[0]); // closing point
 
-                double totalDist = cumDist[n - 1] + HaversineDistance(sampled[n - 1], sampled[0]);
+                var cumDist = new double[n + 1];
+                cumDist[0] = 0;
+                for (int i = 1; i <= n; i++)
+                    cumDist[i] = cumDist[i - 1] + HaversineDistance(circularPts[i - 1], circularPts[i]);
+
+                double totalDist = cumDist[n]; // includes closing segment
                 if (totalDist > 0)
                 {
-                    // For each sector pair (0→1, 1→2, 2→0 wrapping), build a line segment
+                    // For each sector pair, build a line segment.
+                    // The circular list guarantees the loop closes: the last sector
+                    // wraps back to the first point (endNpos <= startNpos → +1.0).
                     for (int s = 0; s < sectorBoundaries.Length - 1; s++)
                     {
                         double startNpos = sectorBoundaries[s];
                         double endNpos = sectorBoundaries[s + 1];
+                        if (endNpos <= startNpos)
+                            endNpos += 1.0; // sector spans the start/finish line
+
                         int colorIdx = s % sectorColors.Length;
 
-                        var segCoords = BuildSectorLineSegment(sampled, cumDist, totalDist, startNpos, endNpos);
+                        var segCoords = BuildSectorLineSegment(circularPts, cumDist, totalDist, startNpos, endNpos);
                         if (segCoords.Count >= 2)
                         {
                             var lineString = new LineString(segCoords.ToArray());
@@ -253,44 +261,25 @@ public partial class MapsuiMapControl : UserControl
     }
 
     /// <summary>
-    /// Build a Mercator-projected coordinate list for a sector segment,
-    /// wrapping from startNpos to endNpos along the sampled GPS points.
+    /// Build a Mercator-projected coordinate list for a sector segment.
+    /// The point list is circular (last point = first point), so sectors that
+    /// span the start/finish line are handled by endNpos > startNpos after +1.0.
     /// </summary>
     private static List<Coordinate> BuildSectorLineSegment(
-        List<TrackPoint> sampled, double[] cumDist, double totalDist,
+        List<TrackPoint> circularPts, double[] cumDist, double totalDist,
         double startNpos, double endNpos)
     {
-        var coords = new List<Coordinate>();
-        int n = sampled.Count;
-        if (n < 2 || totalDist <= 0) return coords;
-
         double startDist = startNpos * totalDist;
         double endDist = endNpos * totalDist;
-
-        // Determine which way around the track the segment goes
-        // (some sectors may span the start/finish line — wrap around)
-        if (endNpos > startNpos)
-        {
-            // Normal case: sector does not wrap
-            coords.AddRange(GetPointsInRange(sampled, cumDist, totalDist, startDist, endDist));
-        }
-        else
-        {
-            // Wrapping case: sector spans across start/finish
-            // First half: startDist → end of track
-            coords.AddRange(GetPointsInRange(sampled, cumDist, totalDist, startDist, totalDist));
-            // Second half: start of track → endDist
-            coords.AddRange(GetPointsInRange(sampled, cumDist, totalDist, 0, endDist));
-        }
-
-        return coords;
+        return GetPointsInRange(circularPts, cumDist, totalDist, startDist, endDist);
     }
 
     /// <summary>
     /// Extract Mercator-projected coordinates between two cumulative distances.
+    /// Works on the circular point list (index n = closing point = first point).
     /// </summary>
     private static List<Coordinate> GetPointsInRange(
-        List<TrackPoint> sampled, double[] cumDist, double totalDist,
+        List<TrackPoint> circularPts, double[] cumDist, double totalDist,
         double fromDist, double toDist)
     {
         var coords = new List<Coordinate>();
@@ -299,9 +288,9 @@ public partial class MapsuiMapControl : UserControl
         int startIdx = FindIndexAtDist(cumDist, fromDist);
         int endIdx = FindIndexAtDist(cumDist, toDist);
 
-        for (int i = startIdx; i <= endIdx && i < sampled.Count; i++)
+        for (int i = startIdx; i <= endIdx && i < circularPts.Count; i++)
         {
-            var merc = ToMercator(sampled[i].Longitude, sampled[i].Latitude);
+            var merc = ToMercator(circularPts[i].Longitude, circularPts[i].Latitude);
             coords.Add(new Coordinate(merc.X, merc.Y));
         }
 

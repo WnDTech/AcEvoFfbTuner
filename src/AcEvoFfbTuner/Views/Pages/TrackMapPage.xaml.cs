@@ -921,29 +921,23 @@ public partial class TrackMapPage : UserControl
         if (string.IsNullOrEmpty(trackName)) return;
 
         // Try alignment database first (has corner point data)
-        var alignment = TrackAlignmentService.LoadAlignment(trackName);
-        if (alignment != null && alignment.Points.Count >= 2)
+        if (TrackAlignmentService.TryApplyAlignment(_satelliteService, trackName,
+                out var anchorLat, out var anchorLon, out var rotDeg))
         {
-            if (TrackAlignmentService.TryComputeRigidTransform(alignment.Points, out var gcX, out var gcZ, out var rotRad))
+            // Override game center to what the rigid transform computed
+            _satelliteService.ComputeGameToGpsTransform(map);
+            _satelliteService.SetGeoReference(anchorLat, anchorLon, rotDeg);
+            // The game center is set by ComputeGameToGpsTransform (mean), but we need to override it
+            // Since we can't set the private _gameCenterX/Z directly, we adjust by setting the rotation
+            // The actual center will be recomputed on next frame anyway
+            _lastKnownLat = anchorLat;
+            _lastKnownLon = anchorLon;
+            _lastKnownRotation = rotDeg;
+            if (DataContext is MainViewModel vm)
             {
-                // Use the first point's GPS as the anchor for the geo-reference
-                var anchor = alignment.Points[0];
-                _satelliteService.SetGeoReference((float)anchor.Latitude, (float)anchor.Longitude, (float)(-rotRad * 180.0 / Math.PI));
-                // Override game center to what the rigid transform computed
-                _satelliteService.ComputeGameToGpsTransform(map);
-                _satelliteService.SetGeoReference((float)anchor.Latitude, (float)anchor.Longitude, (float)(-rotRad * 180.0 / Math.PI));
-                // The game center is set by ComputeGameToGpsTransform (mean), but we need to override it
-                // Since we can't set the private _gameCenterX/Z directly, we adjust by setting the rotation
-                // The actual center will be recomputed on next frame anyway
-                _lastKnownLat = (float)anchor.Latitude;
-                _lastKnownLon = (float)anchor.Longitude;
-                _lastKnownRotation = (float)(-rotRad * 180.0 / Math.PI);
-                if (DataContext is MainViewModel vm)
-                {
-                    vm.TrackLatitude = _lastKnownLat;
-                    vm.TrackLongitude = _lastKnownLon;
-                    vm.TrackRotation = _lastKnownRotation;
-                }
+                vm.TrackLatitude = anchorLat;
+                vm.TrackLongitude = anchorLon;
+                vm.TrackRotation = rotDeg;
             }
         }
     }
