@@ -140,7 +140,18 @@
                                                     </Style>
                                                 </Ellipse.Style>
                                             </Ellipse>
-                                            <TextBlock Text="{Binding ProductName}" FontSize="13" VerticalAlignment="Center" />
+                                            <TextBlock FontSize="13" VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="{Binding ProductName}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFfbCapable}" Value="False">
+                                                                <Setter Property="Text" Value="{Binding ProductName, StringFormat='{}{0} (no FFB)'}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
                                         </StackPanel>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>

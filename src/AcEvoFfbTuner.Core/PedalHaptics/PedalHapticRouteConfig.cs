@@ -10,6 +10,7 @@ public sealed class PedalHapticRouteConfig
 
     public float BrakeHapticGain { get; set; } = 1.0f;
     public float GasHapticGain { get; set; } = 1.0f;
+    public float ClutchHapticGain { get; set; } = 1.0f;
 
     public List<HapticRouteEntry> Routes { get; set; } =
     [
@@ -17,7 +18,8 @@ public sealed class PedalHapticRouteConfig
         new() { Signal = "tc",    TargetPedal = "gas",   Gain = 1.0f, Mode = "vibration" },
         new() { Signal = "curb",  TargetPedal = "both",  Gain = 0.5f, Mode = "pulse" },
         new() { Signal = "road",  TargetPedal = "brake", Gain = 0.3f, Mode = "vibration" },
-        new() { Signal = "scrub", TargetPedal = "gas",   Gain = 0.4f, Mode = "vibration" }
+        new() { Signal = "scrub", TargetPedal = "gas",   Gain = 0.4f, Mode = "vibration" },
+        new() { Signal = "clutchpos", TargetPedal = "clutch", Gain = 1.0f, Mode = "vibration" }
     ];
 }
 

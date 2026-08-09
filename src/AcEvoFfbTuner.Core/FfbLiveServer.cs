@@ -57,6 +57,7 @@ public sealed class FfbLiveServer : IDisposable
     public volatile float LiveOfftrackModulation;
     public volatile float LiveTcRumble;
     public volatile float LiveBrakePressure;
+    public volatile float LiveClutchPosition;
 
     /// <summary>Pedal haptic routing gains, settable via API from PedalTest GUI.</summary>
     public PedalHapticRouteConfig HapticRouteConfig { get; set; } = new();
@@ -721,6 +722,7 @@ public sealed class FfbLiveServer : IDisposable
         sb.Append(",\"curbModulation\":").Append(LiveOfftrackModulation.ToString("F4"));
         sb.Append(",\"tcRumble\":").Append(LiveTcRumble.ToString("F4"));
         sb.Append(",\"brakePressure\":").Append(LiveBrakePressure.ToString("F4"));
+        sb.Append(",\"clutchPosition\":").Append(LiveClutchPosition.ToString("F4"));
 
         // Routed haptic values (raw × per-signal gain × master gain)
         var rh = HapticRouteConfig;
@@ -736,6 +738,7 @@ public sealed class FfbLiveServer : IDisposable
         float routedRoad = LiveRoadForceModulation * GetRouteGain("road") * rh.BrakeHapticGain;
         float routedScrub = LiveScrubModulation * GetRouteGain("scrub") * rh.GasHapticGain;
         float routedBrakePress = LiveBrakePressure * rh.BrakeHapticGain;
+        float routedClutch = LiveClutchPosition * GetRouteGain("clutchpos") * rh.ClutchHapticGain;
 
         sb.Append(",\"routedAbs\":").Append(routedAbs.ToString("F4"));
         sb.Append(",\"routedTc\":").Append(routedTc.ToString("F4"));
@@ -743,11 +746,13 @@ public sealed class FfbLiveServer : IDisposable
         sb.Append(",\"routedRoad\":").Append(routedRoad.ToString("F4"));
         sb.Append(",\"routedScrub\":").Append(routedScrub.ToString("F4"));
         sb.Append(",\"routedBrakePressure\":").Append(routedBrakePress.ToString("F4"));
+        sb.Append(",\"routedClutch\":").Append(routedClutch.ToString("F4"));
 
         // Haptic routing gains (settable via /api/pedal-haptic)
         sb.Append(",\"routing\":{");
         sb.Append("\"brakeHapticGain\":").Append(rh.BrakeHapticGain.ToString("F2"));
         sb.Append(",\"gasHapticGain\":").Append(rh.GasHapticGain.ToString("F2"));
+        sb.Append(",\"clutchHapticGain\":").Append(rh.ClutchHapticGain.ToString("F2"));
         sb.Append(",\"routes\":[");
         for (int i = 0; i < rh.Routes.Count; i++)
         {
@@ -866,6 +871,7 @@ public sealed class FfbLiveServer : IDisposable
             {
                 case "brakeGain": rh.BrakeHapticGain = float.TryParse(kv[1], out var bg) ? bg : 1f; break;
                 case "gasGain": rh.GasHapticGain = float.TryParse(kv[1], out var gg) ? gg : 1f; break;
+                case "clutchGain": rh.ClutchHapticGain = float.TryParse(kv[1], out var cg) ? cg : 1f; break;
                 case "routeIdx": _hapticRouteIdx = int.TryParse(kv[1], out var ri) ? ri : -1; break;
                 case "signal": if (_hapticRouteIdx >= 0 && _hapticRouteIdx < rh.Routes.Count) rh.Routes[_hapticRouteIdx].Signal = Uri.UnescapeDataString(kv[1]); break;
                 case "targetPedal": if (_hapticRouteIdx >= 0 && _hapticRouteIdx < rh.Routes.Count) rh.Routes[_hapticRouteIdx].TargetPedal = Uri.UnescapeDataString(kv[1]); break;
@@ -873,7 +879,7 @@ public sealed class FfbLiveServer : IDisposable
                 case "mode": if (_hapticRouteIdx >= 0 && _hapticRouteIdx < rh.Routes.Count) rh.Routes[_hapticRouteIdx].Mode = Uri.UnescapeDataString(kv[1]); break;
             }
         }
-        var body = Encoding.UTF8.GetBytes($"haptic routing updated: brakeGain={rh.BrakeHapticGain:F2} gasGain={rh.GasHapticGain:F2}");
+        var body = Encoding.UTF8.GetBytes($"haptic routing updated: brakeGain={rh.BrakeHapticGain:F2} gasGain={rh.GasHapticGain:F2} clutchGain={rh.ClutchHapticGain:F2}");
         await WriteResponse(stream, 200, "OK", "text/plain", body);
     }
     private int _hapticRouteIdx = -1;

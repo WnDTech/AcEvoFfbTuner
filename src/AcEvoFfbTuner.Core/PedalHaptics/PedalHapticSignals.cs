@@ -9,6 +9,7 @@ public sealed class PedalHapticSignals
     public float OfftrackModulation { get; set; }
     public float TcRumble { get; set; }
     public float BrakePressureLevel { get; set; }
+    public float ClutchPosition { get; set; }
     public float SpeedKmh { get; set; }
     public long TimestampTicks { get; set; }
 }

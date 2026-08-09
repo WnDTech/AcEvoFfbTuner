@@ -50,6 +50,27 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.24.2",
+            Date = new DateTime(2026, 8, 9),
+            Title = "Clutch pedal customization, USB pedal mod support (T3PA/Arduino), device list clarity",
+            Features =
+            [
+                "Clutch pedal customization: per-axis calibration (deadzone, min/max range, invert, smoothing), live clutch position bar, and a clutch channel in the haptic routing (master gain + clutch-position signal) ready for clutch-capable hardware"
+            ],
+            Improvements =
+            [
+                "USB pedal mods (Thrustmaster T3PA Arduino mod and other Arduino/Leonardo-based pedal boxes) are now always detected as pedals, even when the device name only shows the board name",
+                "T3PA-style Arduino pedal mods are auto-mapped from the firmware layout (Gas=Slider0, Brake=Rx, Clutch=Z) unless the mapping was customized — no manual axis setup needed",
+                "Device dropdown marks non-FFB devices as \"(no FFB)\" so pedals/button boxes can't be mistaken for the wheelbase; connecting a non-FFB device shows a warning",
+                "Live server reports the clutch position signal and clutch haptic gain (routedClutch / clutchHapticGain, clutchGain settable via API)"
+            ],
+            Fixes =
+            [
+                "Pedal detection no longer skips Arduino-class USB pedal devices whose name contains generic terms like \"joystick\" or \"controller\" (previously the T3PA mod could be missed, mislabeling the wheelbase as having integrated pedals)"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.24.1",
             Date = new DateTime(2026, 8, 9),
             Title = "Logitech G RS50 support, wheel vibration on the main motor, clipper sign fix",

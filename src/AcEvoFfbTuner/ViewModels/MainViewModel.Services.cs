@@ -133,7 +133,10 @@ public sealed partial class MainViewModel
             string vibStatus = _deviceManager.SupportsPeriodicEffects
                 ? ""
                 : " | WARNING: wheel does not report periodic effect support — kerb/slip vibration may not work";
-            StatusText = (_deviceManager.LastError ?? $"Connected to {SelectedDevice.ProductName}") + providerInfo + ledStatus + vibStatus;
+            string ffbWarning = SelectedDevice.IsFfbCapable
+                ? ""
+                : " | WARNING: this device has no force feedback — if this is your pedals, select the wheelbase instead";
+            StatusText = (_deviceManager.LastError ?? $"Connected to {SelectedDevice.ProductName}") + providerInfo + ledStatus + vibStatus + ffbWarning;
             UpdateLedCapabilities();
             PushLedConfig();
             _appSettings.LastConnectedDeviceInstanceId = SelectedDevice.DeviceInstance.InstanceGuid.ToString();

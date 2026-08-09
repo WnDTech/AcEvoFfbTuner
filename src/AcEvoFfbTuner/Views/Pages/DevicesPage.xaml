@@ -1040,6 +1040,12 @@
                                     <TextBlock Text="{Binding PedalLiveBrake, StringFormat=' {0:P0}'}" FontSize="13" Foreground="#FFE53935" Margin="4,0,0,0" />
                                 </DockPanel>
 
+                                <DockPanel Margin="0,4">
+                                    <TextBlock Text="Clutch:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
+                                    <ProgressBar Value="{Binding PedalLiveClutch}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="#FFFF9800" />
+                                    <TextBlock Text="{Binding PedalLiveClutch, StringFormat=' {0:P0}'}" FontSize="13" Foreground="#FFFF9800" Margin="4,0,0,0" />
+                                </DockPanel>
+
                                 <TextBlock Text="Press W/S/A keys to test keyboard pedal simulation."
                                            FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,8,0,0" TextWrapping="Wrap" />
                             </StackPanel>
@@ -1054,6 +1060,8 @@
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="16" />
                                         <ColumnDefinition Width="*" />
@@ -1092,6 +1100,17 @@
                                         <controls:LabeledSlider Value="{Binding PedalCurbBothGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                             Label="Curb (Shared)" StringFormat="{}{0:F2}" SectionColor="#FF9800" Margin="0,4,0,0" />
                                     </StackPanel>
+
+                                    <!-- ── CLUTCH PEDAL column ── -->
+                                    <StackPanel Grid.Column="4">
+                                        <Border Background="#26FF9800" CornerRadius="4" Padding="8,5" Margin="0,0,0,8">
+                                            <TextBlock Text="CLUTCH PEDAL" FontSize="12" FontWeight="Bold" Foreground="#FFFF9800" HorizontalAlignment="Center" />
+                                        </Border>
+                                        <controls:LabeledSlider Value="{Binding PedalMasterClutchGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
+                                            Label="Master Gain" StringFormat="{}{0:F2}" SectionColor="#FFFF9800" />
+                                        <TextBlock Text="Clutch position signal. Requires a clutch-capable haptic motor (current Osoyoo firmware drives brake + gas only)."
+                                                   FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                    </StackPanel>
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -1105,6 +1124,8 @@
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="20" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="20" />
                                     <ColumnDefinition Width="*" />
@@ -1142,6 +1163,23 @@
                                     </DockPanel>
                                     <controls:LabeledSlider Value="{Binding PedalBrakeSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.99" TickFrequency="0.01"
                                         Label="Smoothing α" StringFormat="{}{0:F2}" SectionColor="#FFE53935" />
+                                </StackPanel>
+
+                                <!-- Clutch Column -->
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="CLUTCH" FontSize="12" FontWeight="Bold" Foreground="#FFFF9800" Margin="0,0,0,4" />
+                                    <controls:LabeledSlider Value="{Binding PedalClutchDeadzone, Mode=TwoWay}" Minimum="0" Maximum="0.3" TickFrequency="0.005"
+                                        Label="Deadzone" StringFormat="{}{0:F3}" SectionColor="#FFFF9800" />
+                                    <controls:LabeledSlider Value="{Binding PedalClutchMin, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.005"
+                                        Label="Min Range" StringFormat="{}{0:F3}" SectionColor="#FFFF9800" />
+                                    <controls:LabeledSlider Value="{Binding PedalClutchMax, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.005"
+                                        Label="Max Range" StringFormat="{}{0:F3}" SectionColor="#FFFF9800" />
+                                    <DockPanel Margin="0,4">
+                                        <CheckBox IsChecked="{Binding PedalClutchInvert, Mode=TwoWay}" VerticalAlignment="Center" />
+                                        <TextBlock Text="Invert" FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <controls:LabeledSlider Value="{Binding PedalClutchSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.99" TickFrequency="0.01"
+                                        Label="Smoothing α" StringFormat="{}{0:F2}" SectionColor="#FFFF9800" />
                                 </StackPanel>
                             </Grid>
 

@@ -133,6 +133,44 @@ public sealed class DirectInputPedalSource : IPedalInputSource, IDisposable
         _enumLog.Add($"  Final candidates: {_allDevices.Count}");
         for (int i = 0; i < _allDevices.Count; i++)
             _enumLog.Add($"    [{i}] \"{_allDevices[i].ProductName}\"");
+
+        ApplyKnownFirmwareMapping();
+    }
+
+    // Arduino-class USB pedal mods (e.g. github.com/adrianmarino/t3pa-pedals, which
+    // drives Thrustmaster T3PA pedals) use the MHeironimus Joystick_ API, whose HID
+    // layout is fixed by the library source:
+    //   setZAxis()    -> HID Generic Desktop Z   -> DirectInput Z
+    //   setRxAxis()   -> HID Rx                  -> DirectInput RotationX (Rx)
+    //   setThrottle() -> HID Simulation Throttle -> DirectInput Slider0
+    // The t3pa firmware maps clutch->setZAxis, brake->setRxAxis, throttle->setThrottle,
+    // so the correct mapping is Gas=Slider0, Brake=Rx, Clutch=Z. Apply that as the
+    // default for these mods unless the user already customized the mapping.
+    private void ApplyKnownFirmwareMapping()
+    {
+        if (_allDevices.Count == 0) return;
+
+        bool mappingIsDefault = _axisMapping.GasAxis == "Y" && _axisMapping.BrakeAxis == "Z"
+            && _axisMapping.ClutchAxis == "Rx" && !_axisMapping.GasInvert
+            && !_axisMapping.BrakeInvert && !_axisMapping.ClutchInvert;
+        if (!mappingIsDefault)
+        {
+            _enumLog.Add("  AUTO-MAP: skipped — mapping already customized");
+            return;
+        }
+
+        bool isArduinoMod = _allDevices.Any(d =>
+        {
+            var n = d.ProductName.ToUpperInvariant();
+            return n.Contains("T3PA") || n.Contains("ARDUINO") || n.Contains("LEONARDO")
+                || n.Contains("PRO MICRO") || n.Contains("ATMEGA32U4");
+        });
+        if (!isArduinoMod) return;
+
+        _axisMapping.GasAxis = "Slider0";
+        _axisMapping.BrakeAxis = "Rx";
+        _axisMapping.ClutchAxis = "Z";
+        _enumLog.Add("  AUTO-MAPPED Arduino-class pedal mod (t3pa-pedals layout): Gas=Slider0 Brake=Rx Clutch=Z");
     }
 
     private static bool IsPedalDevice(string name)
@@ -144,7 +182,14 @@ public sealed class DirectInputPedalSource : IPedalInputSource, IDisposable
             {
                 // Exception: if name ALSO contains a pedal-like term, it might be pedals
                 bool hasPedalKeyword = name.Contains("BRAKE") || name.Contains("CLUTCH") || name.Contains("ACCEL") || name.Contains("PEDAL") || name.Contains("LOAD");
-                if (!hasPedalKeyword)
+                // USB pedal mods (e.g. the Thrustmaster T3PA Arduino mod from
+                // github.com/adrianmarino/t3pa-pedals) often only expose the board
+                // name ("Arduino Leonardo", "Arduino Joystick", ...). Treat
+                // Arduino/Leonardo/T3PA devices as pedals even when the name also
+                // contains generic terms like "joystick" or "controller".
+                bool isKnownPedalMod = name.Contains("ARDUINO") || name.Contains("LEONARDO")
+                    || name.Contains("T3PA") || name.Contains("PRO MICRO") || name.Contains("ATMEGA32U4");
+                if (!hasPedalKeyword && !isKnownPedalMod)
                     return false;
             }
         }

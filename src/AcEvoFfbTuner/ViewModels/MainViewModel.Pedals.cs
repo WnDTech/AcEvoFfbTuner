@@ -11,24 +11,31 @@ public sealed partial class MainViewModel
     [ObservableProperty] private string _pedalSourceType = "—";
     [ObservableProperty] private float _pedalGasDeadzone;
     [ObservableProperty] private float _pedalBrakeDeadzone;
+    [ObservableProperty] private float _pedalClutchDeadzone;
     [ObservableProperty] private float _pedalGasMin;
     [ObservableProperty] private float _pedalGasMax = 1.0f;
     [ObservableProperty] private float _pedalBrakeMin;
     [ObservableProperty] private float _pedalBrakeMax = 1.0f;
+    [ObservableProperty] private float _pedalClutchMin;
+    [ObservableProperty] private float _pedalClutchMax = 1.0f;
     [ObservableProperty] private float _pedalGasSmoothing = 0.85f;
     [ObservableProperty] private float _pedalBrakeSmoothing = 0.85f;
+    [ObservableProperty] private float _pedalClutchSmoothing = 0.5f;
     [ObservableProperty] private bool _pedalGasInvert;
     [ObservableProperty] private bool _pedalBrakeInvert;
+    [ObservableProperty] private bool _pedalClutchInvert;
 
     // ── Live Pedal State (updated from TelemetryLoop ~30fps) ──
     [ObservableProperty] private float _pedalLiveGas;
     [ObservableProperty] private float _pedalLiveBrake;
+    [ObservableProperty] private float _pedalLiveClutch;
     [ObservableProperty] private string _pedalLiveSource = "—";
     [ObservableProperty] private string _pedalDiagnosticInfo = "";
 
     // ── Haptic Routing Gains (per-signal → pedal, stored in LiveServer.HapticRouteConfig) ──
     [ObservableProperty] private float _pedalMasterBrakeGain = 1.0f;
     [ObservableProperty] private float _pedalMasterGasGain = 1.0f;
+    [ObservableProperty] private float _pedalMasterClutchGain = 1.0f;
     [ObservableProperty] private float _pedalAbsBrakeGain = 1.0f;
     [ObservableProperty] private float _pedalTcGasGain = 1.0f;
     [ObservableProperty] private float _pedalCurbBothGain = 0.5f;
@@ -46,14 +53,19 @@ public sealed partial class MainViewModel
         PedalInputEnabled = config.Enabled;
         PedalGasDeadzone = config.Gas.Deadzone;
         PedalBrakeDeadzone = config.Brake.Deadzone;
+        PedalClutchDeadzone = config.Clutch.Deadzone;
         PedalGasMin = config.Gas.Min;
         PedalGasMax = config.Gas.Max;
         PedalBrakeMin = config.Brake.Min;
         PedalBrakeMax = config.Brake.Max;
+        PedalClutchMin = config.Clutch.Min;
+        PedalClutchMax = config.Clutch.Max;
         PedalGasSmoothing = config.Gas.Smoothing;
         PedalBrakeSmoothing = config.Brake.Smoothing;
+        PedalClutchSmoothing = config.Clutch.Smoothing;
         PedalGasInvert = config.Gas.Invert;
         PedalBrakeInvert = config.Brake.Invert;
+        PedalClutchInvert = config.Clutch.Invert;
 
         LoadHapticRouteConfig();
     }
@@ -64,14 +76,19 @@ public sealed partial class MainViewModel
         config.Enabled = PedalInputEnabled;
         config.Gas.Deadzone = PedalGasDeadzone;
         config.Brake.Deadzone = PedalBrakeDeadzone;
+        config.Clutch.Deadzone = PedalClutchDeadzone;
         config.Gas.Min = PedalGasMin;
         config.Gas.Max = PedalGasMax;
         config.Brake.Min = PedalBrakeMin;
         config.Brake.Max = PedalBrakeMax;
+        config.Clutch.Min = PedalClutchMin;
+        config.Clutch.Max = PedalClutchMax;
         config.Gas.Smoothing = PedalGasSmoothing;
         config.Brake.Smoothing = PedalBrakeSmoothing;
+        config.Clutch.Smoothing = PedalClutchSmoothing;
         config.Gas.Invert = PedalGasInvert;
         config.Brake.Invert = PedalBrakeInvert;
+        config.Clutch.Invert = PedalClutchInvert;
         PedalConfigManager.Instance.Save(config);
 
         SaveHapticRouteConfig();
@@ -84,6 +101,7 @@ public sealed partial class MainViewModel
 
         PedalMasterBrakeGain = routeCfg.BrakeHapticGain;
         PedalMasterGasGain = routeCfg.GasHapticGain;
+        PedalMasterClutchGain = routeCfg.ClutchHapticGain;
 
         // Map route list entries to observable properties
         for (int i = 0; i < routeCfg.Routes.Count; i++)
@@ -108,6 +126,7 @@ public sealed partial class MainViewModel
 
         routeCfg.BrakeHapticGain = PedalMasterBrakeGain;
         routeCfg.GasHapticGain = PedalMasterGasGain;
+        routeCfg.ClutchHapticGain = PedalMasterClutchGain;
 
         // Update route list entries from observable properties
         foreach (var r in routeCfg.Routes)
@@ -129,6 +148,7 @@ public sealed partial class MainViewModel
         {
             PedalLiveGas = 0;
             PedalLiveBrake = 0;
+            PedalLiveClutch = 0;
             PedalLiveSource = "—";
             return;
         }
@@ -140,6 +160,7 @@ public sealed partial class MainViewModel
         {
             PedalLiveGas = pedalState.GasInput;
             PedalLiveBrake = pedalState.BrakeInput;
+            PedalLiveClutch = pedalState.ClutchInput;
             PedalLiveSource = pedalState.Source.ToString();
             PedalSourceType = pedalState.Source.ToString();
 
@@ -150,8 +171,12 @@ public sealed partial class MainViewModel
         {
             PedalLiveGas = raw.GasInput;
             PedalLiveBrake = raw.BrakeInput;
+            PedalLiveClutch = _telemetryLoop.LatestPhysicsRaw?.Clutch ?? 0f;
             PedalLiveSource = "Game Telemetry";
         }
+
+        if (_telemetryLoop.LiveServer != null)
+            _telemetryLoop.LiveServer.LiveClutchPosition = PedalLiveClutch;
     }
 
     private int _pedalUpdateCounter;

@@ -119,9 +119,11 @@ public sealed class PedalHapticManager : IDisposable
         float roadForce = _signals.RoadForceModulation;
         float tc = _signals.TcRumble;
         float brakePressure = _signals.BrakePressureLevel;
+        float clutchPosition = _signals.ClutchPosition;
 
         float brakeIntensity = 0f;
         float gasIntensity = 0f;
+        float clutchIntensity = 0f;
 
         foreach (var route in _config.Routes)
         {
@@ -134,6 +136,7 @@ public sealed class PedalHapticManager : IDisposable
                 "scrub" => scrub,
                 "rearslip" => rearSlip,
                 "brakepressure" => brakePressure,
+                "clutchpos" => clutchPosition,
                 _ => 0f
             };
 
@@ -147,6 +150,9 @@ public sealed class PedalHapticManager : IDisposable
                 case "gas":
                     gasIntensity = Math.Max(gasIntensity, routed);
                     break;
+                case "clutch":
+                    clutchIntensity = Math.Max(clutchIntensity, routed);
+                    break;
                 case "both":
                     brakeIntensity = Math.Max(brakeIntensity, routed);
                     gasIntensity = Math.Max(gasIntensity, routed);
@@ -157,6 +163,7 @@ public sealed class PedalHapticManager : IDisposable
         float speedFade = Math.Clamp(_signals.SpeedKmh / 10f, 0f, 1f);
         brakeIntensity *= speedFade;
         gasIntensity *= speedFade;
+        clutchIntensity *= speedFade;
 
         foreach (var provider in providers)
         {
@@ -166,6 +173,8 @@ public sealed class PedalHapticManager : IDisposable
                 provider.SetBrakeHaptic(brakeIntensity * _config.BrakeHapticGain, HapticSignalType.Abs);
             if (provider.IsGasSupported)
                 provider.SetGasHaptic(gasIntensity * _config.GasHapticGain, HapticSignalType.Tc);
+            if (provider.IsClutchSupported)
+                provider.SetClutchHaptic(clutchIntensity * _config.ClutchHapticGain, HapticSignalType.Tc);
         }
     }
 

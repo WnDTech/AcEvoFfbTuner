@@ -150,7 +150,7 @@ Vibration feedback for the pedals via an Osoyoo Arduino Uno (or compatible seria
 
 | Feature | Details |
 |---------|---------|
-| **Per-Pedal Columns** | Independent brake and gas haptic routing with master gain per channel |
+| **Per-Pedal Columns** | Independent brake, gas and clutch haptic routing with master gain per channel |
 | **Telemetry Sources** | ABS, brake pressure, TC cuts, throttle position, engine RPM, curb strikes, road texture, scrubbing |
 | **Live Pedal Input** | Physical pedal input mode (DirectInput) with keyboard (W/S/A) simulation fallback |
 | **Calibration** | Per-pedal deadzone, min/max, inversion, and smoothing |
