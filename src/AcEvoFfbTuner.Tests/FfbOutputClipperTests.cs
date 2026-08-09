@@ -62,4 +62,33 @@ public class FfbOutputClipperTests
         result.Should().BeApproximately(-0.3f, 1e-6f);
         clipping.Should().BeFalse();
     }
+
+    [Fact]
+    public void Process_ThresholdOne_PositiveOverLimit_PreservesSign()
+    {
+        _sut.SoftClipThreshold = 1.0f;
+        var result = _sut.Process(1.4f, out bool clipping);
+        result.Should().Be(1.0f);
+        result.Should().BePositive();
+        clipping.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Process_ThresholdOne_NegativeOverLimit_PreservesSign()
+    {
+        _sut.SoftClipThreshold = 1.0f;
+        var result = _sut.Process(-1.4f, out bool clipping);
+        result.Should().Be(-1.0f);
+        result.Should().BeNegative();
+        clipping.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Process_LargeForce_DoesNotInvertSign()
+    {
+        _sut.SoftClipThreshold = 0.8f;
+        var result = _sut.Process(-3.0f, out _);
+        result.Should().BeNegative();
+        result.Should().BeGreaterThanOrEqualTo(-1f);
+    }
 }

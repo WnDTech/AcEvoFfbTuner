@@ -15,7 +15,13 @@ public class FfbPipeline
     public FfbOutputClipper OutputClipper { get; } = new();
     public FfbEqualizer Equalizer { get; } = new();
     public FfbTyreFlex TyreFlex { get; } = new();
-    public Hf8SignalMapper Hf8SignalMapper { get; } = new();
+    /// <summary>
+    /// HF8 signal mapper. Virtual so game-specific pipelines can expose their
+    /// own mapper instance (R3eHf8SignalMapper / LmuHf8SignalMapper) through
+    /// this property — otherwise UI/profile writes (Enable, gains, weights)
+    /// would land on this unused base instance and have no effect.
+    /// </summary>
+    public virtual Hf8SignalMapper Hf8SignalMapper { get; } = new();
     public FfbGripGuard GripGuard { get; } = new();
     public FfbCrashDetector CrashDetector { get; } = new();
     public FfbTyreCondition TyreCondition { get; } = new();
@@ -235,6 +241,12 @@ public class FfbPipeline
         // Wet weather: suppress curb feel (water layer absorbs curb impacts)
         VibrationMixer.WetCurbScale = WetWeather.CurbScale;
         float vibration = VibrationMixer.Mix(raw);
+
+        // Route the full vibration mix (kerb/slip/road/ABS channels) into the wheel
+        // detail force. Previously only the sub-modulations below reached the wheel;
+        // the raw curb channel was sent only to the separate vibration effect, which
+        // direct-drive wheels (e.g. Moza R5) do not render on the main motor.
+        detailForce += vibration;
 
         // ABS force modulation (directional — follows core force sign)
         float absMod = VibrationMixer.AbsForceModulation;

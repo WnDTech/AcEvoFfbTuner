@@ -122,7 +122,22 @@ public sealed partial class MainViewModel
                 ShowGameFfbWarning = true;
             int lockDeg = SteeringLockDegrees;
             if (lockDeg <= 0) lockDeg = 900;
-            SteerAngle = (float)raw.SteerAngle * (lockDeg / 2f);
+            if (IsAcEvo)
+            {
+                // EVO graphics page reports the actual steering wheel rotation in
+                // degrees from centre (steer_degrees) — authoritative, no lock math.
+                // Sign comes from the normalized physics steer for the wheel visual.
+                int evoDeg = raw.SteerDegrees;
+                if (evoDeg < 0) evoDeg = -evoDeg;
+                if (evoDeg > 0 && evoDeg <= lockDeg)
+                    SteerAngle = (raw.SteerAngle >= 0f ? 1f : -1f) * evoDeg;
+                else
+                    SteerAngle = (float)raw.SteerAngle * (lockDeg / 2f);
+            }
+            else
+            {
+                SteerAngle = (float)raw.SteerAngle * (lockDeg / 2f);
+            }
 
             DebugSnapshot =
                 $"=== RAW SHARED MEMORY ===\n" +
@@ -440,8 +455,11 @@ public sealed partial class MainViewModel
                 // ── BRAKE CHANNEL ──
                 if (brakeInput > 0.05f && absActive)
                 {
-                    // ABS square-wave pulse → PedalAbsBrakeGain
-                    if ((_hapticFrameTicks / 2) % 2 == 0)
+                    // ABS square-wave pulse → PedalAbsBrakeGain.
+                    // 1 frame ON / 1 frame OFF at ~30 Hz tick = ~15 Hz pulse —
+                    // matches the real ABS hydraulic pump frequency (15-20 Hz)
+                    // and stays clearly pulsed, not a constant hum.
+                    if (_hapticFrameTicks % 2 == 0)
                     {
                         float slipSeverity = Math.Clamp((peakFrontSlip - 0.10f) * 6.0f, 0.4f, 1.0f);
                         finalBrakeForce = 255 * slipSeverity * PedalAbsBrakeGain;

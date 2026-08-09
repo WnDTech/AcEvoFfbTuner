@@ -200,6 +200,7 @@ public sealed partial class MainViewModel
         if (n.Contains("T150")) return 1.5f;
         if (n.Contains("G27")) return 2.5f;
         if (n.Contains("G29") || n.Contains("G920")) return 2.1f;
+        if (n.Contains("RS50") || n.Contains("RS 50")) return 8f;
 
         return 0f;
     }

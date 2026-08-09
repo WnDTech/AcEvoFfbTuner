@@ -137,7 +137,18 @@ public sealed class TelemetryLoop : IDisposable
     public bool SuppressOutput
     {
         get => _suppressOutput;
-        set => _suppressOutput = value;
+        set
+        {
+            bool was = _suppressOutput;
+            _suppressOutput = value;
+            if (value && !was)
+            {
+                // Kill force immediately so the wheel doesn't hold the stale target
+                // until the interpolation safety ramps it down after ~500ms.
+                _deviceManager.SendConstantForce(0f);
+                _deviceManager.SetTargetVibration(0f);
+            }
+        }
     }
 
     public bool RawPassthroughEnabled { get; set; }

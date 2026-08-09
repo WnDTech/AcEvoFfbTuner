@@ -50,6 +50,33 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.24.1",
+            Date = new DateTime(2026, 8, 9),
+            Title = "Logitech G RS50 support, wheel vibration on the main motor, clipper sign fix",
+            Features =
+            [
+                "Logitech G RS50 support: full device recognition (vendor detection, force polarity, 8 Nm Auto Setup baseline) and correct round-wheel dashboard image",
+                "Setup wizard now auto-connects the first FFB-capable wheel on load — no more stalling on \"Waiting for wheel connection\"",
+                "Single-instance guard: a duplicate launch signals the running instance and exits (no second copy fighting over the wheel)"
+            ],
+            Improvements =
+            [
+                "EVO steering angle display reads the game's authoritative steer_degrees (actual wheel rotation in degrees from centre) instead of lock-normalized math",
+                "Kerb/road/ABS vibration is routed into the main motor detail force so direct-drive wheels render vibration on the primary FFB motor",
+                "FFB suppression engages only after the app holds focus for 1 second, so transient popups can never cut force; foreground window changes are logged for diagnosis",
+                "HF8 signal mapper is now virtual so R3E/LMU mappers receive UI/profile writes (enable, gains, weights)"
+            ],
+            Fixes =
+            [
+                "Dashboard wheel image no longer flickers between brands when the wheel isn't recognized (fallback locked once per session)",
+                "FFB output clipper sign inversion at SoftClipThreshold = 1.0: division by zero made the wheel yank in the opposite direction on strong force",
+                "LMU kerb/road/impact vibration rewritten with DC-free per-frame deltas — was pinned at full strength on straights",
+                "Force is zeroed immediately when output is suppressed instead of holding the stale target",
+                "LMU/R3E HF8 mapper reset now handled through the base virtual property"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.24.0",
             Date = new DateTime(2026, 8, 2),
             Title = "New games (LMU, AC, ACC), pedal haptics, FFB Coach AI, track map rework",

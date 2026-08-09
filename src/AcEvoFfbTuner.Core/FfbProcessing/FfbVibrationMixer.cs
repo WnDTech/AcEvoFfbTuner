@@ -241,7 +241,7 @@ public sealed class FfbVibrationMixer
         float curbForce = _smSuspCurb * 2.0f * MathF.Max(KerbGain, 0.1f) * suspSpeedScale * WetCurbScale;
         float roadForce = _smSuspRoad * 150f * MathF.Max(RoadGain, 0.1f) * suspSpeedScale;
         float rawVib = (curbForce + roadForce) * SuspensionRoadGain;
-        RoadForceModulation = Math.Clamp(rawVib, -0.15f, 0.15f);
+        RoadForceModulation = Math.Clamp(rawVib, -0.3f, 0.3f);
 
         GenerateScrubModulation(raw);
         GenerateRearSlipModulation(raw);

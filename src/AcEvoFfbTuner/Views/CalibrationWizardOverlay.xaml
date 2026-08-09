@@ -117,7 +117,7 @@
                                     </TextBlock>
                                 </StackPanel>
                             </Border>
-                            <TextBlock x:Name="Step0Status" Text="Waiting for wheel connection..." FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
+                            <TextBlock x:Name="Step0Status" Text="Waiting for wheel connection... Pick your wheel from the Device menu at the top." FontSize="14" Foreground="#FFFFD600" Margin="0,4" TextWrapping="Wrap" />
                         </StackPanel>
 
                         <StackPanel x:Name="PanelStep1" Visibility="Collapsed">

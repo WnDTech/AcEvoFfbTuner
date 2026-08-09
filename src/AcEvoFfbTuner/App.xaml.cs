@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using AcEvoFfbTuner.Services;
@@ -16,9 +17,35 @@ public partial class App : Application
     public static MainViewModel ViewModel { get; private set; } = null!;
     public static AppSettings Settings { get; private set; } = null!;
 
+    private static Mutex? _singleInstanceMutex;
+    private static bool _ownsSingleInstance;
+    private static EventWaitHandle? _activateSignal;
+    private Thread? _signalListenerThread;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Single-instance guard: if another copy is already running, signal it
+        // and exit BEFORE any window is created — no splash/main window can ever
+        // pop over a live session from a stray second launch (build tools,
+        // accidental double-click, etc.).
+        _singleInstanceMutex = new Mutex(true, @"Local\AcEvoFfbTuner_SingleInstance", out _ownsSingleInstance);
+        if (!_ownsSingleInstance)
+        {
+            LogSecondInstance("duplicate launch — signaling existing instance and exiting");
+            try
+            {
+                using var signal = EventWaitHandle.OpenExisting(@"Local\AcEvoFfbTuner_ActivateSignal");
+                signal.Set();
+            }
+            catch { }
+            Shutdown();
+            return;
+        }
+
+        StartSignalListener();
+        Services.WindowEventMonitor.Start();
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
@@ -60,6 +87,46 @@ public partial class App : Application
                 ShowErrorAndShutdown(ex);
             }
         }
+    }
+
+    private void StartSignalListener()
+    {
+        _activateSignal = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\AcEvoFfbTuner_ActivateSignal");
+        _signalListenerThread = new Thread(() =>
+        {
+            try
+            {
+                while (_activateSignal.WaitOne())
+                {
+                    Application.Current?.Dispatcher.BeginInvoke(() =>
+                    {
+                        LogSecondInstance("signal received from a duplicate launch");
+                        if (Application.Current?.MainWindow is Views.MainWindow mw)
+                            mw.ShowToast("Already Running", "AcEvoFfbTuner is already running — the duplicate instance exited.", 5000);
+                    });
+                }
+            }
+            catch { }
+        })
+        {
+            IsBackground = true,
+            Name = "SingleInstanceSignal"
+        };
+        _signalListenerThread.Start();
+    }
+
+    private static void LogSecondInstance(string message)
+    {
+        try
+        {
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "AcEvoFfbTuner");
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(Path.Combine(dir, "single_instance.log"),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}\n");
+        }
+        catch { }
     }
 
     private void ShowMainWindow(bool showWhatsNew = true)
@@ -193,6 +260,17 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         ViewModel?.Dispose();
+        _signalListenerThread = null;
+        try
+        {
+            if (_ownsSingleInstance)
+                _singleInstanceMutex?.ReleaseMutex();
+        }
+        catch { }
+        _singleInstanceMutex?.Dispose();
+        _singleInstanceMutex = null;
+        _activateSignal?.Dispose();
+        _activateSignal = null;
         base.OnExit(e);
     }
 }

@@ -3279,6 +3279,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (vendor.Contains("LOGITECH"))
             {
                 string? prod = deviceManager.ConnectedDevice?.ProductName?.ToUpperInvariant();
+                if (prod?.Contains("RS50") == true || prod?.Contains("RS 50") == true)
+                    return "pack://application:,,,/Resources/splash-wheels/G27.png";
                 if (prod?.Contains("G PRO") == true || prod?.Contains("G923") == true)
                     return "pack://application:,,,/Resources/splash-wheels/GPro.png";
                 if (prod?.Contains("G27") == true)
@@ -3288,15 +3290,24 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 return "pack://application:,,,/Resources/splash-wheels/FanCSLElite.png";
         }
 
-        string[] fallback =
-        [
-            "pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png",
-            "pack://application:,,,/Resources/splash-wheels/FanCSLElite.png",
-            "pack://application:,,,/Resources/splash-wheels/GPro.png",
-            "pack://application:,,,/Resources/splash-wheels/G27.png",
-        ];
-        return fallback[Random.Shared.Next(fallback.Length)];
+        // No recognized wheel — pick ONE image per app session instead of a
+        // random one every poll, otherwise the dashboard wheel keeps flickering
+        // between brands (seen with unrecognized wheels like the Logitech RS50).
+        if (_fallbackWheelImage == null)
+        {
+            string[] fallback =
+            [
+                "pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png",
+                "pack://application:,,,/Resources/splash-wheels/FanCSLElite.png",
+                "pack://application:,,,/Resources/splash-wheels/GPro.png",
+                "pack://application:,,,/Resources/splash-wheels/G27.png",
+            ];
+            _fallbackWheelImage = fallback[Random.Shared.Next(fallback.Length)];
+        }
+        return _fallbackWheelImage;
     }
+
+    private static string? _fallbackWheelImage;
 
     private static string BuildDeviceTooltip(DetectedDevice? d)
     {

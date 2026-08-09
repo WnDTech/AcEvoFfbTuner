@@ -199,7 +199,7 @@ public partial class CalibrationWizardOverlay : Window
             bool connected = _deviceManager.IsDeviceAcquired;
             Step0Status.Text = connected
                 ? $"Wheel connected: {_deviceManager.ConnectedDevice?.ProductName ?? "Unknown"}"
-                : "Waiting for wheel connection...";
+                : "Waiting for wheel connection... Pick your wheel from the Device menu at the top.";
             Step0Status.Foreground = connected
                 ? new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A))
                 : new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));

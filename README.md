@@ -119,7 +119,7 @@ The app uses an `IFFBProvider` abstraction layer that allows vendor-specific SDK
 | **Fanatec** | `FanatecProvider` | **Active** | FullForce 500Hz haptic samples, rim rumble motors, rev LED RGB control, gear digit display, torque safety capping via `FSWheelMaxTorqueGet`, Maurice (FWPnpService) detection |
 | **Moza** | DirectInput + Serial LED | Active | Native LED protocol via serial/HID |
 | **Simucube** | `SimucubeProvider` | Stub | Simucube Link API — awaiting SDK access from Granite Devices |
-| **Logitech** | `LogitechTrueForceProvider` | Stub | TrueForce audio-haptic SDK — awaiting SDK access from Logitech |
+| **Logitech** | DirectInput + `LogitechTrueForceProvider` (TrueForce stub) | Active | G27/G29/G920/G923/G Pro/RS50 via standard DirectInput constant force + vibration; TrueForce audio-haptics awaiting SDK access |
 | **Asetek** | `AsetekProvider` | Stub | RaceHub TIC Mode — awaiting SDK access from Asetek |
 | **VNM** | `VnmProvider` | Stub | Telemetry API — awaiting SDK access from VNM |
 | **Others** | `GenericDirectInputProvider` | Active | Standard DirectInput constant force + periodic vibration |
@@ -161,7 +161,7 @@ Work in progress — the Pedals tab is tagged **WIP** in the Devices page.
 
 - **Auto Setup** generates a complete baseline profile tuned for the detected wheel type and torque
 - Detects wheel type: Direct Drive, Belt-Driven, Gear-Driven
-- Auto-detects wheelbase torque from device name (Moza R5/R9/R12/R16/R21, Fanatec CSL DD/DD1/DD2, Simagic Alpha/Mini, Simucube, Logitech, Thrustmaster, and more)
+- Auto-detects wheelbase torque from device name (Moza R5/R9/R12/R16/R21, Fanatec CSL DD/DD1/DD2, Simagic Alpha/Mini, Simucube, Logitech G RS50/G29/G920, Thrustmaster, and more)
 - Auto-detects FFB strength and steering lock from AC EVO shared memory
 
 ### Wheel LED Controller

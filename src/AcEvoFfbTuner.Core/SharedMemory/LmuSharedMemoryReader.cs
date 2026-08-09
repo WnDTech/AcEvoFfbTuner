@@ -35,6 +35,12 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
     private float _prevAccX;
     private bool _prevAccInitialized;
 
+    // DC-free vibration synthesis state (per-frame deltas strip static baselines)
+    private readonly float[] _prevSuspDef = new float[4];
+    private readonly float[] _prevVertDefl = new float[4];
+    private bool _vibInitialized;
+    private double _lastImpactSeenET = -1;
+
     // ── LMU-specific extended data for pipeline ──
     public float[] SuspForces { get; private set; } = new float[4];
     public float[] BrakePressures { get; private set; } = new float[4];
@@ -211,6 +217,8 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
         _loggedHeader = false;
         _loggedWheelDump = false;
         _prevAccInitialized = false;
+        _vibInitialized = false;
+        _lastImpactSeenET = -1;
         Log("Disconnected");
         GameDisconnected?.Invoke();
     }
@@ -530,21 +538,44 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
 
             if (speedMs > 1f)
             {
-                // Kerb vibration from suspension force spikes
-                float maxSuspF = 0f;
-                for (int wi = 0; wi < 4; wi++)
-                    if (Math.Abs(suspForce[wi]) > maxSuspF) maxSuspF = Math.Abs(suspForce[wi]);
-                kerbVib = Math.Min(maxSuspF * 0.00005f, 1f);
+                // Kerb vibration: differentiate suspension deflection (per-frame delta).
+                // Absolute suspension force carries the static load baseline (several kN
+                // per wheel) which pinned kerb=1.000 permanently on straights
+                // (lmu_debug.log). Same DC-free approach as R3E's SynthesizeKerbVibration.
+                if (!_vibInitialized)
+                {
+                    Array.Copy(suspDef, _prevSuspDef, 4);
+                    Array.Copy(vertTireDefl, _prevVertDefl, 4);
+                    _vibInitialized = true;
+                }
 
-                // Road vibration from vertical tire deflection
-                float maxVertDefl = 0f;
+                float maxSuspDelta = 0f;
                 for (int wi = 0; wi < 4; wi++)
-                    if (Math.Abs(vertTireDefl[wi]) > maxVertDefl) maxVertDefl = Math.Abs(vertTireDefl[wi]);
-                roadVib = Math.Min(maxVertDefl * 20f, 1f);
+                {
+                    float d = Math.Abs(suspDef[wi] - _prevSuspDef[wi]);
+                    if (d > maxSuspDelta) maxSuspDelta = d;
+                    _prevSuspDef[wi] = suspDef[wi];
+                }
+                kerbVib = Math.Min(maxSuspDelta * 400f * 0.3f, 1f);
 
-                // Impact vibration
-                if (LastImpactMagnitude > 0.1f)
+                // Road vibration: differentiate vertical tire deflection. Absolute
+                // deflection includes static tire squash (~0.02 m -> road=0.4 constant).
+                float maxVertDelta = 0f;
+                for (int wi = 0; wi < 4; wi++)
+                {
+                    float d = Math.Abs(vertTireDefl[wi] - _prevVertDefl[wi]);
+                    if (d > maxVertDelta) maxVertDelta = d;
+                    _prevVertDefl[wi] = vertTireDefl[wi];
+                }
+                roadVib = Math.Min(maxVertDelta * 60f, 1f);
+
+                // Impact vibration — apply only the frame a NEW impact registers
+                // (event-driven via ET change, never sticky)
+                if (LastImpactMagnitude > 0.1f && lastImpactET > _lastImpactSeenET)
+                {
+                    _lastImpactSeenET = lastImpactET;
                     kerbVib = Math.Max(kerbVib, Math.Min(LastImpactMagnitude * 0.002f, 1f));
+                }
 
                 // Slip vibration from grip fraction
                 float minGrip = 1f;

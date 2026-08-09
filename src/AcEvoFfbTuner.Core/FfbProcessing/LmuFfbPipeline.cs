@@ -9,6 +9,8 @@ public sealed class LmuFfbPipeline : FfbPipeline
     private readonly LmuHf8SignalMapper _lmuHf8Mapper = new();
     private float _prevDetailOutput;
 
+    public override Hf8SignalMapper Hf8SignalMapper => _lmuHf8Mapper;
+
     private bool _gearChangeMuteEnabled = true;
     public bool GearChangeMuteEnabled
     {
@@ -210,7 +212,6 @@ public sealed class LmuFfbPipeline : FfbPipeline
     public new void Reset()
     {
         base.Reset();
-        _lmuHf8Mapper.Reset();
         _prevDetailOutput = 0f;
         _dcBlockSmooth = 0f;
     }

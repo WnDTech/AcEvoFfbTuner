@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
@@ -240,6 +241,27 @@ public partial class SetupWizardOverlay : Window
 
         UpdateLabels();
         UpdateScopeDetectedInfo();
+
+        // First-run convenience: if no wheel is connected yet, auto-select and
+        // connect the first FFB-capable device so the wizard never stalls on
+        // "Waiting for wheel connection..." (user only has to pick a device
+        // manually when none is FFB-capable).
+        if (!_deviceManager.IsDeviceAcquired && _viewModel != null)
+        {
+            _viewModel.RefreshDevicesCommand.Execute(null);
+            var firstFfb = _viewModel.AvailableDevices.FirstOrDefault(d => d.IsFfbCapable);
+            if (firstFfb != null)
+            {
+                _viewModel.SelectedDevice = firstFfb;
+                _viewModel.ConnectDeviceCommand.Execute(null);
+                Log($"OnLoaded: auto-connected first FFB device '{firstFfb.ProductName}'");
+            }
+            else
+            {
+                Log("OnLoaded: no FFB-capable device found — user must pick a device manually");
+            }
+        }
+
         Log($"OnLoaded: done OG={_pipeline.OutputGain:F3} Mz={_pipeline.ChannelMixer.MzFrontGain:F3} inv={needsInvert}");
     }
 
@@ -492,7 +514,7 @@ public partial class SetupWizardOverlay : Window
             bool connected = _deviceManager.IsDeviceAcquired;
             Step0Status.Text = connected
                 ? $"Wheel connected: {_deviceManager.ConnectedDevice?.ProductName ?? "Unknown"}"
-                : "Waiting for wheel connection...";
+                : "Waiting for wheel connection... Pick your wheel from the Device menu at the top.";
             Step0Status.Foreground = connected
                 ? new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A))
                 : new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
@@ -659,7 +681,7 @@ public partial class SetupWizardOverlay : Window
                 BtnNext.IsEnabled = connected;
                 Step0Status.Text = connected
                     ? $"Wheel connected: {_deviceManager.ConnectedDevice?.ProductName ?? "Unknown"}"
-                    : "Waiting for wheel connection...";
+                    : "Waiting for wheel connection... Pick your wheel from the Device menu at the top.";
             }
         }
 

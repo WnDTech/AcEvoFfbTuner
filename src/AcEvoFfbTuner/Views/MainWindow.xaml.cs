@@ -27,6 +27,9 @@ public partial class MainWindow : Window
     private WheelCenterOverlay? _wheelCenterOverlay;
 
     private DispatcherTimer? _toastTimer;
+    private DispatcherTimer? _focusSuppressTimer;
+    private DispatcherTimer? _foregroundWatcher;
+    private uint _lastForegroundPid;
 
     public void ShowToast(string title, string message, int durationMs = 4000)
     {
@@ -55,16 +58,10 @@ public partial class MainWindow : Window
 
         // When our window is activated (user alt-tabs to the app), suppress FFB output
         // to prevent conflicting with the game's DirectInput FFB running in the background.
-        Activated += (_, _) =>
-        {
-            if (App.ViewModel?.TelemetryLoop is { } loop)
-                loop.SuppressOutput = true;
-        };
-        Deactivated += (_, _) =>
-        {
-            if (App.ViewModel?.TelemetryLoop is { } loop)
-                loop.SuppressOutput = false;
-        };
+        // Suppression engages only after the window has held focus continuously for ~1s,
+        // so transient focus steals (popups, toasts, UAC prompts) can never cut FFB.
+        Activated += OnMainWindowActivated;
+        Deactivated += OnMainWindowDeactivated;
 
         SourceInitialized += (_, _) =>
         {
@@ -92,7 +89,84 @@ public partial class MainWindow : Window
         };
 
         UpdatePageVisibility();
+
+        // Foreground watcher: samples the foreground window every second and logs
+        // every change. Catches ANY window that pops up — even one that appears
+        // over the game without touching this app's focus (invisible to the
+        // Activated/Deactivated events above).
+        _foregroundWatcher = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _foregroundWatcher.Tick += (_, _) =>
+        {
+            try
+            {
+                var fg = GetForegroundWindow();
+                uint pid = 0;
+                if (fg != IntPtr.Zero)
+                    GetWindowThreadProcessId(fg, out pid);
+                if (pid == _lastForegroundPid) return;
+                _lastForegroundPid = pid;
+                LogFocusChange($"FG-CHANGE: {DescribeForegroundWindow(fg)}");
+            }
+            catch { }
+        };
+        _foregroundWatcher.Start();
     }
+
+    private void OnMainWindowActivated(object? sender, EventArgs e)
+    {
+        LogFocusChange($"ACTIVATED — foreground window: {DescribeForegroundWindow(GetForegroundWindow())}");
+        _focusSuppressTimer?.Stop();
+        _focusSuppressTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _focusSuppressTimer.Tick += (_, _) =>
+        {
+            _focusSuppressTimer?.Stop();
+            if (App.ViewModel?.TelemetryLoop is { } loop)
+                loop.SuppressOutput = true;
+        };
+        _focusSuppressTimer.Start();
+    }
+
+    private void OnMainWindowDeactivated(object? sender, EventArgs e)
+    {
+        LogFocusChange($"DEACTIVATED — foreground window: {DescribeForegroundWindow(GetForegroundWindow())}");
+        _focusSuppressTimer?.Stop();
+        _focusSuppressTimer = null;
+        if (App.ViewModel?.TelemetryLoop is { } loop)
+            loop.SuppressOutput = false;
+    }
+
+    private static void LogFocusChange(string reason)
+    {
+        try
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(Path.Combine(dir, "focus_debug.log"),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {reason}\n");
+        }
+        catch { }
+    }
+
+    private static string DescribeForegroundWindow(IntPtr fg)
+    {
+        if (fg == IntPtr.Zero)
+            return "none";
+        GetWindowThreadProcessId(fg, out uint pid);
+        var title = new System.Text.StringBuilder(256);
+        GetWindowText(fg, title, title.Capacity);
+        string proc = "unknown";
+        try { using var p = System.Diagnostics.Process.GetProcessById((int)pid); proc = p.ProcessName; } catch { }
+        return $"{proc} | \"{title}\" | pid={pid}";
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {

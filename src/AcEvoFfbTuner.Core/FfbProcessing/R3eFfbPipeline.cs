@@ -67,6 +67,8 @@ public sealed class R3eFfbPipeline : FfbPipeline
 
     private readonly R3eHf8SignalMapper _r3eHf8Mapper = new();
 
+    public override Hf8SignalMapper Hf8SignalMapper => _r3eHf8Mapper;
+
     private float[] _flatspotPhase = new float[4];
     private float _prevSmoothedCore;
     private float _prevSmoothedDetail;
@@ -608,7 +610,6 @@ public sealed class R3eFfbPipeline : FfbPipeline
     public new void Reset()
     {
         base.Reset();
-        _r3eHf8Mapper.Reset();
         _prevSmoothedCore = 0f;
         _prevSmoothedDetail = 0f;
         _prevDetailOutput = 0f;

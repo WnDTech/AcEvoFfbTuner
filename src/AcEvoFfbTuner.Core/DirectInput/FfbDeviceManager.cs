@@ -211,7 +211,7 @@ public sealed class FfbDeviceManager : IDisposable
         if (n.Contains("CAMMUS")) return true;
 
         if (n.Contains("MOZA")) return false;
-        if (n.Contains("LOGITECH") || n.Contains("G29") || n.Contains("G920") || n.Contains("G923")) return false;
+        if (n.Contains("LOGITECH") || n.Contains("RS50") || n.Contains("RS 50") || n.Contains("G29") || n.Contains("G920") || n.Contains("G923")) return false;
         if (n.Contains("THRUSTMASTER") || n.Contains("T300") || n.Contains("T150") || n.Contains("TX ")) return false;
         if (n.Contains("FANATEC") || n.Contains("CLUBSPORT") || n.Contains("CSL ")) return false;
 
