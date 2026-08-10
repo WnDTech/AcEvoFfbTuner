@@ -1,5 +1,6 @@
 using AcEvoFfbTuner.Core.Config;
 using AcEvoFfbTuner.Core.PedalHaptics;
+using AcEvoFfbTuner.Core.PedalInput.Sources;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace AcEvoFfbTuner.ViewModels;
@@ -25,6 +26,12 @@ public sealed partial class MainViewModel
     [ObservableProperty] private bool _pedalBrakeInvert;
     [ObservableProperty] private bool _pedalClutchInvert;
 
+    // ── Pedal Axis Mapping (from DirectInputPedalSource.AxisMap) ──
+    [ObservableProperty] private string _pedalGasAxis = "Y";
+    [ObservableProperty] private string _pedalBrakeAxis = "Z";
+    [ObservableProperty] private string _pedalClutchAxis = "Rx";
+    public string[] PedalAvailableAxes => DirectInputPedalSource.AxisMap.AvailableAxes;
+
     // ── Live Pedal State (updated from TelemetryLoop ~30fps) ──
     [ObservableProperty] private float _pedalLiveGas;
     [ObservableProperty] private float _pedalLiveBrake;
@@ -44,6 +51,21 @@ public sealed partial class MainViewModel
     [ObservableProperty] private float _pedalBrakePressureGain = 1.0f;
     [ObservableProperty] private float _pedalThrottlePositionGain = 0.0f;
     [ObservableProperty] private float _pedalEngineRpmGain = 0.0f;
+
+    // ── Live axis mapping — update the DI source immediately on ComboBox change ──
+    partial void OnPedalGasAxisChanged(string value) => ApplyAxisMapping();
+    partial void OnPedalBrakeAxisChanged(string value) => ApplyAxisMapping();
+    partial void OnPedalClutchAxisChanged(string value) => ApplyAxisMapping();
+
+    private void ApplyAxisMapping()
+    {
+        var diSource = _telemetryLoop?.PedalInput?.Sources
+            .OfType<DirectInputPedalSource>().FirstOrDefault();
+        if (diSource?.Mapping == null) return;
+        diSource.Mapping.GasAxis = PedalGasAxis;
+        diSource.Mapping.BrakeAxis = PedalBrakeAxis;
+        diSource.Mapping.ClutchAxis = PedalClutchAxis;
+    }
 
     // ── Methods ──
 
@@ -66,6 +88,16 @@ public sealed partial class MainViewModel
         PedalGasInvert = config.Gas.Invert;
         PedalBrakeInvert = config.Brake.Invert;
         PedalClutchInvert = config.Clutch.Invert;
+
+        // Read axis mapping from the active DirectInput pedal source
+        var diSource = _telemetryLoop?.PedalInput?.Sources
+            .OfType<DirectInputPedalSource>().FirstOrDefault();
+        if (diSource?.Mapping != null)
+        {
+            PedalGasAxis = diSource.Mapping.GasAxis;
+            PedalBrakeAxis = diSource.Mapping.BrakeAxis;
+            PedalClutchAxis = diSource.Mapping.ClutchAxis;
+        }
 
         LoadHapticRouteConfig();
     }
@@ -90,6 +122,16 @@ public sealed partial class MainViewModel
         config.Brake.Invert = PedalBrakeInvert;
         config.Clutch.Invert = PedalClutchInvert;
         PedalConfigManager.Instance.Save(config);
+
+        // Write axis mapping to the active DirectInput pedal source
+        var diSource = _telemetryLoop?.PedalInput?.Sources
+            .OfType<DirectInputPedalSource>().FirstOrDefault();
+        if (diSource?.Mapping != null)
+        {
+            diSource.Mapping.GasAxis = PedalGasAxis;
+            diSource.Mapping.BrakeAxis = PedalBrakeAxis;
+            diSource.Mapping.ClutchAxis = PedalClutchAxis;
+        }
 
         SaveHapticRouteConfig();
     }

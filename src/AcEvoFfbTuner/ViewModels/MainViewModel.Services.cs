@@ -136,7 +136,12 @@ public sealed partial class MainViewModel
             string ffbWarning = SelectedDevice.IsFfbCapable
                 ? ""
                 : " | WARNING: this device has no force feedback — if this is your pedals, select the wheelbase instead";
-            StatusText = (_deviceManager.LastError ?? $"Connected to {SelectedDevice.ProductName}") + providerInfo + ledStatus + vibStatus + ffbWarning;
+            string logitechGhubWarning = IsLogitechDevice(SelectedDevice.ProductName) && !IsProcessRunning("lghub")
+                ? " | WARNING: Logitech G HUB is not running — force feedback will NOT work on Logitech wheels. Start G HUB (it can run minimized) and reconnect."
+                : "";
+            StatusText = (_deviceManager.LastError ?? $"Connected to {SelectedDevice.ProductName}") + providerInfo + ledStatus + vibStatus + ffbWarning + logitechGhubWarning;
+            if (logitechGhubWarning.Length > 0)
+                AddSystemLog("WARNING: Logitech G HUB not running — force feedback will NOT work. Start G HUB and reconnect.");
             UpdateLedCapabilities();
             PushLedConfig();
             _appSettings.LastConnectedDeviceInstanceId = SelectedDevice.DeviceInstance.InstanceGuid.ToString();
@@ -206,6 +211,27 @@ public sealed partial class MainViewModel
         if (n.Contains("RS50") || n.Contains("RS 50")) return 8f;
 
         return 0f;
+    }
+
+    private static bool IsLogitechDevice(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+        var n = name.ToUpperInvariant();
+        return n.Contains("LOGITECH") || n.Contains("RS50") || n.Contains("G27")
+            || n.Contains("G29") || n.Contains("G920") || n.Contains("G923")
+            || n.Contains("G PRO") || n.Contains("DRIVING FORCE");
+    }
+
+    private static bool IsProcessRunning(string processName)
+    {
+        try
+        {
+            return System.Diagnostics.Process.GetProcessesByName(processName).Length > 0;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     [RelayCommand]

@@ -1,0 +1,32 @@
+name: Discord Release Notification
+
+on:
+  release:
+    types: [edited]
+  workflow_dispatch:
+
+jobs:
+  notify:
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event.changes.body.from != null && github.event.release.draft == false)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch latest release (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/WnDTech/AcEvoFfbTuner/releases/latest \
+            --jq '{name: .name, html_url: .html_url, body: .body}' \
+            > release-manual.json
+
+      - name: Post to Discord
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CHANNEL_ID: '1440318628661825587'
+          MANUAL_RELEASE_FILE: ${{ github.workspace }}/release-manual.json
+        run: python3 .github/scripts/discord_release_notify.py

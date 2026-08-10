@@ -815,6 +815,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public ICommand OsoyooTestBrakeCommand { get; }
     public ICommand OsoyooTestGasCommand { get; }
     public ICommand OsoyooStopTestCommand { get; }
+    public ICommand StartWheelFfbTestCommand { get; }
+    public ICommand StopWheelFfbTestCommand { get; }
     public ICommand RefreshOsoyooPortsCommand { get; }
     public ICommand ConnectOsoyooCommand { get; }
     public ICommand DisconnectOsoyooCommand { get; }
@@ -918,6 +920,54 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OsoyooTestActive = false;
         AddSystemLog("OSOYOO STOP TEST: sent brake=0 gas=0");
         OsoyooConnectionStatus = "Motor test stopped";
+    }
+
+    // ── Wheel FFB Motor Test — verifies the wheelbase executes DirectInput force ──
+    [ObservableProperty] private bool _wheelFfbTestActive;
+    [ObservableProperty] private float _wheelFfbTestIntensity = 0.35f;
+    [ObservableProperty] private string _wheelFfbTestStatus = "";
+    private System.Windows.Threading.DispatcherTimer? _wheelFfbTestTimer;
+
+    private void OnStartWheelFfbTest()
+    {
+        if (!IsDeviceConnected || _deviceManager == null || !_deviceManager.IsDeviceAcquired)
+        {
+            WheelFfbTestStatus = "Wheel not connected — connect a device first";
+            return;
+        }
+        if (!_deviceManager.SupportsPeriodicEffects)
+        {
+            WheelFfbTestStatus = "Device reports no force feedback support";
+            return;
+        }
+
+        WheelFfbTestActive = true;
+        _telemetryLoop.SuppressOutput = true;
+        _deviceManager.SendConstantForce(WheelFfbTestIntensity);
+        AddSystemLog($"WHEEL FFB TEST: sending {WheelFfbTestIntensity * 100:F0}% force — hold the wheel!");
+        WheelFfbTestStatus = $"Sending {WheelFfbTestIntensity * 100:F0}% force — you should feel the wheel pull. Auto-stops in 3s.";
+
+        _wheelFfbTestTimer?.Stop();
+        _wheelFfbTestTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(3)
+        };
+        _wheelFfbTestTimer.Tick += (_, _) => OnStopWheelFfbTest();
+        _wheelFfbTestTimer.Start();
+    }
+
+    private void OnStopWheelFfbTest()
+    {
+        _wheelFfbTestTimer?.Stop();
+        _wheelFfbTestTimer = null;
+        if (WheelFfbTestActive)
+        {
+            _deviceManager?.SendConstantForce(0f);
+            _telemetryLoop.SuppressOutput = false;
+            WheelFfbTestActive = false;
+            WheelFfbTestStatus = "Test stopped — telemetry output restored";
+            AddSystemLog("WHEEL FFB TEST: stopped, force zeroed");
+        }
     }
 
     public bool Hf8CopyActive => Hf8CopySourceIndex >= 0;
@@ -1728,6 +1778,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OsoyooTestBrakeCommand = new RelayCommand(OnOsoyooTestBrake);
         OsoyooTestGasCommand = new RelayCommand(OnOsoyooTestGas);
         OsoyooStopTestCommand = new RelayCommand(OnOsoyooStopTest);
+        StartWheelFfbTestCommand = new RelayCommand(OnStartWheelFfbTest);
+        StopWheelFfbTestCommand = new RelayCommand(OnStopWheelFfbTest);
      }
 
 

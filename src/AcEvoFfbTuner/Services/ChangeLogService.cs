@@ -50,6 +50,26 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.25.2",
+            Date = new DateTime(2026, 8, 10),
+            Title = "Manual pedal axis mapping, wheel FFB test, Logitech effect restart fix",
+            Features =
+            [
+                "Manual pedal axis mapping: assign Gas/Brake/Clutch to any DirectInput axis (X/Y/Z/Rx/Ry/Rz/Slider0/Slider1) directly in Devices → Pedals → Calibration — no more relying on auto-detection or the live-server API"
+            ],
+            Improvements =
+            [
+                "WHEEL FFB TEST on the Devices → LED Effects tab: hold any force level for 3 seconds with telemetry paused, to verify the wheelbase actually executes DirectInput force — instantly tells you if the wheel motor works without driving",
+                "Logitech wheels (G29/G923/G Pro/RS50): when the force crosses zero→non-zero the effect is now explicitly restarted — Logitech wheels stop playing after a zero-magnitude update and previously stayed stopped, which appeared as 'no force feedback'",
+                "Connecting a Logitech wheel while G HUB is not running now warns in the status bar, system log, and setup wizard step 0"
+            ],
+            Fixes =
+            [
+                "No force feedback on Logitech wheels after any zero-force moment (pits, straights, standstill) — the constant-force effect is now restarted on the zero→non-zero transition"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.25.1",
             Date = new DateTime(2026, 8, 10),
             Title = "Diagnostic send fix, wizard close fix, Settings log tools",

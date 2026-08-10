@@ -676,6 +676,12 @@ public sealed class FfbDeviceManager : IDisposable
             // Without continuous re-send, LMU overwrites our effect and the force
             // alternates between our value and zero — felt as "phasing."
 
+            // Logitech wheels (G29/G923/G Pro/RS50) stop playing their effect after
+            // a zero-magnitude SetParameters and often do NOT restart on subsequent
+            // SetParameters(+Start) — the effect stays stopped until an explicit
+            // Start(). Capture the previous magnitude so we can restart on the
+            // zero→non-zero cross.
+            bool wasZeroMagnitude = _lastCfMagnitude == 0;
             _lastCfMagnitude = magnitude;
             _lastCfSendTime = System.Diagnostics.Stopwatch.GetTimestamp();
 
@@ -700,11 +706,24 @@ public sealed class FfbDeviceManager : IDisposable
                         typeSpecificParams = new DI.ConstantForce { Magnitude = clamped };
                     }
 
+                    // Logitech wheels (G29/G923/G Pro/RS50) stop playing their effect
+                    // after a zero-magnitude SetParameters and often do NOT restart on
+                    // subsequent SetParameters(+Start) — the effect stays stopped until
+                    // an explicit Start(). Restart explicitly on a zero→non-zero cross.
+                    bool restartAfterZero = wasZeroMagnitude && magnitude != 0;
+
                     var parameters = new DI.EffectParameters();
                     parameters.Parameters = typeSpecificParams;
                     _constantForceEffect.SetParameters(parameters,
                         DI.EffectParameterFlags.TypeSpecificParameters |
-                        DI.EffectParameterFlags.Start);
+                        (restartAfterZero ? 0 : DI.EffectParameterFlags.Start));
+
+                    if (restartAfterZero)
+                    {
+                        try { _constantForceEffect.Start(-1, DI.EffectPlayFlags.NoDownload); }
+                        catch (Exception sex) { ConnLog($"Effect restart-after-zero FAIL: {sex.InnerException?.Message ?? sex.Message}"); }
+                    }
+
                     _consecutiveForceErrors = 0;
                     _constantForceUnsupported = false;
                     return;

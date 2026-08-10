@@ -25,6 +25,7 @@ Our goal is to **fix the code** so we can establish a reliable baseline profile 
 - Format release notes with `### Features` / `### Improvements` / `### Fixes` headings and `- ` bullets — `ChangeLogService.ParseMarkdownBody` parses GitHub release bodies into the in-app What's New dialog, so keep that format.
 - When bumping the version: update (1) the csproj version, (2) the hardcoded entry in `ChangeLogService.cs`, (3) the GitHub release notes via `gh release edit <tag> --notes-file`, and (4) the README feature list.
 - Keep release notes and the hardcoded changelog entry in sync — same content, same wording.
+- Editing the release body (`gh release edit <tag> --notes-file`) triggers the `discord-release-notify.yml` workflow, which posts the release link + version notes to Discord channel 1440318628661825587 (the same bot token as the feedback relay, stored as the `DISCORD_BOT_TOKEN` repo secret). Editing the body again re-posts; run the workflow manually (`workflow_dispatch`) to re-post the latest release.
 
 ### Local Backups
 - The official local backup directory is: `C:\Users\paul_\OneDrive\Documents\APP\ACEVO - Telemetry FFB\backups\YYYY-MM-DD\src`

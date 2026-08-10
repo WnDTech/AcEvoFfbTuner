@@ -28,6 +28,28 @@ public partial class SetupWizardOverlay : Window
             $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n"); } catch { }
     }
 
+    private bool IsLogitechWheel()
+    {
+        var name = _deviceManager.ConnectedDevice?.ProductName;
+        if (string.IsNullOrEmpty(name)) return false;
+        var n = name.ToUpperInvariant();
+        return n.Contains("LOGITECH") || n.Contains("RS50") || n.Contains("G27")
+            || n.Contains("G29") || n.Contains("G920") || n.Contains("G923")
+            || n.Contains("G PRO") || n.Contains("DRIVING FORCE");
+    }
+
+    private static bool IsProcessRunning(string processName)
+    {
+        try
+        {
+            return System.Diagnostics.Process.GetProcessesByName(processName).Length > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private void Speak(string text)
     {
         _viewModel?.VoiceService?.Speak(text);
@@ -512,9 +534,14 @@ public partial class SetupWizardOverlay : Window
         if (_currentStep == 0)
         {
             bool connected = _deviceManager.IsDeviceAcquired;
-            Step0Status.Text = connected
+            string status = connected
                 ? $"Wheel connected: {_deviceManager.ConnectedDevice?.ProductName ?? "Unknown"}"
                 : "Waiting for wheel connection... Pick your wheel from the Device menu at the top.";
+            // Logitech wheels (G29/G923/G Pro/RS50) need G HUB running for FFB —
+            // without it the wheel steers but never produces force.
+            if (connected && IsLogitechWheel() && !IsProcessRunning("lghub"))
+                status += " — WARNING: Logitech G HUB is not running, force feedback will NOT work. Start G HUB (can run minimized).";
+            Step0Status.Text = status;
             Step0Status.Foreground = connected
                 ? new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A))
                 : new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
