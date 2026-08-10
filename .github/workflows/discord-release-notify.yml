@@ -28,5 +28,6 @@ jobs:
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: '1440318628661825587'
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           MANUAL_RELEASE_FILE: ${{ github.workspace }}/release-manual.json
         run: python3 .github/scripts/discord_release_notify.py

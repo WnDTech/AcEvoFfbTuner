@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Post a GitHub release notification to a Discord channel.
 
-Reuses the project's existing Discord bot token (the same one used by the
-feedback relay). Posts an embed with the release name, link, and version notes
-to the channel given in DISCORD_CHANNEL_ID.
+Posts an embed with the release name, link, and version notes. Two auth
+routes are supported:
+
+  1. Discord bot: DISCORD_BOT_TOKEN + DISCORD_CHANNEL_ID
+  2. Webhook:     DISCORD_WEBHOOK_URL (no bot/token/channel needed)
+
+The webhook route reuses the same webhook the app's feedback relay uses.
 
 Input:
   - GITHUB_EVENT_PATH (set by GitHub Actions): the release webhook payload
@@ -25,11 +29,28 @@ MAX_DESCRIPTION_LEN = 4096
 def main():
     token = os.environ.get("DISCORD_BOT_TOKEN", "")
     channel_id = os.environ.get("DISCORD_CHANNEL_ID", "")
+    webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "")
     event_path = os.environ.get("GITHUB_EVENT_PATH", "")
     manual_file = os.environ.get("MANUAL_RELEASE_FILE", "")
 
-    if not token or not channel_id:
-        print("Missing DISCORD_BOT_TOKEN or DISCORD_CHANNEL_ID", file=sys.stderr)
+    if webhook_url:
+        endpoint = webhook_url
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": DISCORD_USER_AGENT,
+        }
+    elif token and channel_id:
+        endpoint = f"{DISCORD_API}/channels/{channel_id}/messages"
+        headers = {
+            "Authorization": f"Bot {token}",
+            "Content-Type": "application/json",
+            "User-Agent": DISCORD_USER_AGENT,
+        }
+    else:
+        print(
+            "Missing DISCORD_WEBHOOK_URL, or DISCORD_BOT_TOKEN + DISCORD_CHANNEL_ID",
+            file=sys.stderr,
+        )
         return 1
 
     release = None
@@ -67,13 +88,9 @@ def main():
     }
 
     req = urllib.request.Request(
-        f"{DISCORD_API}/channels/{channel_id}/messages",
+        endpoint,
         data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bot {token}",
-            "Content-Type": "application/json",
-            "User-Agent": DISCORD_USER_AGENT,
-        },
+        headers=headers,
         method="POST",
     )
     try:
