@@ -6,6 +6,7 @@
         xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls"
         xmlns:local="clr-namespace:AcEvoFfbTuner.Views"
         xmlns:pages="clr-namespace:AcEvoFfbTuner.Views.Pages"
+        xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
          Title="AC Evo FFB Tuner" Height="900" Width="1280" MinWidth="900" MinHeight="600" Loaded="Window_Loaded"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/wheel.ico"
@@ -21,6 +22,17 @@
         <converters:InverseBoolToVisibilityConverter x:Key="InvertBoolToVis" />
         <converters:NullToVisibilityConverter x:Key="NullToVis" />
         <converters:NotEmptyToVisibilityConverter x:Key="NotEmptyToVis" />
+
+        <!-- Devices grouped by role: wheelbases (FFB-capable) first, then everything else -->
+        <CollectionViewSource x:Key="DevicesCvs" Source="{Binding AvailableDevices}">
+            <CollectionViewSource.SortDescriptions>
+                <scm:SortDescription PropertyName="IsFfbCapable" Direction="Descending" />
+                <scm:SortDescription PropertyName="ProductName" Direction="Ascending" />
+            </CollectionViewSource.SortDescriptions>
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="IsFfbCapable" />
+            </CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
     </Window.Resources>
 
     <Window.InputBindings>
@@ -121,10 +133,32 @@
                                         Background="Transparent" Foreground="{DynamicResource TextDimBrush}"
                                         BorderThickness="0" Padding="4,0" VerticalAlignment="Center" />
                             </DockPanel>
-                            <ListBox x:Name="DeviceList" ItemsSource="{Binding AvailableDevices}"
+                            <ListBox x:Name="DeviceList" ItemsSource="{Binding Source={StaticResource DevicesCvs}}"
                                      SelectionChanged="OnDeviceListSelectionChanged"
                                      MaxHeight="220" BorderThickness="0" Background="Transparent"
                                      Foreground="{DynamicResource TextBrush}">
+                                <ListBox.GroupStyle>
+                                    <GroupStyle>
+                                        <GroupStyle.HeaderTemplate>
+                                            <DataTemplate>
+                                                <TextBlock FontSize="10" FontWeight="Bold" Margin="8,8,0,2">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="OTHER DEVICES" />
+                                                            <Setter Property="Foreground" Value="#FF8B949E" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Name}" Value="True">
+                                                                    <Setter Property="Text" Value="WHEELBASES" />
+                                                                    <Setter Property="Foreground" Value="#FF79C0FF" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </GroupStyle.HeaderTemplate>
+                                    </GroupStyle>
+                                </ListBox.GroupStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="2,4">

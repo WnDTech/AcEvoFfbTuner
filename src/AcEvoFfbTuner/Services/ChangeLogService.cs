@@ -50,6 +50,30 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.25.3",
+            Date = new DateTime(2026, 8, 11),
+            Title = "Wheelbase tab with live wheel test, live visuals without Start, Discord-only Send to Dev",
+            Features =
+            [
+                "New Wheelbase tab in Devices: connection info (device, force inversion, periodic effects) and the WHEEL FFB TEST — hold any force level for 3 seconds with telemetry paused to verify the wheelbase executes force",
+                "Wheel visual and pedal bars now respond WITHOUT clicking Start — they read the physical devices directly, so the app feels alive the moment a wheel is connected",
+                "Device dropdown is grouped into WHEELBASES and OTHER DEVICES so pedals/button boxes can never be mistaken for the force-feedback wheel"
+            ],
+            Improvements =
+            [
+                "Setup wizard auto-connects the first FFB-capable wheel and keeps retrying every second while waiting at step 0 — no more stalling when the wheel enumerates a moment after the wizard opens",
+                "Force-direction auto-detect retries with a stronger 40% pulse when the initial test shows no movement, so a firmly held wheel no longer causes a false static-database fallback",
+                "Pedal device status is shown in the Pedals panel (e.g. \"Pedal device: Thrustmaster Pedals\") — USB pedals are handled there, no need to select them in the Device menu",
+                "Send to Dev is now Discord-only: instant delivery via webhook with full exception-chain logging if anything fails (email path removed)"
+            ],
+            Fixes =
+            [
+                "Setup wizard could stay open at step 0 if the wheel connected after the wizard loaded — now auto-connected within a second",
+                "Status bar now shows \"Game detected — press Start to enable FFB\" when the game and wheel are connected but telemetry is idle"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.25.2",
             Date = new DateTime(2026, 8, 10),
             Title = "Manual pedal axis mapping, wheel FFB test, Logitech effect restart fix",

@@ -30,7 +30,30 @@
                     <TextBlock x:Name="HeaderLabel" Text="DEVICES" FontSize="11" FontWeight="Bold"
                                Foreground="{StaticResource TextDimBrush}" Margin="16,0,0,12" />
 
-                    <RadioButton x:Name="LedTab" GroupName="DeviceTab" IsChecked="True"
+                    <RadioButton x:Name="WheelbaseTab" GroupName="DeviceTab" IsChecked="True"
+                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="Wheelbase &amp; wheel">
+                        <RadioButton.Template>
+                            <ControlTemplate TargetType="RadioButton">
+                                <Border x:Name="TabBd" Background="Transparent" Padding="12,10" BorderThickness="3,0,0,0" BorderBrush="Transparent">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🎡" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock x:Name="TabLabel" Text="Wheelbase" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
+                                    </Trigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
+                                        <Setter TargetName="TabBd" Property="BorderBrush" Value="#FF47A1FF" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </RadioButton.Template>
+                    </RadioButton>
+
+                    <RadioButton x:Name="LedTab" GroupName="DeviceTab"
                                  Checked="OnTabChecked" Cursor="Hand" ToolTip="LED Effects">
                         <RadioButton.Template>
                             <ControlTemplate TargetType="RadioButton">
@@ -159,11 +182,18 @@
             <!-- ═══════════════════════════════════════════ -->
             <!-- PANEL 1: LED EFFECTS                      -->
             <!-- ═══════════════════════════════════════════ -->
-            <ScrollViewer x:Name="LedPanel" VerticalScrollBarVisibility="Auto" Padding="24,20">
+            <ScrollViewer x:Name="WheelPanel" VerticalScrollBarVisibility="Auto" Padding="24,20">
                 <StackPanel>
 
-                    <!-- Header -->
-                    <TextBlock Text="{Binding LedSupportedInfo}" FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
+                    <!-- Wheelbase connection info -->
+                    <TextBlock FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4" TextWrapping="Wrap">
+                        <Run Text="Wheelbase: " /><Run FontWeight="Bold" Foreground="#FFE6EDF3" Text="{Binding DeviceName}" />
+                    </TextBlock>
+                    <TextBlock FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap">
+                        <Run Text="{Binding IsDeviceConnected, StringFormat='Connected: {0}'}" />
+                        <Run Text="   |   " /><Run Text="{Binding ForceInvertEnabled, StringFormat='Force inversion: {0}'}" />
+                        <Run Text="   |   " /><Run Text="{Binding SupportsPeriodicEffects, StringFormat='Periodic effects: {0}'}" />
+                    </TextBlock>
 
                     <!-- Wheel FFB Motor Test -->
                     <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
@@ -174,7 +204,7 @@
                                 <TextBlock Text="Verifies the wheelbase executes force — telemetry paused" FontSize="11"
                                            Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
-                            <TextBlock Text="If you feel nothing when this test runs, the wheel is not executing DirectInput force (e.g. Logitech G HUB not running)."
+                            <TextBlock Text="Hold the wheel loosely and press TEST FORCE — you should feel a clear pull for 3 seconds. If nothing happens, the wheel is not executing DirectInput force."
                                        FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -205,6 +235,15 @@
                                        Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,8,0,0" />
                         </StackPanel>
                     </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer x:Name="LedPanel" VerticalScrollBarVisibility="Auto" Padding="24,20" Visibility="Collapsed">
+                <StackPanel>
+
+                    <!-- Header -->
+                    <TextBlock Text="{Binding LedSupportedInfo}" FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
 
                     <!-- LED Strip Preview -->
                     <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
@@ -954,7 +993,9 @@
                                 <TextBlock Text="PEDAL HAPTIC DEVICE" FontSize="16" FontWeight="Bold" Foreground="#FF9800" VerticalAlignment="Center" />
                             </DockPanel>
                             <TextBlock Text="Connect an Osoyoo Arduino Uno (or compatible serial device) for pedal vibration feedback."
-                                       FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                       FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <TextBlock Text="Note: COM ports are for this vibration box only — your USB pedals (e.g. Thrustmaster Pedals) connect as a DirectInput device and need no COM port. See Pedal Axis Mapping below."
+                                       FontSize="11" Foreground="#FFFF9800" TextWrapping="Wrap" Margin="0,0,0,12" />
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -1047,6 +1088,10 @@
                             </DockPanel>
                             <TextBlock Text="When enabled, pedal values come from physical devices instead of game telemetry. Keyboard (W/S/A) simulation is also available."
                                        FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <TextBlock Text="{Binding PedalDeviceInfo, StringFormat='Pedal device: {0}'}" FontSize="12"
+                                       Foreground="#FF56D4A0" TextWrapping="Wrap" Margin="0,0,0,2" />
+                            <TextBlock Text="USB pedals are handled here — no need to select them in the Device menu at the top."
+                                       FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,4" />
                             <TextBlock Text="{Binding PedalDiagnosticInfo, StringFormat='Diagnostics: {0}'}" FontSize="11" Foreground="{StaticResource TextDimBrush}" />
                         </StackPanel>
                     </Border>

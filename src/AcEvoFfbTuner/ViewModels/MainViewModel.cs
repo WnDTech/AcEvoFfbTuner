@@ -503,6 +503,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _forceInvertEnabled;
 
     [ObservableProperty]
+    private bool _supportsPeriodicEffects;
+
+    [ObservableProperty]
     private int _selectedLutPresetIndex;
 
     [ObservableProperty]

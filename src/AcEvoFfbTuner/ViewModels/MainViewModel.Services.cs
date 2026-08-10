@@ -115,6 +115,7 @@ public sealed partial class MainViewModel
             DeviceName = SelectedDevice.ProductName;
             AutoDetectWheelTorque(SelectedDevice.ProductName);
             ForceInvertEnabled = _deviceManager.AutoDetectedForceInvert;
+            SupportsPeriodicEffects = _deviceManager.SupportsPeriodicEffects;
             IsAutoSetupAvailable = WheelMaxTorqueNm > 0;
             RefreshSnapshotButtonNames();
             RefreshPanicButtonNames();

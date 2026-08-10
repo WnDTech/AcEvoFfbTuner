@@ -281,8 +281,25 @@ public sealed class FfbDeviceManager : IDisposable
 
             const float minDelta = 20f;
 
+            // A weak 12% pulse can be fully masked when the user holds the wheel —
+            // retry once at 40% force before falling back to the static database.
             if (Math.Abs(delta) < minDelta)
             {
+                float strongBaseline = AverageAxisX(6, 6);
+                SendConstantForceDirect(0.4f);
+                Thread.Sleep(120);
+                float strongPulse = AverageAxisX(6, 6);
+                SendConstantForceDirect(0f);
+                float strongDelta = strongPulse - strongBaseline;
+                ConnLog($"AutoDetect: strong retry baseline={strongBaseline:F0} duringPulse={strongPulse:F0} delta={strongDelta:F0}");
+
+                if (!float.IsNaN(strongBaseline) && !float.IsNaN(strongPulse) && Math.Abs(strongDelta) >= minDelta)
+                {
+                    bool strongNeedsInversion = strongDelta > 0;
+                    ConnLog($"AutoDetect: strong pulse delta={strongDelta:F0} → invert={strongNeedsInversion} (positive=left is standard)");
+                    return strongNeedsInversion;
+                }
+
                 bool fallback = staticFallback ?? false;
                 ConnLog($"AutoDetect: delta {delta:F0} below threshold {minDelta} — falling back to static database → invert={fallback}");
                 return fallback;

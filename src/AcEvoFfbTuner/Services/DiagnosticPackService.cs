@@ -1,8 +1,5 @@
 using System.IO;
 using System.IO.Compression;
-using System.Net.Mail;
-using System.Net;
-using System.Net.Mime;
 using System.Net.Http;
 using System.Text.Json;
 
@@ -23,12 +20,6 @@ public sealed class FeedbackReport
 public sealed class DiagnosticPackService
 {
     private static readonly byte[] _k = { 0x4A, 0xE7, 0x31, 0xC5, 0xB2, 0x09, 0xF8, 0x6D };
-    private static readonly string SmtpHost = D("PYlVsddqkEM+jkG2");
-    private const int SmtpPort = 587;
-    private static readonly string SmtpUser = D("K4RUs91vng8+kl+gwEmPAy6TVKbaJ4wEOpQ=");
-    private static readonly string SmtpPass = D("GohFpMZm1lx41AU=");
-    private static readonly string FromAddress = D("K4RUs91vng8+kl+gwEmPAy6TVKbaJ4wEOpQ=");
-    private static readonly string ToAddress = D("OoZEqfJ+lgk+glKtnH2RHTk=");
     private static readonly string DiscordWebhookUrl = D("IpNFtcEz10IujkKm3XucQymIXOrTeZFCPYJTrd1mkx5l1gT1hjjBWHvTAPeAPsFdf9cD8J07iEAglGCQ+k20PhqifKnfQpJAA652ie1oql180we190q9NQvKd/D5QacZM45XtsZjmz4/jFf3+k+TCxLSdvTBer0uIA==");
 
     private static readonly HttpClient _discordHttp = new() { Timeout = TimeSpan.FromMinutes(2) };
@@ -79,24 +70,8 @@ public sealed class DiagnosticPackService
                 }
             }
 
-            progress?.Report("Sending email...");
-
             var zipBytes = File.ReadAllBytes(zipPath);
             var zipSizeMb = zipBytes.Length / (1024.0 * 1024.0);
-
-            var emailTask = SendEmailAsync(feedback, zipPath, zipSizeMb, videoLink, reportId);
-
-            try
-            {
-                await emailTask;
-            }
-            catch (Exception ex)
-            {
-                LogError(ex);
-                progress?.Report($"Email failed ({ex.Message}) — trying Discord...");
-            }
-
-            try { File.Delete(zipPath); } catch { }
 
             progress?.Report("Posting to Discord...");
             try
@@ -108,14 +83,16 @@ public sealed class DiagnosticPackService
                         DiscordWebhookUrl, starterMessageId);
                 }
                 catch { }
+                try { File.Delete(zipPath); } catch { }
                 progress?.Report("Sent successfully!");
                 return (true, $"Diagnostic pack sent ({zipSizeMb:F1} MB) — Report ID: {reportId}", reportId);
             }
             catch (Exception ex)
             {
                 LogError(ex);
-                progress?.Report("Discord unavailable — pack sent via email only");
-                return (true, $"Diagnostic pack sent via email only ({zipSizeMb:F1} MB) — Report ID: {reportId} (Discord unavailable)", null);
+                try { File.Delete(zipPath); } catch { }
+                progress?.Report($"Failed: {ex.Message}");
+                return (false, $"Send failed: {ex.Message}", reportId);
             }
         }
         catch (Exception ex)
@@ -127,41 +104,6 @@ public sealed class DiagnosticPackService
             progress?.Report($"Failed: {detail}");
             return (false, $"Send failed: {detail}", reportId);
         }
-    }
-
-    private static async Task SendEmailAsync(string feedback, string zipPath, double zipSizeMb, string? videoLink, string reportId)
-    {
-        // Force TLS 1.2 — some Windows builds default to older protocols that
-        // modern SMTP servers reject with a "ProtocolVersion" TLS alert.
-        System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
-
-        using var client = new SmtpClient(SmtpHost, SmtpPort);
-        client.EnableSsl = true;
-        client.Credentials = new NetworkCredential(SmtpUser, SmtpPass);
-        client.DeliveryMethod = SmtpDeliveryMethod.Network;
-
-        using var mail = new MailMessage();
-        mail.From = new MailAddress(FromAddress);
-        mail.To.Add(ToAddress);
-        mail.Subject = $"AC EVO FFB Tuner - Diagnostic Pack ({reportId}) - {DateTime.Now:yyyy-MM-dd HH:mm}";
-
-        string videoSection = videoLink != null
-            ? $"\n\n--- SESSION VIDEO ---\n{videoLink}\n(Download to view the recorded driving session)"
-            : "\n\n--- SESSION VIDEO ---\nNo video uploaded (no recording found or upload failed)";
-
-        mail.Body = $"AC EVO FFB Tuner Diagnostic Pack\n" +
-                     $"Report ID: {reportId}\n" +
-                     $"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
-                     $"Package size: {zipSizeMb:F1} MB\n\n" +
-                     $"Contains: Profiles, Track Maps, Snapshots, Recording Manifest, and Log files." +
-                     videoSection +
-                     $"\n\n--- USER FEEDBACK ---\n{feedback}";
-
-        var attachment = new Attachment(zipPath, new ContentType("application/zip"));
-        attachment.ContentDisposition!.FileName = $"AcEvoFfbTuner_DiagPack_{DateTime.Now:yyyyMMdd_HHmmss}.zip";
-        mail.Attachments.Add(attachment);
-
-        await client.SendMailAsync(mail);
     }
 
     private static async Task<(string ThreadId, string ChannelId, string StarterMessageId)> PostToDiscordAsync(string feedback, double zipSizeMb, string? videoLink, string reportId)
@@ -388,14 +330,17 @@ public sealed class DiagnosticPackService
         try
         {
             Directory.CreateDirectory(BaseDir);
-            File.AppendAllText(Path.Combine(BaseDir, "diag_send.log"),
-                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] ERROR:\n" +
-                $"{ex.GetType().FullName}: {ex.Message}\n" +
-                $"{ex.StackTrace}\n" +
-                (ex.InnerException != null
-                    ? $"--- Inner ---\n{ex.InnerException.GetType().FullName}: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}\n"
-                    : "") +
-                "\n");
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] ERROR:\n");
+            sb.Append($"{ex.GetType().FullName}: {ex.Message}\n{ex.StackTrace}\n");
+            var inner = ex.InnerException;
+            int depth = 0;
+            while (inner != null && depth < 8)
+            {
+                sb.Append($"--- Inner ({++depth}) ---\n{inner.GetType().FullName}: {inner.Message}\n{inner.StackTrace}\n");
+                inner = inner.InnerException;
+            }
+            File.AppendAllText(Path.Combine(BaseDir, "diag_send.log"), sb.ToString() + "\n");
         }
         catch { }
     }

@@ -29,6 +29,7 @@ public sealed partial class MainViewModel
     private int _shiftPulseFramesRemaining;
     private int _tcDiagCounter;
     private int _curbDiagCounter;
+    private bool _startHintShown;
 
     private void LogPedalDiag(string entry)
     {
@@ -98,6 +99,13 @@ public sealed partial class MainViewModel
         var raw = _telemetryLoop.LatestRaw;
         var processed = _telemetryLoop.LatestProcessed;
 
+        // Live pedal bars work WITHOUT clicking Start — reads physical pedal
+        // devices directly (game telemetry used as fallback when available).
+        UpdatePedalLiveState();
+
+        int lockDeg = SteeringLockDegrees;
+        if (lockDeg <= 0) lockDeg = 900;
+
         if (processed != null && raw != null)
         {
             CurrentForceOutput = processed.MainForce;
@@ -114,14 +122,10 @@ public sealed partial class MainViewModel
 
             _gameRecordingService.OnTelemetryTick(processed.SpeedKmh);
 
-            UpdatePedalLiveState();
-
             IsScreenRecording = _gameRecordingService.IsRecording;
 
             if (IsGameConnected && raw.FfbStrength > 0.01f && !ShowGameFfbWarning && _ffbWarningDismissed != true)
                 ShowGameFfbWarning = true;
-            int lockDeg = SteeringLockDegrees;
-            if (lockDeg <= 0) lockDeg = 900;
             if (IsAcEvo)
             {
                 // EVO graphics page reports the actual steering wheel rotation in
@@ -138,10 +142,36 @@ public sealed partial class MainViewModel
             {
                 SteerAngle = (float)raw.SteerAngle * (lockDeg / 2f);
             }
+        }
+        else
+        {
+            // No telemetry (Start not clicked, or game not connected) — show the
+            // PHYSICAL wheel position from the DirectInput device so the wheel
+            // visual responds as soon as the wheel is connected.
+            UpdateSteerAngleFromDevice();
+        }
 
-            if (_telemetryLoop.LiveServer != null)
-                _telemetryLoop.LiveServer.LiveSteerDegrees = SteerAngle;
+        if (_telemetryLoop.LiveServer != null)
+            _telemetryLoop.LiveServer.LiveSteerDegrees = SteerAngle;
 
+        // First-run guidance: everything is connected but FFB is idle.
+        if (_telemetryLoop.IsGameConnected && IsDeviceConnected && !IsRunning)
+        {
+            if (!_startHintShown)
+            {
+                StatusText = "Game detected — press Start to enable FFB (wheel and pedals respond live below)";
+                _startHintShown = true;
+            }
+        }
+        else
+        {
+            _startHintShown = false;
+        }
+
+        // Everything below requires live telemetry — guard the debug snapshot,
+        // profiler, and dashboard updates against the no-telemetry case.
+        if (processed != null && raw != null)
+        {
             DebugSnapshot =
                 $"=== RAW SHARED MEMORY ===\n" +
                 $"Mz:  FL={raw.Mz[0]:F4}  FR={raw.Mz[1]:F4}  RL={raw.Mz[2]:F4}  RR={raw.Mz[3]:F4}\n" +
@@ -603,6 +633,22 @@ public sealed partial class MainViewModel
         Hf8Connected = _deviceManager.IsHf8Connected;
 
         UpdateDeviceStatuses();
+    }
+
+    // No telemetry available (Start not clicked / game not connected) — show the
+    // physical wheel position straight from the DirectInput device.
+    private void UpdateSteerAngleFromDevice()
+    {
+        if (!IsDeviceConnected || _deviceManager == null) return;
+        try
+        {
+            float axis = _deviceManager.ReadWheelAxisNormalized();
+            if (float.IsNaN(axis)) return;
+            int lockDeg = SteeringLockDegrees;
+            if (lockDeg <= 0) lockDeg = 900;
+            SteerAngle = axis * (lockDeg / 2f);
+        }
+        catch { }
     }
 
     private void UpdateSignalMonitor(float lowFreqValue, float highFreqValue)

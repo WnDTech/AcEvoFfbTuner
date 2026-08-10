@@ -49,6 +49,7 @@ public partial class DevicesPage : UserControl
 
         if (sender is not RadioButton rb) return;
 
+        WheelPanel.Visibility = rb == WheelbaseTab ? Visibility.Visible : Visibility.Collapsed;
         LedPanel.Visibility = rb == LedTab ? Visibility.Visible : Visibility.Collapsed;
         HapticPanel.Visibility = rb == HapticTab ? Visibility.Visible : Visibility.Collapsed;
         ButtonsPanel.Visibility = rb == ButtonsTab ? Visibility.Visible : Visibility.Collapsed;

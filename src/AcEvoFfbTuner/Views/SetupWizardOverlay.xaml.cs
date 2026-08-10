@@ -268,23 +268,54 @@ public partial class SetupWizardOverlay : Window
         // connect the first FFB-capable device so the wizard never stalls on
         // "Waiting for wheel connection..." (user only has to pick a device
         // manually when none is FFB-capable).
-        if (!_deviceManager.IsDeviceAcquired && _viewModel != null)
-        {
-            _viewModel.RefreshDevicesCommand.Execute(null);
-            var firstFfb = _viewModel.AvailableDevices.FirstOrDefault(d => d.IsFfbCapable);
-            if (firstFfb != null)
-            {
-                _viewModel.SelectedDevice = firstFfb;
-                _viewModel.ConnectDeviceCommand.Execute(null);
-                Log($"OnLoaded: auto-connected first FFB device '{firstFfb.ProductName}'");
-            }
-            else
-            {
-                Log("OnLoaded: no FFB-capable device found — user must pick a device manually");
-            }
-        }
+        TryAutoConnectFirstFfbDevice("OnLoaded");
 
         Log($"OnLoaded: done OG={_pipeline.OutputGain:F3} Mz={_pipeline.ChannelMixer.MzFrontGain:F3} inv={needsInvert}");
+    }
+
+    private System.Windows.Threading.DispatcherTimer? _autoConnectRetryTimer;
+
+    // Auto-connect the first FFB-capable device. Also starts a retry timer that
+    // keeps checking while the wizard waits at step 0 — the wheel may not have
+    // enumerated yet when the wizard opened (USB devices can take a few seconds).
+    private void TryAutoConnectFirstFfbDevice(string context)
+    {
+        if (_deviceManager.IsDeviceAcquired || _viewModel == null)
+        {
+            _autoConnectRetryTimer?.Stop();
+            return;
+        }
+
+        _viewModel.RefreshDevicesCommand.Execute(null);
+        var firstFfb = _viewModel.AvailableDevices.FirstOrDefault(d => d.IsFfbCapable);
+        if (firstFfb != null)
+        {
+            _viewModel.SelectedDevice = firstFfb;
+            _viewModel.ConnectDeviceCommand.Execute(null);
+            Log($"{context}: auto-connected first FFB device '{firstFfb.ProductName}'");
+            _autoConnectRetryTimer?.Stop();
+        }
+        else
+        {
+            Log($"{context}: no FFB-capable device found yet — retrying while at step 0");
+            _autoConnectRetryTimer ??= new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _autoConnectRetryTimer.Tick -= OnAutoConnectRetryTick;
+            _autoConnectRetryTimer.Tick += OnAutoConnectRetryTick;
+            _autoConnectRetryTimer.Start();
+        }
+    }
+
+    private void OnAutoConnectRetryTick(object? sender, EventArgs e)
+    {
+        if (_currentStep != 0 || _deviceManager.IsDeviceAcquired)
+        {
+            _autoConnectRetryTimer?.Stop();
+            return;
+        }
+        TryAutoConnectFirstFfbDevice("RetryTimer");
     }
 
     private void UpdateLabels()

@@ -38,6 +38,7 @@ public sealed partial class MainViewModel
     [ObservableProperty] private float _pedalLiveClutch;
     [ObservableProperty] private string _pedalLiveSource = "—";
     [ObservableProperty] private string _pedalDiagnosticInfo = "";
+    [ObservableProperty] private string _pedalDeviceInfo = "";
 
     // ── Haptic Routing Gains (per-signal → pedal, stored in LiveServer.HapticRouteConfig) ──
     [ObservableProperty] private float _pedalMasterBrakeGain = 1.0f;
@@ -219,6 +220,19 @@ public sealed partial class MainViewModel
 
         if (_telemetryLoop.LiveServer != null)
             _telemetryLoop.LiveServer.LiveClutchPosition = PedalLiveClutch;
+
+        // Which physical device(s) the pedal input reads from (e.g. USB-modded
+        // Thrustmaster pedals show up here — NOT in the main Device menu).
+        var diSource = _telemetryLoop?.PedalInput?.Sources
+            .OfType<DirectInputPedalSource>().FirstOrDefault();
+        if (diSource != null && diSource.DeviceCount > 0)
+        {
+            PedalDeviceInfo = string.Join(", ", diSource.Devices.Select(d => d.ProductName));
+        }
+        else
+        {
+            PedalDeviceInfo = "No separate USB pedal device detected";
+        }
     }
 
     private int _pedalUpdateCounter;
