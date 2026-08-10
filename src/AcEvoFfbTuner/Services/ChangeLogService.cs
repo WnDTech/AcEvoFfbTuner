@@ -50,6 +50,19 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.25.0",
+            Date = new DateTime(2026, 8, 10),
+            Title = "In-app Help Guide: searchable, plain-language guide to every page, slider, and feature",
+            Features =
+            [
+                "In-app Help Guide: a new \"Help\" button in the sidebar opens a searchable, plain-language reference covering every page and slider in the app",
+                "Guide includes 16 articles in logical order — from Getting Started through every FFB Tuning slider's \"feel\" effect to Troubleshooting",
+                "Searchable topic list with live filtering — type any keyword (e.g. \"kerb\", \"damping\", \"pedals\") to jump to the relevant section",
+                "Every FFB Tuning, Equalizer, Devices, and haptic slider is documented with its range, default, and plain-language feel description"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.24.2",
             Date = new DateTime(2026, 8, 9),
             Title = "Clutch pedal customization, USB pedal mod support (T3PA/Arduino), device list clarity",

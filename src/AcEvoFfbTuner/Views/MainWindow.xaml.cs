@@ -74,6 +74,7 @@ public partial class MainWindow : Window
 
         Sidebar.NavigateRequested += OnNavigateRequested;
         Sidebar.SettingsRequested += OnSettingsRequested;
+        Sidebar.HelpRequested += OnHelpRequested;
 
         TelemetryPageCtrl.ProfilerOverlayRequested += OnProfilerOverlayRequested;
         TrackMapPageCtrl.TrackMapPopoutRequested += OnTrackMapPopoutRequested;
@@ -185,6 +186,12 @@ public partial class MainWindow : Window
             vm.CurrentPage = NavPage.Settings;
     }
 
+    private void OnHelpRequested()
+    {
+        if (DataContext is MainViewModel vm)
+            vm.CurrentPage = NavPage.Help;
+    }
+
     private void UpdatePageVisibility()
     {
         if (DataContext is not MainViewModel vm) return;
@@ -200,6 +207,7 @@ public partial class MainWindow : Window
         ProfilesPageCtrl.Visibility = vm.CurrentPage == NavPage.Profiles ? Visibility.Visible : Visibility.Collapsed;
         OverlaysPageCtrl.Visibility = vm.CurrentPage == NavPage.Overlays ? Visibility.Visible : Visibility.Collapsed;
         SettingsPageCtrl.Visibility = vm.CurrentPage == NavPage.Settings ? Visibility.Visible : Visibility.Collapsed;
+        HelpPageCtrl.Visibility = vm.CurrentPage == NavPage.Help ? Visibility.Visible : Visibility.Collapsed;
 
         Sidebar.SetSelected(vm.CurrentPage);
     }

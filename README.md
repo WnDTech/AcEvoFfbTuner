@@ -224,6 +224,7 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 
 ### Additional Features
 
+- **In-App Help Guide** — Searchable, plain-language reference covering every page, section, and slider with "feel" descriptions; accessible from the sidebar
 - **Multi-Game Selection** — Switch between AC EVO, RaceRoom, Assetto Corsa, ACC, and Le Mans Ultimate from a dropdown; pipeline and reader auto-switch
 - **What's New Dialog** — Versioned changelog shown on startup after updates
 - **1 kHz Output Interpolation** — Dedicated thread interpolating between 333 Hz physics frames for smooth force transitions

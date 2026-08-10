@@ -12,5 +12,6 @@ public enum NavPage
     Devices,
     Profiles,
     Overlays,
-    Settings
+    Settings,
+    Help
 }

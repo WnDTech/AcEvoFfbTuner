@@ -489,6 +489,33 @@
                     </ControlTemplate>
                 </Button.Template>
             </Button>
+            <Button x:Name="HelpBtn" Content="Help" Click="OnHelpClick" Cursor="Hand" HorizontalAlignment="Stretch"
+                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1"
+                    ToolTip="Help guide — searchable, plain-language guide to every page and slider">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="20" Height="20" Margin="0,0,12,0">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M12,2 A10,10,0,1,1,11.99,2 Z M9.1,9 C9.3,6.9 10.5,6 12,6 C13.7,6 14.9,7.1 14.9,8.6 C14.9,10.1 13.8,10.8 13,11.4 C12.2,12 12,12.5 12,13.5 M12,16.6 V16.7"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock x:Name="HelpLabel" Text="{TemplateBinding Content}" FontSize="{TemplateBinding FontSize}"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1AFFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
             <Button x:Name="CollapseBtn" Click="OnToggleCollapse" Cursor="Hand" HorizontalAlignment="Stretch"
                     Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1"
                     ToolTip="Collapse or expand sidebar">

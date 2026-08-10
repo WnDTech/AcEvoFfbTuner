@@ -9,6 +9,7 @@ public partial class SidebarControl : UserControl
 {
     public event Action<NavPage>? NavigateRequested;
     public event Action? SettingsRequested;
+    public event Action? HelpRequested;
 
     private bool _isCollapsed;
 
@@ -26,6 +27,11 @@ public partial class SidebarControl : UserControl
     private void OnSettingsClick(object sender, RoutedEventArgs e)
     {
         SettingsRequested?.Invoke();
+    }
+
+    private void OnHelpClick(object sender, RoutedEventArgs e)
+    {
+        HelpRequested?.Invoke();
     }
 
     private void OnToggleCollapse(object sender, RoutedEventArgs e)
@@ -46,6 +52,7 @@ public partial class SidebarControl : UserControl
             Root.Width = 60;
 
             SetTemplateLabelVisibility(SettingsBtn, "SettingsLabel", Visibility.Collapsed);
+            SetTemplateLabelVisibility(HelpBtn, "HelpLabel", Visibility.Collapsed);
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Collapsed);
             CollapseBtn.ToolTip = "Expand sidebar";
 
@@ -63,6 +70,7 @@ public partial class SidebarControl : UserControl
             Root.Width = 200;
 
             SetTemplateLabelVisibility(SettingsBtn, "SettingsLabel", Visibility.Visible);
+            SetTemplateLabelVisibility(HelpBtn, "HelpLabel", Visibility.Visible);
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Visible);
             CollapseBtn.ToolTip = null;
 
