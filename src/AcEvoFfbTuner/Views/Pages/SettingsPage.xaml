@@ -314,6 +314,21 @@
                                  VerticalScrollBarVisibility="Auto" />
                     </ScrollViewer>
                 </Border>
+
+                <!-- DIAGNOSTICS -->
+                <TextBlock Text="DIAGNOSTICS" FontSize="14" FontWeight="Bold" Foreground="#FFF0883E" Margin="8,20,0,8" />
+                <TextBlock Text="Log files and diagnostic data. Use these if 'Send to Dev' fails." FontSize="12" Foreground="#FF8B949E" Margin="8,0,0,8" TextWrapping="Wrap" />
+
+                <StackPanel Orientation="Horizontal" Margin="8,0,0,8">
+                    <Button Content="Open Log Folder" Click="OnOpenLogFolder" Padding="10,6" FontSize="13"
+                            Background="#FF21262D" Foreground="#FFE6EDF3" BorderThickness="0" Margin="0,0,6,0"
+                            ToolTip="Open the AcEvoFfbTuner log folder in File Explorer" />
+                    <Button Content="Zip All Logs" Click="OnZipAllLogs" Padding="10,6" FontSize="13"
+                            Background="#FF21262D" Foreground="#FFE6EDF3" BorderThickness="0"
+                            ToolTip="Create a ZIP of all logs and profiles — share manually if Send to Dev fails" />
+                </StackPanel>
+                <TextBlock Text="{Binding ZipAllLogsStatus}" FontSize="12" Foreground="#FF56D4A0" Margin="8,0,0,4" TextWrapping="Wrap"
+                           Visibility="{Binding ZipAllLogsStatus, Converter={StaticResource NotEmptyToVis}}" />
             </StackPanel>
         </ScrollViewer>
     </Grid>

@@ -139,6 +139,9 @@ public sealed partial class MainViewModel
                 SteerAngle = (float)raw.SteerAngle * (lockDeg / 2f);
             }
 
+            if (_telemetryLoop.LiveServer != null)
+                _telemetryLoop.LiveServer.LiveSteerDegrees = SteerAngle;
+
             DebugSnapshot =
                 $"=== RAW SHARED MEMORY ===\n" +
                 $"Mz:  FL={raw.Mz[0]:F4}  FR={raw.Mz[1]:F4}  RL={raw.Mz[2]:F4}  RR={raw.Mz[3]:F4}\n" +

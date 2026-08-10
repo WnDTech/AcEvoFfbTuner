@@ -24,7 +24,7 @@ public sealed partial class OverlaysPage : UserControl
         _loaded = false;
         var ips = FfbLiveServer.GetLocalNetworkAddresses();
         var activeIp = FfbLiveServer.GetActiveNetworkAddress();
-        foreach (var combo in new[] { SourceDashboard, SourceOverlay, SourceClipping })
+        foreach (var combo in new[] { SourceDashboard, SourceOverlay, SourceClipping, SourceBuilder })
         {
             combo.Items.Clear();
             combo.Items.Add("localhost");
@@ -40,6 +40,7 @@ public sealed partial class OverlaysPage : UserControl
         UpdateUrl(UrlDashboard, SourceDashboard, "/?theme=dark");
         UpdateUrl(UrlOverlay, SourceOverlay, "/overlay");
         UpdateUrl(UrlClipping, SourceClipping, "/?theme=clipping");
+        UpdateBuilderUrl();
 
         UpdateNetworkStatus();
     }
@@ -123,6 +124,39 @@ public sealed partial class OverlaysPage : UserControl
     {
         if (!_loaded) return;
         UpdateUrl(UrlClipping, SourceClipping, "/?theme=clipping");
+    }
+
+    private static readonly string[] BuilderModNames =
+        { "speed", "force", "waveform", "track", "pedals", "tires", "gforce" };
+
+    private void UpdateBuilderUrl()
+    {
+        var boxes = new[] { BxSpeed, BxForce, BxWaveform, BxTrack, BxPedals, BxTires, BxGforce };
+        var selected = new List<string>();
+        for (int i = 0; i < boxes.Length; i++)
+            if (boxes[i].IsChecked == true) selected.Add(BuilderModNames[i]);
+        var path = selected.Count == 0
+            ? "/overlay?mods=none"
+            : "/overlay?mods=" + string.Join(",", selected);
+        UpdateUrl(UrlBuilder, SourceBuilder, path);
+    }
+
+    private void OnBuilderChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_loaded) return;
+        UpdateBuilderUrl();
+    }
+
+    private void OnBuilderSourceChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_loaded) return;
+        UpdateBuilderUrl();
+    }
+
+    private void OnBuilderSourceLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (!_loaded) return;
+        UpdateBuilderUrl();
     }
 
     private void SelectAllOnClick(object sender, MouseButtonEventArgs e)

@@ -637,7 +637,14 @@ public partial class SetupWizardOverlay : Window
         float vmFx = _viewModel?.FxFrontGain ?? float.NaN;
         float vmFy = _viewModel?.FyFrontGain ?? float.NaN;
         Log($"SAVE: pipeline MzFront={pipeMz:F3}  viewModel MzFront={vmMz:F3} FxFront={vmFx:F3} FyFront={vmFy:F3}");
-        _saveCallback(name, scope);
+        try
+        {
+            _saveCallback(name, scope);
+        }
+        catch (Exception ex)
+        {
+            Log($"SAVE FAILED: {ex.GetType().Name}: {ex.Message}");
+        }
         Speak("Profile saved. Setup complete.");
         Close();
     }

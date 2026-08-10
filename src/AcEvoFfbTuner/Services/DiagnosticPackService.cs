@@ -86,7 +86,15 @@ public sealed class DiagnosticPackService
 
             var emailTask = SendEmailAsync(feedback, zipPath, zipSizeMb, videoLink, reportId);
 
-            await emailTask;
+            try
+            {
+                await emailTask;
+            }
+            catch (Exception ex)
+            {
+                LogError(ex);
+                progress?.Report($"Email failed ({ex.Message}) — trying Discord...");
+            }
 
             try { File.Delete(zipPath); } catch { }
 
@@ -123,6 +131,10 @@ public sealed class DiagnosticPackService
 
     private static async Task SendEmailAsync(string feedback, string zipPath, double zipSizeMb, string? videoLink, string reportId)
     {
+        // Force TLS 1.2 — some Windows builds default to older protocols that
+        // modern SMTP servers reject with a "ProtocolVersion" TLS alert.
+        System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
+
         using var client = new SmtpClient(SmtpHost, SmtpPort);
         client.EnableSsl = true;
         client.Credentials = new NetworkCredential(SmtpUser, SmtpPass);

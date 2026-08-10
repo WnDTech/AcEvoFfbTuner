@@ -301,6 +301,14 @@ public sealed class TelemetryLoop : IDisposable
                         if (!wasConnected)
                         {
                             wasConnected = true;
+                            LiveServer.LiveGame = _reader switch
+                            {
+                                RaceroomSharedMemoryReader => "r3e",
+                                LmuSharedMemoryReader => "lmu",
+                                AssettoCorsaSharedMemoryReader => "evo",
+                                AccSharedMemoryReader => "acc",
+                                _ => ""
+                            };
                             _pipeline.Reset();
                             _staticFriction.Reset();
                             _staticDataRead = false;
@@ -471,6 +479,7 @@ public sealed class TelemetryLoop : IDisposable
                         raw.TcActiveGfx = r3e.IsTcActive;
                         raw.AidSettingsTc = r3e.AidSettingsTc;
                         raw.YawAccel = r3e.YawAcceleration;
+                        raw.TyreTemp = physics.TyreTempI;
                     }
 
                     // Inject AC tyre grip data

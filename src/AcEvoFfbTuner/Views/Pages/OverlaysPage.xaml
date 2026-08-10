@@ -96,10 +96,77 @@
                         </StackPanel>
                     </Border>
                     <TextBlock FontSize="12" Foreground="#FF607D8B" Margin="0,0,0,4">
-                        <Run FontWeight="Bold" Text="Options:" /> ?opacity=0.7&amp;showTrack=true&amp;showWaveform=true
+                        <Run FontWeight="Bold" Text="Options:" /> ?opacity=0.7&amp;showTrack=true&amp;showWaveform=true&amp;mods=speed,force,waveform,track,pedals,tires,gforce
                     </TextBlock>
                     <TextBlock FontSize="12" Foreground="#FF607D8B">
                         <Run FontWeight="Bold" Text="Tip:" /> Use "?opacity=0.8" to reduce transparency.
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Custom Overlay Builder" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                        Build your own stream HUD: tick the modules you want and the URL updates automatically. Paste it into an OBS Browser Source (1920x1080, transparent background supported).
+                    </TextBlock>
+                    <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Text="Modules:" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,6" />
+                            <WrapPanel>
+                                <CheckBox x:Name="BxSpeed" Content="Speed, gear, RPM &amp; flags" IsChecked="True"
+                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                <CheckBox x:Name="BxForce" Content="Force, clipping &amp; channels" IsChecked="True"
+                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                <CheckBox x:Name="BxWaveform" Content="Force waveform" IsChecked="True"
+                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                <CheckBox x:Name="BxTrack" Content="Track map" IsChecked="True"
+                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                <CheckBox x:Name="BxPedals" Content="Pedals &amp; steering" IsChecked="True"
+                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                <CheckBox x:Name="BxTires" Content="Tire heat" IsChecked="True"
+                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                <CheckBox x:Name="BxGforce" Content="G-force meter" IsChecked="True"
+                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                            </WrapPanel>
+                            <Grid Margin="0,8,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" x:Name="UrlBuilder" Text=""
+                                         Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                         Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                         VerticalAlignment="Center" Padding="8,4"
+                                         PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                <Button Grid.Column="1" Content="Copy" Tag="UrlBuilder"
+                                        Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                        Background="#FF30363D" Foreground="#FFE6EDF3"
+                                        BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                <ComboBox Grid.Column="1" x:Name="SourceBuilder" IsEditable="True"
+                                          SelectionChanged="OnBuilderSourceChanged"
+                                          LostFocus="OnBuilderSourceLostFocus"
+                                          Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                          BorderBrush="#FF484F58" FontSize="13" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock FontSize="12" Foreground="#FF607D8B">
+                        <Run FontWeight="Bold" Text="Tip:" /> Modules are also usable directly in the URL: ?mods=speed,pedals,tires,gforce. Add ?opacity=0.8 for a lighter look.
                     </TextBlock>
                 </StackPanel>
             </Border>

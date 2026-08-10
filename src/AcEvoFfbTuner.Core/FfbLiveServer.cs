@@ -59,6 +59,12 @@ public sealed class FfbLiveServer : IDisposable
     public volatile float LiveBrakePressure;
     public volatile float LiveClutchPosition;
 
+    /// <summary>Display steering angle in degrees (per-game convention), set by MainViewModel each tick.</summary>
+    public volatile float LiveSteerDegrees;
+
+    /// <summary>Active game key ("evo", "r3e", "lmu", "acc", or empty), set by TelemetryLoop on connect.</summary>
+    public volatile string LiveGame = "";
+
     /// <summary>Pedal haptic routing gains, settable via API from PedalTest GUI.</summary>
     public PedalHapticRouteConfig HapticRouteConfig { get; set; } = new();
 
@@ -253,6 +259,61 @@ public sealed class FfbLiveServer : IDisposable
             _sb.Append(raw.AccG.Length > 0 ? raw.AccG[0].ToString("F3") : "0");
             _sb.Append(",\"lonG\":");
             _sb.Append(raw.AccG.Length > 1 ? raw.AccG[1].ToString("F3") : "0");
+
+            // Display G (lateral X / longitudinal Z) for the G-meter overlay.
+            // Per-game sources: EVO/R3E AccG is already in g; LMU AccG is raw m/s².
+            // R3E/LMU may report real accel in DisplayAccG (m/s²) when AccG is a zeroed placeholder.
+            float gx = raw.AccG.Length > 0 ? raw.AccG[0] : 0f;
+            float gz = raw.AccG.Length > 2 ? raw.AccG[2] : 0f;
+            bool gFromFallback = MathF.Abs(gx) < 0.01f && MathF.Abs(gz) < 0.01f && raw.DisplayAccG.Length > 2;
+            if (gFromFallback)
+            {
+                gx = raw.DisplayAccG[0];
+                gz = raw.DisplayAccG[2];
+            }
+            if (LiveGame == "lmu" || (gFromFallback && LiveGame == "r3e"))
+            {
+                gx /= 9.80665f;
+                gz /= 9.80665f;
+            }
+            _sb.Append(",\"gx\":");
+            _sb.Append(gx.ToString("F3"));
+            _sb.Append(",\"gy\":");
+            _sb.Append(gz.ToString("F3"));
+            _sb.Append(",\"stD\":");
+            _sb.Append(LiveSteerDegrees.ToString("F1"));
+            _sb.Append(",\"tt0\":");
+            _sb.Append(raw.TyreTemp[0].ToString("F1"));
+            _sb.Append(",\"tt1\":");
+            _sb.Append(raw.TyreTemp[1].ToString("F1"));
+            _sb.Append(",\"tt2\":");
+            _sb.Append(raw.TyreTemp[2].ToString("F1"));
+            _sb.Append(",\"tt3\":");
+            _sb.Append(raw.TyreTemp[3].ToString("F1"));
+            _sb.Append(",\"tp0\":");
+            _sb.Append(raw.WheelsPressure[0].ToString("F1"));
+            _sb.Append(",\"tp1\":");
+            _sb.Append(raw.WheelsPressure[1].ToString("F1"));
+            _sb.Append(",\"tp2\":");
+            _sb.Append(raw.WheelsPressure[2].ToString("F1"));
+            _sb.Append(",\"tp3\":");
+            _sb.Append(raw.WheelsPressure[3].ToString("F1"));
+            _sb.Append(",\"tg0\":");
+            _sb.Append(raw.TyreGrip[0].ToString("F3"));
+            _sb.Append(",\"tg1\":");
+            _sb.Append(raw.TyreGrip[1].ToString("F3"));
+            _sb.Append(",\"tg2\":");
+            _sb.Append(raw.TyreGrip[2].ToString("F3"));
+            _sb.Append(",\"tg3\":");
+            _sb.Append(raw.TyreGrip[3].ToString("F3"));
+            _sb.Append(",\"tca\":");
+            _sb.Append(raw.TcActiveGfx ? "1" : "0");
+            _sb.Append(",\"aba\":");
+            _sb.Append(raw.AbsActiveGfx ? "1" : "0");
+            _sb.Append(",\"fl\":");
+            _sb.Append(raw.Flag.ToString());
+            _sb.Append(",\"pit\":");
+            _sb.Append(raw.IsPitLimiterOn ? "1" : "0");
             _sb.Append('}');
 
             var payload = Encoding.UTF8.GetBytes("data: " + _sb.ToString() + "\n\n");
@@ -495,14 +556,13 @@ public sealed class FfbLiveServer : IDisposable
 
     private void AppendHistoryArray(float[] arr)
     {
-        if (_hCount == 0) { _sb.Append(']'); return; }
+        if (_hCount == 0) return; // caller emits the closing bracket
         int start = _hCount < MaxHistory ? 0 : _hIdx;
         for (int i = 0; i < _hCount; i++)
         {
             if (i > 0) _sb.Append(',');
             _sb.Append(arr[(start + i) % MaxHistory].ToString("F5"));
         }
-        _sb.Append(']');
     }
 
     // ── Pedal API ─────────────────────────────────────────────────────────
@@ -900,11 +960,12 @@ public sealed class FfbLiveServer : IDisposable
         public float Opacity { get; set; }
         public bool ShowTrack { get; set; }
         public bool ShowWaveform { get; set; }
+        public string Mods { get; set; }   // comma list: speed,force,waveform,track,pedals,tires,gforce (empty = all)
     }
 
     private static OverlayOptions ParseOptions(string query)
     {
-        var opts = new OverlayOptions { Theme = "dark", Charts = "all", Stats = "all", Opacity = 1.0f, ShowTrack = true, ShowWaveform = true };
+        var opts = new OverlayOptions { Theme = "dark", Charts = "all", Stats = "all", Opacity = 1.0f, ShowTrack = true, ShowWaveform = true, Mods = "" };
         if (string.IsNullOrEmpty(query)) return opts;
 
         var q = query.TrimStart('?');
@@ -920,6 +981,7 @@ public sealed class FfbLiveServer : IDisposable
                 case "opacity": float.TryParse(kv[1], out var o); opts.Opacity = Math.Clamp(o, 0.1f, 1.0f); break;
                 case "showtrack": opts.ShowTrack = kv[1] != "false"; break;
                 case "showwaveform": opts.ShowWaveform = kv[1] != "false"; break;
+                case "mods": opts.Mods = kv[1].ToLowerInvariant(); break;
             }
         }
         return opts;
@@ -1275,6 +1337,19 @@ addEventListener('keydown',(e)=>{if(e.code==='Space'){e.preventDefault();toggleF
     private static string GetOverlayHtml(OverlayOptions opts)
     {
         var opacity = opts.Opacity.ToString("F2");
+
+        var mods = string.IsNullOrEmpty(opts.Mods)
+            ? new[] { "speed", "force", "waveform", "track", "pedals", "tires", "gforce" }
+            : opts.Mods.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        bool showSpeed = mods.Contains("speed");
+        bool showForce = mods.Contains("force");
+        bool showWaveform = mods.Contains("waveform") && opts.ShowWaveform;
+        bool showTrack = mods.Contains("track") && opts.ShowTrack;
+        bool showPedals = mods.Contains("pedals");
+        bool showTires = mods.Contains("tires");
+        bool showGforce = mods.Contains("gforce");
+        string Vis(bool on) => on ? "" : "display:none";
+
         return @"<!DOCTYPE html>
 <html><head><meta charset=""utf-8""><title>FFB Overlay</title>
 <style>
@@ -1296,6 +1371,14 @@ body{background:transparent;color:#fff;font-family:'Inter','Segoe UI',Arial,sans
 #pc{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;min-width:clamp(40px,5vw,100px)}
 #pl{font-size:clamp(7px,0.65vw,13px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em}
 #pv{font-size:clamp(12px,1.4vw,26px);font-weight:600;font-variant-numeric:tabular-nums}
+#chips{display:flex;gap:clamp(4px,0.5vw,10px);flex-shrink:0;align-items:center}
+.chip{display:none;align-items:center;justify-content:center;padding:clamp(2px,0.25vw,6px) clamp(6px,0.8vw,14px);border-radius:clamp(4px,0.4vw,8px);font-size:clamp(8px,0.7vw,14px);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap}
+.chip.tc{background:rgba(234,179,8,0.16);color:#eab308;border:1px solid rgba(234,179,8,0.4)}
+.chip.abs{background:rgba(239,68,68,0.16);color:#ef4444;border:1px solid rgba(239,68,68,0.4)}
+.chip.pit{background:rgba(59,130,246,0.16);color:#3b82f6;border:1px solid rgba(59,130,246,0.4)}
+.chip.flag{background:rgba(250,204,21,0.16);color:#facc15;border:1px solid rgba(250,204,21,0.5)}
+.chip.flag.blue{background:rgba(33,150,243,0.18);color:#2196f3;border-color:rgba(33,150,243,0.5)}
+.chip.flag.red{background:rgba(239,68,68,0.18);color:#ef4444;border-color:rgba(239,68,68,0.5)}
 #fa{display:flex;flex-direction:column;gap:clamp(4px,0.5vh,10px)}
 #fv{font-size:clamp(14px,2.5vw,44px);font-weight:400;letter-spacing:-0.01em;font-variant-numeric:tabular-nums}
 #fv .n{font-size:clamp(9px,1vw,18px);font-weight:400;color:rgba(255,255,255,0.35);margin-left:clamp(4px,0.4vw,10px)}
@@ -1313,18 +1396,50 @@ body{background:transparent;color:#fff;font-family:'Inter','Segoe UI',Arial,sans
 .cv{font-size:clamp(10px,1.1vw,22px);font-weight:600;font-variant-numeric:tabular-nums}
 .cv.mz{color:#fbbf24}.cv.fx{color:#f87171}.cv.fy{color:#34d399}.cv.ga{color:#fff}.cv.br{color:#f87171}.cv.lt{color:#a78bfa}.cv.ln{color:#f59e0b}
 #btr{display:flex;flex-wrap:wrap;gap:clamp(8px,1vw,20px);align-items:flex-end;min-height:0;flex:1}
-#ww{flex:1;min-width:clamp(60px,20vw,400px);height:clamp(24px,4vh,70px);display:" + (opts.ShowWaveform ? "block" : "none") + @"}
+#ww{flex:1;min-width:clamp(60px,20vw,400px);height:clamp(24px,4vh,70px)}
 #ww canvas{width:100%;height:100%;border-radius:clamp(4px,0.4vw,10px);background:rgba(0,0,0,0.15);display:block}
-#tw{width:clamp(50px,7vw,140px);height:clamp(50px,7vw,140px);flex-shrink:0;display:" + (opts.ShowTrack ? "block" : "none") + @"}
+#tw{width:clamp(50px,7vw,140px);height:clamp(50px,7vw,140px);flex-shrink:0}
 #tw canvas{width:100%;height:100%;border-radius:clamp(6px,0.6vw,12px);background:rgba(0,0,0,0.2);display:block}
+#mr{display:flex;flex-wrap:wrap;gap:clamp(14px,2vw,40px);align-items:center;justify-content:center}
+#md-pedals{display:flex;gap:clamp(10px,1.5vw,26px);align-items:flex-end}
+.pedal-box{display:flex;flex-direction:column;align-items:center;gap:clamp(2px,0.3vh,6px)}
+.pedal-track{width:clamp(18px,2vw,40px);height:clamp(44px,6vh,110px);background:rgba(255,255,255,0.06);border-radius:clamp(4px,0.4vw,8px);position:relative;overflow:hidden}
+.pedal-fill{position:absolute;bottom:0;left:0;right:0;transition:height 40ms ease}
+.pedal-fill.gas{background:linear-gradient(0deg,#16a34a,#4ade80)}
+.pedal-fill.brake{background:linear-gradient(0deg,#b91c1c,#f87171)}
+.pedal-lb{font-size:clamp(7px,0.6vw,12px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em}
+#wheel-box{display:flex;flex-direction:column;align-items:center;gap:clamp(2px,0.3vh,6px)}
+#cWheel{width:clamp(64px,7vw,132px);height:clamp(64px,7vw,132px);display:block}
+#md-tires{display:flex;flex-direction:column;gap:clamp(3px,0.4vh,8px)}
+#tires-row{display:flex;gap:clamp(8px,1vw,20px)}
+.tire{display:flex;flex-direction:column;align-items:center;gap:clamp(2px,0.2vh,4px)}
+.tire-bar{width:clamp(16px,1.8vw,34px);height:clamp(46px,6vh,110px);background:rgba(255,255,255,0.06);border-radius:clamp(4px,0.4vw,8px);position:relative;overflow:hidden}
+.tire-fill{position:absolute;bottom:0;left:0;right:0;transition:height 60ms ease}
+.tire-lb{font-size:clamp(7px,0.6vw,12px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em}
+.tire-t{font-size:clamp(8px,0.8vw,14px);font-weight:600;font-variant-numeric:tabular-nums}
+.tire-p{font-size:clamp(7px,0.6vw,11px);color:rgba(255,255,255,0.35);font-variant-numeric:tabular-nums}
+#md-gforce{display:flex;flex-direction:column;align-items:center;gap:clamp(2px,0.3vh,6px)}
+#cG{width:clamp(84px,9vw,170px);height:clamp(84px,9vw,170px);display:block}
+.g-lb{font-size:clamp(7px,0.6vw,12px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em}
+#gvals{display:flex;gap:clamp(8px,1vw,20px);font-size:clamp(8px,0.8vw,14px);font-weight:600;font-variant-numeric:tabular-nums}
+#gvals .lat{color:#34d399}#gvals .lon{color:#fbbf24}
 </style></head><body>
 <div id='p'>
+<div id='md-speed' style='" + Vis(showSpeed) + @"'>
 <div id='tr'>
 <div id='sg'><div id='sp'>0<span class='u'>km/h</span></div><div id='ge'>N</div></div>
 <div id='rs'><div id='rl'>RPM</div><div id='rb'><div id='rf' style='width:0%'></div></div></div>
 <div id='lc'><div id='ll'>LAP</div><div id='lv'>0</div></div>
 <div id='pc'><div id='pl'>POS</div><div id='pv'>P0/0</div></div>
+<div id='chips'>
+<div class='chip flag' id='chFlag' style='display:none'>FLAG</div>
+<div class='chip tc' id='chTc' style='display:none'>TC</div>
+<div class='chip abs' id='chAbs' style='display:none'>ABS</div>
+<div class='chip pit' id='chPit' style='display:none'>PIT</div>
 </div>
+</div>
+</div>
+<div id='md-force' style='" + Vis(showForce) + @"'>
 <div id='fa'>
 <div id='fv'>0.000<span class='n'>Nm</span></div>
 <div id='fbw'><div id='fb' class='p' style='width:0%'></div></div>
@@ -1340,9 +1455,31 @@ body{background:transparent;color:#fff;font-family:'Inter','Segoe UI',Arial,sans
 <div class='cg'><span class='cl'>Lon</span><span class='cv ln' id='vLn'>0.00</span></div>
 </div>
 </div>
+</div>
 <div id='btr'>
-<div id='ww'><canvas id='cWave'></canvas></div>
-<div id='tw'><canvas id='cTrack'></canvas></div>
+<div id='md-waveform' style='" + Vis(showWaveform) + @"'><div id='ww'><canvas id='cWave'></canvas></div></div>
+<div id='md-track' style='" + Vis(showTrack) + @"'><div id='tw'><canvas id='cTrack'></canvas></div></div>
+</div>
+<div id='mr'>
+<div id='md-pedals' style='" + Vis(showPedals) + @"'>
+<div class='pedal-box'><div class='pedal-track'><div class='pedal-fill gas' id='pfG'></div></div><div class='pedal-lb'>GAS</div></div>
+<div class='pedal-box'><div class='pedal-track'><div class='pedal-fill brake' id='pfB'></div></div><div class='pedal-lb'>BRAKE</div></div>
+<div id='wheel-box'><canvas id='cWheel'></canvas><div class='pedal-lb'>STEER</div></div>
+</div>
+<div id='md-tires' style='" + Vis(showTires) + @"'>
+<div class='g-lb'>TIRES &deg;C / kPa / grip</div>
+<div id='tires-row'>
+<div class='tire'><div class='tire-lb'>FL</div><div class='tire-bar'><div class='tire-fill' id='tf0'></div></div><div class='tire-t' id='tt0'>--</div><div class='tire-p' id='tp0'>--</div></div>
+<div class='tire'><div class='tire-lb'>FR</div><div class='tire-bar'><div class='tire-fill' id='tf1'></div></div><div class='tire-t' id='tt1'>--</div><div class='tire-p' id='tp1'>--</div></div>
+<div class='tire'><div class='tire-lb'>RL</div><div class='tire-bar'><div class='tire-fill' id='tf2'></div></div><div class='tire-t' id='tt2'>--</div><div class='tire-p' id='tp2'>--</div></div>
+<div class='tire'><div class='tire-lb'>RR</div><div class='tire-bar'><div class='tire-fill' id='tf3'></div></div><div class='tire-t' id='tt3'>--</div><div class='tire-p' id='tp3'>--</div></div>
+</div>
+</div>
+<div id='md-gforce' style='" + Vis(showGforce) + @"'>
+<canvas id='cG'></canvas>
+<div id='gvals'><span class='lat' id='gLat'>LAT 0.00</span><span class='lon' id='gLon'>LON 0.00</span></div>
+<div class='g-lb'>G-FORCE</div>
+</div>
 </div>
 </div>
 <script>
@@ -1389,9 +1526,98 @@ $('pv').textContent='P'+p+'/'+t;
 const gA=d.gapA||0,gB=d.gapB||0;
 $('gA').textContent=(gA>=0?'+':'')+gA.toFixed(3);
 $('gB').textContent=(gB>=0?'+':'')+gB.toFixed(3);
+updateChips(d);
+updatePedals(d);
+updateTires(d);
+drawG(d);
 drawWave();
 drawTrack(d);
 };
+function updateChips(d){
+const chf=$('chFlag');
+if(chf){
+const fl=d.fl;
+const lbl=['','BLUE','YELLOW','BLACK','WHITE','CHECKED','PENALTY','','ORANGE'];
+const name=fl>=0&&fl<lbl.length?lbl[fl]:'';
+if(!name||fl===0||fl===7){chf.style.display='none';}
+else{
+chf.textContent=name;
+chf.className='chip flag'+(fl===1?' blue':(fl===2?'':' red'));
+chf.style.display='flex';
+}
+}
+const tc=$('chTc');if(tc)tc.style.display=d.tca?'flex':'none';
+const ab=$('chAbs');if(ab)ab.style.display=d.aba?'flex':'none';
+const pit=$('chPit');if(pit)pit.style.display=d.pit?'flex':'none';
+}
+function updatePedals(d){
+const gas=Math.max(0,Math.min(1,d.ga||0));
+$('pfG').style.height=(gas*100)+'%';
+const brk=Math.max(0,Math.min(1,d.br||0));
+$('pfB').style.height=(brk*100)+'%';
+drawWheel(d);
+}
+function drawWheel(d){
+const c=document.getElementById('cWheel');
+if(!c)return;
+const w=c.clientWidth,h=c.clientHeight;
+if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+const x=c.getContext('2d');
+x.clearRect(0,0,w,h);
+const cx=w/2,cy=h/2,r=Math.min(w,h)*0.42;
+let deg=0;
+if(d.stD!==undefined&&Math.abs(d.stD)>0.1){deg=Math.max(-720,Math.min(720,d.stD));}
+else{deg=Math.max(-180,Math.min(180,(d.st||0)*60));}
+x.strokeStyle='rgba(255,255,255,0.12)';x.lineWidth=1;
+x.beginPath();x.arc(cx,cy,r*0.66,0,Math.PI*2);x.stroke();
+x.save();x.translate(cx,cy);x.rotate(deg*Math.PI/180);
+x.strokeStyle='rgba(255,255,255,0.85)';x.lineWidth=Math.max(2.5,r*0.14);
+x.beginPath();x.arc(0,0,r,0,Math.PI*2);x.stroke();
+x.strokeStyle='rgba(255,255,255,0.5)';x.lineWidth=Math.max(1.5,r*0.08);
+x.beginPath();x.moveTo(-r*0.55,0);x.lineTo(r*0.55,0);x.moveTo(0,-r*0.55);x.lineTo(0,r*0.55);x.stroke();
+x.beginPath();x.arc(0,0,r*0.16,0,Math.PI*2);x.fillStyle='rgba(255,255,255,0.22)';x.fill();
+x.restore();
+x.fillStyle='#ef4444';x.beginPath();x.arc(cx,cy,Math.max(2,r*0.07),0,Math.PI*2);x.fill();
+}
+function updateTires(d){
+const temps=[d.tt0||0,d.tt1||0,d.tt2||0,d.tt3||0];
+const pres=[d.tp0||0,d.tp1||0,d.tp2||0,d.tp3||0];
+const grip=[d.tg0||0,d.tg1||0,d.tg2||0,d.tg3||0];
+for(let i=0;i<4;i++){
+const t=temps[i],f=$('tf'+i);
+if(t<=0.5){f.style.height='2%';f.style.background='rgba(255,255,255,0.08)';}
+else{
+const pct=Math.max(0,Math.min(1,(t-20)/90));
+f.style.height=(pct*100)+'%';
+f.style.background='hsl('+(240-pct*240)+',85%,55%)';
+}
+$('tt'+i).textContent=t<=0.5?'--':t.toFixed(0)+'°';
+$('tp'+i).textContent=(pres[i]<=0.5?'--':pres[i].toFixed(0)+(grip[i]>0.01?' · '+Math.round(grip[i]*100)+'%':''));
+}
+}
+function drawG(d){
+const c=document.getElementById('cG');
+if(!c)return;
+const w=c.clientWidth,h=c.clientHeight;
+if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+const x=c.getContext('2d');
+x.clearRect(0,0,w,h);
+const cx=w/2,cy=h/2,r=Math.min(w,h)*0.44;
+x.strokeStyle='rgba(255,255,255,0.2)';x.lineWidth=1.5;
+x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.stroke();
+x.strokeStyle='rgba(255,255,255,0.1)';
+x.beginPath();x.arc(cx,cy,r*0.5,0,Math.PI*2);x.stroke();
+x.beginPath();x.moveTo(cx-r,cy);x.lineTo(cx+r,cy);x.moveTo(cx,cy-r);x.lineTo(cx,cy+r);x.stroke();
+const gx=(d.gx!==undefined?d.gx:0),gy=(d.gy!==undefined?d.gy:0);
+const scale=r/2.2;
+const bx=cx+Math.max(-r,Math.min(r,gx*scale));
+const by=cy+Math.max(-r,Math.min(r,gy*scale));
+x.beginPath();x.arc(bx,by,Math.max(4,r*0.13),0,Math.PI*2);
+x.fillStyle='rgba(34,211,238,0.9)';x.fill();
+x.strokeStyle='#fff';x.lineWidth=1.5;x.stroke();
+const gl=$('gLat');if(gl)gl.textContent='LAT '+gx.toFixed(2);
+const go=$('gLon');if(go)go.textContent='LON '+gy.toFixed(2);
+}
 window.addEventListener('resize',()=>{drawWave();});
 function drawWave(){
 const c=document.getElementById('cWave');

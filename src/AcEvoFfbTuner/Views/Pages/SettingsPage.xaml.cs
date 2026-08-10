@@ -1,4 +1,7 @@
 using System.Collections.Specialized;
+using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
 using System.Windows;
 using System.Windows.Controls;
 using AcEvoFfbTuner.ViewModels;
@@ -7,6 +10,10 @@ namespace AcEvoFfbTuner.Views.Pages;
 
 public partial class SettingsPage : UserControl
 {
+    private static readonly string AppDataDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "AcEvoFfbTuner");
+
     public event EventHandler? TestingGuideRequested;
     public event EventHandler? CalibrationWizardRequested;
 
@@ -64,5 +71,61 @@ public partial class SettingsPage : UserControl
     private void OnOpenCalibrationWizard(object sender, RoutedEventArgs e)
     {
         CalibrationWizardRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnOpenLogFolder(object sender, RoutedEventArgs e)
+    {
+        if (!Directory.Exists(AppDataDir))
+        {
+            Directory.CreateDirectory(AppDataDir);
+        }
+        Process.Start(new ProcessStartInfo(AppDataDir) { UseShellExecute = true });
+    }
+
+    private void OnZipAllLogs(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+
+        try
+        {
+            vm.ZipAllLogsStatus = "Creating ZIP...";
+
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var zipPath = Path.Combine(Path.GetTempPath(), $"AcEvoFfbTuner_Logs_{timestamp}.zip");
+
+            using (var fs = new FileStream(zipPath, FileMode.Create))
+            using (var zip = new ZipArchive(fs, ZipArchiveMode.Create))
+            {
+                AddDirectoryToZip(zip, AppDataDir, "", "*.log");
+                AddDirectoryToZip(zip, AppDataDir, "", "*.txt");
+                AddDirectoryToZip(zip, AppDataDir, "Profiles", "*.json");
+                AddDirectoryToZip(zip, AppDataDir, "snapshots", "*.csv");
+                AddDirectoryToZip(zip, AppDataDir, "snapshots", "*.html");
+                AddDirectoryToZip(zip, AppDataDir, "snapshots", "*.txt");
+                AddDirectoryToZip(zip, AppDataDir, "TrackMaps", "*.json");
+            }
+
+            var zipInfo = new FileInfo(zipPath);
+            var sizeMb = zipInfo.Length / (1024.0 * 1024.0);
+            vm.ZipAllLogsStatus = $"ZIP created ({sizeMb:F1} MB): {zipPath}";
+
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{zipPath}\"") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            vm.ZipAllLogsStatus = $"ZIP failed: {ex.Message}";
+        }
+    }
+
+    private static void AddDirectoryToZip(ZipArchive zip, string baseDir, string subDir, string searchPattern)
+    {
+        var dir = Path.Combine(baseDir, subDir);
+        if (!Directory.Exists(dir)) return;
+
+        foreach (var file in Directory.GetFiles(dir, searchPattern, SearchOption.AllDirectories))
+        {
+            var relativePath = Path.GetRelativePath(baseDir, file);
+            zip.CreateEntryFromFile(file, relativePath, CompressionLevel.Optimal);
+        }
     }
 }

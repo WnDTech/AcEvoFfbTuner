@@ -138,6 +138,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private string _updateStatusText = "";
 
     [ObservableProperty]
+    private string _zipAllLogsStatus = "";
+
+    [ObservableProperty]
     private bool _isUpdateAvailable;
 
     [ObservableProperty]

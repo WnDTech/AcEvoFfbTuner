@@ -50,6 +50,22 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.25.1",
+            Date = new DateTime(2026, 8, 10),
+            Title = "Diagnostic send fix, wizard close fix, Settings log tools",
+            Fixes =
+            [
+                "Diagnostic pack email sender now forces TLS 1.2 — some Windows builds negotiated an older protocol that modern SMTP servers rejected",
+                "Diagnostic pack email failure no longer blocks the Discord post — email is tried first, then Discord runs regardless of email outcome",
+                "Setup wizard no longer stays open after completing — the save callback is now exception-safe so the wizard always closes"
+            ],
+            Improvements =
+            [
+                "Settings page now has a DIAGNOSTICS section with \"Open Log Folder\" (opens AppData in Explorer) and \"Zip All Logs\" (creates a timestamped ZIP of all logs, profiles, snapshots, and track maps — ready to share manually if Send to Dev fails)"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.25.0",
             Date = new DateTime(2026, 8, 10),
             Title = "In-app Help Guide: searchable, plain-language guide to every page, slider, and feature",
