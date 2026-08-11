@@ -20,7 +20,7 @@ public sealed partial class MainViewModel
     // ── TrueForce stream (RS50 / G PRO direct FFB, no G HUB) ──
     [ObservableProperty] private bool _trueForceCardVisible;
     [ObservableProperty] private bool _trueForceEnabled = true;
-    [ObservableProperty] private float _trueForceForceScale = 1.0f;
+    [ObservableProperty] private float _trueForceForceScale = 0.5f;
     [ObservableProperty] private string _trueForceStatus = "TrueForce stream: not connected";
 
     partial void OnTrueForceEnabledChanged(bool value)

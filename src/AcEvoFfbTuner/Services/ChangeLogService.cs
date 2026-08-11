@@ -61,7 +61,8 @@ public static class ChangeLogService
             Improvements =
             [
                 "Connecting no longer resets the steering angle: the stream init replays G HUB's 68-packet sequence but patches the operating-range push with the wheel's own rotation (read from the HID++ interface), so no more 90°/2700° range sweeps",
-                "HID++ settings reads briefly pause the stream (set-and-hold keeps the last force), so reading/writing wheel settings never fights the FFB stream"
+                "HID++ settings reads briefly pause the stream (set-and-hold keeps the last force), so reading/writing wheel settings never fights the FFB stream",
+                "Force output tamed for the first user test: force scale defaults to 0.5 (was full-scale, which was arm-ripping even at 35% test force) and the stream pump runs at 500 Hz instead of 1 kHz — the TrueForce amplifier emitted a constant audible \"bee\" tone at 1 kHz, and the wheel accepts 250-1000 Hz (the game's own FFB runs at 140-333 Hz). The force-scale slider on the Wheelbase tab tunes it further"
             ],
             Fixes =
             [

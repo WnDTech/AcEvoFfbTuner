@@ -56,7 +56,10 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
     private const int RangeOffset = 6;
     private const int InitPacketCount = 68;
     private const int InitInterPacketUs = 2000;
-    private const int StreamHz = 1000;
+    // The wheel accepts 250-1000 Hz. 1 kHz made the TrueForce amplifier emit a
+    // constant audible "bee" carrier tone (user-verified); 500 Hz is more than
+    // enough for force (the game's own HID++ FFB runs at 140-333 Hz).
+    private const int StreamHz = 500;
     private const int MaxConsecutiveWriteFails = 250;
 
     private const ushort LogitechVid = 0x046D;
@@ -140,8 +143,10 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
     public bool ForceInvert { get; set; } = true;
 
     /// <summary>Multiplier applied to the normalized force before LSB
-    /// conversion (1.0 = identity).</summary>
-    public float ForceScale { get; set; } = 1.0f;
+    /// conversion. 0.5 default: the TrueForce amplifier is stronger per-unit
+    /// than the DI path, and full scale (1.0) was arm-ripping on the user's
+    /// wheel at 35% test force.</summary>
+    public float ForceScale { get; set; } = 0.5f;
 
     /// <summary>IIR low-pass time constant (ms) on the force target before
     /// it goes into "cur". 0 = none (sample-and-hold).</summary>
