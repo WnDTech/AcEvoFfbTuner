@@ -8,10 +8,14 @@ public sealed partial class MainViewModel
 {
     private LogitechHidppWheelProvider? _logitechHidpp;
     private bool _logitechUiLoading;
+    private bool _logitechRefreshInFlight;
     private System.Windows.Threading.DispatcherTimer? _logitechWriteDebounce;
     private System.Windows.Threading.DispatcherTimer? _logitechRefreshTimer;
 
     // ── HID++ direct wheel settings (no G HUB needed) ──
+    // NOTE: every HID++ call runs on a background thread — the protocol has
+    // 800-1000 ms timeouts per request, and blocking the UI thread froze the
+    // app while the wheel was unresponsive.
     [ObservableProperty] private bool _logitechHidppConnected;
     [ObservableProperty] private string _logitechHidppStatus = "Logitech wheel settings: not connected";
     [ObservableProperty] private string _logitechModeInfo = "";
@@ -30,60 +34,93 @@ public sealed partial class MainViewModel
             return;
         }
 
+        LogitechHidppConnected = false;
+        LogitechHidppStatus = "Connecting to wheel HID++ interface...";
         AddSystemLog($"Connecting Logitech HID++ settings interface for {productName}...");
-        _logitechHidpp = new LogitechHidppWheelProvider();
-        if (!_logitechHidpp.Connect())
+
+        var provider = new LogitechHidppWheelProvider();
+        _logitechHidpp = provider;
+
+        Task.Run(() =>
         {
-            LogitechHidppConnected = false;
-            LogitechHidppStatus = _logitechHidpp.LastError;
-            AddSystemLog($"Logitech HID++ connect FAILED: {_logitechHidpp.LastError}");
-            return;
-        }
+            bool ok = provider.Connect();
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                if (!ReferenceEquals(_logitechHidpp, provider)) return;
+                if (!ok)
+                {
+                    LogitechHidppConnected = false;
+                    LogitechHidppStatus = provider.LastError;
+                    AddSystemLog($"Logitech HID++ connect FAILED: {provider.LastError}");
+                    return;
+                }
 
-        LogitechHidppConnected = true;
-        LogitechHidppStatus = $"HID++ connected — {_logitechHidpp.ProductName}";
-        AddSystemLog($"Logitech HID++ connected: {_logitechHidpp.DiagnosticSummary}");
+                LogitechHidppConnected = true;
+                AddSystemLog($"Logitech HID++ connected: {provider.DiagnosticSummary}");
 
-        _logitechUiLoading = true;
-        LogitechFfbStrengthNm = _logitechHidpp.FfbStrengthNm;
-        LogitechRotationDegrees = _logitechHidpp.RotationDegrees;
-        _logitechUiLoading = false;
+                _logitechUiLoading = true;
+                LogitechFfbStrengthNm = provider.FfbStrengthNm;
+                LogitechRotationDegrees = provider.RotationDegrees;
+                _logitechUiLoading = false;
 
-        UpdateLogitechModeInfo();
+                UpdateLogitechModeInfo();
+                LogitechHidppStatus = $"HID++ connected — {provider.ProductName}";
 
-        // Periodic read-back (every 5s) keeps the UI in sync with the wheel
-        // (e.g. profile switches via the wheel's OLED menu).
-        _logitechRefreshTimer ??= new System.Windows.Threading.DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(5)
-        };
-        _logitechRefreshTimer.Tick -= OnLogitechRefreshTick;
-        _logitechRefreshTimer.Tick += OnLogitechRefreshTick;
-        _logitechRefreshTimer.Start();
+                // Periodic read-back (every 5s) keeps the UI in sync with the wheel.
+                _logitechRefreshTimer ??= new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(5)
+                };
+                _logitechRefreshTimer.Tick -= OnLogitechRefreshTick;
+                _logitechRefreshTimer.Tick += OnLogitechRefreshTick;
+                _logitechRefreshTimer.Start();
+            });
+        });
     }
 
     private void DisconnectLogitechHidpp(bool silent = false)
     {
         _logitechRefreshTimer?.Stop();
-        if (_logitechHidpp != null)
+        var provider = _logitechHidpp;
+        _logitechHidpp = null;
+        if (provider != null)
         {
             if (!silent) AddSystemLog("Logitech HID++ settings interface disconnected");
-            _logitechHidpp.Dispose();
-            _logitechHidpp = null;
+            Task.Run(() => provider.Dispose());
         }
         LogitechHidppConnected = false;
         LogitechModeInfo = "";
+        LogitechIsDesktopMode = false;
     }
 
     private void OnLogitechRefreshTick(object? sender, EventArgs e)
     {
-        if (_logitechHidpp?.IsConnected != true) return;
-        _logitechUiLoading = true;
-        _logitechHidpp.ReadAllSettingsForUi();
-        LogitechFfbStrengthNm = _logitechHidpp.FfbStrengthNm;
-        LogitechRotationDegrees = _logitechHidpp.RotationDegrees;
-        _logitechUiLoading = false;
-        UpdateLogitechModeInfo();
+        var provider = _logitechHidpp;
+        if (provider?.IsConnected != true || _logitechRefreshInFlight) return;
+        _logitechRefreshInFlight = true;
+
+        Task.Run(() =>
+        {
+            try
+            {
+                provider.ReadAllSettingsForUi();
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    if (ReferenceEquals(_logitechHidpp, provider))
+                    {
+                        _logitechUiLoading = true;
+                        LogitechFfbStrengthNm = provider.FfbStrengthNm;
+                        LogitechRotationDegrees = provider.RotationDegrees;
+                        _logitechUiLoading = false;
+                        UpdateLogitechModeInfo();
+                    }
+                });
+            }
+            finally
+            {
+                _logitechRefreshInFlight = false;
+            }
+        });
     }
 
     private void UpdateLogitechModeInfo()
@@ -101,10 +138,11 @@ public sealed partial class MainViewModel
                 : $"Onboard profile slot {_logitechHidpp.ProfileMode} — switch to Desktop mode so live changes apply";
         LogitechModeInfo = mode;
         LogitechIsDesktopMode = _logitechHidpp.IsDesktopMode;
-        LogitechHidppStatus = $"HID++ connected — {_logitechHidpp.ProductName} | {mode}";
+        if (LogitechHidppConnected)
+            LogitechHidppStatus = $"HID++ connected — {_logitechHidpp.ProductName} | {mode}";
     }
 
-    // ── Slider changes → debounced write to the wheel ──
+    // ── Slider changes → debounced write to the wheel (background thread) ──
 
     partial void OnLogitechFfbStrengthNmChanged(float value)
     {
@@ -122,7 +160,7 @@ public sealed partial class MainViewModel
     {
         _logitechWriteDebounce ??= new System.Windows.Threading.DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(400)
+            Interval = TimeSpan.FromMilliseconds(500)
         };
         _logitechWriteDebounce.Tick -= OnLogitechWriteTick;
         _logitechWriteDebounce.Tick += OnLogitechWriteTick;
@@ -133,43 +171,75 @@ public sealed partial class MainViewModel
     private void OnLogitechWriteTick(object? sender, EventArgs e)
     {
         _logitechWriteDebounce?.Stop();
-        if (_logitechHidpp?.IsConnected != true) return;
+        var provider = _logitechHidpp;
+        if (provider?.IsConnected != true) return;
 
-        AddSystemLog($"Logitech HID++ write: strength={LogitechFfbStrengthNm:F1} Nm, rotation={LogitechRotationDegrees}°");
-        _logitechHidpp.SetFfbStrengthNm(LogitechFfbStrengthNm);
-        _logitechHidpp.SetRotationDegrees(LogitechRotationDegrees);
+        float strength = LogitechFfbStrengthNm;
+        int rotation = LogitechRotationDegrees;
+        AddSystemLog($"Logitech HID++ write: strength={strength:F1} Nm, rotation={rotation}°");
 
-        if (!_logitechHidpp.IsDesktopMode && _logitechHidpp.ProfileMode != 0xFF)
+        Task.Run(() =>
         {
-            LogitechHidppStatus = "Written to wheel — switch to Desktop mode to hear it immediately (onboard slot settings are stored and apply when the slot is active)";
-        }
-        UpdateLogitechModeInfo();
+            provider.SetFfbStrengthNm(strength);
+            provider.SetRotationDegrees(rotation);
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                if (!ReferenceEquals(_logitechHidpp, provider)) return;
+                _logitechUiLoading = true;
+                LogitechFfbStrengthNm = provider.FfbStrengthNm;
+                LogitechRotationDegrees = provider.RotationDegrees;
+                _logitechUiLoading = false;
+                UpdateLogitechModeInfo();
+                if (!provider.IsDesktopMode && provider.ProfileMode != 0xFF)
+                {
+                    LogitechHidppStatus = "Written to wheel — switch to Desktop mode to hear it immediately (onboard slot settings are stored and apply when the slot is active)";
+                }
+            });
+        });
     }
 
     [RelayCommand]
     private void SwitchToDesktopMode()
     {
-        if (_logitechHidpp?.IsConnected != true) return;
+        var provider = _logitechHidpp;
+        if (provider?.IsConnected != true) return;
         AddSystemLog("Logitech HID++: switching wheel to desktop mode");
-        bool ok = _logitechHidpp.SetDesktopMode();
-        LogitechIsDesktopMode = _logitechHidpp.IsDesktopMode;
-        UpdateLogitechModeInfo();
-        LogitechHidppStatus = ok
-            ? $"HID++ — desktop mode active, live changes apply now"
-            : $"HID++ — desktop mode switch FAILED ({_logitechHidpp.LastError})";
+
+        Task.Run(() =>
+        {
+            bool ok = provider.SetDesktopMode();
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                if (!ReferenceEquals(_logitechHidpp, provider)) return;
+                UpdateLogitechModeInfo();
+                LogitechHidppStatus = ok
+                    ? "HID++ — desktop mode active, live changes apply now"
+                    : $"HID++ — desktop mode switch FAILED ({provider.LastError})";
+            });
+        });
     }
 
     [RelayCommand]
     private void RefreshLogitechWheel()
     {
-        if (_logitechHidpp?.IsConnected != true) return;
+        var provider = _logitechHidpp;
+        if (provider?.IsConnected != true) return;
         AddSystemLog("Logitech HID++: re-reading wheel settings");
-        _logitechUiLoading = true;
-        _logitechHidpp.ReadAllSettingsForUi();
-        LogitechFfbStrengthNm = _logitechHidpp.FfbStrengthNm;
-        LogitechRotationDegrees = _logitechHidpp.RotationDegrees;
-        _logitechUiLoading = false;
-        UpdateLogitechModeInfo();
-        LogitechHidppStatus = $"HID++ — re-read: {_logitechHidpp.DiagnosticSummary}";
+
+        Task.Run(() =>
+        {
+            provider.ReadAllSettingsForUi();
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                if (!ReferenceEquals(_logitechHidpp, provider)) return;
+                _logitechUiLoading = true;
+                LogitechFfbStrengthNm = provider.FfbStrengthNm;
+                LogitechRotationDegrees = provider.RotationDegrees;
+                _logitechUiLoading = false;
+                UpdateLogitechModeInfo();
+                LogitechHidppStatus = $"HID++ — re-read: {provider.DiagnosticSummary}";
+            });
+        });
     }
 }
+

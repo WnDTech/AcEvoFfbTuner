@@ -316,8 +316,15 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         if (resp != null)
         {
             int readBack = (resp[4] << 8) | resp[5];
-            RotationDegrees = readBack;
-            Log($"SetRotationDegrees: read-back {readBack}°");
+            if (readBack >= 90 && readBack <= 2700)
+            {
+                RotationDegrees = readBack;
+                Log($"SetRotationDegrees: read-back {readBack}°");
+            }
+            else
+            {
+                Log($"SetRotationDegrees: read-back {readBack}° OUT OF RANGE (90-2700) — keeping previous value");
+            }
         }
         return true;
     }
@@ -376,8 +383,16 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         var rotation = ReadValue(_featureRotation, 1);
         if (rotation != null)
         {
-            RotationDegrees = (rotation[4] << 8) | rotation[5];
-            Log($"ReadAllSettings: rotation {RotationDegrees}°");
+            int readBack = (rotation[4] << 8) | rotation[5];
+            if (readBack >= 90 && readBack <= 2700)
+            {
+                RotationDegrees = readBack;
+                Log($"ReadAllSettings: rotation {RotationDegrees}°");
+            }
+            else
+            {
+                Log($"ReadAllSettings: rotation read-back {readBack}° OUT OF RANGE (90-2700) — ignoring");
+            }
         }
         else
         {

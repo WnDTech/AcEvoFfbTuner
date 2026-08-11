@@ -50,6 +50,21 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.25.7",
+            Date = new DateTime(2026, 8, 11),
+            Title = "HID++ settings no longer freeze the app",
+            Fixes =
+            [
+                "App freezing and slider lag with Logitech HID++ settings fixed: all wheel-communication (connect, 5-second refresh, slider writes, desktop-mode switch, re-read) now runs on background threads with 800-1000 ms protocol timeouts, so the UI never blocks while talking to the wheel",
+                "Rotation read-back is sanity-checked (90-2700°): out-of-range values like the reported 49151° are rejected and logged instead of being displayed or written to the wheel"
+            ],
+            Improvements =
+            [
+                "Wheel FFB TEST and the rest of the app stay responsive even while the wheel is slow to answer HID++ requests"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.25.6",
             Date = new DateTime(2026, 8, 11),
             Title = "Logitech HID++ response transport hardening",
