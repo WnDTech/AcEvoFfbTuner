@@ -396,6 +396,20 @@ public sealed partial class MainViewModel
             if (fp.MaxTorqueNm > 0) ActiveFeatures.Add($"Torque Capped {fp.MaxTorqueNm}Nm");
             if (fp.IsMauriceDetected) ActiveFeatures.Add("Maurice");
         }
+        else if (provider is LogitechTrueForceProvider ltf)
+        {
+            if (ltf.IsInitialized)
+            {
+                ActiveFeatures.Add("TrueForce Stream 1 kHz");
+                ActiveFeatures.Add($"Range {ltf.RotationDegrees}°");
+                ActiveFeatures.Add(ltf.IsPaused ? "Stream paused (settings reads)" : "Stream active");
+                if (ltf.PacketsFailed > 0) ActiveFeatures.Add($"{ltf.PacketsFailed} write fails");
+            }
+            else
+            {
+                ActiveFeatures.Add("TrueForce stream unavailable — using DirectInput");
+            }
+        }
         else if (provider is GenericDirectInputProvider)
         {
             ActiveFeatures.Add("DirectInput Only");

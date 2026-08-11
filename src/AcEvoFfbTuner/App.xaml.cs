@@ -206,11 +206,17 @@ public partial class App : Application
             int purged = 0;
             foreach (var file in Directory.GetFiles(baseDir, "*.log"))
             {
+                // crash.log must survive version updates — it is the only record
+                // of a crash from a previous build (the 21:17 crash stack was
+                // lost when the purge wiped it). Same for its .fail.txt fallback.
+                var name = Path.GetFileName(file);
+                if (name == "crash.log") continue;
                 try { File.Delete(file); purged++; } catch { }
             }
             foreach (var file in Directory.GetFiles(baseDir, "*.txt"))
             {
                 if (Path.GetFileName(file) == "last_profile.txt") continue; // profile state, not a log
+                if (Path.GetFileName(file) == "crash.log.fail.txt") continue; // crash fallback, see above
                 try { File.Delete(file); purged++; } catch { }
             }
 

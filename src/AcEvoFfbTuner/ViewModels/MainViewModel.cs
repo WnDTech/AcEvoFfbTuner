@@ -946,9 +946,22 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         WheelFfbTestActive = true;
         _telemetryLoop.SuppressOutput = true;
-        _deviceManager.SendConstantForce(WheelFfbTestIntensity);
-        AddSystemLog($"WHEEL FFB TEST: sending {WheelFfbTestIntensity * 100:F0}% force — hold the wheel!");
-        WheelFfbTestStatus = $"Sending {WheelFfbTestIntensity * 100:F0}% force — you should feel the wheel pull. Auto-stops in 3s.";
+
+        // On the RS50/G PRO the TrueForce stream overrides DirectInput, so the
+        // test must go through the stream to validate the path the app uses
+        // while driving (a DI-only test would pass but prove nothing).
+        if (_telemetryLoop.ActiveProvider is LogitechTrueForceProvider tf && tf.IsInitialized)
+        {
+            tf.UpdateTorque(WheelFfbTestIntensity);
+            AddSystemLog($"WHEEL FFB TEST: sending {WheelFfbTestIntensity * 100:F0}% via TrueForce stream — hold the wheel!");
+            WheelFfbTestStatus = $"Sending {WheelFfbTestIntensity * 100:F0}% through the TrueForce stream — you should feel the wheel pull. Auto-stops in 3s.";
+        }
+        else
+        {
+            _deviceManager.SendConstantForce(WheelFfbTestIntensity);
+            AddSystemLog($"WHEEL FFB TEST: sending {WheelFfbTestIntensity * 100:F0}% force — hold the wheel!");
+            WheelFfbTestStatus = $"Sending {WheelFfbTestIntensity * 100:F0}% force — you should feel the wheel pull. Auto-stops in 3s.";
+        }
 
         _wheelFfbTestTimer?.Stop();
         _wheelFfbTestTimer = new System.Windows.Threading.DispatcherTimer
@@ -965,7 +978,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _wheelFfbTestTimer = null;
         if (WheelFfbTestActive)
         {
-            _deviceManager?.SendConstantForce(0f);
+            if (_telemetryLoop.ActiveProvider is LogitechTrueForceProvider tf && tf.IsInitialized)
+                tf.UpdateTorque(0f);
+            else
+                _deviceManager?.SendConstantForce(0f);
             _telemetryLoop.SuppressOutput = false;
             WheelFfbTestActive = false;
             WheelFfbTestStatus = "Test stopped — telemetry output restored";

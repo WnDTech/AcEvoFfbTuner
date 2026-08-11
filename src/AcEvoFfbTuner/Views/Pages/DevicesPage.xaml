@@ -274,6 +274,36 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- TrueForce stream (RS50 / G PRO — app is the FFB source, no G HUB) -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="#3347A15C"
+                            Visibility="{Binding TrueForceCardVisible, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,6">
+                                <TextBlock Text="TRUEFORCE STREAM" FontSize="12" FontWeight="Bold" Foreground="#FF47A15C" VerticalAlignment="Center" />
+                                <TextBlock Text="Direct FFB channel — no G HUB needed" FontSize="11"
+                                           Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding TrueForceStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                       TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Grid.Column="0" IsChecked="{Binding TrueForceEnabled, Mode=TwoWay}" VerticalAlignment="Center"
+                                          Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Cursor="Hand" />
+                                <TextBlock Grid.Column="2" Text="Force scale:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                           VerticalAlignment="Center" />
+                                <Slider Grid.Column="3" Minimum="0.2" Maximum="2.0" TickFrequency="0.05"
+                                        Value="{Binding TrueForceForceScale, Mode=TwoWay}"
+                                        VerticalAlignment="Center" Height="26" Margin="8,0,0,0" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
                 </StackPanel>
             </ScrollViewer>
 

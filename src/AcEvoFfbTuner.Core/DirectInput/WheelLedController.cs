@@ -744,7 +744,13 @@ public sealed class WheelLedController : IDisposable
                     }
                     HidD_FreePreparsedData(ref pp);
 
-                    bool match = VendorMatch(attr.Vid) || ProductNameMatch(product);
+                    // Logitech VID 0x046D also matches non-wheel HID devices
+                    // (USB Receiver mouse dongle, keyboards, headsets). The G29
+                    // LED protocol must only ever target wheels — require a wheel
+                    // keyword in the product name for Logitech, never VID alone.
+                    bool match = _vendor == WheelVendor.Logitech
+                        ? IsLogitechWheelProduct(product)
+                        : VendorMatch(attr.Vid) || ProductNameMatch(product);
 
                     // Direct-drive Logitech wheels (RS50, G PRO) have no G29-style
                     // LED strip — the G29 report format (report id 0x03) is garbage
@@ -1518,10 +1524,19 @@ public sealed class WheelLedController : IDisposable
             WheelVendor.Moza => p.Contains("moza"),
             WheelVendor.Thrustmaster => p.Contains("thrustmaster"),
             WheelVendor.Simagic => p.Contains("simagic"),
-            WheelVendor.Logitech => p.Contains("logitech") || p.Contains("g29") || p.Contains("g923"),
+            WheelVendor.Logitech => IsLogitechWheelProduct(product),
             WheelVendor.Simucube => p.Contains("simucube"),
             _ => false
         };
+    }
+
+    private static bool IsLogitechWheelProduct(string product)
+    {
+        if (string.IsNullOrEmpty(product)) return false;
+        var p = product.ToLowerInvariant();
+
+        return p.Contains("g29") || p.Contains("g920") || p.Contains("g923")
+            || p.Contains("driving force") || p.Contains("rs50") || p.Contains("g pro");
     }
 
     private static string GetHidString(IntPtr hDev, Func<IntPtr, byte[], int, bool> getter)
@@ -1558,7 +1573,8 @@ public sealed class WheelLedController : IDisposable
             return WheelVendor.Thrustmaster;
         if (s.Contains("simagic"))
             return WheelVendor.Simagic;
-        if (s.Contains("logitech") || s.Contains("g29") || s.Contains("g923"))
+        if (s.Contains("logitech") || s.Contains("g29") || s.Contains("g920") || s.Contains("g923")
+            || s.Contains("rs50") || s.Contains("driving force") || s.Contains("g pro"))
             return WheelVendor.Logitech;
         if (s.Contains("simucube"))
             return WheelVendor.Simucube;

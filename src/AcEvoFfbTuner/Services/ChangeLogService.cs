@@ -50,6 +50,28 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.26.1",
+            Date = new DateTime(2026, 8, 11),
+            Title = "TrueForce stream FFB for RS50/G PRO — no G HUB needed",
+            Features =
+            [
+                "Logitech TrueForce stream FFB (RS50 / G PRO): the wheel ignored DirectInput force while a TrueForce session was active — TEST FORCE worked, driving was dead. The app now writes force on the same TrueForce channel the game uses (1 kHz, 64-byte stream, no PC-mode dependency), so the wheel executes the app's tuned force in-game with no G HUB. The wheel falls back to its normal FFB path whenever the app's force is zero, and TEST FORCE now validates the stream directly. Force output is the first step — motor haptics via the stream's audio window is a later iteration",
+                "Wheelbase tab gains a TRUEFORCE STREAM card: live session status (packet rate, rotation, write failures), an enable/disable toggle and a force-scale slider"
+            ],
+            Improvements =
+            [
+                "Connecting no longer resets the steering angle: the stream init replays G HUB's 68-packet sequence but patches the operating-range push with the wheel's own rotation (read from the HID++ interface), so no more 90°/2700° range sweeps",
+                "HID++ settings reads briefly pause the stream (set-and-hold keeps the last force), so reading/writing wheel settings never fights the FFB stream"
+            ],
+            Fixes =
+            [
+                "crash.log survives app updates — the log purge used to delete it, which is why the 21:17 crash stack was lost",
+                "The G29-style LED controller no longer writes G29 garbage to the Logitech USB Receiver (mouse dongle): Logitech LED control now requires a wheel product name (G29/G920/G923/Driving Force/RS50/G PRO), never VID alone",
+                "HID++ disconnect hardening: read threads are drained before handles close, preventing use-after-close crashes on reconnect"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.26.0",
             Date = new DateTime(2026, 8, 11),
             Title = "Logitech force-path cleanup + HID++ refresh fix",

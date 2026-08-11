@@ -597,11 +597,15 @@ public sealed class LogitechHidppWheelProvider : IDisposable
                 try { CancelIoEx(ch.Handle, IntPtr.Zero); } catch { }
             }
         }
+        // Drain fully before Disconnect closes any handle — a thread still inside
+        // WaitForSingleObject/ReadFile on a closed handle is undefined behaviour.
         foreach (var ch in _readChannels)
         {
-            ch.Thread?.Join(400);
+            for (int i = 0; i < 10 && ch.Thread?.IsAlive == true; i++)
+                ch.Thread.Join(100);
+            for (int i = 0; i < 10 && ch.InputThread?.IsAlive == true; i++)
+                ch.InputThread.Join(100);
             ch.Thread = null;
-            ch.InputThread?.Join(400);
             ch.InputThread = null;
         }
     }
@@ -615,55 +619,70 @@ public sealed class LogitechHidppWheelProvider : IDisposable
 
         while (_running && ch.Handle != InvalidHandle)
         {
-            ResetEvent(ch.Event);
-
-            uint read = 0;
-            bool ok;
             try
             {
-                ok = ReadFile(ch.Handle, buf, (uint)ch.InLen, out read, ref overlapped);
+                if (!ReadLoopIteration(ch, buf, ref overlapped))
+                    break;
             }
             catch (Exception ex)
             {
-                Log($"ReadLoop({ch.InLen}): ReadFile threw: {ex.Message}");
+                Log($"ReadLoop({ch.InLen}): unexpected exception — {ex.GetType().Name}: {ex.Message}");
                 break;
             }
-
-            if (!ok)
-            {
-                int err = Marshal.GetLastWin32Error();
-                if (err == 997) // ERROR_IO_PENDING
-                {
-                    uint wait = WaitForSingleObject(ch.Event, 250);
-                    if (wait == WAIT_TIMEOUT)
-                    {
-                        CancelIoEx(ch.Handle, IntPtr.Zero);
-                        WaitForSingleObject(ch.Event, 250);
-                        if (!_running) break;
-                        continue;
-                    }
-                    if (!_running) break;
-                }
-                else if (err == 995 || err == 6 || err == 1)
-                {
-                    break;
-                }
-                else
-                {
-                    Log($"ReadLoop({ch.InLen}): ReadFile error {err}");
-                    break;
-                }
-            }
-
-            if (!_running) break;
-
-            if (read >= 4)
-                DispatchResponse(buf, (int)read, $"ReadFile({ch.InLen})", ch);
-            else if (read > 0)
-                Log($"ReadLoop({ch.InLen}): short read {read} bytes");
         }
 
         Log($"ReadLoop({ch.InLen}): stopped");
+    }
+
+    private bool ReadLoopIteration(ReadChannel ch, byte[] buf, ref NativeOverlapped overlapped)
+    {
+        ResetEvent(ch.Event);
+
+        uint read = 0;
+        bool ok;
+        try
+        {
+            ok = ReadFile(ch.Handle, buf, (uint)ch.InLen, out read, ref overlapped);
+        }
+        catch (Exception ex)
+        {
+            Log($"ReadLoop({ch.InLen}): ReadFile threw: {ex.Message}");
+            return false;
+        }
+
+        if (!ok)
+        {
+            int err = Marshal.GetLastWin32Error();
+            if (err == 997) // ERROR_IO_PENDING
+            {
+                uint wait = WaitForSingleObject(ch.Event, 250);
+                if (wait == WAIT_TIMEOUT)
+                {
+                    CancelIoEx(ch.Handle, IntPtr.Zero);
+                    WaitForSingleObject(ch.Event, 250);
+                    if (!_running) return false;
+                    return true;
+                }
+                if (!_running) return false;
+            }
+            else if (err == 995 || err == 6 || err == 1)
+            {
+                return false;
+            }
+            else
+            {
+                Log($"ReadLoop({ch.InLen}): ReadFile error {err}");
+                return false;
+            }
+        }
+
+        if (!_running) return false;
+
+        if (read >= 4)
+            DispatchResponse(buf, (int)read, $"ReadFile({ch.InLen})", ch);
+        else if (read > 0)
+            Log($"ReadLoop({ch.InLen}): short read {read} bytes");
+        return true;
     }
 
     private void InputReportLoop(ReadChannel ch)
@@ -694,7 +713,17 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             }
 
             if (_running)
-                DispatchResponse(buf, ch.InLen, $"GetInputReport({ch.InLen})", ch);
+            {
+                try
+                {
+                    DispatchResponse(buf, ch.InLen, $"GetInputReport({ch.InLen})", ch);
+                }
+                catch (Exception ex)
+                {
+                    Log($"InputReportLoop({ch.InLen}): dispatch exception — {ex.GetType().Name}: {ex.Message}");
+                    break;
+                }
+            }
         }
 
         Log($"InputReportLoop({ch.InLen}): stopped");

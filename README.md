@@ -119,7 +119,7 @@ The app uses an `IFFBProvider` abstraction layer that allows vendor-specific SDK
 | **Fanatec** | `FanatecProvider` | **Active** | FullForce 500Hz haptic samples, rim rumble motors, rev LED RGB control, gear digit display, torque safety capping via `FSWheelMaxTorqueGet`, Maurice (FWPnpService) detection |
 | **Moza** | DirectInput + Serial LED | Active | Native LED protocol via serial/HID |
 | **Simucube** | `SimucubeProvider` | Stub | Simucube Link API — awaiting SDK access from Granite Devices |
-| **Logitech** | DirectInput + `LogitechTrueForceProvider` (TrueForce stub) | Active | G27/G29/G920/G923/G Pro/RS50 via standard DirectInput constant force + vibration; TrueForce audio-haptics awaiting SDK access |
+| **Logitech** | `LogitechTrueForceProvider` (TrueForce stream) | **Active** | RS50/G PRO via the native TrueForce stream (1 kHz, no G HUB, no PC-mode dependency); G29/G920/G923 via DirectInput constant force + vibration |
 | **Asetek** | `AsetekProvider` | Stub | RaceHub TIC Mode — awaiting SDK access from Asetek |
 | **VNM** | `VnmProvider` | Stub | Telemetry API — awaiting SDK access from VNM |
 | **Others** | `GenericDirectInputProvider` | Active | Standard DirectInput constant force + periodic vibration |
@@ -324,8 +324,9 @@ Game Shared Memory (selected via dropdown)
     → IFFBProvider (Hardware Abstraction Layer):
         WheelbaseFactory auto-detects vendor → selects provider:
         ├─ FanatecProvider → EndorFanatecSdk64 (FullForce, LEDs, rumble, torque cap)
+        ├─ LogitechTrueForceProvider → TrueForce stream HID (RS50/G PRO, no G HUB)
         ├─ GenericDirectInputProvider → SharpDX DirectInput
-        └─ Stub providers (Simucube, Logitech, Asetek, VNM) → DirectInput fallback
+        └─ Stub providers (Simucube, Asetek, VNM) → DirectInput fallback
     → FfbDeviceManager
       → 1kHz interpolation thread (time-based sliding lerp)
         → DirectInput ConstantForce → Wheel
