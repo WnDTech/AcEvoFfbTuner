@@ -260,24 +260,21 @@ public sealed class FfbDeviceManager : IDisposable
 
             ConnLog($"AutoDetect: baseline axis={baseline:F0}");
 
-            SendConstantForceDirect(0.12f);
-            Thread.Sleep(100);
-
-            float duringPulse = AverageAxisX(8, 8);
-            SendConstantForceDirect(0f);
-
-            if (float.IsNaN(duringPulse))
+            // Measure the MAXIMUM deflection during a longer 400ms pulse — a DD
+            // motor takes time to visibly move, and a 100ms single sample was
+            // unreliable (missed movement, especially with a lightly held wheel).
+            float pulseDelta = MeasureMaxDeflection(0.12f, 400);
+            if (float.IsNaN(pulseDelta))
             {
                 bool fallback = staticFallback ?? false;
                 ConnLog($"AutoDetect: could not read during pulse — falling back to static database → invert={fallback}");
+                SendConstantForceDirect(0f);
                 Thread.Sleep(200);
                 return fallback;
             }
 
-            Thread.Sleep(200);
-
-            float delta = duringPulse - baseline;
-            ConnLog($"AutoDetect: baseline={baseline:F0} duringPulse={duringPulse:F0} delta={delta:F0}");
+            float delta = pulseDelta;
+            ConnLog($"AutoDetect: baseline={baseline:F0} maxDeflection={delta:F0}");
 
             const float minDelta = 20f;
 
@@ -285,15 +282,10 @@ public sealed class FfbDeviceManager : IDisposable
             // retry once at 40% force before falling back to the static database.
             if (Math.Abs(delta) < minDelta)
             {
-                float strongBaseline = AverageAxisX(6, 6);
-                SendConstantForceDirect(0.4f);
-                Thread.Sleep(120);
-                float strongPulse = AverageAxisX(6, 6);
-                SendConstantForceDirect(0f);
-                float strongDelta = strongPulse - strongBaseline;
-                ConnLog($"AutoDetect: strong retry baseline={strongBaseline:F0} duringPulse={strongPulse:F0} delta={strongDelta:F0}");
+                float strongDelta = MeasureMaxDeflection(0.4f, 400);
+                ConnLog($"AutoDetect: strong retry maxDeflection={strongDelta:F0}");
 
-                if (!float.IsNaN(strongBaseline) && !float.IsNaN(strongPulse) && Math.Abs(strongDelta) >= minDelta)
+                if (!float.IsNaN(strongDelta) && Math.Abs(strongDelta) >= minDelta)
                 {
                     bool strongNeedsInversion = strongDelta > 0;
                     ConnLog($"AutoDetect: strong pulse delta={strongDelta:F0} → invert={strongNeedsInversion} (positive=left is standard)");
@@ -314,6 +306,42 @@ public sealed class FfbDeviceManager : IDisposable
             bool fallback = staticFallback ?? false;
             ConnLog($"AutoDetect: dynamic test failed — {ex.Message} — falling back to static database → invert={fallback}");
             return fallback;
+        }
+    }
+
+    /// <summary>
+    /// Applies a constant force pulse and returns the maximum axis deflection
+    /// measured over the pulse window (signed, relative to the axis at pulse start).
+    /// </summary>
+    private float MeasureMaxDeflection(float force, int durationMs)
+    {
+        if (_device == null || !_isAcquired) return float.NaN;
+
+        try
+        {
+            float start = AverageAxisX(5, 5);
+            if (float.IsNaN(start)) return float.NaN;
+
+            SendConstantForceDirect(force);
+            float maxDelta = 0f;
+            int samples = Math.Max(4, durationMs / 20);
+            for (int i = 0; i < samples; i++)
+            {
+                Thread.Sleep(20);
+                float sample = AverageAxisX(3, 2);
+                if (float.IsNaN(sample)) continue;
+                float d = sample - start;
+                if (Math.Abs(d) > Math.Abs(maxDelta))
+                    maxDelta = d;
+            }
+            SendConstantForceDirect(0f);
+            Thread.Sleep(150);
+            return maxDelta;
+        }
+        catch
+        {
+            try { SendConstantForceDirect(0f); } catch { }
+            return float.NaN;
         }
     }
 
@@ -689,16 +717,6 @@ public sealed class FfbDeviceManager : IDisposable
         {
             int magnitude = (int)(Math.Clamp(_invertForce ? -normalizedForce : normalizedForce, -1f, 1f) * _maxForceMagnitude);
 
-            // Always send: LMU sends SetParameters(~0) every frame even with FFB=0.
-            // Without continuous re-send, LMU overwrites our effect and the force
-            // alternates between our value and zero — felt as "phasing."
-
-            // Logitech wheels (G29/G923/G Pro/RS50) stop playing their effect after
-            // a zero-magnitude SetParameters and often do NOT restart on subsequent
-            // SetParameters(+Start) — the effect stays stopped until an explicit
-            // Start(). Capture the previous magnitude so we can restart on the
-            // zero→non-zero cross.
-            bool wasZeroMagnitude = _lastCfMagnitude == 0;
             _lastCfMagnitude = magnitude;
             _lastCfSendTime = System.Diagnostics.Stopwatch.GetTimestamp();
 
@@ -723,23 +741,16 @@ public sealed class FfbDeviceManager : IDisposable
                         typeSpecificParams = new DI.ConstantForce { Magnitude = clamped };
                     }
 
-                    // Logitech wheels (G29/G923/G Pro/RS50) stop playing their effect
-                    // after a zero-magnitude SetParameters and often do NOT restart on
-                    // subsequent SetParameters(+Start) — the effect stays stopped until
-                    // an explicit Start(). Restart explicitly on a zero→non-zero cross.
-                    bool restartAfterZero = wasZeroMagnitude && magnitude != 0;
-
+                    // Always update with the Start flag: the effect plays
+                    // continuously and the magnitude is re-downloaded each frame.
+                    // (An earlier "restart after zero" dance fired only on
+                    // zero-crossings — the exact difference between the working
+                    // steady test force and dead driving force — and is removed.)
                     var parameters = new DI.EffectParameters();
                     parameters.Parameters = typeSpecificParams;
                     _constantForceEffect.SetParameters(parameters,
                         DI.EffectParameterFlags.TypeSpecificParameters |
-                        (restartAfterZero ? 0 : DI.EffectParameterFlags.Start));
-
-                    if (restartAfterZero)
-                    {
-                        try { _constantForceEffect.Start(-1, DI.EffectPlayFlags.NoDownload); }
-                        catch (Exception sex) { ConnLog($"Effect restart-after-zero FAIL: {sex.InnerException?.Message ?? sex.Message}"); }
-                    }
+                        DI.EffectParameterFlags.Start);
 
                     _consecutiveForceErrors = 0;
                     _constantForceUnsupported = false;

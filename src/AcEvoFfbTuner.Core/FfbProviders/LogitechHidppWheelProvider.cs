@@ -702,19 +702,6 @@ public sealed class LogitechHidppWheelProvider : IDisposable
 
     private void DispatchResponse(byte[] report, int len, string source, ReadChannel? channel = null)
     {
-        // Duplicate suppression: the wheel broadcasts each report repeatedly and
-        // HidD_GetInputReport returns the cached report — skip identical repeats.
-        if (channel != null)
-        {
-            long hash = 17;
-            int n = Math.Min(len, 16);
-            for (int i = 0; i < n; i++)
-                hash = hash * 31 + report[i];
-            if (hash == channel.LastHash)
-                return;
-            channel.LastHash = hash;
-        }
-
         byte reportId = report[0];
         if (reportId != 0x12 && reportId != 0x11 && reportId != 0x10)
         {
@@ -726,16 +713,34 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         byte fn = (byte)(report[3] >> 4);
         Log($"RX({source}): id=0x{reportId:X2} feat=0x{featureIndex:X2} fn={fn} {Hex(report, 10)}");
 
+        // A pending request's answer is ALWAYS delivered — the wheel answers a
+        // GET with the same state bytes it broadcasts, so byte-dedup must never
+        // suppress a response to an outstanding request.
         PendingRequest? match = null;
         lock (_sync)
         {
             match = _pending.FirstOrDefault(p => p.FeatureIndex == featureIndex && p.Fn == fn);
-            if (match == null)
-            {
-                Log($"RX({source}): unsolicited event (feat 0x{featureIndex:X2} fn={fn}) — no pending request");
-            }
         }
-        match?.Tcs.TrySetResult(report);
+        if (match != null)
+        {
+            match.Tcs.TrySetResult(report);
+            return;
+        }
+
+        // Unsolicited broadcast — suppress identical repeats (the wheel re-sends
+        // its state stream and HidD_GetInputReport returns the cached report).
+        if (channel != null)
+        {
+            long hash = 17;
+            int n = Math.Min(len, 16);
+            for (int i = 0; i < n; i++)
+                hash = hash * 31 + report[i];
+            if (hash == channel.LastHash)
+                return;
+            channel.LastHash = hash;
+        }
+
+        Log($"RX({source}): unsolicited event (feat 0x{featureIndex:X2} fn={fn}) — no pending request");
     }
 
     private static string Hex(byte[] data, int count)

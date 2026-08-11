@@ -745,6 +745,18 @@ public sealed class WheelLedController : IDisposable
                     HidD_FreePreparsedData(ref pp);
 
                     bool match = VendorMatch(attr.Vid) || ProductNameMatch(product);
+
+                    // Direct-drive Logitech wheels (RS50, G PRO) have no G29-style
+                    // LED strip — the G29 report format (report id 0x03) is garbage
+                    // to them and would be written to the HID++ control collection.
+                    // Their rev lights are driven via the HID++ LED effect feature.
+                    bool isDirectDriveWheel = attr.Pid is 0xC276 or 0xC272 or 0xC268;
+                    if (match && isDirectDriveWheel)
+                    {
+                        Log($"  Skipping DD wheel PID=0x{attr.Pid:X4} — G29 LED protocol does not apply (rev lights need HID++ LED effect)");
+                        match = false;
+                    }
+
                     Log($"  HID {i}: VID=0x{attr.Vid:X4} PID=0x{attr.Pid:X4} UsagePage=0x{caps.UsagePage:X4} OutLen={caps.OutputReportByteLength} FeatLen={caps.FeatureReportByteLength} Product='{product}' {(match ? "<<MATCH>>" : "")}");
 
                     if (match && caps.OutputReportByteLength > 0)

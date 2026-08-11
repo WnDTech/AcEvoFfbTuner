@@ -50,6 +50,22 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.26.0",
+            Date = new DateTime(2026, 8, 11),
+            Title = "Logitech force-path cleanup + HID++ refresh fix",
+            Fixes =
+            [
+                "Logitech wheel settings now refresh continuously: the wheel answers a settings GET with the same state bytes it broadcasts, and the duplicate filter wrongly suppressed those answers — the card froze after the first read. Responses to pending requests are now always delivered; only unsolicited broadcasts are deduplicated",
+                "The G29-style LED controller no longer connects to direct-drive Logitech wheels (RS50, G PRO) — it was writing G29 LED reports to the wheel's HID++ control interface every frame",
+                "Force updates no longer perform a stop/restart dance on every zero-crossing during driving — that dance was based on an unproven theory and only fired during driving (never during the steady wheel test), dropping force for a moment each time"
+            ],
+            Improvements =
+            [
+                "The connect-time force-direction test now measures maximum deflection over a 400 ms pulse (was a single sample at 100 ms) — a direct-drive motor needs time to visibly move, so the old test could wrongly report 'wheel doesn't move'"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.25.9",
             Date = new DateTime(2026, 8, 11),
             Title = "Wheel settings can no longer be written by accident",
