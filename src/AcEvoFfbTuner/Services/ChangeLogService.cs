@@ -50,6 +50,17 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.26.3",
+            Date = new DateTime(2026, 8, 12),
+            Title = "Log purge no longer eats current-session logs; TrueForce session teardown on exit",
+            Fixes =
+            [
+                "The update log purge ran AFTER the app's auto-connect and deleted this session's own connect logs (connection_debug.log, logitech_trueforce.log, LED logs) — the exact evidence the next diagnostic pack should contain. The purge now only removes files written before the app started",
+                "Closing the app now tears the TrueForce stream session down cleanly (neutral force + the captured session-end handshake) — previously an abrupt close left the wheel in a stale \"session active\" state that overrode ALL force paths until a power cycle"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.26.2",
             Date = new DateTime(2026, 8, 11),
             Title = "TrueForce force tamed for the first user test",

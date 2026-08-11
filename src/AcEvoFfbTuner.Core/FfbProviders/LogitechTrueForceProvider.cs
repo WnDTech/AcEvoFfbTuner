@@ -208,8 +208,45 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
 
     public void Shutdown()
     {
+        // Tear the TrueForce session down BEFORE closing the handle: an app
+        // close without teardown leaves the wheel in a stale "session active"
+        // state that overrides ALL force paths (DI, 0x8123, settings responses)
+        // until the wheel is re-initialized or power-cycled (user-verified:
+        // "No FFB again" after closing the app mid-session).
+        WriteTeardown();
         StopStream();
         IsInitialized = false;
+    }
+
+    /// <summary>Neutral packet + the captured session-end handshake (init
+    /// packets #67/#68: type 0x04 then 0x03) so the wheel releases the
+    /// TrueForce session cleanly.</summary>
+    private void WriteTeardown()
+    {
+        if (_handle == InvalidHandle) return;
+        try
+        {
+            WriteNeutralPacket();
+
+            // Packet #67 = type 0x04 (start/continue handshake), #68 = type 0x03 (stop).
+            foreach (int idx in new[] { 66, 67 })
+            {
+                byte[] pkt = InitPackets[idx];
+                pkt[SeqOffset] = (byte)((idx + 1) & 0xFF);
+                if (!WritePacket(pkt))
+                {
+                    Log($"WriteTeardown: packet {idx + 1} write FAILED (err={Marshal.GetLastWin32Error()})");
+                    break;
+                }
+                PrecisionSleepUs(InitInterPacketUs);
+            }
+            WriteNeutralPacket();
+            Log("WriteTeardown: session-end handshake sent (neutral + 0x04/0x03)");
+        }
+        catch (Exception ex)
+        {
+            Log($"WriteTeardown: threw — {ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     public void Dispose()

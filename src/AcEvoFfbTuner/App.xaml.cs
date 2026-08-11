@@ -203,6 +203,13 @@ public partial class App : Application
                 "AcEvoFfbTuner");
             if (!Directory.Exists(baseDir)) return;
 
+            // The app auto-connects BEFORE this purge runs — only delete files
+            // written by the PREVIOUS version. Anything newer than the app's own
+            // start time is this session's evidence (connection_debug.log,
+            // logitech_trueforce.log, ...) and must survive — otherwise every
+            // update wipes the connect logs the user then sends in the pack.
+            DateTime appStart = System.Diagnostics.Process.GetCurrentProcess().StartTime;
+
             int purged = 0;
             foreach (var file in Directory.GetFiles(baseDir, "*.log"))
             {
@@ -211,12 +218,14 @@ public partial class App : Application
                 // lost when the purge wiped it). Same for its .fail.txt fallback.
                 var name = Path.GetFileName(file);
                 if (name == "crash.log") continue;
+                if (new FileInfo(file).LastWriteTime > appStart) continue; // current-session evidence
                 try { File.Delete(file); purged++; } catch { }
             }
             foreach (var file in Directory.GetFiles(baseDir, "*.txt"))
             {
                 if (Path.GetFileName(file) == "last_profile.txt") continue; // profile state, not a log
                 if (Path.GetFileName(file) == "crash.log.fail.txt") continue; // crash fallback, see above
+                if (new FileInfo(file).LastWriteTime > appStart) continue; // current-session evidence
                 try { File.Delete(file); purged++; } catch { }
             }
 
