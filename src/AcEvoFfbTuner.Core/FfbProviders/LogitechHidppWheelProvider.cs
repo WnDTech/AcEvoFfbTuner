@@ -6,12 +6,12 @@ namespace AcEvoFfbTuner.Core.FfbProviders;
 
 /// <summary>
 /// Direct HID++ settings provider for Logitech direct-drive wheels (RS50, G PRO)
-/// and the G923. Talks to the wheel's HID++ interface (interface 1) WITHOUT any
-/// Logitech software — G HUB is not required and must stay closed.
+/// and the G923. Talks to the wheel's HID++ interface (interface 1, usage page
+/// 0xFF43) WITHOUT any Logitech software — G HUB is not required and must stay closed.
 ///
 /// Protocol reference: mescon/logitech-trueforce-linux-driver
 /// docs/PROTOCOL_SPECIFICATION.md (reverse-engineered, verified on RS50 hardware):
-///   - Short HID++ reports (0x10) for all commands, device index 0xFF
+///   - Short HID++ reports (0x10, 7 bytes) for all commands, device index 0xFF
 ///   - The RS50 always answers with VERY LONG reports (0x12, 64 bytes)
 ///   - Feature discovery via Root feature 0x0000 fn=0 getFeature
 ///   - FFB strength  = feature 0x8136, SET fn=2, value = Nm × 8191.875 (1.0-8.0 Nm)
@@ -22,8 +22,17 @@ namespace AcEvoFfbTuner.Core.FfbProviders;
 ///   - Damping       = feature 0x8133, SET fn=1, 0-100%
 ///   - The wheel boots in ONBOARD mode; live host SETs are silently ignored
 ///     unless the wheel is in DESKTOP mode (0x8137 fn=2 [0,0,0]).
-///   - sw_id 0x0A (Linux driver convention; must not use 0x01 on the pedal
-///     sub-device, root device 0xFF is fine).
+///   - sw_id 0x0A (Linux driver convention). DD wheels answer with sw_id 0 in
+///     the response — responses are matched by feature index + function nibble.
+///
+/// Windows transport notes:
+///   - The RS50 exposes the HID++ protocol as three report-ID collections on
+///     mi_01 (usage page 0xFF43): 0x10 short (7B), 0x11 long (20B),
+///     0x12 very-long (64B). G HUB writes short reports to the 0x10 collection.
+///   - Responses are read from ALL collections via interrupt ReadFile AND via
+///     HidD_GetInputReport control reads (some Windows builds deliver HID++
+///     responses only on the control path).
+///   - The TrueForce stream collection (usage page 0xFFFD) is never written to.
 ///
 /// Everything is logged to logitech_hidpp.log in the AppData folder for diagnosis.
 /// </summary>
@@ -51,7 +60,6 @@ public sealed class LogitechHidppWheelProvider : IDisposable
     private const uint FILE_SHARE_RW = 0x03;
     private const uint OPEN_EXISTING = 3;
     private const uint FILE_FLAG_OVERLAPPED = 0x40000000;
-    private const uint WAIT_OBJECT_0 = 0x00000000;
     private const uint WAIT_TIMEOUT = 0x00000102;
 
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -62,6 +70,9 @@ public sealed class LogitechHidppWheelProvider : IDisposable
 
     [DllImport("hid.dll", SetLastError = true)]
     private static extern bool HidD_SetOutputReport(IntPtr dev, byte[] buf, int len);
+
+    [DllImport("hid.dll", SetLastError = true)]
+    private static extern bool HidD_GetInputReport(IntPtr dev, byte[] buf, uint len);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool ReadFile(IntPtr hFile, byte[] lpBuffer, uint nNumberOfBytesToRead, out uint lpNumberOfBytesRead, ref NativeOverlapped lpOverlapped);
@@ -78,17 +89,13 @@ public sealed class LogitechHidppWheelProvider : IDisposable
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool ResetEvent(IntPtr hEvent);
 
-    // HID++ writes go to the SHORT (7-byte) collection; ALL responses arrive on
-    // the VERY LONG (64-byte) collection as 0x12 reports.
     private IntPtr _writeHandle = InvalidHandle;
-    private IntPtr _readHandle = InvalidHandle;
     private int _writeReportLen = 7;
-    private int _readReportLen = 64;
-    private IntPtr _readEvent = IntPtr.Zero;
+    private readonly List<ReadChannel> _readChannels = new();
     private string _devicePath = "";
     private string _productName = "";
     private volatile bool _running;
-    private Thread? _readThread;
+    private int _readThreadCount;
 
     private readonly object _sync = new();
     private readonly List<PendingRequest> _pending = new();
@@ -109,7 +116,7 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         Log("=== LogitechHidppWheelProvider created ===");
     }
 
-    public bool IsConnected => _writeHandle != InvalidHandle && _readHandle != InvalidHandle;
+    public bool IsConnected => _writeHandle != InvalidHandle;
     public string ProductName => _productName;
     public string LastError { get; private set; } = "";
     public string DiagnosticSummary { get; private set; } = "";
@@ -145,11 +152,9 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             Log($"  [{d.DevicePath}] PID=0x{d.ProductId:X4} page=0x{d.UsagePage:X4} usage=0x{d.Usage:X4} inLen={d.InputReportByteLength} outLen={d.OutputReportByteLength} \"{d.ProductString}\"");
         }
 
-        // The RS50/G PRO expose three HID++ collections on mi_01 (usage page 0xFF43):
-        //   col01 outLen=7  — SHORT reports (0x10) — G HUB writes here
-        //   col02 outLen=20 — LONG reports (0x11)
-        //   col03 outLen=64 — VERY LONG reports (0x12) — ALL responses arrive here
-        // The TrueForce stream (usage page 0xFFFD) must never be written to.
+        // The RS50/G PRO expose the HID++ protocol as three report-ID collections
+        // on mi_01 (usage page 0xFF43): 0x10 short (7B), 0x11 long (20B),
+        // 0x12 very-long (64B). The TrueForce stream (0xFFFD) must never be written to.
         var wheelDevices = devices
             .Where(d => SupportedPids.Contains(d.ProductId))
             .Where(d => d.UsagePage != 0xFFFD)
@@ -160,65 +165,74 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             .OrderBy(d => d.OutputReportByteLength)
             .ToList();
 
-        var readCandidates = wheelDevices
-            .Where(d => d.InputReportByteLength >= 20)
-            .OrderByDescending(d => d.InputReportByteLength)
+        var readCollections = wheelDevices
+            .Where(d => d.InputReportByteLength >= 7)
+            .OrderBy(d => d.InputReportByteLength)
             .ToList();
 
-        Log($"Connect: {writeCandidates.Count} write candidate(s), {readCandidates.Count} read candidate(s)");
+        Log($"Connect: {writeCandidates.Count} write candidate(s), {readCollections.Count} read collection(s)");
 
         foreach (var wc in writeCandidates)
         {
-            foreach (var rc in readCandidates)
-            {
-                Log($"Connect: probing write \"{wc.ProductString}\" (page 0x{wc.UsagePage:X4}, outLen={wc.OutputReportByteLength}) + read (page 0x{rc.UsagePage:X4}, inLen={rc.InputReportByteLength})...");
+            Log($"Connect: probing write \"{wc.ProductString}\" (page 0x{wc.UsagePage:X4}, outLen={wc.OutputReportByteLength})...");
 
-                IntPtr wh = CreateFile(wc.DevicePath, GENERIC_WRITE, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
-                if (wh == InvalidHandle)
-                {
-                    Log($"Connect:   write open FAILED (err={Marshal.GetLastWin32Error()}) — skipping");
-                    continue;
-                }
+            IntPtr wh = CreateFile(wc.DevicePath, GENERIC_WRITE, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+            if (wh == InvalidHandle)
+            {
+                Log($"Connect:   write open FAILED (err={Marshal.GetLastWin32Error()}) — skipping");
+                continue;
+            }
+
+            _writeHandle = wh;
+            _writeReportLen = wc.OutputReportByteLength;
+            _devicePath = wc.DevicePath;
+            _productName = wc.ProductString;
+
+            // Open every read collection (interrupt ReadFile + control GetInputReport).
+            int opened = 0;
+            foreach (var rc in readCollections)
+            {
                 IntPtr rh = CreateFile(rc.DevicePath, GENERIC_READ, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, IntPtr.Zero);
                 if (rh == InvalidHandle)
                 {
-                    Log($"Connect:   read open FAILED (err={Marshal.GetLastWin32Error()}) — skipping");
-                    CloseHandle(wh);
+                    Log($"Connect:   read open FAILED for inLen={rc.InputReportByteLength} (err={Marshal.GetLastWin32Error()})");
                     continue;
                 }
-
-                _writeHandle = wh;
-                _readHandle = rh;
-                _writeReportLen = wc.OutputReportByteLength;
-                _readReportLen = rc.InputReportByteLength;
-                _devicePath = wc.DevicePath;
-                _productName = wc.ProductString;
-                _readEvent = CreateEvent(IntPtr.Zero, false, false, null);
-
-                StartReadThread();
-
-                byte? probe = FindFeatureIndex(FeatFfbStrength, 800);
-                if (probe is null or 0x00 or 0xFF)
+                var channel = new ReadChannel
                 {
-                    Log($"Connect:   probe FAILED (feature 0x{FeatFfbStrength:X4} not found on this pair) — closing");
-                    _running = false;
-                    CancelIoEx(_readHandle, IntPtr.Zero);
-                    _readThread?.Join(500);
-                    _readThread = null;
-                    CloseHandle(_writeHandle);
-                    CloseHandle(_readHandle);
-                    CloseHandle(_readEvent);
-                    _writeHandle = InvalidHandle;
-                    _readHandle = InvalidHandle;
-                    _readEvent = IntPtr.Zero;
-                    continue;
-                }
-
-                _featureFfbStrength = probe.Value;
-                Log($"Connect:   HID++ interface confirmed — FFBStrength at index 0x{probe:X2} (write outLen={_writeReportLen}, read inLen={_readReportLen})");
-                break;
+                    Handle = rh,
+                    InLen = rc.InputReportByteLength,
+                    ReportId = (byte)(rc.Usage == 0x0701 ? 0x10 : rc.Usage == 0x0702 ? 0x11 : 0x12),
+                    Event = CreateEvent(IntPtr.Zero, false, false, null)
+                };
+                _readChannels.Add(channel);
+                opened++;
             }
-            if (_writeHandle != InvalidHandle) break;
+            Log($"Connect:   opened {opened} read channel(s)");
+
+            if (_readChannels.Count == 0)
+            {
+                Log("Connect:   no read channels — closing write handle");
+                CloseHandle(_writeHandle);
+                _writeHandle = InvalidHandle;
+                continue;
+            }
+
+            StartReadThreads();
+
+            byte? probe = FindFeatureIndex(FeatFfbStrength, 900);
+            if (probe is null or 0x00 or 0xFF)
+            {
+                Log($"Connect:   probe FAILED (feature 0x{FeatFfbStrength:X4} not found on this write candidate) — closing");
+                StopReadThreads();
+                CloseHandle(_writeHandle);
+                _writeHandle = InvalidHandle;
+                continue;
+            }
+
+            _featureFfbStrength = probe.Value;
+            Log($"Connect:   HID++ interface confirmed — FFBStrength at index 0x{probe:X2} (write outLen={_writeReportLen}, {_readChannels.Count} read channels)");
+            break;
         }
 
         if (_writeHandle == InvalidHandle)
@@ -245,14 +259,8 @@ public sealed class LogitechHidppWheelProvider : IDisposable
 
     public void Disconnect()
     {
-        Log("Disconnect: stopping read thread and closing handles");
-        _running = false;
-        if (_readEvent != IntPtr.Zero && _readHandle != InvalidHandle)
-        {
-            try { CancelIoEx(_readHandle, IntPtr.Zero); } catch { }
-        }
-        _readThread?.Join(500);
-        _readThread = null;
+        Log("Disconnect: stopping read threads and closing handles");
+        StopReadThreads();
 
         lock (_sync)
         {
@@ -266,16 +274,12 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             CloseHandle(_writeHandle);
             _writeHandle = InvalidHandle;
         }
-        if (_readHandle != InvalidHandle)
+        foreach (var ch in _readChannels)
         {
-            CloseHandle(_readHandle);
-            _readHandle = InvalidHandle;
+            if (ch.Handle != InvalidHandle) CloseHandle(ch.Handle);
+            if (ch.Event != IntPtr.Zero) CloseHandle(ch.Event);
         }
-        if (_readEvent != IntPtr.Zero)
-        {
-            CloseHandle(_readEvent);
-            _readEvent = IntPtr.Zero;
-        }
+        _readChannels.Clear();
         Log("Disconnect: done");
     }
 
@@ -289,7 +293,6 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         if (_featureFfbStrength == 0 || !SendSet(_featureFfbStrength, 2, [(byte)(value >> 8), (byte)(value & 0xFF), 0x00]))
             return false;
 
-        // Verify with a read-back
         var resp = ReadValue(_featureFfbStrength, 1);
         if (resp != null)
         {
@@ -356,7 +359,6 @@ public sealed class LogitechHidppWheelProvider : IDisposable
 
     private void ReadAllSettings()
     {
-        // Profile/mode first — it explains whether live SETs will apply.
         ReadProfileMode();
 
         var strength = ReadValue(_featureFfbStrength, 1);
@@ -444,10 +446,6 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         var pending = new PendingRequest { FeatureIndex = featureIndex, Fn = fn, Tcs = tcs };
         lock (_sync)
         {
-            if (!_running && _pending.Count > 0)
-            {
-                // First request after connect — the read thread starts before reads.
-            }
             _pending.Add(pending);
         }
 
@@ -496,63 +494,95 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         }
     }
 
-    private void StartReadThread()
+    // ── Read threads: interrupt ReadFile AND control GetInputReport on every collection ──
+
+    private void StartReadThreads()
     {
         _running = true;
-        _readThread = new Thread(ReadLoop)
+        foreach (var ch in _readChannels)
         {
-            IsBackground = true,
-            Name = "LogitechHidppRead"
-        };
-        _readThread.Start();
+            ch.Thread = new Thread(() => ReadLoop(ch))
+            {
+                IsBackground = true,
+                Name = $"LogitechHidppRead-{ch.InLen}"
+            };
+            ch.Thread.Start();
+
+            // Control-pipe reader as well — some Windows builds only deliver
+            // HID++ responses via HidD_GetInputReport.
+            ch.InputThread = new Thread(() => InputReportLoop(ch))
+            {
+                IsBackground = true,
+                Name = $"LogitechHidppInput-{ch.InLen}"
+            };
+            ch.InputThread.Start();
+        }
     }
 
-    private void ReadLoop()
+    private void StopReadThreads()
     {
-        Log("ReadLoop: started");
-        var buf = new byte[_readReportLen];
-        var overlapped = new NativeOverlapped();
-        overlapped.EventHandle = _readEvent;
-
-        while (_running && _readHandle != InvalidHandle)
+        _running = false;
+        foreach (var ch in _readChannels)
         {
-            ResetEvent(_readEvent);
+            if (ch.Event != IntPtr.Zero && ch.Handle != InvalidHandle)
+            {
+                try { CancelIoEx(ch.Handle, IntPtr.Zero); } catch { }
+            }
+        }
+        foreach (var ch in _readChannels)
+        {
+            ch.Thread?.Join(400);
+            ch.Thread = null;
+            ch.InputThread?.Join(400);
+            ch.InputThread = null;
+        }
+    }
+
+    private void ReadLoop(ReadChannel ch)
+    {
+        Log($"ReadLoop: started (inLen={ch.InLen})");
+        var buf = new byte[ch.InLen];
+        var overlapped = new NativeOverlapped();
+        overlapped.EventHandle = ch.Event;
+
+        while (_running && ch.Handle != InvalidHandle)
+        {
+            ResetEvent(ch.Event);
 
             uint read = 0;
             bool ok;
             try
             {
-                ok = ReadFile(_readHandle, buf, (uint)_readReportLen, out read, ref overlapped);
+                ok = ReadFile(ch.Handle, buf, (uint)ch.InLen, out read, ref overlapped);
             }
             catch (Exception ex)
             {
-                Log($"ReadLoop: ReadFile threw: {ex.Message}");
+                Log($"ReadLoop({ch.InLen}): ReadFile threw: {ex.Message}");
                 break;
             }
 
             if (!ok)
             {
                 int err = Marshal.GetLastWin32Error();
-                if (err == 997) // ERROR_IO_PENDING — wait for completion
+                if (err == 997) // ERROR_IO_PENDING
                 {
-                    uint wait = WaitForSingleObject(_readEvent, 250);
+                    uint wait = WaitForSingleObject(ch.Event, 250);
                     if (wait == WAIT_TIMEOUT)
                     {
-                        // Cancel and drain the pending IO so the overlapped can be reused.
-                        CancelIoEx(_readHandle, IntPtr.Zero);
-                        WaitForSingleObject(_readEvent, 250);
+                        CancelIoEx(ch.Handle, IntPtr.Zero);
+                        WaitForSingleObject(ch.Event, 250);
                         if (!_running) break;
                         continue;
                     }
                     if (!_running) break;
                 }
-                else if (err == 995 || err == 6 || err == 1) // cancelled / invalid handle — shutting down
+                else if (err == 995 || err == 6 || err == 1)
                 {
                     break;
                 }
                 else
                 {
-                    Log($"ReadLoop: ReadFile error {err}");
+                    Log($"ReadLoop({ch.InLen}): ReadFile error {err}");
                     break;
                 }
             }
@@ -560,26 +590,60 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             if (!_running) break;
 
             if (read >= 4)
-                DispatchResponse(buf, (int)read);
-            else
-                Log($"ReadLoop: short read {read} bytes");
+                DispatchResponse(buf, (int)read, $"ReadFile({ch.InLen})");
+            else if (read > 0)
+                Log($"ReadLoop({ch.InLen}): short read {read} bytes");
         }
 
-        Log("ReadLoop: stopped");
+        Log($"ReadLoop({ch.InLen}): stopped");
     }
 
-    private void DispatchResponse(byte[] report, int len)
+    private void InputReportLoop(ReadChannel ch)
+    {
+        Log($"InputReportLoop: started (inLen={ch.InLen}, reportId=0x{ch.ReportId:X2})");
+        var buf = new byte[ch.InLen];
+        buf[0] = ch.ReportId;
+
+        while (_running && ch.Handle != InvalidHandle)
+        {
+            bool ok;
+            try
+            {
+                ok = HidD_GetInputReport(ch.Handle, buf, (uint)ch.InLen);
+            }
+            catch (Exception ex)
+            {
+                Log($"InputReportLoop({ch.InLen}): threw: {ex.Message}");
+                break;
+            }
+            if (!ok)
+            {
+                int err = Marshal.GetLastWin32Error();
+                if (!_running || err == 995 || err == 6 || err == 1)
+                    break;
+                Log($"InputReportLoop({ch.InLen}): error {err}");
+                break;
+            }
+
+            if (_running)
+                DispatchResponse(buf, ch.InLen, $"GetInputReport({ch.InLen})");
+        }
+
+        Log($"InputReportLoop({ch.InLen}): stopped");
+    }
+
+    private void DispatchResponse(byte[] report, int len, string source)
     {
         byte reportId = report[0];
         if (reportId != 0x12 && reportId != 0x11 && reportId != 0x10)
         {
-            Log($"RX: unexpected report id 0x{reportId:X2} ({len} bytes)");
+            Log($"RX({source}): unexpected report id 0x{reportId:X2} ({len} bytes)");
             return;
         }
 
         byte featureIndex = report[2];
         byte fn = (byte)(report[3] >> 4);
-        Log($"RX: id=0x{reportId:X2} feat=0x{featureIndex:X2} fn={fn} {Hex(report, 10)}");
+        Log($"RX({source}): id=0x{reportId:X2} feat=0x{featureIndex:X2} fn={fn} {Hex(report, 10)}");
 
         PendingRequest? match = null;
         lock (_sync)
@@ -587,8 +651,7 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             match = _pending.FirstOrDefault(p => p.FeatureIndex == featureIndex && p.Fn == fn);
             if (match == null)
             {
-                // Unsolicited broadcast (e.g. settings change events) — log only.
-                Log($"RX: unsolicited event (feat 0x{featureIndex:X2} fn={fn}) — no pending request");
+                Log($"RX({source}): unsolicited event (feat 0x{featureIndex:X2} fn={fn}) — no pending request");
             }
         }
         match?.Tcs.TrySetResult(report);
@@ -613,7 +676,17 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         catch { }
     }
 
-    private class PendingRequest
+    private sealed class ReadChannel
+    {
+        public IntPtr Handle;
+        public int InLen;
+        public byte ReportId;
+        public IntPtr Event;
+        public Thread? Thread;
+        public Thread? InputThread;
+    }
+
+    private sealed class PendingRequest
     {
         public byte FeatureIndex;
         public byte Fn;

@@ -50,6 +50,20 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.25.6",
+            Date = new DateTime(2026, 8, 11),
+            Title = "Logitech HID++ response transport hardening",
+            Fixes =
+            [
+                "Logitech HID++ wheel settings now listen on ALL HID++ collections at once — short (0x10), long (0x11) and very-long (0x12) — via both interrupt reads and control-pipe reads (HidD_GetInputReport), because some Windows builds deliver HID++ responses only on the control path. The probe also tries writing on both the short and long report collections, so the settings connection works regardless of how the wheel answers"
+            ],
+            Improvements =
+            [
+                "Every read attempt is logged with its source (interrupt vs control, collection size) in logitech_hidpp.log, so the next connection attempt tells us exactly which transport the wheel answers on"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.25.5",
             Date = new DateTime(2026, 8, 11),
             Title = "Logitech HID++ connect fix + log purge on update",
