@@ -171,6 +171,10 @@ public partial class App : Application
             if (lastSeen == currentVersion)
                 return;
 
+            // Version changed — purge log files from the previous version so
+            // diagnostic packs only ever contain logs from the current build.
+            PurgeLogsFromPreviousVersion(currentVersion, lastSeen);
+
             var entries = Services.ChangeLogService.GetEntriesSince(lastSeen);
             if (entries.Count == 0)
             {
@@ -188,6 +192,37 @@ public partial class App : Application
         catch
         {
         }
+    }
+
+    private static void PurgeLogsFromPreviousVersion(string currentVersion, string? lastSeen)
+    {
+        try
+        {
+            var baseDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "AcEvoFfbTuner");
+            if (!Directory.Exists(baseDir)) return;
+
+            int purged = 0;
+            foreach (var file in Directory.GetFiles(baseDir, "*.log"))
+            {
+                try { File.Delete(file); purged++; } catch { }
+            }
+            foreach (var file in Directory.GetFiles(baseDir, "*.txt"))
+            {
+                if (Path.GetFileName(file) == "last_profile.txt") continue; // profile state, not a log
+                try { File.Delete(file); purged++; } catch { }
+            }
+
+            try
+            {
+                var logPath = Path.Combine(baseDir, "update.log");
+                File.AppendAllText(logPath,
+                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Version changed {lastSeen ?? "first-run"} -> {currentVersion}: purged {purged} log file(s) from the previous version.\n");
+            }
+            catch { }
+        }
+        catch { }
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

@@ -129,31 +129,33 @@ internal static class HidDeviceEnumerator
 
                         string product = GetHidProductString(hDev);
 
-                        IntPtr preparsed = IntPtr.Zero;
-                        ushort outLen = 0, featLen = 0, usagePage = 0, usage = 0;
-                        if (HidD_GetPreparsedData(hDev, out preparsed))
+                    IntPtr preparsed = IntPtr.Zero;
+                    ushort inLen = 0, outLen = 0, featLen = 0, usagePage = 0, usage = 0;
+                    if (HidD_GetPreparsedData(hDev, out preparsed))
+                    {
+                        if (HidP_GetCaps(preparsed, out var caps))
                         {
-                            if (HidP_GetCaps(preparsed, out var caps))
-                            {
-                                outLen = caps.OutputReportByteLength;
-                                featLen = caps.FeatureReportByteLength;
-                                usagePage = caps.UsagePage;
-                                usage = caps.Usage;
-                            }
-                            HidD_FreePreparsedData(ref preparsed);
+                            inLen = caps.InputReportByteLength;
+                            outLen = caps.OutputReportByteLength;
+                            featLen = caps.FeatureReportByteLength;
+                            usagePage = caps.UsagePage;
+                            usage = caps.Usage;
                         }
+                        HidD_FreePreparsedData(ref preparsed);
+                    }
 
-                        results.Add(new HidDeviceInfo
-                        {
-                            DevicePath = path,
-                            VendorId = attrs.Vid,
-                            ProductId = attrs.Pid,
-                            ProductString = product,
-                            UsagePage = usagePage,
-                            Usage = usage,
-                            OutputReportByteLength = outLen,
-                            FeatureReportByteLength = featLen
-                        });
+                    results.Add(new HidDeviceInfo
+                    {
+                        DevicePath = path,
+                        VendorId = attrs.Vid,
+                        ProductId = attrs.Pid,
+                        ProductString = product,
+                        UsagePage = usagePage,
+                        Usage = usage,
+                        InputReportByteLength = inLen,
+                        OutputReportByteLength = outLen,
+                        FeatureReportByteLength = featLen
+                    });
                     }
                     finally
                     {

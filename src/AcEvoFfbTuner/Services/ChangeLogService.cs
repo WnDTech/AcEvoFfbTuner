@@ -50,6 +50,21 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.25.5",
+            Date = new DateTime(2026, 8, 11),
+            Title = "Logitech HID++ connect fix + log purge on update",
+            Fixes =
+            [
+                "Logitech HID++ wheel settings now connect properly: the app writes short HID++ reports to the wheel's 7-byte control collection and reads responses from the 64-byte very-long collection (the RS50 always answers with 0x12 reports) — previously the probe targeted the wrong collections and the wheel never saw a valid request",
+                "Log files are purged when the app updates to a new version, so diagnostic packs only contain logs from the current build — no more stale logs from previous versions in send-to-dev submissions"
+            ],
+            Improvements =
+            [
+                "Full HID interface enumeration is logged (every collection's usage page and report sizes), so connection failures are diagnosable from logitech_hidpp.log alone"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.25.4",
             Date = new DateTime(2026, 8, 11),
             Title = "Direct HID++ wheel settings for Logitech — no G HUB needed",

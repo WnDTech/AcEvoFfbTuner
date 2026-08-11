@@ -9,5 +9,6 @@ public sealed record HidDeviceInfo
     public ushort UsagePage { get; init; }
     public ushort Usage { get; init; }
     public ushort OutputReportByteLength { get; init; }
+    public ushort InputReportByteLength { get; init; }
     public ushort FeatureReportByteLength { get; init; }
 }
