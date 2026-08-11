@@ -50,6 +50,21 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.25.8",
+            Date = new DateTime(2026, 8, 11),
+            Title = "Logitech HID++ response cross-talk fixed — settings now read correctly",
+            Fixes =
+            [
+                "Logitech wheel settings reads are now correct: the RS50 broadcasts every state report on all three HID++ collections and repeats cached reports, which caused stale duplicates to satisfy the wrong requests — feature discovery returned crossed indices and rotation showed 49151° (actually the strength value). The app now reads only the canonical 64-byte collection, suppresses duplicate reports, drains stale copies between requests, and rejects colliding feature indices with a retry",
+                "The wheel is automatically switched to Desktop mode on connect, so slider changes apply immediately — no need to select a profile on the wheel itself"
+            ],
+            Improvements =
+            [
+                "HID++ log no longer floods with duplicate reports (was over 1.9 MB in one session)"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.25.7",
             Date = new DateTime(2026, 8, 11),
             Title = "HID++ settings no longer freeze the app",

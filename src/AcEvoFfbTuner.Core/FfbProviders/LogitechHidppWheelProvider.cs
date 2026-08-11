@@ -97,6 +97,11 @@ public sealed class LogitechHidppWheelProvider : IDisposable
     private volatile bool _running;
     private int _readThreadCount;
 
+    // HID++ is strictly request/response and the wheel has one in-flight slot —
+    // concurrent requests (UI refresh + slider write) could cross-talk responses
+    // between features. Serialize every exchange.
+    private readonly SemaphoreSlim _requestGate = new(1, 1);
+
     private readonly object _sync = new();
     private readonly List<PendingRequest> _pending = new();
 
@@ -165,9 +170,13 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             .OrderBy(d => d.OutputReportByteLength)
             .ToList();
 
+        // The wheel broadcasts each state report on ALL report-ID collections
+        // (0x10 short, 0x11 long, 0x12 very-long). The 0x12 (64-byte) form is the
+        // canonical one and arrives via HidD_GetInputReport — reading only that
+        // collection avoids duplicate reports satisfying the wrong request.
+        // The TrueForce stream (0xFFFD) and the joystick (page 0x0001) are excluded.
         var readCollections = wheelDevices
-            .Where(d => d.InputReportByteLength >= 7)
-            .OrderBy(d => d.InputReportByteLength)
+            .Where(d => d.UsagePage == 0xFF43 && d.InputReportByteLength >= 64)
             .ToList();
 
         Log($"Connect: {writeCandidates.Count} write candidate(s), {readCollections.Count} read collection(s)");
@@ -372,8 +381,16 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         if (strength != null)
         {
             ushort v = (ushort)((strength[4] << 8) | strength[5]);
-            FfbStrengthNm = v / 8191.875f;
-            Log($"ReadAllSettings: strength 0x{v:X4} = {FfbStrengthNm:F2} Nm");
+            float readNm = v / 8191.875f;
+            if (readNm >= 0.5f && readNm <= 8.5f)
+            {
+                FfbStrengthNm = readNm;
+                Log($"ReadAllSettings: strength 0x{v:X4} = {readNm:F2} Nm");
+            }
+            else
+            {
+                Log($"ReadAllSettings: strength read-back 0x{v:X4} = {readNm:F2} Nm OUT OF RANGE (1-8 Nm) — ignoring");
+            }
         }
         else
         {
@@ -440,6 +457,23 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         }
         byte idx = resp[4];
         Log($"FindFeatureIndex: 0x{featureId:X4} -> index 0x{idx:X2} (type 0x{resp[5]:X2}, ver 0x{resp[6]:X2})");
+
+        // A stale duplicate of an earlier discovery response could satisfy this
+        // query with the previous feature's index — retry once if it collides.
+        byte[] known = [_featureFfbStrength, _featureRotation, _featureProfile, _featureTrueForce, _featureDamping];
+        if (idx != 0x00 && idx != 0xFF && known.Contains(idx))
+        {
+            Log($"FindFeatureIndex: 0x{featureId:X4} index 0x{idx:X2} collides with a previously discovered feature — retrying once");
+            Thread.Sleep(120);
+            resp = RequestResponse(0x00, 0x00, [(byte)(featureId >> 8), (byte)(featureId & 0xFF), 0x00], timeoutMs);
+            if (resp == null)
+            {
+                Log($"FindFeatureIndex: 0x{featureId:X4} retry no response");
+                return null;
+            }
+            idx = resp[4];
+            Log($"FindFeatureIndex: 0x{featureId:X4} retry -> index 0x{idx:X2}");
+        }
         return idx;
     }
 
@@ -456,6 +490,21 @@ public sealed class LogitechHidppWheelProvider : IDisposable
     }
 
     private byte[]? RequestResponse(byte featureIndex, byte fn, byte[] payload, int timeoutMs)
+    {
+        // Serialize all HID++ exchanges — the wheel has a single in-flight slot
+        // and concurrent requests can cross-talk responses between features.
+        _requestGate.Wait();
+        try
+        {
+            return RequestResponseCore(featureIndex, fn, payload, timeoutMs);
+        }
+        finally
+        {
+            _requestGate.Release();
+        }
+    }
+
+    private byte[]? RequestResponseCore(byte featureIndex, byte fn, byte[] payload, int timeoutMs)
     {
         var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
         var pending = new PendingRequest { FeatureIndex = featureIndex, Fn = fn, Tcs = tcs };
@@ -506,6 +555,10 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         finally
         {
             lock (_sync) _pending.Remove(pending);
+            // The wheel broadcasts each report on multiple collections — let the
+            // duplicate copies drain before the next request so a stale copy can
+            // never satisfy it.
+            Thread.Sleep(40);
         }
     }
 
@@ -605,7 +658,7 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             if (!_running) break;
 
             if (read >= 4)
-                DispatchResponse(buf, (int)read, $"ReadFile({ch.InLen})");
+                DispatchResponse(buf, (int)read, $"ReadFile({ch.InLen})", ch);
             else if (read > 0)
                 Log($"ReadLoop({ch.InLen}): short read {read} bytes");
         }
@@ -641,14 +694,27 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             }
 
             if (_running)
-                DispatchResponse(buf, ch.InLen, $"GetInputReport({ch.InLen})");
+                DispatchResponse(buf, ch.InLen, $"GetInputReport({ch.InLen})", ch);
         }
 
         Log($"InputReportLoop({ch.InLen}): stopped");
     }
 
-    private void DispatchResponse(byte[] report, int len, string source)
+    private void DispatchResponse(byte[] report, int len, string source, ReadChannel? channel = null)
     {
+        // Duplicate suppression: the wheel broadcasts each report repeatedly and
+        // HidD_GetInputReport returns the cached report — skip identical repeats.
+        if (channel != null)
+        {
+            long hash = 17;
+            int n = Math.Min(len, 16);
+            for (int i = 0; i < n; i++)
+                hash = hash * 31 + report[i];
+            if (hash == channel.LastHash)
+                return;
+            channel.LastHash = hash;
+        }
+
         byte reportId = report[0];
         if (reportId != 0x12 && reportId != 0x11 && reportId != 0x10)
         {
@@ -699,6 +765,7 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         public IntPtr Event;
         public Thread? Thread;
         public Thread? InputThread;
+        public long LastHash; // duplicate suppression across both read loops
     }
 
     private sealed class PendingRequest

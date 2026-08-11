@@ -44,6 +44,16 @@ public sealed partial class MainViewModel
         Task.Run(() =>
         {
             bool ok = provider.Connect();
+
+            // The wheel boots in onboard mode, which silently ignores live host
+            // SETs — switch to desktop mode automatically so slider changes apply
+            // immediately with zero user intervention.
+            if (ok)
+            {
+                provider.SetDesktopMode();
+                provider.ReadAllSettingsForUi();
+            }
+
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
             {
                 if (!ReferenceEquals(_logitechHidpp, provider)) return;
