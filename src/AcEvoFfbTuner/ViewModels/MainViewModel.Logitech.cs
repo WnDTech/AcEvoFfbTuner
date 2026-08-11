@@ -11,6 +11,7 @@ public sealed partial class MainViewModel
     private bool _logitechRefreshInFlight;
     private System.Windows.Threading.DispatcherTimer? _logitechWriteDebounce;
     private System.Windows.Threading.DispatcherTimer? _logitechRefreshTimer;
+    private System.Windows.Threading.DispatcherTimer? _logitechSettleTimer;
 
     // ── HID++ direct wheel settings (no G HUB needed) ──
     // NOTE: every HID++ call runs on a background thread — the protocol has
@@ -186,12 +187,25 @@ public sealed partial class MainViewModel
 
         float strength = LogitechFfbStrengthNm;
         int rotation = LogitechRotationDegrees;
-        AddSystemLog($"Logitech HID++ write: strength={strength:F1} Nm, rotation={rotation}°");
+
+        // Echo-skip: if the values still match what the wheel reported, nothing
+        // changed (e.g. a slider clamp round-trip on load) — don't write. The
+        // slider Minimum clamps garbage/zero reads to 1.0 Nm, and a blind write
+        // of that clamped value previously throttled the wheel's motor gain to 1 Nm.
+        bool strengthChanged = Math.Abs(strength - provider.FfbStrengthNm) >= 0.01f;
+        bool rotationChanged = rotation != provider.RotationDegrees;
+        if (!strengthChanged && !rotationChanged)
+        {
+            LogitechHidppStatus = "HID++ — wheel settings unchanged, nothing written";
+            return;
+        }
+
+        AddSystemLog($"Logitech HID++ write: strength={strength:F1} Nm{(strengthChanged ? "" : " (unchanged)")}, rotation={rotation}°{(rotationChanged ? "" : " (unchanged)")}");
 
         Task.Run(() =>
         {
-            provider.SetFfbStrengthNm(strength);
-            provider.SetRotationDegrees(rotation);
+            if (strengthChanged) provider.SetFfbStrengthNm(strength);
+            if (rotationChanged) provider.SetRotationDegrees(rotation);
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
             {
                 if (!ReferenceEquals(_logitechHidpp, provider)) return;

@@ -50,6 +50,17 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.25.9",
+            Date = new DateTime(2026, 8, 11),
+            Title = "Wheel settings can no longer be written by accident",
+            Fixes =
+            [
+                "Logitech wheel settings are never written unless you actually change them: a slider clamp round-trip could previously push a clamped value (e.g. 1 Nm strength) to the wheel when the read was zero or out of range — that throttled the wheel's motor gain to 1 Nm and killed FFB everywhere. Values that still match the wheel's reported state are now skipped, and out-of-range reads are rejected before they reach the UI",
+                "Each write now logs exactly which value changed (strength and/or rotation), so the log always shows what was sent to the wheel"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.25.8",
             Date = new DateTime(2026, 8, 11),
             Title = "Logitech HID++ response cross-talk fixed — settings now read correctly",
