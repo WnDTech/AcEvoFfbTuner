@@ -50,6 +50,27 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.25.4",
+            Date = new DateTime(2026, 8, 11),
+            Title = "Direct HID++ wheel settings for Logitech — no G HUB needed",
+            Features =
+            [
+                "Logitech HID++ wheel settings (RS50 / G PRO / G923): the app now talks to the wheel directly over its HID++ interface and reads/writes the wheel's own stored settings — FFB strength (1-8 Nm), rotation range (90-2700°), TrueForce and damping levels — with NO Logitech G HUB required",
+                "Wheelbase tab gains a LOGITECH WHEEL SETTINGS card: live-reported strength/rotation, mode indicator (desktop vs onboard profile slot), Switch to Desktop Mode and Re-read buttons",
+                "Slider changes write to the wheel immediately (400 ms debounce) with read-back verification; the wheel is re-read every 5 s to stay in sync with wheel-side profile changes"
+            ],
+            Improvements =
+            [
+                "If a wheel's force ever feels dead, the reported FFB strength makes the cause visible instantly — G HUB writes strength to the wheel's onboard profile, and a value near 0 Nm explains no force anywhere",
+                "Full protocol logging to logitech_hidpp.log — every packet sent/received, feature discovery, reads, writes and errors — for diagnosis without extra tooling"
+            ],
+            Fixes =
+            [
+                "Logitech wheels that stopped producing force after G HUB touched their settings can now be fixed in-app: set the strength slider and switch to Desktop mode — no G HUB needed"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.25.3",
             Date = new DateTime(2026, 8, 11),
             Title = "Wheelbase tab with live wheel test, live visuals without Start, Discord-only Send to Dev",

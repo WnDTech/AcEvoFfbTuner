@@ -116,6 +116,7 @@ public sealed partial class MainViewModel
             AutoDetectWheelTorque(SelectedDevice.ProductName);
             ForceInvertEnabled = _deviceManager.AutoDetectedForceInvert;
             SupportsPeriodicEffects = _deviceManager.SupportsPeriodicEffects;
+            ConnectLogitechHidpp(SelectedDevice.ProductName);
             IsAutoSetupAvailable = WheelMaxTorqueNm > 0;
             RefreshSnapshotButtonNames();
             RefreshPanicButtonNames();
@@ -167,6 +168,7 @@ public sealed partial class MainViewModel
         IsAutoSetupAvailable = false;
         DeviceName = "No device";
         ResetLedCapabilities();
+        DisconnectLogitechHidpp();
         _appSettings.LastConnectedDeviceInstanceId = null;
         _appSettings.Save();
         AddSystemLog("Device disconnected");
