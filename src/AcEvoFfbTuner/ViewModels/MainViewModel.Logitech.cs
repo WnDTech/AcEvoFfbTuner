@@ -54,7 +54,9 @@ public sealed partial class MainViewModel
         }
         if (!tf.IsInitialized)
         {
-            TrueForceStatus = $"TrueForce stream: connecting… ({(string.IsNullOrEmpty(tf.LastError) ? "waiting for wheel" : tf.LastError)})";
+            TrueForceStatus = tf.IsEngaged
+                ? $"TrueForce stream: initializing…"
+                : $"TrueForce stream: connected, standby — engages when telemetry runs";
             return;
         }
         double packetsPerSec = 0;

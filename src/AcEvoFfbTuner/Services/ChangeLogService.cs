@@ -50,6 +50,22 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.26.6",
+            Date = new DateTime(2026, 8, 12),
+            Title = "Startup crashes fixed (DirectInput effect race — root cause finally pinned) + wheel stays silent when idle",
+            Fixes =
+            [
+                "Startup crashes fixed — the root cause is finally pinned, and it was never TrueForce: the 1 ms DirectInput interpolation thread called SharpDX effect methods while another thread disposed the effect (device loss / force zeroing) — a use-after-dispose access violation that killed the app. Windows event logs show the same fault in every version since 1.25.8. All effect lifecycle access is now serialized and the device state is re-checked before every native call",
+                "The wheel no longer hums or spins when idle: the TrueForce session used to engage at app start (the 500 Hz stream carrier = the \"beeee\" hum and the startup wheelspin, even before pressing Start). The session now stays in standby until the app actually outputs force (Start, wheel test, wizard drive) — idle means a silent wheel with normal game FFB",
+                "Focusing the app also zeros the TrueForce stream now — the wheel no longer holds the last set-and-hold force while suppressed"
+            ],
+            Improvements =
+            [
+                "The TrueForce card shows the standby state (\"connected, standby — engages when telemetry runs\") instead of a misleading connecting/active status when idle"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.26.5",
             Date = new DateTime(2026, 8, 12),
             Title = "TrueForce force now flows while the game holds the wheel + native crash capture (minidump + event log in diag packs)",

@@ -950,8 +950,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         // On the RS50/G PRO the TrueForce stream overrides DirectInput, so the
         // test must go through the stream to validate the path the app uses
         // while driving (a DI-only test would pass but prove nothing).
-        if (_telemetryLoop.ActiveProvider is LogitechTrueForceProvider tf && tf.IsInitialized)
+        if (_telemetryLoop.ActiveProvider is LogitechTrueForceProvider tf)
         {
+            // Lazy-engage: if the loop isn't running the session is in standby —
+            // start it for the test, and OnStopWheelFfbTest releases it again.
+            if (!_telemetryLoop.IsRunning) tf.Engage();
             tf.UpdateTorque(WheelFfbTestIntensity);
             AddSystemLog($"WHEEL FFB TEST: sending {WheelFfbTestIntensity * 100:F0}% via TrueForce stream — hold the wheel!");
             WheelFfbTestStatus = $"Sending {WheelFfbTestIntensity * 100:F0}% through the TrueForce stream — you should feel the wheel pull. Auto-stops in 3s.";
@@ -978,8 +981,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _wheelFfbTestTimer = null;
         if (WheelFfbTestActive)
         {
-            if (_telemetryLoop.ActiveProvider is LogitechTrueForceProvider tf && tf.IsInitialized)
+            if (_telemetryLoop.ActiveProvider is LogitechTrueForceProvider tf)
+            {
                 tf.UpdateTorque(0f);
+                // Release the session back to standby unless the telemetry
+                // loop is running (it re-engages via Start and needs the stream).
+                if (!_telemetryLoop.IsRunning) tf.Disengage();
+            }
             else
                 _deviceManager?.SendConstantForce(0f);
             _telemetryLoop.SuppressOutput = false;

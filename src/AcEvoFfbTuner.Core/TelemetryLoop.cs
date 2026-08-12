@@ -210,13 +210,14 @@ public sealed class TelemetryLoop : IDisposable
 
         var provider = WheelbaseFactory.CreateFromDeviceName(productName, _deviceManager);
 
-        // Same provider type already initialized and serving this wheel — do not
-        // churn. Each replacement tears the TrueForce session down and re-inits
-        // (wheel spin + teardown/init race), and a reconnect storm was observed
-        // recreating the provider every ~90 s on the RS50.
+        // Same provider type already connected to this wheel — do not churn.
+        // Each replacement re-opens the transport and re-arms the pump, and a
+        // reconnect storm was observed recreating the provider every ~90 s on
+        // the RS50. (IsConnected, not IsInitialized: stream providers sit in
+        // standby — connected but not engaged — until the loop starts.)
         if (_ffbProvider != null
             && _ffbProvider.GetType() == provider.GetType()
-            && _ffbProvider.IsInitialized)
+            && _ffbProvider.IsConnected)
         {
             provider.Dispose();
             return;
@@ -265,6 +266,11 @@ public sealed class TelemetryLoop : IDisposable
         if (_running) return;
         _running = true;
 
+        // Engage the provider's force session (TrueForce stream). Lazy-engage:
+        // while the loop is stopped the wheel stays on its own FFB path and
+        // the amplifier stays silent — no idle session, no hum.
+        _ffbProvider?.Engage();
+
         LiveServer.PedalInputManager = PedalInput;
         LiveServer.FfbDeviceManager = _deviceManager;
         DataUpdated += LiveServer.OnData;
@@ -292,7 +298,10 @@ public sealed class TelemetryLoop : IDisposable
         LiveServer.Stop();
         DataUpdated -= LiveServer.OnData;
 
+        // Release the force session (TrueForce teardown handshake) — the wheel
+        // returns to its normal FFB path instead of holding the stream.
         _ffbProvider?.ZeroTorque();
+        _ffbProvider?.Disengage();
         _deviceManager.ZeroForce();
         _staticFriction.Reset();
 

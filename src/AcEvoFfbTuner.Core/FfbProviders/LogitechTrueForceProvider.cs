@@ -107,6 +107,7 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
     private volatile bool _running;
     private volatile bool _disposed;
     private volatile bool _paused;
+    private volatile bool _engaged;
     private volatile float _targetNorm;
     private byte _seq;
     private long _packetsSent;
@@ -128,10 +129,20 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
     public string ProviderName => "Logitech TrueForce (Stream)";
     public bool IsInitialized { get; private set; }
     public bool IsAvailable => _handle != InvalidHandle && IsInitialized;
+
+    /// <summary>Transport-connected: the stream handle is open even while the
+    /// session is in standby (not engaged).</summary>
+    public bool IsConnected => _handle != InvalidHandle;
     public string? LastError { get; private set; }
 
     /// <summary>True while the stream pump is paused (HID++ settings reads).</summary>
     public bool IsPaused => _paused;
+
+    /// <summary>True while the TrueForce session is engaged (streaming).
+    /// The session is engaged lazily — only while the app outputs force — so
+    /// an idle app never holds the wheel's TrueForce channel (which would
+    /// silence game FFB and make the amplifier hum).</summary>
+    public bool IsEngaged => _engaged;
     public string ProductName => _productName;
     public long PacketsSent => Interlocked.Read(ref _packetsSent);
     public long PacketsFailed => Interlocked.Read(ref _packetsFailed);
@@ -184,6 +195,26 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
         return ConnectAndStart();
     }
 
+    /// <summary>Engage the TrueForce session (run the init sequence and start
+    /// streaming force). The pump stays in standby until the app actually
+    /// needs to output force — engaging on connect would hold the wheel's
+    /// TrueForce channel idle (silencing game FFB) and make the amplifier
+    /// hum on the stream carrier.</summary>
+    public bool Engage()
+    {
+        if (_handle == InvalidHandle) return false;
+        _engaged = true;
+        return true;
+    }
+
+    /// <summary>Release the TrueForce session: the pump writes the session-end
+    /// handshake and returns to standby, so the wheel falls back to its own
+    /// FFB path and the coil hum stops.</summary>
+    public void Disengage()
+    {
+        _engaged = false;
+    }
+
     public void UpdateTorque(float signal)
     {
         _targetNorm = Math.Clamp(signal, -1f, 1f);
@@ -208,18 +239,12 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
 
     public void Shutdown()
     {
-        // Tear the TrueForce session down BEFORE closing the handle: an app
-        // close without teardown leaves the wheel in a stale "session active"
-        // state that overrides ALL force paths (DI, 0x8123, settings responses)
-        // until the wheel is re-initialized or power-cycled (user-verified:
-        // "No FFB again" after closing the app mid-session).
-        //
-        // Order matters: stop the pump FIRST so the session-end handshake can
-        // never race the pump's init/stream writes (a teardown racing the init
-        // sequence was observed in the field — the pump replayed the full
-        // 68-packet init AFTER the handshake and the wheel ended up confused).
+        // Stop the pump FIRST so the session-end handshake can never race the
+        // pump's writes (a teardown racing the init sequence was observed in
+        // the field). The pump owns ALL packet writes — including the teardown
+        // handshake — so there is exactly one writer on the handle.
+        _engaged = false;
         StopPump();
-        WriteTeardown();
         CloseStreamHandle();
         IsInitialized = false;
     }
@@ -441,55 +466,71 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
             if (!WaitForRangeKnown(RangeWaitMs))
                 Log($"PumpLoop: range not reported within {RangeWaitMs} ms — init will push the configured default ({_rotationDegrees}°)");
 
-            if (!RunInitSequence())
-            {
-                LastError ??= "TrueForce init sequence failed";
-                Log($"PumpLoop: init FAILED — {LastError}");
-                IsInitialized = false;
-                _running = false;
-                if (_handle != InvalidHandle)
-                {
-                    CloseHandle(_handle);
-                    _handle = InvalidHandle;
-                }
-                return;
-            }
-
-            IsInitialized = true;
-            Log($"PumpLoop: stream active at {StreamHz} Hz — rotation={_rotationDegrees}°, invert={ForceInvert}, scale={ForceScale:F2}, smooth={SmoothTimeConstantMs:F1} ms");
-
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            long periodTicks = System.Diagnostics.Stopwatch.Frequency / StreamHz;
-            long nextTick = sw.ElapsedTicks + periodTicks;
-
             while (_running)
             {
-                try
+                // ── Standby: session not engaged — write NOTHING. The wheel
+                // keeps its normal FFB path (game / G HUB) and the TrueForce
+                // amplifier stays silent. Engage() flips _engaged.
+                while (_running && !_engaged)
+                    Thread.Sleep(25);
+                if (!_running) break;
+
+                if (!RunInitSequence())
                 {
-                    PumpTick();
-                }
-                catch (Exception ex)
-                {
-                    Log($"PumpLoop: tick exception — {ex.GetType().Name}: {ex.Message}");
-                    Thread.Sleep(1);
+                    LastError ??= "TrueForce init sequence failed";
+                    Log($"PumpLoop: init FAILED — {LastError}");
+                    IsInitialized = false;
+                    _running = false;
+                    if (_handle != InvalidHandle)
+                    {
+                        CloseHandle(_handle);
+                        _handle = InvalidHandle;
+                    }
+                    return;
                 }
 
-                long now = sw.ElapsedTicks;
-                long remaining = nextTick - now;
-                if (remaining > 0)
+                IsInitialized = true;
+                Log($"PumpLoop: stream active at {StreamHz} Hz — rotation={_rotationDegrees}°, invert={ForceInvert}, scale={ForceScale:F2}, smooth={SmoothTimeConstantMs:F1} ms");
+
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                long periodTicks = System.Diagnostics.Stopwatch.Frequency / StreamHz;
+                long nextTick = sw.ElapsedTicks + periodTicks;
+
+                while (_running && _engaged)
                 {
-                    long oneMsTicks = System.Diagnostics.Stopwatch.Frequency / 1000;
-                    while (_running && (nextTick - sw.ElapsedTicks) > oneMsTicks)
+                    try
+                    {
+                        PumpTick();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"PumpLoop: tick exception — {ex.GetType().Name}: {ex.Message}");
                         Thread.Sleep(1);
-                    while (_running && sw.ElapsedTicks < nextTick)
-                        Thread.SpinWait(64);
-                }
-                nextTick += periodTicks;
+                    }
 
-                // Slipped more than one period (long stall): don't catch up
-                // by burst-writing, emit one packet per loop iteration.
-                if (sw.ElapsedTicks - nextTick > periodTicks)
-                    nextTick = sw.ElapsedTicks + periodTicks;
+                    long now = sw.ElapsedTicks;
+                    long remaining = nextTick - now;
+                    if (remaining > 0)
+                    {
+                        long oneMsTicks = System.Diagnostics.Stopwatch.Frequency / 1000;
+                        while (_running && (nextTick - sw.ElapsedTicks) > oneMsTicks)
+                            Thread.Sleep(1);
+                        while (_running && sw.ElapsedTicks < nextTick)
+                            Thread.SpinWait(64);
+                    }
+                    nextTick += periodTicks;
+
+                    // Slipped more than one period (long stall): don't catch up
+                    // by burst-writing, emit one packet per loop iteration.
+                    if (sw.ElapsedTicks - nextTick > periodTicks)
+                        nextTick = sw.ElapsedTicks + periodTicks;
+                }
+
+                // Session ended (disengaged or shutdown) — release the wheel
+                // back to its normal FFB path with the session-end handshake.
+                IsInitialized = false;
+                WriteTeardown();
+                Log("PumpLoop: session ended — standby");
             }
         }
         finally

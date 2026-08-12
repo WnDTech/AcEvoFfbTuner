@@ -25,6 +25,13 @@ public sealed class FfbDeviceManager : IDisposable
     private DI.Joystick? _secondaryDevice;
     private DI.Effect? _constantForceEffect;
     private DI.Effect? _periodicEffect;
+    /// <summary>Serializes ALL SharpDX effect lifecycle access (SetParameters /
+    /// Start / Stop / Dispose / creation). The 1 ms interpolation thread calls
+    /// into effects while the telemetry/UI thread can dispose them (ZeroForce,
+    /// StopVibration, reconnects) — an unprotected race caused the recurring
+    /// access-violation crashes in SendPeriodicVibration on the RS50. Monitor
+    /// re-entry makes nested locks (send → destroy fallbacks) safe.</summary>
+    private readonly object _effectLock = new();
     private bool _isAcquired;
     private bool _secondaryAcquired;
     private int _maxForceMagnitude = 10000;
@@ -715,6 +722,12 @@ public sealed class FfbDeviceManager : IDisposable
         if (_constantForceUnsupported || _consecutiveForceErrors >= MaxConsecutiveErrors)
             return;
 
+        lock (_effectLock)
+        {
+        // Re-check under the lock: the device may have been dropped or
+        // re-acquired while we waited for it.
+        if (_device == null || !_isAcquired) return;
+
         try
         {
             int magnitude = (int)(Math.Clamp(_invertForce ? -normalizedForce : normalizedForce, -1f, 1f) * _maxForceMagnitude);
@@ -912,12 +925,23 @@ public sealed class FfbDeviceManager : IDisposable
             DestroyConstantForceEffect();
             _constantForceUnsupported = true;
         }
+        }
     }
 
     public void SendPeriodicVibration(float intensity, int frequency = 80)
     {
         if (float.IsNaN(intensity)) intensity = 0f;
         if (_device == null || !_isAcquired || intensity < 0.001f)
+        {
+            StopVibration();
+            return;
+        }
+
+        lock (_effectLock)
+        {
+        // Re-check under the lock: the device may have been dropped or
+        // re-acquired while we waited for it.
+        if (_device == null || !_isAcquired)
         {
             StopVibration();
             return;
@@ -1007,6 +1031,7 @@ public sealed class FfbDeviceManager : IDisposable
         catch
         {
             DestroyPeriodicEffect();
+        }
         }
     }
 
@@ -1395,6 +1420,8 @@ public sealed class FfbDeviceManager : IDisposable
 
     private void DestroyConstantForceEffect()
     {
+        lock (_effectLock)
+        {
         try
         {
             if (_constantForceEffect != null)
@@ -1408,10 +1435,13 @@ public sealed class FfbDeviceManager : IDisposable
         _lastCfMagnitude = int.MinValue;
         _lastCfSendTime = 0;
         _isCustomForceFallback = false;
+        }
     }
 
     private void DestroyPeriodicEffect()
     {
+        lock (_effectLock)
+        {
         try
         {
             if (_periodicEffect != null)
@@ -1422,6 +1452,7 @@ public sealed class FfbDeviceManager : IDisposable
         }
         catch { }
         _periodicEffect = null;
+        }
     }
 
     private void StopEffects()
