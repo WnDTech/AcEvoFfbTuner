@@ -26,6 +26,21 @@ EMBED_COLOR = 0xFF8800
 MAX_DESCRIPTION_LEN = 4096
 
 
+DISCORD_FORUM_CHANNEL_TYPE = 15
+
+
+def _api_call(method, endpoint, headers, payload=None):
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    req = urllib.request.Request(
+        endpoint,
+        data=data,
+        headers=headers,
+        method=method,
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
 def main():
     token = os.environ.get("DISCORD_BOT_TOKEN", "")
     channel_id = os.environ.get("DISCORD_CHANNEL_ID", "")
@@ -76,26 +91,41 @@ def main():
     if len(description) > MAX_DESCRIPTION_LEN:
         description = description[: MAX_DESCRIPTION_LEN - 3] + "..."
 
-    payload = {
-        "embeds": [
-            {
-                "title": f"New version: {name}",
-                "url": url,
-                "description": description,
-                "color": EMBED_COLOR,
-            }
-        ]
+    embed = {
+        "title": f"New version: {name}",
+        "url": url,
+        "description": description,
+        "color": EMBED_COLOR,
     }
 
-    req = urllib.request.Request(
-        endpoint,
-        data=json.dumps(payload).encode("utf-8"),
-        headers=headers,
-        method="POST",
-    )
+    # Forum channels (type 15) reject plain messages; the post must be a thread.
+    if token and channel_id:
+        try:
+            channel = _api_call(
+                "GET", f"{DISCORD_API}/channels/{channel_id}", headers
+            )
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", "replace")
+            print(
+                f"Discord rejected the channel lookup: HTTP {e.code} {detail}",
+                file=sys.stderr,
+            )
+            return 1
+        if channel.get("type") == DISCORD_FORUM_CHANNEL_TYPE:
+            thread_name = name[:100]
+            endpoint = f"{DISCORD_API}/channels/{channel_id}/threads"
+            payload = {
+                "name": thread_name,
+                "auto_archive_duration": 1440,
+                "message": {"embeds": [embed]},
+            }
+        else:
+            payload = {"embeds": [embed]}
+    else:
+        payload = {"embeds": [embed]}
+
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            msg = json.loads(resp.read().decode("utf-8"))
+        msg = _api_call("POST", endpoint, headers, payload)
         print(f"Posted release notification to Discord (message id {msg.get('id')})")
         return 0
     except urllib.error.HTTPError as e:
