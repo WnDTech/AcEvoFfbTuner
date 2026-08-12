@@ -57,9 +57,11 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
     private const int InitPacketCount = 68;
     private const int InitInterPacketUs = 2000;
     // The wheel accepts 250-1000 Hz. 1 kHz made the TrueForce amplifier emit a
-    // constant audible "bee" carrier tone (user-verified); 500 Hz is more than
-    // enough for force (the game's own HID++ FFB runs at 140-333 Hz).
-    private const int StreamHz = 500;
+    // constant audible "bee" carrier tone (user-verified); 500 Hz was still
+    // audible as a low "bee"/dither on the user's RS50. 250 Hz is the wheel's
+    // documented minimum — the least amplifier dither possible while staying
+    // above the game's own HID++ FFB rate (140-333 Hz).
+    private const int StreamHz = 250;
     private const int MaxConsecutiveWriteFails = 250;
 
     private const ushort LogitechVid = 0x046D;
@@ -114,6 +116,8 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
     private long _packetsFailed;
     private int _consecutiveFails;
     private float _smoothedLsb;
+    private bool _idleThrottled;
+    private long _lastIdleKeepaliveMs;
     private bool _hapticsNoted;
 
     public LogitechTrueForceProvider()
@@ -563,6 +567,35 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
         float target = _targetNorm;
         if (ForceInvert) target = -target;
         if (ForceScale != 1.0f) target *= ForceScale;
+
+        // ── Zero-force idle throttle ────────────────────────────────────────
+        // While no force is commanded the wheel holds the last packet
+        // (set-and-hold — the session never expires on its own; the teardown
+        // handshake exists precisely because it doesn't). A continuous neutral
+        // stream makes the TrueForce amplifier dither the motor audibly even
+        // at 0% ("beeee"/crunching on the user's RS50). Instead: write neutral
+        // once, then a keepalive every 250 ms — the amplifier stays quiet and
+        // the session stays engaged for instant force resumption.
+        if (Math.Abs(target) < 0.001f)
+        {
+            if (!_idleThrottled)
+            {
+                _idleThrottled = true;
+                _smoothedLsb = 0f;
+                WriteNeutralPacket();
+            }
+            else
+            {
+                long nowMs = Environment.TickCount64;
+                if (nowMs - _lastIdleKeepaliveMs >= 250)
+                {
+                    _lastIdleKeepaliveMs = nowMs;
+                    WriteNeutralPacket();
+                }
+            }
+            return;
+        }
+        _idleThrottled = false;
 
         int t = (int)Math.Round(target * 32767f);
         t = Math.Clamp(t, -32768, 32767);

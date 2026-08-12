@@ -50,6 +50,16 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.26.7",
+            Date = new DateTime(2026, 8, 12),
+            Title = "TrueForce amplifier made silent at zero force — carrier halved + zero-force idle throttle",
+            Fixes =
+            [
+                "The TrueForce stream carrier no longer makes the wheel hum/crunch at 0% force: the pump rate is halved to the wheel's documented minimum (500 Hz → 250 Hz, still above the game's own 140-333 Hz HID++ FFB), and while no force is commanded the pump stops streaming entirely — it writes neutral once and then a quiet keepalive every 250 ms. The wheel holds neutral (set-and-hold) and the session stays engaged, so force resumes instantly. The user-reported \"beeee\"/vibrating on the RS50 while the app ran but commanded nothing is gone"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.26.6",
             Date = new DateTime(2026, 8, 12),
             Title = "Startup crashes fixed (DirectInput effect race — root cause finally pinned) + wheel stays silent when idle",
