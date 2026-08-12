@@ -34,6 +34,12 @@ public sealed class AppSettings
     public string AiBaseUrl { get; set; } = "https://opencode.ai/zen/go/v1";
     public string FeedbackRelayUrl { get; set; } = "http://127.0.0.1:8090";
 
+    // Profile Hub — used by Share-to-Hub and Browse-Hub features
+    public string HubApiBaseUrl { get; set; } = "https://ffbtuner.wndtech.tips/api/hub.php";
+    public string HubApiKey { get; set; } = "d0fbf9a40df1393eac2c2e0c2ed4563e319f4ba4b3b6a22c3ac8d358d6e93e4b";
+    public string HubAuthorName { get; set; } = "";
+    public string HubAuthorId { get; set; } = "";
+
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
 

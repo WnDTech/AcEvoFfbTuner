@@ -1461,6 +1461,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public TelemetryLoop TelemetryLoop => _telemetryLoop;
     public int DeviceButtonCount => _deviceManager.ButtonCount;
     public FfbCoachService CoachService => _coachService;
+    public HubClient HubClient { get; }
 
     private readonly DispatcherTimer _uiUpdateTimer;
     private readonly DispatcherTimer _feedbackPollTimer;
@@ -1476,6 +1477,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _profileManager = new ProfileManager();
         _coachService = new FfbCoachService(_profileManager, _pipeline);
         InitializeAiCoach();
+        HubClient = new HubClient(_appSettings.HubApiBaseUrl, _appSettings.HubApiKey);
 
         _deviceManager.DeviceRequiresReconnect += () => Application.Current?.Dispatcher.BeginInvoke(() =>
         {

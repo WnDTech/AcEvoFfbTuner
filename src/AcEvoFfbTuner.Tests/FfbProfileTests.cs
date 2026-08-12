@@ -41,25 +41,25 @@ public class FfbProfileTests
     }
 
     [Fact]
-    public void SanitizeFloats_Infinity_Clamped()
+    public void SanitizeFloats_Infinity_ClampedToBound()
     {
         var profile = new FfbProfile
         {
             OutputGain = float.PositiveInfinity,
         };
         profile.SanitizeFloats();
-        profile.OutputGain.Should().Be(float.MaxValue);
+        profile.OutputGain.Should().Be(1_000_000f);
     }
 
     [Fact]
-    public void SanitizeFloats_NegativeInfinity_Clamped()
+    public void SanitizeFloats_NegativeInfinity_ClampedToBound()
     {
         var profile = new FfbProfile
         {
             OutputGain = float.NegativeInfinity,
         };
         profile.SanitizeFloats();
-        profile.OutputGain.Should().Be(float.MinValue);
+        profile.OutputGain.Should().Be(-1_000_000f);
     }
 
     [Fact]

@@ -833,8 +833,10 @@ public sealed class FfbProfile
         WetWeather.SanitizeFloats();
     }
 
+    private const float MaxSanitizedMagnitude = 1_000_000f;
+
     private static float Sanitize(float v) =>
-        float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+        float.IsNaN(v) ? 0f : Math.Clamp(v, -MaxSanitizedMagnitude, MaxSanitizedMagnitude);
 
     private static void SanitizeArray(float[] arr)
     {

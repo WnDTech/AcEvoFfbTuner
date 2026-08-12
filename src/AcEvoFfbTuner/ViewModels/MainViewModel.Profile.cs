@@ -315,6 +315,137 @@ public sealed partial class MainViewModel
         }
     }
 
+    [RelayCommand]
+    private async Task ShareProfileToHub()
+    {
+        if (SelectedProfile == null) return;
+        await ShareProfileToHub(SelectedProfile);
+    }
+
+    public async Task ShareProfileToHub(FfbProfile profile)
+    {
+        if (profile.IsBuiltIn)
+        {
+            StatusText = $"\"{profile.Name}\" is a built-in profile. Use Save As to create your own copy before sharing.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_appSettings.HubAuthorId))
+        {
+            _appSettings.HubAuthorId = Guid.NewGuid().ToString("N");
+            _appSettings.Save();
+        }
+
+        string wheelName = _deviceManager.ConnectedDevice?.ProductName ?? "";
+        if (string.IsNullOrEmpty(wheelName) && WheelDisplayName != "No wheel detected")
+            wheelName = WheelDisplayName;
+
+        string wheelType = string.IsNullOrEmpty(wheelName)
+            ? ""
+            : WheelbaseAutoConfigurator.DetectWheelType(wheelName).ToString();
+
+        string gameName = SelectedGame is SupportedGame.None or SupportedGame.Unsupported
+            ? HubClient.ToHubGameName(profile.GameMatch)
+            : SelectedGame.ToString();
+
+        var previewParts = new List<string>
+        {
+            GameDisplayName,
+            string.IsNullOrWhiteSpace(profile.CarMatch) ? DetectedCarModel : profile.CarMatch,
+            string.IsNullOrWhiteSpace(profile.TrackMatch) ? DetectedTrackName : profile.TrackMatch
+        };
+        var preview = string.Join(" · ", previewParts.Where(p => !string.IsNullOrWhiteSpace(p)));
+        if (!string.IsNullOrEmpty(wheelName))
+            preview += $"\nWheel: {wheelName} ({wheelType}) — {profile.WheelMaxTorqueNm:F1} Nm max";
+
+        var dialog = new Views.ShareProfileDialog
+        {
+            Owner = Application.Current?.MainWindow,
+            TitleText = profile.Name,
+            AuthorText = _appSettings.HubAuthorName,
+            PreviewText = preview
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        _appSettings.HubAuthorName = dialog.AuthorText.Trim();
+        _appSettings.Save();
+
+        profile.SanitizeFloats();
+        var request = new HubUploadRequest
+        {
+            Title = dialog.TitleText.Trim(),
+            Description = string.IsNullOrWhiteSpace(dialog.DescriptionText) ? null : dialog.DescriptionText.Trim(),
+            Author = dialog.AuthorText.Trim(),
+            AuthorId = _appSettings.HubAuthorId,
+            Game = gameName,
+            Car = string.IsNullOrWhiteSpace(profile.CarMatch) ? null : profile.CarMatch,
+            Track = string.IsNullOrWhiteSpace(profile.TrackMatch) ? null : profile.TrackMatch,
+            Wheel = string.IsNullOrEmpty(wheelName) ? null : wheelName,
+            WheelType = string.IsNullOrEmpty(wheelType) ? null : wheelType,
+            TorqueNm = profile.WheelMaxTorqueNm,
+            Profile = HubClient.SerializeProfile(profile)
+        };
+
+        StatusText = "Submitting profile to Hub...";
+        var result = await HubClient.UploadProfileAsync(request);
+        if (result.Ok)
+        {
+            StatusText = result.Status == "pending"
+                ? "Submitted for review — will appear on the Hub after approval"
+                : "Profile shared to the Hub";
+            AddSystemLog($"[Hub] Uploaded '{request.Title}' (id={result.Id}) status={result.Status}");
+        }
+        else
+        {
+            StatusText = result.RateLimited ? result.Error! : $"Share failed: {result.Error}";
+            AddSystemLog($"[Hub] Upload failed: {result.Error}");
+        }
+    }
+
+    public FfbProfile? ImportHubProfile(int hubId, string json)
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"hub_{hubId}_{Guid.NewGuid():N}.json");
+        try
+        {
+            var profile = JsonSerializer.Deserialize<FfbProfile>(json, HubClient.ProfileJsonOptions);
+            if (profile == null)
+            {
+                StatusText = "Import failed — the profile file was invalid";
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(profile.Name))
+                profile.Name = "Imported Profile";
+            if (_profileManager.Profiles.Any(p => string.Equals(p.Name, profile.Name, StringComparison.OrdinalIgnoreCase)))
+                profile.Name = GetNextProfileName(profile.Name);
+
+            File.WriteAllText(tempFile, JsonSerializer.Serialize(profile, HubClient.ProfileJsonOptions));
+            var imported = _profileManager.ImportProfile(tempFile);
+            if (imported != null)
+            {
+                RefreshProfiles();
+                SelectedProfile = imported;
+                StatusText = $"Imported: {imported.Name}";
+                AddSystemLog($"[Hub] Imported '{imported.Name}' (hub id={hubId})");
+            }
+            else
+            {
+                StatusText = "Import failed — the profile file was invalid";
+            }
+            return imported;
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Import failed: {ex.Message}";
+            return null;
+        }
+        finally
+        {
+            try { File.Delete(tempFile); } catch { }
+        }
+    }
+
     private void RefreshProfiles()
     {
         Profiles.Clear();

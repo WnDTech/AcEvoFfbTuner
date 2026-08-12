@@ -56,7 +56,7 @@ public partial class SidebarControl : UserControl
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Collapsed);
             CollapseBtn.ToolTip = "Expand sidebar";
 
-            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn, NavOverlaysBtn })
+            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn, NavHubBtn, NavOverlaysBtn })
                 SetTemplateLabelVisibility(btn, "ItemLabel", Visibility.Collapsed);
 
             SetTemplateLabelVisibility(NavLiveMapBtn, "WipBadge", Visibility.Collapsed);
@@ -74,7 +74,7 @@ public partial class SidebarControl : UserControl
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Visible);
             CollapseBtn.ToolTip = null;
 
-            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn, NavOverlaysBtn })
+            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn, NavHubBtn, NavOverlaysBtn })
                 SetTemplateLabelVisibility(btn, "ItemLabel", Visibility.Visible);
 
             SetTemplateLabelVisibility(NavLiveMapBtn, "WipBadge", Visibility.Visible);
@@ -102,6 +102,7 @@ public partial class SidebarControl : UserControl
         NavCoachBtn.IsChecked = page == NavPage.FfbCoach;
         NavDevicesBtn.IsChecked = page == NavPage.Devices;
         NavProfilesBtn.IsChecked = page == NavPage.Profiles;
+        NavHubBtn.IsChecked = page == NavPage.Hub;
         NavOverlaysBtn.IsChecked = page == NavPage.Overlays;
     }
 }

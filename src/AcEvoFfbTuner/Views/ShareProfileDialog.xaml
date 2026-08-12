@@ -1,0 +1,42 @@
+<Window x:Class="AcEvoFfbTuner.Views.ShareProfileDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Share to Profile Hub"
+        Width="520"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{StaticResource BgDark}"
+        Foreground="{DynamicResource TextBrush}">
+
+    <StackPanel Margin="24">
+        <TextBlock Text="Share to Profile Hub" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
+        <TextBlock Text="Your profile will be submitted for review and appear on the Hub after approval." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,16" TextWrapping="Wrap" />
+
+        <TextBlock Text="Title" FontSize="13" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+        <TextBox x:Name="TitleTextBox" FontSize="14" Padding="8,6" Margin="0,0,0,12" MaxLength="128" />
+
+        <TextBlock Text="Description" FontSize="13" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+        <TextBox x:Name="DescriptionTextBox" FontSize="13" Padding="8,6" Margin="0,0,0,4" Height="64" AcceptsReturn="True" TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto" ToolTip="Optional — what makes this setup feel good, where it was tuned, etc." />
+        <TextBlock Text="Optional — what makes this setup feel good, where it was tuned, etc." FontSize="11" Foreground="#FF8B949E" Margin="2,0,0,12" />
+
+        <TextBlock Text="Author Name" FontSize="13" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+        <TextBox x:Name="AuthorTextBox" FontSize="14" Padding="8,6" Margin="0,0,0,16" MaxLength="64" />
+
+        <Border Background="#FF1C2128" CornerRadius="6" Padding="12,10" BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,0,20">
+            <StackPanel>
+                <TextBlock Text="PROFILE PREVIEW" FontSize="11" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,6" />
+                <TextBlock x:Name="PreviewTextBlock" FontSize="13" Foreground="#FFE6EDF3" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="OkButton" Content="Submit for Review" Width="140" Margin="0,0,10,0" Padding="16,6"
+                    Click="OnOkClick" IsDefault="True" />
+            <Button Content="Cancel" Width="80" Padding="16,6"
+                    Style="{StaticResource OutlinedButton}"
+                    Click="OnCancelClick" IsCancel="True" />
+        </StackPanel>
+    </StackPanel>
+</Window>

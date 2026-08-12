@@ -11,6 +11,7 @@ public enum NavPage
     FfbCoach,
     Devices,
     Profiles,
+    Hub,
     Overlays,
     Settings,
     Help

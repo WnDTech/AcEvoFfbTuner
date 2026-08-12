@@ -260,7 +260,8 @@
                             <StackPanel>
                                 <TextBlock Text="Export saves the current profile as a JSON file you can share. Import loads a profile from file and adds it to your collection." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
                                 <Button Content="Export Profile" Command="{Binding ExportProfileCommand}" Margin="0,0,0,6" Padding="16,6" HorizontalAlignment="Stretch" Style="{StaticResource OutlinedButton}" ToolTip="Export current profile to a JSON file" />
-                                <Button Content="Import Profile" Command="{Binding ImportProfileCommand}" Padding="16,6" HorizontalAlignment="Stretch" Style="{StaticResource OutlinedButton}" ToolTip="Import a profile from a JSON file" />
+                                <Button Content="Import Profile" Command="{Binding ImportProfileCommand}" Margin="0,0,0,6" Padding="16,6" HorizontalAlignment="Stretch" Style="{StaticResource OutlinedButton}" ToolTip="Import a profile from a JSON file" />
+                                <Button Content="Share to Hub..." Command="{Binding ShareProfileToHubCommand}" Padding="16,6" HorizontalAlignment="Stretch" ToolTip="Submit the current profile to the community Profile Hub for review" />
                             </StackPanel>
                         </Border>
                     </StackPanel>

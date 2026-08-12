@@ -320,6 +320,47 @@
                 </RadioButton.Style>
             </RadioButton>
 
+            <RadioButton x:Name="NavHubBtn" GroupName="SidebarNav" Content="Hub" Margin="4,1"
+                         Tag="{x:Static vm:NavPage.Hub}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Hub — browse and download community FFB profiles">
+                <RadioButton.Template>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="24" Height="24" Margin="0,0,12,0">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M6.5,17.5 C4.57,17.5 3,15.93 3,14 C3,12.07 4.57,10.5 6.5,10.5 C7.03,8.61 8.75,7.2 10.8,7.2 C13.13,7.2 14.99,8.9 15.2,11.1 C15.78,10.76 16.36,10.6 17,10.6 C19.21,10.6 21,12.39 21,14.6 C21,16.81 19.21,18.6 17,18.6 L6.5,18.6 Z M12,9.5 L12,14.5 M9.5,12.5 L12,15 L14.5,12.5"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </RadioButton.Template>
+                <RadioButton.Style>
+                    <Style TargetType="RadioButton">
+                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="#FFF0883E" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </RadioButton.Style>
+            </RadioButton>
+
             <RadioButton x:Name="NavOverlaysBtn" GroupName="SidebarNav" Content="Overlays" Margin="4,1"
                          Tag="{x:Static vm:NavPage.Overlays}" Click="OnNavClick" Cursor="Hand"
                          ToolTip="Overlays — OBS browser sources and telemetry overlays">

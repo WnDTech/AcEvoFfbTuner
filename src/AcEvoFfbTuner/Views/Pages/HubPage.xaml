@@ -1,0 +1,93 @@
+<UserControl x:Class="AcEvoFfbTuner.Views.Pages.HubPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Background="#FF161B22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header + filters -->
+        <StackPanel Grid.Row="0" Margin="24,20,24,0">
+            <TextBlock Text="PROFILE HUB" FontSize="24" FontWeight="Black" Foreground="#FFF0883E" Margin="0,0,0,4" />
+            <TextBlock Text="Browse and download FFB profiles shared by the community. Every profile is tuned for a specific game, car, and wheel combination." FontSize="15" Foreground="#FF8B949E" Margin="0,0,0,16" TextWrapping="Wrap" />
+
+            <Border Background="#FF1C2128" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D" Padding="12,10" Margin="0,0,0,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Background="#FF161B22" CornerRadius="6" Padding="8,4" BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,12,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#x1F50D;" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBox x:Name="SearchBox" Grid.Column="1"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="#FFE6EDF3" FontSize="13"
+                                     TextChanged="OnSearchTextChanged"
+                                     ToolTip="Search profiles by title, car, track, or wheel" />
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,12,0">
+                        <TextBlock Text="Game" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox x:Name="GameFilter" Width="150" FontSize="13" Padding="4,2"
+                                  SelectionChanged="OnFilterChanged" ToolTip="Filter by game" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,12,0">
+                        <TextBlock Text="Sort" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox x:Name="SortFilter" Width="140" FontSize="13" Padding="4,2"
+                                  SelectionChanged="OnFilterChanged" ToolTip="Sort order" />
+                    </StackPanel>
+
+                    <Button Grid.Column="3" Content="Refresh" Padding="14,5" FontSize="13"
+                            Style="{StaticResource OutlinedButton}" Click="OnRefreshClick" ToolTip="Reload profiles from the Hub" />
+                </Grid>
+            </Border>
+
+            <Grid Margin="2,0,2,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="CountText" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" />
+                <TextBlock x:Name="LoadingText" Grid.Column="1" FontSize="12" Foreground="#FFF0883E" VerticalAlignment="Center" Text="Loading..." Visibility="Collapsed" />
+            </Grid>
+        </StackPanel>
+
+        <!-- Cards -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="24,0,24,0">
+            <Grid>
+                <StackPanel x:Name="CardsHost" />
+                <StackPanel x:Name="EmptyPanel" Visibility="Collapsed" Margin="0,40,0,0">
+                    <TextBlock x:Name="EmptyText" Text="No profiles found on the Hub yet." FontSize="14" Foreground="#FF8B949E" HorizontalAlignment="Center" />
+                    <TextBlock Text="Share a profile from the Profiles page to be the first!" FontSize="12" Foreground="#FF484F58" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Pagination -->
+        <Grid Grid.Row="2" Margin="24,12,24,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="PrevBtn" Grid.Column="0" Content="← Prev" Padding="12,5" FontSize="13"
+                    Style="{StaticResource OutlinedButton}" Click="OnPrevClick" />
+            <TextBlock x:Name="PageInfoText" Grid.Column="1" Text="Page 1 of 1" FontSize="12" Foreground="#FF8B949E"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Button x:Name="NextBtn" Grid.Column="2" Content="Next →" Padding="12,5" FontSize="13"
+                    Style="{StaticResource OutlinedButton}" Click="OnNextClick" />
+        </Grid>
+    </Grid>
+</UserControl>

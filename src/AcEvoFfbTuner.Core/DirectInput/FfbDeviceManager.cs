@@ -686,6 +686,7 @@ public sealed class FfbDeviceManager : IDisposable
     /// </summary>
     public void SendConstantForce(float normalizedForce)
     {
+        if (float.IsNaN(normalizedForce)) normalizedForce = 0f;
         _targetForce = Math.Clamp(normalizedForce, -1f, 1f);
         System.Threading.Interlocked.Exchange(ref _lastTargetUpdateTicks, System.Diagnostics.Stopwatch.GetTimestamp());
 
@@ -709,6 +710,7 @@ public sealed class FfbDeviceManager : IDisposable
     private void SendConstantForceDirect(float normalizedForce)
     {
         if (_device == null || !_isAcquired) return;
+        if (float.IsNaN(normalizedForce)) normalizedForce = 0f;
 
         if (_constantForceUnsupported || _consecutiveForceErrors >= MaxConsecutiveErrors)
             return;
@@ -914,6 +916,7 @@ public sealed class FfbDeviceManager : IDisposable
 
     public void SendPeriodicVibration(float intensity, int frequency = 80)
     {
+        if (float.IsNaN(intensity)) intensity = 0f;
         if (_device == null || !_isAcquired || intensity < 0.001f)
         {
             StopVibration();

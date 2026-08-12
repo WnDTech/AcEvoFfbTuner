@@ -573,6 +573,7 @@
                 <pages:FFBCoachPage x:Name="FFBCoachPageCtrl" Visibility="Collapsed" />
                 <pages:DevicesPage x:Name="DevicesPageCtrl" Visibility="Collapsed" />
                 <pages:ProfilesPage x:Name="ProfilesPageCtrl" Visibility="Collapsed" />
+                <pages:HubPage x:Name="HubPageCtrl" Visibility="Collapsed" />
                 <pages:OverlaysPage x:Name="OverlaysPageCtrl" Visibility="Collapsed" />
                 <pages:SettingsPage x:Name="SettingsPageCtrl" Visibility="Collapsed" />
                 <pages:HelpPage x:Name="HelpPageCtrl" Visibility="Collapsed" />

@@ -205,6 +205,7 @@ public partial class MainWindow : Window
         FFBCoachPageCtrl.Visibility = vm.CurrentPage == NavPage.FfbCoach ? Visibility.Visible : Visibility.Collapsed;
         DevicesPageCtrl.Visibility = vm.CurrentPage == NavPage.Devices ? Visibility.Visible : Visibility.Collapsed;
         ProfilesPageCtrl.Visibility = vm.CurrentPage == NavPage.Profiles ? Visibility.Visible : Visibility.Collapsed;
+        HubPageCtrl.Visibility = vm.CurrentPage == NavPage.Hub ? Visibility.Visible : Visibility.Collapsed;
         OverlaysPageCtrl.Visibility = vm.CurrentPage == NavPage.Overlays ? Visibility.Visible : Visibility.Collapsed;
         SettingsPageCtrl.Visibility = vm.CurrentPage == NavPage.Settings ? Visibility.Visible : Visibility.Collapsed;
         HelpPageCtrl.Visibility = vm.CurrentPage == NavPage.Help ? Visibility.Visible : Visibility.Collapsed;
