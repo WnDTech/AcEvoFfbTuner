@@ -1510,6 +1510,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 DeviceName = SelectedDevice.ProductName;
                 StatusText = $"Reconnected to {SelectedDevice.ProductName}";
                 PushLedConfig();
+
+                // Re-establish the FFB provider after a re-acquire. No-op when the
+                // right provider is already serving (TrueForce stream survives);
+                // recreates it when a game-source switch or earlier reconnect
+                // left the loop without one.
+                _telemetryLoop.AutoDetectAndSetProvider();
             }
             else
             {

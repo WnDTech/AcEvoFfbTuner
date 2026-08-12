@@ -112,62 +112,85 @@ public sealed partial class MainViewModel
             _telemetryLoop.Stop();
 
         _discordPresence.Detach();
-        _telemetryLoop.Dispose();
-        _reader.Dispose();
-        _reader = CreateReader(value);
-        _pipeline = CreatePipeline(value);
-        OnPropertyChanged(nameof(GameDisplayName));
-        OnPropertyChanged(nameof(IsAcEvo));
-        OnPropertyChanged(nameof(IsRaceroom));
-        OnPropertyChanged(nameof(IsAssettoCorsa));
-        OnPropertyChanged(nameof(IsLeMansUltimate));
-        OnPropertyChanged(nameof(IsAssettoCorsaCompetizione));
-        OnPropertyChanged(nameof(IsNoGame));
-        OnPropertyChanged(nameof(IsColumnForceGame));
-        OnPropertyChanged(nameof(IsPerWheelGame));
-        OnPropertyChanged(nameof(IsTyreForceSectionVisible));
-        OnPropertyChanged(nameof(IsTyreSlipFullVisible));
-        OnPropertyChanged(nameof(IsLimitFeelSectionVisible));
-        OnPropertyChanged(nameof(IsTyreFlexSectionVisible));
-        OnPropertyChanged(nameof(IsStationaryFrictionSectionVisible));
-        OnPropertyChanged(nameof(IsCrashSectionVisible));
-        OnPropertyChanged(nameof(IsVibrationSectionVisible));
-        OnPropertyChanged(nameof(IsDampingSectionVisible));
-        OnPropertyChanged(nameof(IsDynamicEffectsSectionVisible));
-        OnPropertyChanged(nameof(IsAutoGainSectionVisible));
-        OnPropertyChanged(nameof(IsWetWeatherSectionVisible));
-        OnPropertyChanged(nameof(IsGripScaleAndTempVisible));
 
-        _coachService.CurrentGame = value switch
+        // Preserve the FFB provider across the switch — it is transport-level
+        // (e.g. the Logitech TrueForce stream) and must survive reader swaps.
+        // Disposing it here killed the wheel's FFB whenever game auto-detection
+        // re-fired mid-session: the new loop had no provider, and the DirectInput
+        // fallback was dead because the game holds the wheel exclusively.
+        var ffbProvider = _telemetryLoop.DetachFfbProvider();
+
+        try
         {
-            SupportedGame.Raceroom => "RaceRoom Racing Experience",
-            SupportedGame.AssettoCorsa => "Assetto Corsa",
-            SupportedGame.LeMansUltimate => "Le Mans Ultimate",
-            SupportedGame.AssettoCorsaCompetizione => "Assetto Corsa Competizione",
-            SupportedGame.AcEvo => "Assetto Corsa EVO",
-            SupportedGame.Unsupported => "Unsupported game",
-            _ => "No game"
-        };
-        _coachService.IsColumnForceGame = value is SupportedGame.Raceroom or SupportedGame.LeMansUltimate;
+            _telemetryLoop.Dispose();
+            _reader.Dispose();
+            _reader = CreateReader(value);
+            _pipeline = CreatePipeline(value);
+            OnPropertyChanged(nameof(GameDisplayName));
+            OnPropertyChanged(nameof(IsAcEvo));
+            OnPropertyChanged(nameof(IsRaceroom));
+            OnPropertyChanged(nameof(IsAssettoCorsa));
+            OnPropertyChanged(nameof(IsLeMansUltimate));
+            OnPropertyChanged(nameof(IsAssettoCorsaCompetizione));
+            OnPropertyChanged(nameof(IsNoGame));
+            OnPropertyChanged(nameof(IsColumnForceGame));
+            OnPropertyChanged(nameof(IsPerWheelGame));
+            OnPropertyChanged(nameof(IsTyreForceSectionVisible));
+            OnPropertyChanged(nameof(IsTyreSlipFullVisible));
+            OnPropertyChanged(nameof(IsLimitFeelSectionVisible));
+            OnPropertyChanged(nameof(IsTyreFlexSectionVisible));
+            OnPropertyChanged(nameof(IsStationaryFrictionSectionVisible));
+            OnPropertyChanged(nameof(IsCrashSectionVisible));
+            OnPropertyChanged(nameof(IsVibrationSectionVisible));
+            OnPropertyChanged(nameof(IsDampingSectionVisible));
+            OnPropertyChanged(nameof(IsDynamicEffectsSectionVisible));
+            OnPropertyChanged(nameof(IsAutoGainSectionVisible));
+            OnPropertyChanged(nameof(IsWetWeatherSectionVisible));
+            OnPropertyChanged(nameof(IsGripScaleAndTempVisible));
 
-        if (value != SupportedGame.None && _profileManager.ActiveProfile != null)
-            _profileManager.ActiveProfile.ApplyToPipeline(_pipeline);
+            _coachService.CurrentGame = value switch
+            {
+                SupportedGame.Raceroom => "RaceRoom Racing Experience",
+                SupportedGame.AssettoCorsa => "Assetto Corsa",
+                SupportedGame.LeMansUltimate => "Le Mans Ultimate",
+                SupportedGame.AssettoCorsaCompetizione => "Assetto Corsa Competizione",
+                SupportedGame.AcEvo => "Assetto Corsa EVO",
+                SupportedGame.Unsupported => "Unsupported game",
+                _ => "No game"
+            };
+            _coachService.IsColumnForceGame = value is SupportedGame.Raceroom or SupportedGame.LeMansUltimate;
 
-        var newLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
-        WireTelemetryLoopEvents(newLoop);
-        _telemetryLoop = newLoop;
+            if (value != SupportedGame.None && _profileManager.ActiveProfile != null)
+                _profileManager.ActiveProfile.ApplyToPipeline(_pipeline);
 
-        if (wasRunning)
-        {
-            _telemetryLoop.Start();
-            StatusText = $"Switched to {GameDisplayName} — telemetry restarted";
+            var newLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
+            WireTelemetryLoopEvents(newLoop);
+            _telemetryLoop = newLoop;
+
+            // Re-attach the preserved provider so the wheel keeps receiving force
+            // immediately after the switch (no teardown, no re-init spin).
+            newLoop.SetFfbProvider(ffbProvider);
+
+            if (wasRunning)
+            {
+                _telemetryLoop.Start();
+                StatusText = $"Switched to {GameDisplayName} — telemetry restarted";
+            }
+            else
+            {
+                StatusText = $"Switched to {GameDisplayName}";
+            }
+
+            AddSystemLog($"Game source changed to {GameDisplayName}");
         }
-        else
+        catch
         {
-            StatusText = $"Switched to {GameDisplayName}";
+            // Never leak a live TrueForce stream: tear it down (neutral + the
+            // session-end handshake) so the wheel cannot keep holding a stale
+            // force or a dangling session if the switch failed mid-way.
+            try { ffbProvider?.Dispose(); } catch { }
+            throw;
         }
-
-        AddSystemLog($"Game source changed to {GameDisplayName}");
     }
 
     public void SetAutoMode()

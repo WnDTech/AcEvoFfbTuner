@@ -191,12 +191,35 @@ public sealed class TelemetryLoop : IDisposable
             provider.Initialize();
     }
 
+    /// <summary>Detach the active FFB provider WITHOUT disposing it so it can
+    /// survive a TelemetryLoop replacement (game source switch). The provider's
+    /// own stream keeps running — re-attach it with <see cref="SetFfbProvider"/>.</summary>
+    public IFFBProvider? DetachFfbProvider()
+    {
+        var p = _ffbProvider;
+        _ffbProvider = null;
+        return p;
+    }
+
     public void AutoDetectAndSetProvider()
     {
         string? productName = _deviceManager.ConnectedDevice?.ProductName;
-        if (string.IsNullOrEmpty(productName)) return;
+        if (string.IsNullOrEmpty(productName) || productName == "No wheelbase") return;
 
         var provider = WheelbaseFactory.CreateFromDeviceName(productName, _deviceManager);
+
+        // Same provider type already initialized and serving this wheel — do not
+        // churn. Each replacement tears the TrueForce session down and re-inits
+        // (wheel spin + teardown/init race), and a reconnect storm was observed
+        // recreating the provider every ~90 s on the RS50.
+        if (_ffbProvider != null
+            && _ffbProvider.GetType() == provider.GetType()
+            && _ffbProvider.IsInitialized)
+        {
+            provider.Dispose();
+            return;
+        }
+
         SetFfbProvider(provider);
     }
 

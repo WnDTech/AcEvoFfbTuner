@@ -740,7 +740,6 @@ public sealed class LogitechHidppWheelProvider : IDisposable
 
         byte featureIndex = report[2];
         byte fn = (byte)(report[3] >> 4);
-        Log($"RX({source}): id=0x{reportId:X2} feat=0x{featureIndex:X2} fn={fn} {Hex(report, 10)}");
 
         // A pending request's answer is ALWAYS delivered — the wheel answers a
         // GET with the same state bytes it broadcasts, so byte-dedup must never
@@ -752,21 +751,43 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         }
         if (match != null)
         {
-            match.Tcs.TrySetResult(report);
+            Log($"RX({source}): id=0x{reportId:X2} feat=0x{featureIndex:X2} fn={fn} {Hex(report, 10)}");
+            // The caller's read loop reuses this buffer — hand off a copy so the
+            // response cannot be overwritten by the next read before it is consumed.
+            var copy = new byte[len];
+            Array.Copy(report, copy, len);
+            match.Tcs.TrySetResult(copy);
             return;
         }
 
         // Unsolicited broadcast — suppress identical repeats (the wheel re-sends
         // its state stream and HidD_GetInputReport returns the cached report).
+        // Two-slot history: the field flood alternated between TWO reports, so
+        // a single last-hash never fired.
         if (channel != null)
         {
             long hash = 17;
             int n = Math.Min(len, 16);
             for (int i = 0; i < n; i++)
                 hash = hash * 31 + report[i];
-            if (hash == channel.LastHash)
+            if (hash == channel.LastHash || hash == channel.PrevHash)
+            {
+                // Duplicate flood: the wheel replays its reports at kHz while a
+                // session is active — yield briefly instead of spinning and
+                // writing a log line per report.
+                Thread.Sleep(2);
                 return;
+            }
+            channel.PrevHash = channel.LastHash;
             channel.LastHash = hash;
+
+            // New unsolicited report — brief yield so the read loops cannot spin
+            // at kHz on a talkative wheel, then cap the log line at ~1/s.
+            Thread.Sleep(1);
+            long nowMs = Environment.TickCount64;
+            if (nowMs - channel.LastLogMs < 1000)
+                return;
+            channel.LastLogMs = nowMs;
         }
 
         Log($"RX({source}): unsolicited event (feat 0x{featureIndex:X2} fn={fn}) — no pending request");
@@ -800,6 +821,8 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         public Thread? Thread;
         public Thread? InputThread;
         public long LastHash; // duplicate suppression across both read loops
+        public long PrevHash; // two-slot history — the wheel alternates between reports
+        public long LastLogMs; // ~1 Hz cap on the unsolicited-event log line
     }
 
     private sealed class PendingRequest

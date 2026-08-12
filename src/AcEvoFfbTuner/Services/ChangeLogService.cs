@@ -50,6 +50,22 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.26.4",
+            Date = new DateTime(2026, 8, 12),
+            Title = "TrueForce FFB restored after game launch — provider survives game switches, reconnect restores it, HID++ flood + teardown race fixes",
+            Fixes =
+            [
+                "TrueForce FFB restored after game launch: switching game sources (game auto-detection re-fires when the game's process changes) used to tear the TrueForce stream session down and never re-create it, so the wheel had zero FFB in-game while the game held the wheel exclusively. The FFB provider now survives game switches — no teardown, no re-init spin",
+                "Reconnecting the wheel after a device loss now re-establishes the FFB provider automatically, instead of leaving the app with no force path",
+                "No more provider churn on reconnect: repeated connect/disconnect cycles were tearing the TrueForce session down and re-initializing it every ~90 s, and a momentary DirectInput disconnect replaced the TrueForce stream with the generic DirectInput path mid-session",
+                "TrueForce shutdown race fixed: the stream pump is stopped before the session-end handshake is sent — a teardown racing the init sequence was observed replaying the full init AFTER the handshake, leaving the wheel confused",
+                "HID++ log flood gone: the RS50 replays its state reports at kHz while a TrueForce session is active, and every report was written to the HID++ log (~2000 lines/s at connect). Duplicates are now suppressed (two-report history — the flood alternated between two reports) and the log line is capped at ~1/s",
+                "HID++ reads can no longer return corrupted settings: the read loops reuse their receive buffer, so a response handed to a pending request could be overwritten before it was consumed — responses are now copied",
+                "Safe game switching under failure: if a source switch fails mid-way, the TrueForce session is torn down cleanly instead of leaking a dangling session that overrides all force paths until the wheel is power-cycled"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.26.3",
             Date = new DateTime(2026, 8, 12),
             Title = "Log purge no longer eats current-session logs; TrueForce session teardown on exit",

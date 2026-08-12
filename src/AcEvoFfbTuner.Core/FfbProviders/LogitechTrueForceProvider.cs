@@ -213,8 +213,14 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
         // state that overrides ALL force paths (DI, 0x8123, settings responses)
         // until the wheel is re-initialized or power-cycled (user-verified:
         // "No FFB again" after closing the app mid-session).
+        //
+        // Order matters: stop the pump FIRST so the session-end handshake can
+        // never race the pump's init/stream writes (a teardown racing the init
+        // sequence was observed in the field — the pump replayed the full
+        // 68-packet init AFTER the handshake and the wheel ended up confused).
+        StopPump();
         WriteTeardown();
-        StopStream();
+        CloseStreamHandle();
         IsInitialized = false;
     }
 
@@ -231,7 +237,9 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
             // Packet #67 = type 0x04 (start/continue handshake), #68 = type 0x03 (stop).
             foreach (int idx in new[] { 66, 67 })
             {
-                byte[] pkt = InitPackets[idx];
+                // Clone — InitPackets is shared with the pump's RunInitSequence
+                // and the seq byte is mutated in place.
+                byte[] pkt = (byte[])InitPackets[idx].Clone();
                 pkt[SeqOffset] = (byte)((idx + 1) & 0xFF);
                 if (!WritePacket(pkt))
                 {
@@ -368,9 +376,9 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
     private bool RunInitSequence()
     {
         Log($"RunInitSequence: 2 passes x {InitPacketCount} packets, {InitInterPacketUs / 1000.0:F0} ms apart (range={RotationDegrees}°)...");
-        for (int pass = 0; pass < 2; pass++)
+        for (int pass = 0; pass < 2 && _running; pass++)
         {
-            for (int i = 0; i < InitPacketCount; i++)
+            for (int i = 0; i < InitPacketCount && _running; i++)
             {
                 byte[] pkt = InitPackets[i];
                 pkt[SeqOffset] = (byte)((i + 1) & 0xFF);
@@ -385,6 +393,14 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
                 PrecisionSleepUs(InitInterPacketUs);
             }
             Log($"RunInitSequence: pass {pass + 1} complete");
+        }
+
+        // Shutdown raced the init — abort so the pump exits promptly and never
+        // replays the sequence after the teardown handshake has been sent.
+        if (!_running)
+        {
+            Log("RunInitSequence: aborted (shutdown in progress)");
+            return false;
         }
 
         _seq = (byte)((InitPacketCount + 1) & 0xFF);
@@ -578,13 +594,21 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
         return ok;
     }
 
-    private void StopStream()
+    private void StopPump()
     {
-        Log("StopStream: stopping pump and closing handle");
+        Log("StopStream: stopping pump");
         _running = false;
-        _pumpThread?.Join(1500);
+        // Join until the thread actually exits — a single short join can time
+        // out while the pump is mid-init or blocked in a synchronous WriteFile,
+        // and closing the handle under a live write is undefined behaviour.
+        var t = _pumpThread;
+        for (int i = 0; i < 20 && t?.IsAlive == true; i++)
+            t.Join(250);
         _pumpThread = null;
+    }
 
+    private void CloseStreamHandle()
+    {
         if (_handle != InvalidHandle)
         {
             CloseHandle(_handle);
