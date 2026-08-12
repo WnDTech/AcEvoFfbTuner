@@ -1,3 +1,4 @@
+using System.Diagnostics.Eventing.Reader;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
@@ -36,12 +37,57 @@ public sealed class DiagnosticPackService
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "AcEvoFfbTuner");
 
+    /// <summary>Export Windows Application-log crash events (Application Error
+    /// 1000 / WER 1001 / .NET Runtime 1026) for this app from the last 3 days
+    /// into eventlog_crashes.txt in the app data folder — the diag pack picks
+    /// it up automatically. Native crashes leave no crash.log, but Windows
+    /// always records the faulting module + exception code here.</summary>
+    internal static void WriteCrashEventLogExport()
+    {
+        try
+        {
+            Directory.CreateDirectory(BaseDir);
+            var path = Path.Combine(BaseDir, "eventlog_crashes.txt");
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"=== WINDOWS EVENT LOG — crash entries for AcEvoFfbTuner (generated {DateTime.Now:yyyy-MM-dd HH:mm:ss}) ===");
+            sb.AppendLine("Providers: Application Error (1000), Windows Error Reporting (1001), .NET Runtime (1026) — last 3 days");
+            sb.AppendLine();
+
+            const string query = "*[System[(EventID=1000 or EventID=1001 or EventID=1026) and TimeCreated[timediff(@SystemTime) <= 259200000]]]";
+            using (var reader = new EventLogReader(new EventLogQuery("Application", PathType.LogName, query)))
+            {
+                for (int i = 0; i < 200; i++)
+                {
+                    using var evt = reader.ReadEvent();
+                    if (evt == null) break;
+                    string message;
+                    try { message = evt.FormatDescription() ?? ""; }
+                    catch { message = ""; }
+                    if (!message.Contains("AcEvoFfbTuner", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    string time = evt.TimeCreated?.ToString("yyyy-MM-dd HH:mm:ss") ?? "?";
+                    string provider = evt.ProviderName ?? "?";
+                    if (message.Length > 900) message = message[..900] + "...";
+                    sb.AppendLine($"[{time}] {provider} #{evt.Id}: {message}");
+                    sb.AppendLine();
+                }
+            }
+
+            File.WriteAllText(path, sb.ToString());
+        }
+        catch
+        {
+            // Event log access can be restricted — the export is best-effort.
+        }
+    }
+
     public static async Task<(bool Success, string Message, string? ReportId)> SendAsync(string feedback, IProgress<string>? progress = null)
     {
         var reportId = NewReportId();
         try
         {
             progress?.Report("Collecting files...");
+            WriteCrashEventLogExport();
 
             var zipPath = Path.Combine(Path.GetTempPath(), $"AcEvoFfbTuner_DiagPack_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
 
@@ -173,6 +219,23 @@ public sealed class DiagnosticPackService
                         }
                         catch { }
                     }
+                    // Native-crash minidump (written by the crash filter in App.xaml.cs).
+                    // Budget-guarded: it is the most valuable evidence, but the
+                    // attachment must stay under the Discord limit.
+                    try
+                    {
+                        var dumpPath = Path.Combine(BaseDir, "crash.dmp");
+                        if (File.Exists(dumpPath)
+                            && totalBytes + new FileInfo(dumpPath).Length <= maxAttachmentBytes)
+                        {
+                            var entry = zip.CreateEntry("Logs/crash.dmp", CompressionLevel.Optimal);
+                            using var source = File.OpenRead(dumpPath);
+                            using var dest = entry.Open();
+                            source.CopyTo(dest);
+                            totalBytes += new FileInfo(dumpPath).Length;
+                        }
+                    }
+                    catch { }
                 }
             }
 
@@ -290,6 +353,22 @@ public sealed class DiagnosticPackService
             }
             catch { }
         }
+
+        // Native-crash minidump (written by the crash filter in App.xaml.cs).
+        try
+        {
+            var dumpPath = Path.Combine(BaseDir, "crash.dmp");
+            if (File.Exists(dumpPath))
+            {
+                var entryName = "Logs/crash.dmp";
+                var entry = zip.CreateEntry(entryName, CompressionLevel.Optimal);
+                using var source = File.OpenRead(dumpPath);
+                using var dest = entry.Open();
+                source.CopyTo(dest);
+                progress?.Report($"Added: {entryName}");
+            }
+        }
+        catch { }
     }
 
     private static void AddRecordingManifestToZip(ZipArchive zip, IProgress<string>? progress)

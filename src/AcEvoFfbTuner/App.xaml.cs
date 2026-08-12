@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
@@ -13,6 +14,112 @@ public partial class App : Application
     private static readonly string CrashLogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "AcEvoFfbTuner", "crash.log");
+
+    private static readonly string DumpPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "AcEvoFfbTuner", "crash.dmp");
+
+    // ── Native crash capture ────────────────────────────────────────────────
+    // Managed exception handlers do NOT run for access violations / native
+    // crashes — the field "crash and disappeared" reports left NO crash.log at
+    // all. A native unhandled-exception filter records the exception code and
+    // writes a minidump, so the next diagnostic pack contains the faulting
+    // module and stack instead of nothing.
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MiniDumpExceptionInformation
+    {
+        public uint ThreadId;
+        public IntPtr ExceptionPointers;
+        [MarshalAs(UnmanagedType.Bool)] public bool ClientPointers;
+    }
+
+    private delegate int UnhandledExceptionFilter(IntPtr exceptionPointers);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr SetUnhandledExceptionFilter(IntPtr filter);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetCurrentProcess();
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentProcessId();
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("dbghelp.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool MiniDumpWriteDump(IntPtr process, uint processId, IntPtr file, uint dumpType,
+        IntPtr exceptionParam, IntPtr userStreamParam, IntPtr callbackParam);
+
+    private const uint MiniDumpNormal = 0x00000000;
+    private const uint MiniDumpWithDataSegs = 0x00000002;
+    private const uint MiniDumpWithThreadInfo = 0x00001000;
+
+    private static readonly UnhandledExceptionFilter _nativeFilter = NativeExceptionFilter;
+    private static int _inNativeFilter;
+
+    private static void InstallNativeCrashFilter()
+    {
+        try
+        {
+            SetUnhandledExceptionFilter(Marshal.GetFunctionPointerForDelegate(_nativeFilter));
+        }
+        catch { }
+    }
+
+    private static int NativeExceptionFilter(IntPtr exceptionPointers)
+    {
+        if (Interlocked.Exchange(ref _inNativeFilter, 1) != 0)
+            return 0; // EXCEPTION_CONTINUE_SEARCH
+
+        uint code = 0;
+        IntPtr address = IntPtr.Zero;
+        if (exceptionPointers != IntPtr.Zero)
+        {
+            IntPtr record = Marshal.ReadIntPtr(exceptionPointers); // EXCEPTION_POINTERS->ExceptionRecord
+            if (record != IntPtr.Zero)
+            {
+                code = (uint)Marshal.ReadInt32(record);            // ExceptionCode
+                address = Marshal.ReadIntPtr(record, IntPtr.Size == 8 ? 16 : 12); // ExceptionAddress
+            }
+        }
+
+        try
+        {
+            File.AppendAllText(CrashLogPath,
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] CRASH (NativeExceptionFilter): code=0x{code:X8} address=0x{address.ToInt64():X}\n");
+        }
+        catch { }
+
+        try
+        {
+            var dir = Path.GetDirectoryName(DumpPath);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+            using var fs = new FileStream(DumpPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            var exInfo = new MiniDumpExceptionInformation
+            {
+                ThreadId = GetCurrentThreadId(),
+                ExceptionPointers = exceptionPointers,
+                ClientPointers = false
+            };
+            IntPtr exInfoPtr = Marshal.AllocHGlobal(Marshal.SizeOf<MiniDumpExceptionInformation>());
+            try
+            {
+                Marshal.StructureToPtr(exInfo, exInfoPtr, false);
+                MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), fs.SafeFileHandle.DangerousGetHandle(),
+                    MiniDumpNormal | MiniDumpWithDataSegs | MiniDumpWithThreadInfo, exInfoPtr, IntPtr.Zero, IntPtr.Zero);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(exInfoPtr);
+            }
+        }
+        catch { }
+
+        return 0; // EXCEPTION_CONTINUE_SEARCH — let WER terminate the process as before
+    }
 
     public static MainViewModel ViewModel { get; private set; } = null!;
     public static AppSettings Settings { get; private set; } = null!;
@@ -46,6 +153,7 @@ public partial class App : Application
 
         StartSignalListener();
         Services.WindowEventMonitor.Start();
+        InstallNativeCrashFilter();
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;

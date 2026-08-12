@@ -144,9 +144,11 @@ public sealed class TelemetryLoop : IDisposable
             if (value && !was)
             {
                 // Kill force immediately so the wheel doesn't hold the stale target
-                // until the interpolation safety ramps it down after ~500ms.
+                // until the interpolation safety ramps it down after ~500ms. The
+                // TrueForce stream is set-and-hold too — release it as well.
                 _deviceManager.SendConstantForce(0f);
                 _deviceManager.SetTargetVibration(0f);
+                _ffbProvider?.ZeroTorque();
             }
         }
     }
@@ -589,7 +591,13 @@ public sealed class TelemetryLoop : IDisposable
                         else
                             _deviceManager.SendConstantForce(aiCenter);
                     }
-                    else if (_deviceManager.IsDeviceAcquired && !_suppressOutput)
+                    // Force output is NOT gated on the DirectInput device: the
+                    // TrueForce stream (RS50/G PRO) is a transport independent of
+                    // DI, and while a game runs it holds the wheel exclusively so
+                    // IsDeviceAcquired is false — gating here starved the stream
+                    // and the user drove with zero FFB. Only the DirectInput
+                    // fallback below requires the DI device.
+                    else if (!_suppressOutput)
                     {
 
                         float stationaryForce = raw.SpeedKmh < 0.5f ? _staticFriction.Compute(raw) : 0f;
@@ -645,7 +653,7 @@ public sealed class TelemetryLoop : IDisposable
                                 _ffbProvider.SetHaptics(_reusableHapticData);
                             }
                         }
-                        else
+                        else if (_deviceManager.IsDeviceAcquired)
                         {
                             if (hasStationaryForce)
                             {

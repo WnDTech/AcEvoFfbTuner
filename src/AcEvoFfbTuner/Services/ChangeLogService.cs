@@ -50,6 +50,22 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.26.5",
+            Date = new DateTime(2026, 8, 12),
+            Title = "TrueForce force now flows while the game holds the wheel + native crash capture (minidump + event log in diag packs)",
+            Fixes =
+            [
+                "TrueForce force now reaches the wheel in-game: the force output path was gated on DirectInput acquisition, and the game holds the wheel exclusively while racing, so the TrueForce stream (which needs no DirectInput at all) sat idle at zero while the pipeline computed force. The stream is now driven directly, so tuned FFB flows in-game",
+                "Output suppression also releases the TrueForce stream: focusing the app previously left the wheel holding the last set-and-hold force — it now zeros the stream too"
+            ],
+            Improvements =
+            [
+                "Native crash capture: startup crashes are native access violations the managed exception handlers never see, which is why crash logs stayed empty. The app now installs a native exception filter that records the exception code in crash.log and writes a minidump (crash.dmp) before terminating",
+                "Diag packs now include crash evidence: crash.dmp (native stack) and eventlog_crashes.txt (Windows Application-log crash entries — faulting module + exception code for every AcEvoFfbTuner crash, including crashes from earlier versions). The Settings \"zip logs\" button includes them too"
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.26.4",
             Date = new DateTime(2026, 8, 12),
             Title = "TrueForce FFB restored after game launch — provider survives game switches, reconnect restores it, HID++ flood + teardown race fixes",

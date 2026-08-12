@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Windows;
 using System.Windows.Controls;
+using AcEvoFfbTuner.Services;
 using AcEvoFfbTuner.ViewModels;
 
 namespace AcEvoFfbTuner.Views.Pages;
@@ -90,6 +91,10 @@ public partial class SettingsPage : UserControl
         {
             vm.ZipAllLogsStatus = "Creating ZIP...";
 
+            // Include the crash event-log export (and crash.dmp below via *.txt/*.log
+            // collection — the dump is picked up explicitly).
+            DiagnosticPackService.WriteCrashEventLogExport();
+
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             var zipPath = Path.Combine(Path.GetTempPath(), $"AcEvoFfbTuner_Logs_{timestamp}.zip");
 
@@ -103,6 +108,7 @@ public partial class SettingsPage : UserControl
                 AddDirectoryToZip(zip, AppDataDir, "snapshots", "*.html");
                 AddDirectoryToZip(zip, AppDataDir, "snapshots", "*.txt");
                 AddDirectoryToZip(zip, AppDataDir, "TrackMaps", "*.json");
+                AddCrashDumpToZip(zip);
             }
 
             var zipInfo = new FileInfo(zipPath);
@@ -127,5 +133,16 @@ public partial class SettingsPage : UserControl
             var relativePath = Path.GetRelativePath(baseDir, file);
             zip.CreateEntryFromFile(file, relativePath, CompressionLevel.Optimal);
         }
+    }
+
+    private static void AddCrashDumpToZip(ZipArchive zip)
+    {
+        try
+        {
+            var dumpPath = Path.Combine(AppDataDir, "crash.dmp");
+            if (File.Exists(dumpPath))
+                zip.CreateEntryFromFile(dumpPath, "crash.dmp", CompressionLevel.Optimal);
+        }
+        catch { }
     }
 }
