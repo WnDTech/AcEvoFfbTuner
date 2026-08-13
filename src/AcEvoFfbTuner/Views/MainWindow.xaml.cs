@@ -67,7 +67,16 @@ public partial class MainWindow : Window
         {
             var hwndSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
             if (hwndSource != null && App.ViewModel is MainViewModel vm)
+            {
                 vm.HotPlugMonitor.Register(hwndSource);
+
+                // SourceInitialized fires whenever the HWND is (re)created — the
+                // stored DirectInput cooperative-level window can go stale on
+                // theme/fullscreen changes, which makes every subsequent re-acquire
+                // fail with "Invalid window handle" and silently kills FFB until a
+                // full manual reconnect. Keep the device manager's handle in sync.
+                vm.DeviceManager.SetWindowHandle(new WindowInteropHelper(this).Handle);
+            }
         };
 
         CommandBindings.Add(new CommandBinding(OpenIconPreviewCommand, OpenIconPreview));

@@ -17,11 +17,16 @@ public partial class HubPage : UserControl
     private bool _reloadQueued;
     private int _requestSeq;
     private string _game = "";
+    private string _wheel = "";
+    private string _car = "";
+    private string _track = "";
+    private string _wheelType = "";
     private string _q = "";
     private string _sort = "newest";
     private int _page = 1;
     private int _pages = 1;
     private int _total;
+    private bool _facetsLoaded;
     private const int PerPage = 30;
 
     private DispatcherTimer? _searchTimer;
@@ -51,6 +56,15 @@ public partial class HubPage : UserControl
         SortFilter.Items.Add(new ComboBoxItem { Content = "Top Rated", Tag = "rating" });
         SortFilter.Items.Add(new ComboBoxItem { Content = "Oldest", Tag = "oldest" });
         SortFilter.SelectedIndex = 0;
+
+        WheelFilter.Items.Add(new ComboBoxItem { Content = "All Wheelbases", Tag = "" });
+        CarFilter.Items.Add(new ComboBoxItem { Content = "All Cars", Tag = "" });
+        TrackFilter.Items.Add(new ComboBoxItem { Content = "All Tracks", Tag = "" });
+        WheelTypeFilter.Items.Add(new ComboBoxItem { Content = "All Types", Tag = "" });
+        WheelFilter.SelectedIndex = 0;
+        CarFilter.SelectedIndex = 0;
+        TrackFilter.SelectedIndex = 0;
+        WheelTypeFilter.SelectedIndex = 0;
 
         DataContextChanged += OnDataContextChanged;
     }
@@ -87,6 +101,10 @@ public partial class HubPage : UserControl
     {
         if (_vm == null) return;
         _game = SelectedTag(GameFilter);
+        _wheel = SelectedTag(WheelFilter);
+        _car = SelectedTag(CarFilter);
+        _track = SelectedTag(TrackFilter);
+        _wheelType = SelectedTag(WheelTypeFilter);
         _sort = SelectedTag(SortFilter) ?? "newest";
         _page = 1;
         Load();
@@ -112,7 +130,11 @@ public partial class HubPage : UserControl
         _searchTimer.Start();
     }
 
-    private void OnRefreshClick(object sender, RoutedEventArgs e) => Load();
+    private void OnRefreshClick(object sender, RoutedEventArgs e)
+    {
+        _facetsLoaded = false;
+        Load();
+    }
 
     private void OnPrevClick(object sender, RoutedEventArgs e)
     {
@@ -146,7 +168,13 @@ public partial class HubPage : UserControl
         PrevBtn.IsEnabled = false;
         NextBtn.IsEnabled = false;
 
-        var result = await _vm.HubClient.GetProfilesAsync(_game, _q, _sort, _page, PerPage);
+        var result = await _vm.HubClient.GetProfilesAsync(_game, _q, _sort, _page, PerPage, _wheel, _car, _track, _wheelType);
+
+        if (!_facetsLoaded)
+        {
+            _facetsLoaded = true;
+            await LoadFacets();
+        }
 
         _loading = false;
         LoadingText.Visibility = Visibility.Collapsed;
@@ -192,6 +220,39 @@ public partial class HubPage : UserControl
             _reloadQueued = false;
             Load();
         }
+    }
+
+    private async Task LoadFacets()
+    {
+        if (_vm == null) return;
+        var facets = await _vm.HubClient.GetFacetsAsync();
+        if (facets == null) return;
+        PopulateFacet(WheelFilter, facets.Wheels);
+        PopulateFacet(CarFilter, facets.Cars);
+        PopulateFacet(TrackFilter, facets.Tracks);
+        PopulateFacet(WheelTypeFilter, facets.WheelTypes);
+    }
+
+    private static void PopulateFacet(ComboBox box, List<string> values)
+    {
+        string current = SelectedTag(box) ?? "";
+        box.Items.Clear();
+        box.Items.Add(new ComboBoxItem { Content = "All", Tag = "" });
+        foreach (var v in values)
+        {
+            if (string.IsNullOrWhiteSpace(v)) continue;
+            box.Items.Add(new ComboBoxItem { Content = v, Tag = v });
+        }
+        int restore = 0;
+        for (int i = 0; i < box.Items.Count; i++)
+        {
+            if ((box.Items[i] as ComboBoxItem)?.Tag as string == current)
+            {
+                restore = i;
+                break;
+            }
+        }
+        box.SelectedIndex = restore;
     }
 
     private void ShowEmpty(string message)

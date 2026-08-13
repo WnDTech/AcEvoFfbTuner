@@ -14,15 +14,8 @@
             <TextBlock Text="Browse and download FFB profiles shared by the community. Every profile is tuned for a specific game, car, and wheel combination." FontSize="15" Foreground="#FF8B949E" Margin="0,0,0,16" TextWrapping="Wrap" />
 
             <Border Background="#FF1C2128" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D" Padding="12,10" Margin="0,0,0,12">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <Border Background="#FF161B22" CornerRadius="6" Padding="8,4" BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,12,0">
+                <WrapPanel>
+                    <Border Background="#FF161B22" CornerRadius="6" Padding="8,4" BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,12,8" Width="260">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -37,21 +30,45 @@
                         </Grid>
                     </Border>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,8">
                         <TextBlock Text="Game" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ComboBox x:Name="GameFilter" Width="150" FontSize="13" Padding="4,2"
+                        <ComboBox x:Name="GameFilter" Width="130" FontSize="13" Padding="4,2"
                                   SelectionChanged="OnFilterChanged" ToolTip="Filter by game" />
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,8">
+                        <TextBlock Text="Wheelbase" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox x:Name="WheelFilter" Width="140" FontSize="13" Padding="4,2"
+                                  SelectionChanged="OnFilterChanged" ToolTip="Filter by wheelbase" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,8">
+                        <TextBlock Text="Car" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox x:Name="CarFilter" Width="140" FontSize="13" Padding="4,2"
+                                  SelectionChanged="OnFilterChanged" ToolTip="Filter by car" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,8">
+                        <TextBlock Text="Track" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox x:Name="TrackFilter" Width="140" FontSize="13" Padding="4,2"
+                                  SelectionChanged="OnFilterChanged" ToolTip="Filter by track" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,8">
+                        <TextBlock Text="Type" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox x:Name="WheelTypeFilter" Width="120" FontSize="13" Padding="4,2"
+                                  SelectionChanged="OnFilterChanged" ToolTip="Filter by wheel type" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,8">
                         <TextBlock Text="Sort" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ComboBox x:Name="SortFilter" Width="140" FontSize="13" Padding="4,2"
+                        <ComboBox x:Name="SortFilter" Width="130" FontSize="13" Padding="4,2"
                                   SelectionChanged="OnFilterChanged" ToolTip="Sort order" />
                     </StackPanel>
 
-                    <Button Grid.Column="3" Content="Refresh" Padding="14,5" FontSize="13"
+                    <Button Content="Refresh" Padding="14,5" FontSize="13" Margin="0,0,0,8"
                             Style="{StaticResource OutlinedButton}" Click="OnRefreshClick" ToolTip="Reload profiles from the Hub" />
-                </Grid>
+                </WrapPanel>
             </Border>
 
             <Grid Margin="2,0,2,8">

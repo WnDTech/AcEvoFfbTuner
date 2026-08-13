@@ -683,7 +683,12 @@ public sealed class TelemetryLoop : IDisposable
                         }
                     }
 
-                    if (_deviceManager.IsDeviceAcquired && !_suppressOutput)
+                    // LED + HF8 are NOT gated on SuppressOutput: suppression only
+                    // stops the force path (the game-vs-app FFB conflict). Wheel
+                    // LEDs and the haptics pad are display/haptics devices that
+                    // don't fight the game — keeping them alive while the user
+                    // alt-tabs to the app avoids the "everything died" trap.
+                    if (_deviceManager.IsDeviceAcquired)
                     {
                         // Pit limiter persistence latch:
                         // PitLimiterOn only goes to 1 when the car exceeds pit speed (actively limiting).

@@ -1151,6 +1151,14 @@ public sealed class FfbDeviceManager : IDisposable
 
             Thread.Sleep(100);
 
+            // Re-bind the cooperative level with the CURRENT window handle before
+            // acquiring. The app's HWND can be recreated mid-session (theme change,
+            // fullscreen transitions); acquiring with a stale HWND fails with
+            // ERROR_INVALID_WINDOW_HANDLE and leaves the device permanently dead.
+            var handle = _windowHandle != IntPtr.Zero ? _windowHandle : GetDesktopWindow();
+            _device.SetCooperativeLevel(handle, DI.CooperativeLevel.Exclusive | DI.CooperativeLevel.Background);
+            ConnLog($"Re-acquire re-bound cooperative level to handle 0x{handle.ToInt64():X8}");
+
             _device.Acquire();
             _isAcquired = true;
             ResetAxisDetection();
@@ -1162,8 +1170,12 @@ public sealed class FfbDeviceManager : IDisposable
         catch (Exception ex)
         {
             ConnLog($"Re-acquire FAILED: {ex.InnerException?.Message ?? ex.Message}");
-            _consecutiveForceErrors++;
-            if (_consecutiveForceErrors >= MaxConsecutiveErrors && !_reconnectRequested)
+            // The device is now unacquired and SendConstantForceDirect early-returns
+            // before counting further errors, so _consecutiveForceErrors can never
+            // reach MaxConsecutiveErrors on its own. Escalate to a full reconnect
+            // immediately instead of waiting for failures that will never accrue.
+            _consecutiveForceErrors = MaxConsecutiveErrors;
+            if (!_reconnectRequested)
             {
                 _reconnectRequested = true;
                 LastError = "Device lost exclusive FFB access. Attempting full reconnect...";

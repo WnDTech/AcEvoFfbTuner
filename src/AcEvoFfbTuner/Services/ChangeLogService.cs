@@ -50,6 +50,18 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.26.8",
+            Date = new DateTime(2026, 8, 13),
+            Title = "FFB no longer dies permanently when the game grabs the wheel — auto-recovery fix + LED/HF8 stay alive",
+            Fixes =
+            [
+                "FIXED A FUNDAMENTAL ISSUE: if the game stole the wheel mid-session (game start, exclusive-mode switch), the app's inline re-acquire could fail (stale window handle) and then leave the device permanently dead — FFB, wheel LEDs, pedal haptics and HF8 all silent until a manual reconnect. The error counter could never reach its reconnect threshold because the force path early-returns before counting errors, so auto-reconnect never fired. Re-acquires now re-bind to the current window handle and escalate to a full reconnect immediately on failure",
+                "The wheel's window handle is now re-synced whenever the app window is recreated, so DirectInput re-acquires can never fail with 'invalid window handle' after theme/fullscreen changes",
+                "Wheel LEDs and the HF8 haptics pad are no longer suppressed when you alt-tab to the app — only the FFB force path is (to avoid fighting the game). LEDs/HF8 stay alive while you check the app mid-session",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.26.7",
             Date = new DateTime(2026, 8, 12),
             Title = "TrueForce amplifier made silent at zero force — carrier halved + zero-force idle throttle",

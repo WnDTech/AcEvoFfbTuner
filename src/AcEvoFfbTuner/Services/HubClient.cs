@@ -36,6 +36,15 @@ public sealed class HubListResult
     public List<HubProfileDto> Profiles { get; set; } = [];
 }
 
+public sealed class HubFacets
+{
+    public List<string> Games { get; set; } = [];
+    public List<string> Wheels { get; set; } = [];
+    public List<string> WheelTypes { get; set; } = [];
+    public List<string> Cars { get; set; } = [];
+    public List<string> Tracks { get; set; } = [];
+}
+
 public sealed class HubUploadRequest
 {
     public string Title { get; set; } = "";
@@ -127,7 +136,8 @@ public sealed class HubClient : IDisposable
 
     public async Task<HubListResult> GetProfilesAsync(
         string? game = null, string? q = null, string sort = "newest",
-        int page = 1, int per = 24, CancellationToken ct = default)
+        int page = 1, int per = 24, string? wheel = null, string? car = null,
+        string? track = null, string? wheelType = null, CancellationToken ct = default)
     {
         var url = new StringBuilder(_baseUrl);
         url.Append("?action=list&page=").Append(page)
@@ -135,6 +145,14 @@ public sealed class HubClient : IDisposable
            .Append("&sort=").Append(Uri.EscapeDataString(sort));
         if (!string.IsNullOrEmpty(game))
             url.Append("&game=").Append(Uri.EscapeDataString(game));
+        if (!string.IsNullOrEmpty(wheel))
+            url.Append("&wheel=").Append(Uri.EscapeDataString(wheel));
+        if (!string.IsNullOrEmpty(car))
+            url.Append("&car=").Append(Uri.EscapeDataString(car));
+        if (!string.IsNullOrEmpty(track))
+            url.Append("&track=").Append(Uri.EscapeDataString(track));
+        if (!string.IsNullOrEmpty(wheelType))
+            url.Append("&wheelType=").Append(Uri.EscapeDataString(wheelType));
         if (!string.IsNullOrEmpty(q))
             url.Append("&q=").Append(Uri.EscapeDataString(q));
 
@@ -155,6 +173,19 @@ public sealed class HubClient : IDisposable
         catch (Exception ex)
         {
             return new HubListResult { Ok = false, Error = ex.Message };
+        }
+    }
+
+    public async Task<HubFacets?> GetFacetsAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var json = await _http.GetStringAsync($"{_baseUrl}?action=facets", ct);
+            return JsonSerializer.Deserialize<HubFacets>(json, ProfileJsonOptions);
+        }
+        catch
+        {
+            return null;
         }
     }
 
