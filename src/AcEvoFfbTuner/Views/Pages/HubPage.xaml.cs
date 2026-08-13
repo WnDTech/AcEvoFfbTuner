@@ -27,6 +27,8 @@ public partial class HubPage : UserControl
     private int _pages = 1;
     private int _total;
     private bool _facetsLoaded;
+    private readonly Dictionary<int, int> _myVotes = new();
+    private readonly Dictionary<int, TextBlock> _ratingLabels = new();
     private const int PerPage = 30;
 
     private DispatcherTimer? _searchTimer;
@@ -164,6 +166,7 @@ public partial class HubPage : UserControl
 
         LoadingText.Visibility = Visibility.Visible;
         CardsHost.Children.Clear();
+        _ratingLabels.Clear();
         EmptyPanel.Visibility = Visibility.Collapsed;
         PrevBtn.IsEnabled = false;
         NextBtn.IsEnabled = false;
@@ -340,6 +343,39 @@ public partial class HubPage : UserControl
         if (tagRow.Children.Count > 0)
             root.Children.Add(tagRow);
 
+        // Star rating row
+        var starRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+        _myVotes.TryGetValue(p.Id, out var voted);
+        int filled = voted > 0 ? voted : (int)Math.Round(p.Rating);
+        for (int i = 1; i <= 5; i++)
+        {
+            var starBtn = new Button
+            {
+                Content = "★",
+                FontSize = 13,
+                Padding = new Thickness(2, 0, 2, 0),
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Foreground = i <= filled ? BrushAccent : BrushMuted,
+                Tag = (p.Id, i),
+                Cursor = Cursors.Hand,
+                ToolTip = $"Rate {i} star{(i > 1 ? "s" : "")}"
+            };
+            starBtn.Click += OnRateClick;
+            starRow.Children.Add(starBtn);
+        }
+        var ratingLabel = new TextBlock
+        {
+            Text = $"{p.Rating:0.0} ({p.RatingCount})",
+            FontSize = 11,
+            Foreground = BrushMuted,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(6, 0, 0, 0)
+        };
+        _ratingLabels[p.Id] = ratingLabel;
+        starRow.Children.Add(ratingLabel);
+        root.Children.Add(starRow);
+
         // Meta + download
         var metaRow = new Grid();
         metaRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -370,8 +406,53 @@ public partial class HubPage : UserControl
         metaRow.Children.Add(downloadBtn);
 
         root.Children.Add(metaRow);
+        card.Tag = p;
         card.Child = root;
         return card;
+    }
+
+    private async void OnRateClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || _vm == null) return;
+        var (id, value) = ((int, int))btn.Tag;
+        btn.IsEnabled = false;
+        try
+        {
+            var result = await _vm.HubClient.RateProfileAsync(id, value);
+            if (result.Ok)
+            {
+                _myVotes[id] = value;
+                foreach (var child in CardsHost.Children.OfType<Border>())
+                {
+                    if (child.Tag is HubProfileDto dto && dto.Id == id)
+                    {
+                        dto.Rating = result.Rating;
+                        dto.RatingCount = result.RatingCount;
+                    }
+                }
+                if (_ratingLabels.TryGetValue(id, out var label))
+                {
+                    label.Text = $"{result.Rating:0.0} ({result.RatingCount})";
+                    if (label.Parent is StackPanel row)
+                    {
+                        foreach (var star in row.Children.OfType<Button>())
+                        {
+                            if (star.Tag is (int cid, int cval) && cid == id)
+                                star.Foreground = cval <= value ? BrushAccent : BrushMuted;
+                        }
+                    }
+                }
+                _vm.StatusText = $"Rated {value}★ — profile is now {result.Rating:0.0} ({result.RatingCount} votes)";
+            }
+            else
+            {
+                _vm.StatusText = $"Rating failed: {result.Error}";
+            }
+        }
+        finally
+        {
+            btn.IsEnabled = true;
+        }
     }
 
     private static string BuildMeta(HubProfileDto p)
@@ -379,7 +460,6 @@ public partial class HubPage : UserControl
         var parts = new List<string>();
         if (!string.IsNullOrWhiteSpace(p.Author))
             parts.Add(p.Author);
-        parts.Add($"★ {p.Rating:0.0} ({p.RatingCount})");
         if (p.TorqueNm > 0)
             parts.Add($"{p.TorqueNm:0.#} Nm");
         if (p.ProfileVersion > 0)

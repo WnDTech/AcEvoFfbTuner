@@ -71,6 +71,14 @@ public sealed class HubUploadResult
 
 public sealed record HubDownloadResult(string? Json, string? Error);
 
+public sealed class HubRateResult
+{
+    public bool Ok { get; set; }
+    public string? Error { get; set; }
+    public float Rating { get; set; }
+    public int RatingCount { get; set; }
+}
+
 public sealed class HubClient : IDisposable
 {
     private const string DefaultBaseUrl = "https://ffbtuner.wndtech.tips/api/hub.php";
@@ -256,6 +264,44 @@ public sealed class HubClient : IDisposable
         catch (Exception ex)
         {
             return new HubUploadResult { Ok = false, Error = ex.Message };
+        }
+    }
+
+    public async Task<HubRateResult> RateProfileAsync(int id, int value, CancellationToken ct = default)
+    {
+        try
+        {
+            var body = JsonSerializer.Serialize(new { value }, ProfileJsonOptions);
+            using var httpReq = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}?action=rate&id={id}")
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/json")
+            };
+            var response = await _http.SendAsync(httpReq, ct);
+            var json = await response.Content.ReadAsStringAsync(ct);
+            if (!response.IsSuccessStatusCode)
+                return new HubRateResult { Ok = false, Error = TryParseError(json) ?? $"Server error ({response.StatusCode})" };
+
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            return new HubRateResult
+            {
+                Ok = root.TryGetProperty("ok", out var ok) && ok.GetBoolean(),
+                Error = root.TryGetProperty("error", out var err) ? err.GetString() : null,
+                Rating = root.TryGetProperty("rating", out var r) && r.ValueKind == JsonValueKind.Number ? r.GetSingle() : 0f,
+                RatingCount = root.TryGetProperty("ratingCount", out var rc) && rc.ValueKind == JsonValueKind.Number ? rc.GetInt32() : 0
+            };
+        }
+        catch (TaskCanceledException)
+        {
+            return new HubRateResult { Ok = false, Error = "Request timed out — check your connection" };
+        }
+        catch (HttpRequestException)
+        {
+            return new HubRateResult { Ok = false, Error = "Could not reach the Hub — are you online?" };
+        }
+        catch (Exception ex)
+        {
+            return new HubRateResult { Ok = false, Error = ex.Message };
         }
     }
 
