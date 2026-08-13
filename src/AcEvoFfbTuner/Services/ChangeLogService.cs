@@ -50,6 +50,22 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.26.9",
+            Date = new DateTime(2026, 8, 14),
+            Title = "App re-licensed GPL-2.0 with full upstream attribution — TrueForce provider license compliance",
+            Fixes =
+            [
+                "The app is now distributed under the GNU General Public License version 2 (GPL-2.0-only): the Logitech TrueForce stream provider embeds code derived from Trueforce-For-All (Mhytee) and mescon's logitech-trueforce-linux-driver, so shipping it under \"All rights reserved\" was not license-compliant. A full LICENSE file is now included in the repo, the README license section no longer says \"All rights reserved\", and the installer's license page now shows the GPL-2.0 terms",
+                "Upstream copyright notices are now retained in the derived source files (LogitechTrueForceProvider.cs, LogitechHidppWheelProvider.cs)",
+            ],
+            Improvements =
+            [
+                "The README and release notes now credit Trueforce-For-All (Mhytee), mescon's logitech-trueforce-linux-driver, and PeposCJ (Dynamic OLED hardware verification) for the protocol work the TrueForce stream and HID++ features build on",
+                "New (experimental): Dynamic OLED display for Logitech RS50/G PRO — the wheel screen shows gear + speed (feature 0x8130, layout J) while force rides the TrueForce stream; OLED writes are thread-safe, paced at 2 Hz, and the panel returns to its default screen when disabled",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.26.8",
             Date = new DateTime(2026, 8, 13),
             Title = "FFB no longer dies permanently when the game grabs the wheel — auto-recovery fix + LED/HF8 stay alive",

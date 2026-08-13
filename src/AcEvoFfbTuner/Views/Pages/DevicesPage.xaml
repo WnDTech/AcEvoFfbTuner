@@ -304,6 +304,38 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Wheel OLED screen (Dynamic Display, feature 0x8130 — experimental) -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="#3347A1FF"
+                            Visibility="{Binding OledAvailable, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,6">
+                                <TextBlock Text="WHEEL OLED SCREEN" FontSize="12" FontWeight="Bold" Foreground="#FF47A1FF" VerticalAlignment="Center" />
+                                <TextBlock Text="Experimental — 0x8130 DisplayGameData" FontSize="11"
+                                           Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding OledStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                       TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Grid.Column="0" IsChecked="{Binding OledEnabled, Mode=TwoWay}" VerticalAlignment="Center"
+                                          Content="Screen live" FontSize="12" Foreground="{StaticResource TextDimBrush}" Cursor="Hand" />
+                                <TextBlock Grid.Column="2" Text="Screen:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                           VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="3" SelectedIndex="{Binding OledScreen, Mode=TwoWay}"
+                                          Margin="8,0,0,0" Height="28" VerticalAlignment="Center">
+                                    <ComboBoxItem Content="Gear + Speed" />
+                                    <ComboBoxItem Content="Speed only" />
+                                </ComboBox>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
                 </StackPanel>
             </ScrollViewer>
 

@@ -1,3 +1,26 @@
+// LogitechHidppWheelProvider.cs — direct HID++ settings provider for
+// Logitech direct-drive wheels (RS50, G PRO) and the G923.
+//
+// Part of AC Evo FFB Tuner.
+// Copyright (C) 2026 WnDTech
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; version 2 of the License.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, see <https://www.gnu.org/licenses/>.
+//
+// Protocol reference and implementation details from mescon's
+// logitech-trueforce-linux-driver
+// (https://github.com/mescon/logitech-trueforce-linux-driver),
+// Copyright (c) mescon, GPL-2.0. Dynamic OLED (DisplayGameData 0x8130)
+// writes verified on hardware with PeposCJ.
 using System.Runtime.InteropServices;
 using System.Text;
 using AcEvoFfbTuner.Core.DeviceDetection;
@@ -49,8 +72,15 @@ public sealed class LogitechHidppWheelProvider : IDisposable
     private const ushort FeatRotationRange = 0x8138;
     private const ushort FeatTrueForce = 0x8139;
     private const ushort FeatDamping = 0x8133;
+    private const ushort FeatOled = 0x8130; // DisplayGameData — the Dynamic OLED
 
     private const byte SwId = 0x0A;
+
+    /// <summary>SW-ID for OLED (0x8130) exchanges — distinct from the settings
+    /// surface so replies can never be mistaken across features (per the
+    /// mescon/issue-20 probe-hazard finding: root getFeature replies do not
+    /// echo the page they answer).</summary>
+    private const byte OledSwId = 0x0B;
     private const int ResponseTimeoutMs = 1000;
 
     private static readonly IntPtr InvalidHandle = new(-1);
@@ -110,6 +140,11 @@ public sealed class LogitechHidppWheelProvider : IDisposable
     private byte _featureProfile;
     private byte _featureTrueForce;
     private byte _featureDamping;
+    private byte _featureOled;
+
+    // The OLED (DisplayGameData) frame writes need the 64-byte very-long OUT
+    // collection — separate from the short-report settings handle.
+    private IntPtr _oledWriteHandle = InvalidHandle;
 
     private readonly string _logPath;
 
@@ -256,7 +291,26 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         _featureProfile = FindFeatureIndex(FeatProfile, 800) ?? 0;
         _featureTrueForce = FindFeatureIndex(FeatTrueForce, 800) ?? 0;
         _featureDamping = FindFeatureIndex(FeatDamping, 800) ?? 0;
-        Log($"Connect: feature indices — rotation=0x{_featureRotation:X2} profile=0x{_featureProfile:X2} trueforce=0x{_featureTrueForce:X2} damping=0x{_featureDamping:X2}");
+        _featureOled = FindFeatureIndex(FeatOled, 800) ?? 0;
+        Log($"Connect: feature indices — rotation=0x{_featureRotation:X2} profile=0x{_featureProfile:X2} trueforce=0x{_featureTrueForce:X2} damping=0x{_featureDamping:X2} oled=0x{_featureOled:X2}");
+
+        // OLED frame writes need the 64-byte very-long OUT collection — open it
+        // best-effort (the OLED feature is optional; nothing fails without it).
+        if (_featureOled != 0 && _oledWriteHandle == InvalidHandle)
+        {
+            foreach (var wc in wheelDevices.Where(d => d.UsagePage == 0xFF43 && d.OutputReportByteLength >= 60))
+            {
+                IntPtr oh = CreateFile(wc.DevicePath, GENERIC_WRITE, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+                if (oh == InvalidHandle)
+                {
+                    Log($"Connect:   OLED very-long OUT open FAILED (err={Marshal.GetLastWin32Error()})");
+                    continue;
+                }
+                _oledWriteHandle = oh;
+                Log($"Connect: OLED very-long OUT collection opened (outLen={wc.OutputReportByteLength})");
+                break;
+            }
+        }
 
         // Read current state
         ReadAllSettings();
@@ -278,10 +332,26 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             _pending.Clear();
         }
 
-        if (_writeHandle != InvalidHandle)
+        // Serialize against in-flight request threads: an exchange holds
+        // _requestGate for up to timeoutMs while inside a P/Invoke on a
+        // handle we are about to close (a Task.Run OLED push can be mid-write).
+        _requestGate.Wait(TimeSpan.FromSeconds(2));
+        try
         {
-            CloseHandle(_writeHandle);
-            _writeHandle = InvalidHandle;
+            if (_writeHandle != InvalidHandle)
+            {
+                CloseHandle(_writeHandle);
+                _writeHandle = InvalidHandle;
+            }
+            if (_oledWriteHandle != InvalidHandle)
+            {
+                CloseHandle(_oledWriteHandle);
+                _oledWriteHandle = InvalidHandle;
+            }
+        }
+        finally
+        {
+            _requestGate.Release();
         }
         foreach (var ch in _readChannels)
         {
@@ -460,7 +530,7 @@ public sealed class LogitechHidppWheelProvider : IDisposable
 
         // A stale duplicate of an earlier discovery response could satisfy this
         // query with the previous feature's index — retry once if it collides.
-        byte[] known = [_featureFfbStrength, _featureRotation, _featureProfile, _featureTrueForce, _featureDamping];
+        byte[] known = [_featureFfbStrength, _featureRotation, _featureProfile, _featureTrueForce, _featureDamping, _featureOled];
         if (idx != 0x00 && idx != 0xFF && known.Contains(idx))
         {
             Log($"FindFeatureIndex: 0x{featureId:X4} index 0x{idx:X2} collides with a previously discovered feature — retrying once");
@@ -487,6 +557,149 @@ public sealed class LogitechHidppWheelProvider : IDisposable
     {
         if (featureIndex == 0) return null;
         return RequestResponse(featureIndex, fn, [0x00, 0x00, 0x00], ResponseTimeoutMs);
+    }
+
+    // ── Dynamic OLED (feature 0x8130 DisplayGameData) ────────────────────────
+    // Transport: HID++ SET_REPORT on the 0xFF43 interface (never the DI Escape
+    // path — its Acquire/Unacquire lifecycle stomps 0x8123). Typed renderer,
+    // 10 layouts A-J; layout J exposes four text fields 19/10/19/10 chars.
+    // Safe to drive here because our force rides the TrueForce stream and the
+    // HID++ endpoint is force-free (12.5: non-force writes cut force only when
+    // force is present on the endpoint — verified by TF4ALL/PeposCJ hardware).
+    public bool OledAvailable => _featureOled != 0 && _oledWriteHandle != InvalidHandle;
+    public int OledLayoutCount { get; private set; }
+    public string OledLayoutJDescriptorHex { get; private set; } = "";
+
+    /// <summary>fn0 layout count + fn1 layout-J descriptor — read-only, safe.</summary>
+    public bool OledQueryLayouts(int timeoutMs = 1000)
+    {
+        if (_featureOled == 0) return false;
+        var resp = RequestResponse(_featureOled, 0x00, [0x00, 0x00, 0x00], timeoutMs);
+        if (resp == null)
+        {
+            Log("OledQueryLayouts: fn0 (layout count) no response");
+            return false;
+        }
+        OledLayoutCount = resp[4];
+        Log($"OledQueryLayouts: fn0 layout count = {OledLayoutCount}");
+
+        var desc = RequestResponse(_featureOled, 0x01, [(byte)Math.Max(0, OledLayoutCount - 1), 0x00, 0x00], timeoutMs);
+        if (desc == null)
+            desc = RequestResponse(_featureOled, 0x01, [0x00, 0x00, 0x00], timeoutMs);
+        if (desc != null)
+        {
+            OledLayoutJDescriptorHex = Convert.ToHexString(desc);
+            Log($"OledQueryLayouts: fn1 layout descriptor (raw) = {OledLayoutJDescriptorHex}");
+        }
+        else
+        {
+            Log("OledQueryLayouts: fn1 layout descriptor no response");
+        }
+        return true;
+    }
+
+    /// <summary>fn2 — clear pending Dynamic data (returns the panel to its
+    /// default screen).</summary>
+    public bool OledClear()
+    {
+        if (_featureOled == 0) return false;
+        bool ok = RequestResponse(_featureOled, 0x02, [0x00, 0x00, 0x00], ResponseTimeoutMs) != null;
+        Log($"OledClear: {(ok ? "ok" : "FAILED")}");
+        return ok;
+    }
+
+    /// <summary>fn3 — set layout + typed field text. Fields are padded with
+    /// spaces to their layout capacity (spaces are content; the firmware
+    /// renderer draws fixed-width fields). Layout J = 19/10/19/10.</summary>
+    public bool OledWriteFrame(byte layoutIndex, string[] fields, int[] capacities, int timeoutMs = 1000)
+    {
+        if (_featureOled == 0 || _oledWriteHandle == InvalidHandle) return false;
+        if (fields.Length == 0 || fields.Length != capacities.Length) return false;
+        if (OledLayoutCount > 0 && layoutIndex >= OledLayoutCount)
+        {
+            Log($"OledWriteFrame: layout {layoutIndex} exceeds queried count {OledLayoutCount} — rejected");
+            return false;
+        }
+
+        var caps = new int[capacities.Length];
+        for (int i = 0; i < capacities.Length; i++)
+            caps[i] = Math.Max(0, capacities[i]);
+        var payload = new byte[1 + caps.Sum()];
+        if (payload.Length > 60) return false;
+        payload[0] = layoutIndex;
+        int off = 1;
+        for (int i = 0; i < fields.Length; i++)
+        {
+            string text = fields[i] ?? "";
+            int cap = caps[i];
+            for (int j = 0; j < cap; j++)
+                payload[off + j] = j < text.Length ? (byte)text[j] : (byte)0x20;
+            off += cap;
+        }
+
+        var resp = RequestResponseVeryLong(_featureOled, 0x03, payload, timeoutMs);
+        Log($"OledWriteFrame: layout {(char)('A' + layoutIndex)} (fn3) {(resp != null ? "ok" : "FAILED")}");
+        return resp != null;
+    }
+
+    private byte[]? RequestResponseVeryLong(byte featureIndex, byte fn, byte[] payload, int timeoutMs)
+    {
+        if (payload.Length > 60) return null;
+        _requestGate.Wait();
+        try
+        {
+            var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var pending = new PendingRequest { FeatureIndex = featureIndex, Fn = fn, Tcs = tcs };
+            lock (_sync) _pending.Add(pending);
+
+            byte[] buf = new byte[64];
+            buf[0] = 0x12; // very-long report — the only collection wide enough for a frame
+            buf[1] = 0xFF;
+            buf[2] = featureIndex;
+            buf[3] = (byte)((fn << 4) | OledSwId);
+            Array.Copy(payload, 0, buf, 4, payload.Length);
+
+            Log($"TX(vlong): {Hex(buf, 12)} (len 64, {payload.Length} payload bytes)");
+
+            bool sent = false;
+            try
+            {
+                sent = HidD_SetOutputReport(_oledWriteHandle, buf, buf.Length);
+            }
+            catch (Exception ex)
+            {
+                Log($"TX(vlong): HidD_SetOutputReport threw: {ex.Message}");
+            }
+            if (!sent)
+            {
+                Log($"TX(vlong): HidD_SetOutputReport returned false (err={Marshal.GetLastWin32Error()})");
+                lock (_sync) _pending.Remove(pending);
+                return null;
+            }
+
+            try
+            {
+                if (!tcs.Task.Wait(timeoutMs))
+                {
+                    Log($"RX: timeout waiting for OLED response (feat 0x{featureIndex:X2} fn={fn})");
+                    return null;
+                }
+                return tcs.Task.Result;
+            }
+            catch
+            {
+                return null;
+            }
+            finally
+            {
+                lock (_sync) _pending.Remove(pending);
+                Thread.Sleep(20); // let duplicate broadcasts drain before the next exchange
+            }
+        }
+        finally
+        {
+            _requestGate.Release();
+        }
     }
 
     private byte[]? RequestResponse(byte featureIndex, byte fn, byte[] payload, int timeoutMs)

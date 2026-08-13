@@ -347,6 +347,17 @@ Sim racing is a hobby, and this project is made for the community: if a feature 
 - **Latest release:** [GitHub Releases](https://github.com/WnDTech/AcEvoFfbTuner/releases/latest)
 - **Website:** [ffbtuner.wndtech.tips](https://ffbtuner.wndtech.tips/)
 
+## Attribution
+
+This project builds on the reverse-engineering and protocol work of the sim-racing community:
+
+- **Trueforce-For-All** by [Mhytee](https://github.com/Mhytee/Trueforce-For-All) — the Windows C# implementation of the Logitech TrueForce stream protocol that `LogitechTrueForceProvider` is based on (stream pump timing, session sequencing, force encoding). GPL-2.0-only.
+- **logitech-trueforce-linux-driver** by [mescon](https://github.com/mescon/logitech-trueforce-linux-driver) — the reverse-engineered protocol specification, the 68-packet G HUB init capture (`tf_init_data.h`) and `patch_range_packet` used by the TrueForce stream and HID++ settings providers. GPL-2.0.
+- **PeposCJ** — hardware verification of the Dynamic OLED display (feature 0x8130) writes on the RS50.
+- **Simucube SC API** (`lib/simucube/sc-api`) — MIT licensed, see `lib/simucube/sc-api/LICENSE.txt`.
+
 ## License
 
-All rights reserved.
+Copyright (C) 2025-2026 WnDTech. Licensed under the GNU General Public License version 2 (GPL-2.0-only); see the LICENSE file at the repository root for the full license text.
+
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2 of the License. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

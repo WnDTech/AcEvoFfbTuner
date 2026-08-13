@@ -92,6 +92,100 @@ public sealed partial class MainViewModel
         UpdateTrueForceStatus();
     }
 
+    // ── Wheel OLED (Dynamic Display, feature 0x8130 — Experimental) ──
+    // The panel is driven over the HID++ interface while our force rides the
+    // TrueForce stream, so the HID++ endpoint stays force-free — the only
+    // configuration where display writes are hardware-verified safe
+    // (TF4ALL/12.5: non-force writes cut force only when force is on HID++).
+    [ObservableProperty] private bool _oledAvailable;
+    [ObservableProperty] private bool _oledEnabled;
+    [ObservableProperty] private int _oledScreen; // 0 = Gear + Speed, 1 = Speed only
+    [ObservableProperty] private string _oledStatus = "Wheel OLED: not available";
+
+    private DateTime _lastOledPush = DateTime.MinValue;
+    private int _oledPushInFlight;
+
+    partial void OnOledEnabledChanged(bool value)
+    {
+        if (!value)
+        {
+            // HID++ calls must never run on the UI thread (up to 1 s timeouts
+            // per request froze the app while the wheel was unresponsive).
+            var hp = _logitechHidpp;
+            Task.Run(() =>
+            {
+                try { hp?.OledClear(); } catch { }
+            });
+        }
+        UpdateOledStatus();
+        AddSystemLog(value
+            ? "Wheel OLED enabled (experimental — display writes over HID++ 0x8130)"
+            : "Wheel OLED disabled — panel returned to its default screen");
+    }
+
+    private void UpdateOledStatus()
+    {
+        var hp = _logitechHidpp;
+        OledAvailable = hp?.OledAvailable == true;
+        if (!OledAvailable)
+        {
+            OledStatus = "Wheel OLED: not available on this wheel";
+            return;
+        }
+        OledStatus = OledEnabled
+            ? $"Wheel OLED: live — {hp!.OledLayoutCount} layouts (0x8130)"
+            : "Wheel OLED: available (feature 0x8130) — enable to use";
+    }
+
+    /// <summary>Paced push of telemetry to the wheel's OLED (max ~2 Hz — the
+    /// panel shares a pipe with the rev strip and wants slow, quiet updates).
+    /// Layout J: four text fields 19/10/19/10, spaces are content.</summary>
+    internal void PushOledTelemetry(float speedKmh, int gear)
+    {
+        var hp = _logitechHidpp;
+        if (!OledEnabled || hp == null || !hp.OledAvailable) return;
+
+        var now = DateTime.UtcNow;
+        if ((now - _lastOledPush).TotalMilliseconds < 500) return;
+        // Real rate limit: a slow/failed fn3 exchange holds the shared HID++
+        // gate for up to its timeout, so never queue more than one write.
+        if (Interlocked.CompareExchange(ref _oledPushInFlight, 1, 0) != 0) return;
+        _lastOledPush = now;
+
+        string gearText = gear switch
+        {
+            -1 => "R",
+            0 => "N",
+            _ => gear.ToString()
+        };
+        string speedText = $"{speedKmh:F0} km/h";
+
+        string[] fields = OledScreen switch
+        {
+            1 => new[] { speedText, "", "", "" },
+            _ => new[] { gearText, speedText, "", "" }
+        };
+
+        Task.Run(() =>
+        {
+            try
+            {
+                hp.OledWriteFrame(9, fields, new[] { 19, 10, 19, 10 });
+            }
+            catch (Exception ex)
+            {
+                // AddSystemLog touches UI-bound collections — marshal to the
+                // dispatcher like every other background log call site.
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    AddSystemLog($"Wheel OLED push failed: {ex.GetType().Name}: {ex.Message}"));
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _oledPushInFlight, 0);
+            }
+        });
+    }
+
     // ── HID++ direct wheel settings (no G HUB needed) ──
     // NOTE: every HID++ call runs on a background thread — the protocol has
     // 800-1000 ms timeouts per request, and blocking the UI thread froze the
@@ -143,6 +237,11 @@ public sealed partial class MainViewModel
                 {
                     provider.SetDesktopMode();
                     provider.ReadAllSettingsForUi();
+
+                    // Read-only OLED layout query — safe, and the descriptor
+                    // readback lands in the diag log to validate the frame
+                    // format against real hardware.
+                    try { provider.OledQueryLayouts(); } catch { }
                 }
 
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
@@ -175,6 +274,7 @@ public sealed partial class MainViewModel
 
                     UpdateLogitechModeInfo();
                     LogitechHidppStatus = $"HID++ connected — {provider.ProductName}";
+                    UpdateOledStatus();
 
                     // Periodic read-back (every 5s) keeps the UI in sync with the wheel.
                     _logitechRefreshTimer ??= new System.Windows.Threading.DispatcherTimer
@@ -209,6 +309,8 @@ public sealed partial class MainViewModel
         LogitechIsDesktopMode = false;
         TrueForceCardVisible = false;
         TrueForceStatus = "TrueForce stream: not connected";
+        OledAvailable = false;
+        OledStatus = "Wheel OLED: not available";
     }
 
     private void OnLogitechRefreshTick(object? sender, EventArgs e)

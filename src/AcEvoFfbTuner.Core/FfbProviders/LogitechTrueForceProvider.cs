@@ -1,3 +1,29 @@
+// LogitechTrueForceProvider.cs — TrueForce stream FFB provider for Logitech
+// direct-drive wheels (RS50, G PRO).
+//
+// Part of AC Evo FFB Tuner.
+// Copyright (C) 2026 WnDTech
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; version 2 of the License.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, see <https://www.gnu.org/licenses/>.
+//
+// Derived in part from:
+//   - Trueforce-For-All (https://github.com/Mhytee/Trueforce-For-All),
+//     Copyright (c) Mhytee, GPL-2.0-only — stream pump timing and precision
+//     sleep, session sequencing, init replay loop.
+//   - logitech-trueforce-linux-driver
+//     (https://github.com/mescon/logitech-trueforce-linux-driver),
+//     Copyright (c) mescon, GPL-2.0 — the 68-packet G HUB init capture
+//     (tf_init_data.h) and patch_range_packet.
 using System.Runtime.InteropServices;
 using AcEvoFfbTuner.Core.DeviceDetection;
 

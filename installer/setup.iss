@@ -37,6 +37,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish-test\AcEvoFfbTuner.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish-test\Moza_API_C.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish-test\Moza_SDK.dll"; DestDir: "{app}"; Flags: ignoreversion

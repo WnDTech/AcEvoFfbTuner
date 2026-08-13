@@ -112,6 +112,7 @@ public sealed partial class MainViewModel
             CurrentRawForce = processed.RawFinalFf;
             IsClipping = processed.IsClipping;
             SpeedKmh = processed.SpeedKmh;
+            PushOledTelemetry(processed.SpeedKmh, raw.Gear);
             var g = raw.DisplayAccG?.Length > 0 && raw.DisplayAccG.Any(v => v != 0) ? raw.DisplayAccG : raw.AccG;
             LatG = g?.Length > 0 ? g[0] : 0f;
             LongG = g?.Length > 1 ? g[1] : 0f;
