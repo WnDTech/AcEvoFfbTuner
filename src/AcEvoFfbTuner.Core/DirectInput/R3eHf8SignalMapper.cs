@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AcEvoFfbTuner.Core.FfbProcessing;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
 
@@ -21,6 +22,16 @@ public sealed class R3eHf8SignalMapper : Hf8SignalMapper
 {
     private float _rumblePhase;
     private float _slipPhase;
+
+    /// <summary>
+    /// Kerb-channel latch window after the last TireOnMtrl == 5 (rumble strip)
+    /// frame. R3E's kerb synthesis is derived from suspension velocity/deflection,
+    /// so it is gated on the authoritative surface material instead of amplitude —
+    /// logs prove tarmac noise (0.02-0.27) overlaps real strikes (0.096). The latch
+    /// keeps the strike tail audible and survives mtrl flicker between reads.
+    /// </summary>
+    private const long KerbLatchTicks = 120L * TimeSpan.TicksPerMillisecond;
+    private long _kerbLatchUntilTicks;
 
     private static float[,] CreateR3eDefaultSourceWeights()
     {
@@ -117,13 +128,31 @@ public sealed class R3eHf8SignalMapper : Hf8SignalMapper
 
         // ── Raw vibration fields: apply VibrationMixer gains so slider changes affect HF8 ──
         // Gate raw KerbVibration BEFORE gain multiplication. R3E's SynthesizeKerbVibration
-        // produces non-zero noise floor (~0.001-0.004) from suspension deflection noise.
-        // The first frame also spikes to 1.0 (zero-history initialization). Actual kerb
-        // strikes produce raw values of 0.1-1.0, well above the 0.02 noise gate threshold.
-        // This prevents user's KerbGain slider (e.g. 7.10 in the RACEROOM profile) from
-        // amplifying noise-floor signals into constant HF8 motor output.
-        float rawKerb = raw.KerbVibration;
-        if (rawKerb < 0.02f) rawKerb = 0f;
+        // derives kerb feel from suspension velocity/deflection, and diagnostic logs show
+        // it produces 0.02-0.27 CONTINUOUSLY on smooth tarmac (mtrl=1/1/1/1) — the
+        // "suspension vibration bleeding through the Kerbs sliders". Amplitude gating
+        // cannot separate it: the real kerb crossing logged 0.096 while tarmac peaks hit
+        // 0.27. TireOnMtrl == 5 (rumble strip) is the only reliable discriminator, so the
+        // kerb channel is enabled only while a wheel is on a rumble strip, with a short
+        // latch so the strike tail / mtrl flicker is not lost. If the game build never
+        // populates TireOnMtrl (all <= 0), fall back to the old amplitude-only gate.
+        float rawKerb = 0f;
+        bool mtrlAvailable = raw.TireOnMtrl != null &&
+            (raw.TireOnMtrl[0] > 0 || raw.TireOnMtrl[1] > 0 ||
+             raw.TireOnMtrl[2] > 0 || raw.TireOnMtrl[3] > 0);
+        if (mtrlAvailable)
+        {
+            bool wheelOnRumbleStrip = raw.TireOnMtrl![0] == 5 || raw.TireOnMtrl![1] == 5 ||
+                                      raw.TireOnMtrl![2] == 5 || raw.TireOnMtrl![3] == 5;
+            if (wheelOnRumbleStrip)
+                _kerbLatchUntilTicks = Stopwatch.GetTimestamp() + KerbLatchTicks;
+            if (Stopwatch.GetTimestamp() <= _kerbLatchUntilTicks)
+                rawKerb = raw.KerbVibration;
+        }
+        else if (raw.KerbVibration >= 0.02f)
+        {
+            rawKerb = raw.KerbVibration;
+        }
         float kerbVib = rawKerb * vibrationMixer.KerbGain;
 
         float lfeOut = MathF.Abs(lfeGenerator.LfeOutput);
@@ -353,6 +382,7 @@ public sealed class R3eHf8SignalMapper : Hf8SignalMapper
         base.Reset();
         _rumblePhase = 0f;
         _slipPhase = 0f;
+        _kerbLatchUntilTicks = 0;
     }
 }
 

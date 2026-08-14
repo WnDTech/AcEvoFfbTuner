@@ -114,6 +114,26 @@ public sealed class FanatecProvider : IFFBProvider
         return true;
     }
 
+    /// <summary>Start the FullForce sample stream. The SDK interface is set up
+    /// (rate + buffer) during Initialize, but FSFfSamplePlayStart1 — which
+    /// actually starts the stream — only ran inside EnableFullForce(true), and
+    /// nothing ever called it, so the stream never started and "FullForce
+    /// Active" was just the init probe succeeding. Engaged lazily with the
+    /// telemetry loop, mirroring the TrueForce stream's standby design.</summary>
+    public bool Engage()
+    {
+        if (IsInitialized)
+            EnableFullForce(true);
+        return IsInitialized;
+    }
+
+    /// <summary>Stop the FullForce sample stream when the loop stops — the
+    /// wheel falls back to its own FFB path while the app is idle.</summary>
+    public void Disengage()
+    {
+        EnableFullForce(false);
+    }
+
     public void UpdateTorque(float signal)
     {
         if (!IsAvailable) return;

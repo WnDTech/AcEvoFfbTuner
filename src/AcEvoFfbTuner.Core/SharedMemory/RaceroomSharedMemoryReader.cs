@@ -20,6 +20,13 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
     private int _suspVelocityZeroFrames;
     private bool _suspVelocityValid;
 
+    /// <summary>Kerb surface latch: window (ticks) after the last non-tarmac
+    /// frame during which the kerb channel stays live, so strike tails remain
+    /// audible and TireOnMtrl flicker between reads is ignored.</summary>
+    private const long KerbSurfaceLatchTicks = 150L * TimeSpan.TicksPerMillisecond;
+    private long _kerbSurfaceLatchUntilTicks;
+    private bool _mtrlSeenNonZero;
+
     public float SteeringCenterTrimDeg { get; set; } = 0.0f;
 
     public bool IsConnected => _mmf != null;
@@ -92,6 +99,8 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
             _lastTicks = -1;
             _suspVelocityZeroFrames = 0;
             _suspVelocityValid = false;
+            _kerbSurfaceLatchUntilTicks = 0;
+            _mtrlSeenNonZero = false;
             Array.Clear(_prevTireSpeed);
             Array.Clear(_prevSuspensionDeflection);
             GameConnected?.Invoke();
@@ -544,8 +553,39 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
         return Math.Min(maxDelta * 2f, 1f);
     }
 
+    /// <summary>
+    /// True while any wheel is on a non-tarmac surface (TireOnMtrl: 1=tarmac,
+    /// 2=grass, 3=dirt, 4=gravel, 5=rumble strip, 6=concrete) or within the
+    /// post-strike latch window.
+    ///
+    /// R3E's kerb channel is synthesised from suspension velocity, which the
+    /// game ALSO populates with smooth-tarmac noise (~0.013-0.047 m/s at
+    /// speed — verified in 2026-08-14 logs). Without a surface gate the
+    /// "kerb" channel reads 0.04-0.14 constantly on tarmac, and after the
+    /// profile's KerbGain (7.1) it floods the wheel's main motor (TORQ vib
+    /// 0.84-0.97 on a straight) — the wheel buzzes and oscillates, corners
+    /// saturate at the clip, and slip detail is masked. Mirrors the
+    /// R3eHf8SignalMapper latch design: gated on the authoritative surface
+    /// material, with the tail kept alive after the last rough frame.
+    /// </summary>
+    private bool IsKerbSurfaceActive()
+    {
+        var t = _lastData.TireOnMtrl;
+        bool anyNonZero = t.FrontLeft != 0 || t.FrontRight != 0 || t.RearLeft != 0 || t.RearRight != 0;
+        if (anyNonZero) _mtrlSeenNonZero = true;
+
+        bool rough = t.FrontLeft >= 2 || t.FrontRight >= 2 || t.RearLeft >= 2 || t.RearRight >= 2;
+        if (rough)
+            _kerbSurfaceLatchUntilTicks = DateTime.UtcNow.Ticks + KerbSurfaceLatchTicks;
+
+        // TireOnMtrl unpopulated on this build → fall back to ungated (legacy behavior).
+        return !_mtrlSeenNonZero || rough || DateTime.UtcNow.Ticks < _kerbSurfaceLatchUntilTicks;
+    }
+
     private float SynthesizeKerbVibration()
     {
+        if (!IsKerbSurfaceActive()) return 0f;
+
         double[] currentDeflection = {
             _lastData.Player.SuspensionDeflection.FrontLeft,
             _lastData.Player.SuspensionDeflection.FrontRight,
@@ -609,6 +649,8 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
     /// </summary>
     private float SynthesizeKerbVibrationSide(bool left)
     {
+        if (!IsKerbSurfaceActive()) return 0f;
+
         float v1 = left
             ? Math.Abs((float)_lastData.Player.SuspensionVelocity.FrontLeft)
             : Math.Abs((float)_lastData.Player.SuspensionVelocity.FrontRight);
