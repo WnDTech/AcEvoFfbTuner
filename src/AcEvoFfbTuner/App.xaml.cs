@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
+using AcEvoFfbTuner.Core.FfbProviders;
 using AcEvoFfbTuner.Services;
 using AcEvoFfbTuner.ViewModels;
 using AcEvoFfbTuner.Views;
@@ -115,6 +116,16 @@ public partial class App : Application
             {
                 Marshal.FreeHGlobal(exInfoPtr);
             }
+        }
+        catch { }
+
+        // Best-effort TrueForce session-end handshake (init packets 67/68)
+        // BEFORE WER terminates the process — a crash while the stream is
+        // engaged otherwise latches the wheel's TrueForce engine (next
+        // session opens but never streams, power cycle required).
+        try
+        {
+            LogitechTrueForceProvider.EmergencyTeardown();
         }
         catch { }
 
@@ -353,6 +364,7 @@ public partial class App : Application
         try
         {
             WriteCrashLog("DispatcherUnhandled", e.Exception);
+            LogitechTrueForceProvider.EmergencyTeardown();
         }
         catch { }
         e.Handled = true;
@@ -361,8 +373,13 @@ public partial class App : Application
 
     private void OnDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
     {
-        if (e.ExceptionObject is Exception ex)
-            WriteCrashLog("AppDomainUnhandled", ex);
+        try
+        {
+            if (e.ExceptionObject is Exception ex)
+                WriteCrashLog("AppDomainUnhandled", ex);
+            LogitechTrueForceProvider.EmergencyTeardown();
+        }
+        catch { }
     }
 
     private static void WriteCrashLog(string source, Exception ex)
@@ -411,6 +428,7 @@ public partial class App : Application
             try { MessageBox.Show(msg, "AcEvoFfbTuner — Fatal Error", MessageBoxButton.OK, MessageBoxImage.Error); } catch { }
         }
         catch { }
+        try { LogitechTrueForceProvider.EmergencyTeardown(); } catch { }
         try { Application.Current?.Shutdown(1); } catch { }
         try { Environment.Exit(1); } catch { }
     }

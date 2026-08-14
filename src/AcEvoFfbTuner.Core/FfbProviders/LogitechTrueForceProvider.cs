@@ -62,9 +62,12 @@ namespace AcEvoFfbTuner.Core.FfbProviders;
 /// degrees and is rewritten with the wheel's actual rotation so the init
 /// never resets the range (the 90°/2700° reset bug).
 ///
-/// Stream pump: 1 kHz thread (timeBeginPeriod(1), Highest priority).
+/// Stream pump: 250 Hz thread (timeBeginPeriod(1), Highest priority).
 /// Set-and-hold: the wheel holds the last "cur" indefinitely, so pausing
-/// the stream for HID++ settings reads is safe.
+/// the stream for HID++ settings reads is safe. At zero force the pump
+/// writes neutral once and then goes fully silent (no keepalive) — the
+/// armed engine survives total silence and resumes instantly (mescon,
+/// issue #62), and the amplifier stays quiet when idle.
 ///
 /// Sign convention: verified by TF4ALL on real hardware — the game-FFB
 /// channel (HID++ 0x8123 / DI) and ep3 "cur" use OPPOSITE signs, so the
@@ -142,9 +145,17 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
     private long _packetsFailed;
     private int _consecutiveFails;
     private float _smoothedLsb;
-    private bool _idleThrottled;
-    private long _lastIdleKeepaliveMs;
+    private bool _idleNeutralWritten;
     private bool _hapticsNoted;
+
+    /// <summary>The provider currently holding an open TrueForce stream handle,
+    /// or null. The process-wide crash handlers (native exception filter,
+    /// AppDomain) call <see cref="EmergencyTeardown"/> before the process dies
+    /// so a crash while streaming still delivers the session-end handshake
+    /// (packets 67/68) to the wheel — without it the TrueForce engine stays
+    /// latched: the next session opens OK but never streams, and only a power
+    /// cycle revives the wheel (mescon's finding, issue #62).</summary>
+    public static LogitechTrueForceProvider? CrashGuard { get; private set; }
 
     public LogitechTrueForceProvider()
     {
@@ -312,6 +323,66 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
         }
     }
 
+    /// <summary>Best-effort session-end handshake from a crash path. Called by
+    /// the process-wide crash handlers (native exception filter / AppDomain)
+    /// BEFORE the process dies, so an abnormal exit while streaming still
+    /// sends the 67+68 teardown pair and the wheel is released back to its
+    /// normal FFB path instead of latching the TrueForce engine (issue #62:
+    /// a latched engine opens the next session fine but never streams —
+    /// power cycle required). Runs on a bounded background thread so a
+    /// wedged device cannot hang the crash handler itself.</summary>
+    public static void EmergencyTeardown()
+    {
+        var guard = CrashGuard;
+        if (guard == null) return;
+        try
+        {
+            var t = new Thread(guard.WriteEmergencyTeardown)
+            {
+                IsBackground = true,
+                Name = "TFEmergencyTeardown"
+            };
+            t.Start();
+            if (!t.Join(2000))
+                guard.Log("EmergencyTeardown: timed out after 2 s — wheel may be wedged, giving up");
+        }
+        catch (Exception ex)
+        {
+            guard.Log($"EmergencyTeardown: threw — {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    /// <summary>Raw teardown writes on the live stream handle, safe to run
+    /// from any thread: uses local buffers only (never the pump's shared
+    /// packet buffer or seq counter) and the HID stack serializes concurrent
+    /// writes with the pump. Same contract as <see cref="WriteTeardown"/> —
+    /// neutral, init packet #67 (type 0x04), ~2 ms, packet #68 (type 0x03),
+    /// neutral.</summary>
+    private void WriteEmergencyTeardown()
+    {
+        if (_handle == InvalidHandle) return;
+        try
+        {
+            byte[] neutral = new byte[PacketLen];
+            neutral[0] = 0x01;
+            neutral[4] = 0x01;
+            neutral[6] = 0x00; neutral[7] = 0x80;
+            neutral[8] = 0x00; neutral[9] = 0x80;
+            WriteFile(_handle, neutral, PacketLen, out _, IntPtr.Zero);
+
+            foreach (int idx in new[] { 66, 67 })
+            {
+                byte[] pkt = (byte[])InitPackets[idx].Clone();
+                pkt[SeqOffset] = (byte)((idx + 1) & 0xFF);
+                WriteFile(_handle, pkt, PacketLen, out _, IntPtr.Zero);
+                Thread.Sleep(2);
+            }
+
+            WriteFile(_handle, neutral, PacketLen, out _, IntPtr.Zero);
+        }
+        catch { }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -410,6 +481,7 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
         _smoothedLsb = 0f;
         _paused = false;
         _running = true;
+        CrashGuard = this;
         _pumpThread = new Thread(PumpLoop)
         {
             Name = "LogitechTrueForceStream",
@@ -594,34 +666,27 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
         if (ForceInvert) target = -target;
         if (ForceScale != 1.0f) target *= ForceScale;
 
-        // ── Zero-force idle throttle ────────────────────────────────────────
-        // While no force is commanded the wheel holds the last packet
-        // (set-and-hold — the session never expires on its own; the teardown
-        // handshake exists precisely because it doesn't). A continuous neutral
-        // stream makes the TrueForce amplifier dither the motor audibly even
-        // at 0% ("beeee"/crunching on the user's RS50). Instead: write neutral
-        // once, then a keepalive every 250 ms — the amplifier stays quiet and
-        // the session stays engaged for instant force resumption.
+        // ── Zero-force idle: total host silence ──────────────────────────
+        // The wheel holds the last packet (set-and-hold), so at 0% force we
+        // write neutral exactly once and then send NOTHING until force
+        // returns. A continuous neutral stream makes the TrueForce amplifier
+        // dither the motor audibly even at 0% ("beeee"/crunching on the
+        // user's RS50), and G HUB never streams when idle. No keepalive is
+        // needed: mescon's hardware testing (issue #62) left an armed engine
+        // in total silence for 2.5 minutes and the first force packet applied
+        // instantly — no re-init, no ramp. The session idle-revert only
+        // affects the 0x0e range override, not the armed engine.
         if (Math.Abs(target) < 0.001f)
         {
-            if (!_idleThrottled)
+            if (!_idleNeutralWritten)
             {
-                _idleThrottled = true;
+                _idleNeutralWritten = true;
                 _smoothedLsb = 0f;
                 WriteNeutralPacket();
             }
-            else
-            {
-                long nowMs = Environment.TickCount64;
-                if (nowMs - _lastIdleKeepaliveMs >= 250)
-                {
-                    _lastIdleKeepaliveMs = nowMs;
-                    WriteNeutralPacket();
-                }
-            }
             return;
         }
-        _idleThrottled = false;
+        _idleNeutralWritten = false;
 
         int t = (int)Math.Round(target * 32767f);
         t = Math.Clamp(t, -32768, 32767);
@@ -714,6 +779,8 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
             CloseHandle(_handle);
             _handle = InvalidHandle;
         }
+        if (ReferenceEquals(CrashGuard, this))
+            CrashGuard = null;
         Log("StopStream: done");
     }
 

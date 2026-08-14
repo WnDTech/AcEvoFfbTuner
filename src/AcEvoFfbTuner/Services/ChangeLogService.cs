@@ -50,6 +50,21 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.0",
+            Date = new DateTime(2026, 8, 14),
+            Title = "TrueForce session can no longer be left latched on the wheel — crash-safe teardown + full silence at zero force",
+            Fixes =
+            [
+                "If the app died while the TrueForce stream was active (native crash, unhandled exception), the wheel's TrueForce engine could stay latched: the next session opened fine but never streamed force, and only a power cycle revived it (confirmed on hardware by mescon's driver project, issue #62). The app now sends the session-end handshake (init packets 67+68) from every crash path — the native exception filter, the managed exception handlers and the fatal-error shutdown — before the process terminates, so the wheel is always released back to its normal FFB path",
+                "The zero-force keepalive is gone: at 0% force the pump writes neutral once and then sends nothing until force returns. mescon's hardware tests confirmed an armed TrueForce session survives total host silence (2.5 minutes tested) and the first force packet applies instantly with no re-init — so the stream is now completely silent when idle instead of dithering the amplifier every 250 ms",
+            ],
+            Improvements =
+            [
+                "The TrueForce provider now keeps a crash guard registered while the stream handle is open, so the teardown handshake only ever targets a live session (no stale writes after a clean close)",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.26.9",
             Date = new DateTime(2026, 8, 14),
             Title = "App re-licensed GPL-2.0 with full upstream attribution — TrueForce provider license compliance",
