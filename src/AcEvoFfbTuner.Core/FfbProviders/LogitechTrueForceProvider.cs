@@ -198,7 +198,12 @@ public sealed class LogitechTrueForceProvider : IFFBProvider
     /// conversion. 0.5 default: the TrueForce amplifier is stronger per-unit
     /// than the DI path, and full scale (1.0) was arm-ripping on the user's
     /// wheel at 35% test force.</summary>
-    public float ForceScale { get; set; } = 0.5f;
+    /// <summary>Final multiplier on the streamed force (0-1). The wheel's own
+    /// FFB strength (0x8136) caps the actual torque, so this scale was halving
+    /// an already capped signal — raised 0.5 → 0.8 so a wheel set to its 8 Nm
+    /// max delivers proportionate force (verified via user wheel setup data:
+    /// 5 Nm cap × 0.5 scale = ~0.3-0.6 Nm of actual torque, felt as nothing).</summary>
+    public float ForceScale { get; set; } = 0.8f;
 
     /// <summary>IIR low-pass time constant (ms) on the force target before
     /// it goes into "cur". 0 = none (sample-and-hold).</summary>

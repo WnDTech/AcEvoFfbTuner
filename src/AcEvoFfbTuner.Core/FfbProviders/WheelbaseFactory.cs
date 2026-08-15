@@ -154,6 +154,21 @@ public sealed class WheelbaseFactory
         return WheelbaseVendor.GenericDirectInput;
     }
 
+    /// <summary>True when the wheel is driven by the Logitech TrueForce HID
+    /// stream (RS50, G PRO, G923 — all present the 0xFFFD stream interface
+    /// the provider connects). These wheels get NO DirectInput FFB: the
+    /// stream overrides DI force anyway, and the DI exclusive acquire at
+    /// connect stole the wheel from the game (game FFB died instantly) and
+    /// raced the game's USB traffic into SharpDX crashes. The DI device is
+    /// then used input-only (non-exclusive). G29/G920/G27 are NOT included:
+    /// they have no stream interface and keep the full DirectInput path.</summary>
+    public static bool IsTrueForceStreamWheel(string productName)
+    {
+        if (string.IsNullOrEmpty(productName)) return false;
+        var n = productName.ToUpperInvariant();
+        return n.Contains("RS50") || n.Contains("G PRO") || n.Contains("GPRO") || n.Contains("G923");
+    }
+
     public static IFFBProvider CreateProvider(WheelbaseVendor vendor, FfbDeviceManager deviceManager)
     {
         Log($"Vendor: {vendor}");

@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using AcEvoFfbTuner.Core.FfbProviders;
 using DI = SharpDX.DirectInput;
 
 namespace AcEvoFfbTuner.Core.DirectInput;
@@ -32,6 +33,16 @@ public sealed class FfbDeviceManager : IDisposable
     /// access-violation crashes in SendPeriodicVibration on the RS50. Monitor
     /// re-entry makes nested locks (send → destroy fallbacks) safe.</summary>
     private readonly object _effectLock = new();
+    /// <summary>Set automatically per connect for TrueForce-stream wheels
+    /// (RS50, G PRO, G923). When true, the DI device is acquired
+    /// NON-exclusively and used for input only: no FFB effects, no
+    /// interpolation thread, no motor test. Force rides the TrueForce HID
+    /// stream, which overrides DI force anyway — while the exclusive acquire
+    /// stole the wheel from the game at connect (game FFB died instantly) and
+    /// raced the game's USB traffic into the SharpDX crashes. Non-exclusive
+    /// lets the game keep its force path untouched.</summary>
+    public bool InputOnlyMode { get; set; }
+
     private bool _isAcquired;
     private bool _secondaryAcquired;
     private int _maxForceMagnitude = 10000;
@@ -232,6 +243,7 @@ public sealed class FfbDeviceManager : IDisposable
 
     public bool AutoDetectForceDirection()
     {
+        if (InputOnlyMode) return false;
         string productName = ConnectedDevice?.ProductName ?? "";
         bool? staticFallback = DetectForceInversionKnown(productName);
 
@@ -270,7 +282,10 @@ public sealed class FfbDeviceManager : IDisposable
             // Measure the MAXIMUM deflection during a longer 400ms pulse — a DD
             // motor takes time to visibly move, and a 100ms single sample was
             // unreliable (missed movement, especially with a lightly held wheel).
-            float pulseDelta = MeasureMaxDeflection(0.12f, 400);
+            // Pulse forces kept gentle: the detection only needs a small,
+            // measurable nudge — a strong connect-time yank startled users and
+            // fought the game when it was already holding the wheel.
+            float pulseDelta = MeasureMaxDeflection(0.06f, 400);
             if (float.IsNaN(pulseDelta))
             {
                 bool fallback = staticFallback ?? false;
@@ -285,11 +300,12 @@ public sealed class FfbDeviceManager : IDisposable
 
             const float minDelta = 20f;
 
-            // A weak 12% pulse can be fully masked when the user holds the wheel —
-            // retry once at 40% force before falling back to the static database.
+            // A weak pulse can be fully masked when the user holds the wheel —
+            // retry once at a still-gentle 15% before falling back to the
+            // static database (was 40% — far too strong on connect).
             if (Math.Abs(delta) < minDelta)
             {
-                float strongDelta = MeasureMaxDeflection(0.4f, 400);
+                float strongDelta = MeasureMaxDeflection(0.15f, 400);
                 ConnLog($"AutoDetect: strong retry maxDeflection={strongDelta:F0}");
 
                 if (!float.IsNaN(strongDelta) && Math.Abs(strongDelta) >= minDelta)
@@ -434,6 +450,8 @@ public sealed class FfbDeviceManager : IDisposable
         ConnLog($"WindowHandle: 0x{_windowHandle.ToInt64():X8} IsZero={_windowHandle == IntPtr.Zero}");
         ConnLog($"Primary acquired: {_isAcquired}, Secondary acquired: {_secondaryAcquired}");
         ConnLog($"DirectInput instance: {_directInput != null}, Device: {_device != null}");
+        InputOnlyMode = WheelbaseFactory.IsTrueForceStreamWheel(deviceInfo.ProductName);
+        ConnLog($"InputOnlyMode: {InputOnlyMode} — TrueForce-stream wheel: force rides the HID stream, DI acquired input-only (non-exclusive, no effects)");
 
         DisconnectDevice();
         DisconnectSecondaryDevice();
@@ -477,16 +495,24 @@ public sealed class FfbDeviceManager : IDisposable
             {
                 ConnLog("Creating Joystick...");
                 _device = new DI.Joystick(_directInput!, deviceInfo.DeviceInstance.InstanceGuid);
-                ConnLog("Joystick created OK. Setting cooperative level Exclusive|Background...");
-                _device.SetCooperativeLevel(handle, DI.CooperativeLevel.Exclusive | DI.CooperativeLevel.Background);
-                ConnLog("Cooperative level set. Acquiring...");
+                ConnLog(InputOnlyMode
+                    ? "Joystick created OK. Setting cooperative level NonExclusive|Background (input only)..."
+                    : "Joystick created OK. Setting cooperative level Exclusive|Background...");
+                _device.SetCooperativeLevel(handle,
+                    InputOnlyMode
+                        ? DI.CooperativeLevel.Background | DI.CooperativeLevel.NonExclusive
+                        : DI.CooperativeLevel.Exclusive | DI.CooperativeLevel.Background);
+                ConnLog(InputOnlyMode ? "Cooperative level set. Acquiring (non-exclusive)..." : "Cooperative level set. Acquiring...");
                 _device.Acquire();
                 _isAcquired = true;
                 ResetAxisDetection();
-                ConnLog("EXCLUSIVE ACQUIRED SUCCESSFULLY");
+                ConnLog(InputOnlyMode ? "ACQUIRED (input-only, non-exclusive — game keeps its force path)" : "EXCLUSIVE ACQUIRED SUCCESSFULLY");
 
-                DiscoverFfAxes();
-                ConnLog($"FFB axes: {string.Join(",", _ffAxes ?? Array.Empty<int>())}, Periodic: {SupportsPeriodicEffects}");
+                if (!InputOnlyMode)
+                {
+                    DiscoverFfAxes();
+                    ConnLog($"FFB axes: {string.Join(",", _ffAxes ?? Array.Empty<int>())}, Periodic: {SupportsPeriodicEffects}");
+                }
                 ConnectedDevice = deviceInfo;
 
                 ResetLostState();
@@ -494,11 +520,22 @@ public sealed class FfbDeviceManager : IDisposable
                 ReconnectAttemptCount = 0;
                 ConnLog("Lost state and reconnect counters reset after successful connect");
 
-                _invertForce = AutoDetectForceDirection();
-                AutoDetectedForceInvert = _invertForce;
-                ConnLog($"Auto-detected force direction for '{deviceInfo.ProductName}': invert={_invertForce}");
+                if (!InputOnlyMode)
+                {
+                    _invertForce = AutoDetectForceDirection();
+                    AutoDetectedForceInvert = _invertForce;
+                    ConnLog($"Auto-detected force direction for '{deviceInfo.ProductName}': invert={_invertForce}");
 
-                StartInterpolationThread();
+                    StartInterpolationThread();
+                }
+                else
+                {
+                    _invertForce = false;
+                    AutoDetectedForceInvert = false;
+                    SupportsPeriodicEffects = false;
+                    _ffAxes = null;
+                    ConnLog("Input-only mode: FFB effects/interpolation disabled — TrueForce stream provides force");
+                }
 
                 if (!_ledController.TryConnect(deviceInfo.ProductName))
                 {
@@ -693,6 +730,7 @@ public sealed class FfbDeviceManager : IDisposable
     /// </summary>
     public void SendConstantForce(float normalizedForce)
     {
+        if (InputOnlyMode) return;
         if (float.IsNaN(normalizedForce)) normalizedForce = 0f;
         _targetForce = Math.Clamp(normalizedForce, -1f, 1f);
         System.Threading.Interlocked.Exchange(ref _lastTargetUpdateTicks, System.Diagnostics.Stopwatch.GetTimestamp());
@@ -707,6 +745,7 @@ public sealed class FfbDeviceManager : IDisposable
     /// </summary>
     public void SetTargetVibration(float intensity)
     {
+        if (InputOnlyMode) return;
         _targetVibration = Math.Clamp(intensity, 0f, 1f);
     }
 
@@ -716,6 +755,7 @@ public sealed class FfbDeviceManager : IDisposable
     /// </summary>
     private void SendConstantForceDirect(float normalizedForce)
     {
+        if (InputOnlyMode) return;
         if (_device == null || !_isAcquired) return;
         if (float.IsNaN(normalizedForce)) normalizedForce = 0f;
 
@@ -930,7 +970,7 @@ public sealed class FfbDeviceManager : IDisposable
 
     public void SendPeriodicVibration(float intensity, int frequency = 80)
     {
-        if (float.IsNaN(intensity)) intensity = 0f;
+        if (InputOnlyMode) return;
         if (_device == null || !_isAcquired || intensity < 0.001f)
         {
             StopVibration();
@@ -1425,6 +1465,7 @@ public sealed class FfbDeviceManager : IDisposable
 
     public void StopVibration()
     {
+        if (InputOnlyMode) return;
         DestroyPeriodicEffect();
         _periodicEffectPlaying = false;
         _lastPeriodicMagnitude = int.MinValue;

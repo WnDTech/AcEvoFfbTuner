@@ -2,7 +2,9 @@ using System.Diagnostics.Eventing.Reader;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
+using Microsoft.Win32;
 
 namespace AcEvoFfbTuner.Services;
 
@@ -81,7 +83,7 @@ public sealed class DiagnosticPackService
         }
     }
 
-    public static async Task<(bool Success, string Message, string? ReportId)> SendAsync(string feedback, IProgress<string>? progress = null)
+    public static async Task<(bool Success, string Message, string? ReportId)> SendAsync(string feedback, IProgress<string>? progress = null, string? wheelSetupSummary = null)
     {
         var reportId = NewReportId();
         try
@@ -99,6 +101,7 @@ public sealed class DiagnosticPackService
                 AddDirectoryToZip(zip, Path.Combine(BaseDir, "snapshots"), "snapshots", progress);
                 AddRecordingManifestToZip(zip, progress);
                 AddLogFilesToZip(zip, progress);
+                AddWheelbaseSetupToZip(zip, wheelSetupSummary, progress);
             }
 
             string? videoLink = null;
@@ -398,6 +401,160 @@ public sealed class DiagnosticPackService
                 using var dest = entry.Open();
                 source.CopyTo(dest);
                 progress?.Report($"Added: {entryName}");
+            }
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Wheelbase setup collector: the wheel's own HID++ settings readback
+    /// (passed in from the connected provider), the Logitech USB device tree,
+    /// the Logitech software install state (G HUB / wheel SDK bridge), and a
+    /// bounded copy of G HUB/LGS data files. This is what answers "what is
+    /// the user's wheel actually configured to" without asking them to find
+    /// files manually.
+    /// </summary>
+    private static void AddWheelbaseSetupToZip(ZipArchive zip, string? wheelSetupSummary, IProgress<string>? progress)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(wheelSetupSummary))
+            {
+                var entry = zip.CreateEntry("WheelbaseSetup/wheel_settings.txt", CompressionLevel.Optimal);
+                using (var sw = new StreamWriter(entry.Open()))
+                {
+                    sw.WriteLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                    sw.WriteLine("Wheel settings read back from the wheel itself via HID++");
+                    sw.WriteLine("(strength 0x8136, profile/mode 0x8137, rotation 0x8138,");
+                    sw.WriteLine(" TrueForce level 0x8139, damping 0x8133):");
+                    sw.WriteLine();
+                    sw.WriteLine(wheelSetupSummary);
+                }
+            }
+
+            var deviceSb = new StringBuilder();
+            deviceSb.AppendLine("=== Logitech USB devices (VID_046D) from the Windows device tree ===");
+            deviceSb.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            try
+            {
+                using var usb = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Enum\USB");
+                if (usb == null)
+                {
+                    deviceSb.AppendLine("(device tree not accessible)");
+                }
+                else
+                {
+                    foreach (var sub in usb.GetSubKeyNames()
+                                 .Where(n => n.StartsWith("VID_046D", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        using var devKey = usb.OpenSubKey(sub);
+                        if (devKey == null) continue;
+                        deviceSb.AppendLine();
+                        deviceSb.AppendLine($"[{sub}]");
+                        deviceSb.AppendLine($"  DeviceDesc:   {devKey.GetValue("DeviceDesc") as string}");
+                        deviceSb.AppendLine($"  FriendlyName: {devKey.GetValue("FriendlyName") as string}");
+                        deviceSb.AppendLine($"  Mfg:          {devKey.GetValue("Mfg") as string}");
+                        deviceSb.AppendLine($"  Service:      {devKey.GetValue("Service") as string}");
+                        try
+                        {
+                            if (devKey.GetValue("HardwareID") is string[] hw)
+                                deviceSb.AppendLine($"  HardwareIDs:  {string.Join("; ", hw)}");
+                        }
+                        catch { }
+                        foreach (var child in devKey.GetSubKeyNames())
+                        {
+                            using var childKey = devKey.OpenSubKey(child);
+                            if (childKey == null) continue;
+                            deviceSb.AppendLine($"  [{child}]");
+                            deviceSb.AppendLine($"    DeviceDesc:   {childKey.GetValue("DeviceDesc") as string}");
+                            deviceSb.AppendLine($"    FriendlyName: {childKey.GetValue("FriendlyName") as string}");
+                            deviceSb.AppendLine($"    Service:      {childKey.GetValue("Service") as string}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) { deviceSb.AppendLine($"ERROR: {ex.Message}"); }
+
+            var devEntry = zip.CreateEntry("WheelbaseSetup/logitech_devices.txt", CompressionLevel.Optimal);
+            using (var sw = new StreamWriter(devEntry.Open())) sw.Write(deviceSb.ToString());
+
+            var regSb = new StringBuilder();
+            regSb.AppendLine("=== Logitech software / G HUB install state ===");
+            regSb.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            try
+            {
+                using var logi = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Logitech");
+                if (logi != null)
+                    foreach (var name in logi.GetSubKeyNames())
+                        regSb.AppendLine($"HKLM\\SOFTWARE\\Logitech\\{name}");
+                else
+                    regSb.AppendLine("HKLM\\SOFTWARE\\Logitech: not present (Logitech software not installed)");
+            }
+            catch (Exception ex) { regSb.AppendLine($"ERROR: {ex.Message}"); }
+            try
+            {
+                foreach (var root in new[] { @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall" })
+                {
+                    using var uninstall = Registry.LocalMachine.OpenSubKey(root);
+                    if (uninstall == null) continue;
+                    foreach (var name in uninstall.GetSubKeyNames())
+                    {
+                        using var app = uninstall.OpenSubKey(name);
+                        string? disp = app?.GetValue("DisplayName") as string;
+                        if (string.IsNullOrEmpty(disp) || !disp.Contains("ogitech", StringComparison.OrdinalIgnoreCase)) continue;
+                        regSb.AppendLine($"Installed: {disp} — {app?.GetValue("DisplayVersion")} ({app?.GetValue("Publisher")})");
+                    }
+                }
+            }
+            catch (Exception ex) { regSb.AppendLine($"ERROR: {ex.Message}"); }
+            try
+            {
+                const string clsid = @"CLSID\{63BD165D-1584-4E75-AB56-08330350545F}";
+                using var clsidKey = Registry.ClassesRoot.OpenSubKey(clsid);
+                regSb.AppendLine(clsidKey != null
+                    ? $"Wheel SDK bridge CLSID: {clsidKey.GetValue(null) as string}"
+                    : "Wheel SDK bridge CLSID: not registered (no Logitech software installed)");
+                using var bin = Registry.ClassesRoot.OpenSubKey(clsid + @"\ServerBinary");
+                regSb.AppendLine(bin != null ? $"Wheel SDK bridge DLL: {bin.GetValue(null)}" : "Wheel SDK bridge DLL: (none)");
+            }
+            catch (Exception ex) { regSb.AppendLine($"ERROR: {ex.Message}"); }
+
+            var regEntry = zip.CreateEntry("WheelbaseSetup/logitech_registry.txt", CompressionLevel.Optimal);
+            using (var sw = new StreamWriter(regEntry.Open())) sw.Write(regSb.ToString());
+
+            AddGhubDataToZip(zip, @"%ProgramData%\LGHUB", "WheelbaseSetup/ghub/ProgramData_LGHUB", progress);
+            AddGhubDataToZip(zip, @"%LOCALAPPDATA%\LGHUB", "WheelbaseSetup/ghub/LocalAppData_LGHUB", progress);
+            AddGhubDataToZip(zip, @"%ProgramData%\LogiShrd", "WheelbaseSetup/ghub/ProgramData_LogiShrd", progress);
+        }
+        catch { }
+    }
+
+    /// <summary>Bounded copy of a G HUB/LGS data folder: newest files first,
+    /// max ~2 MB per file, ~6 MB per folder, top level only (settings JSONs
+    /// and logs live there; nested folders are not needed).</summary>
+    private static void AddGhubDataToZip(ZipArchive zip, string folder, string entryPrefix, IProgress<string>? progress)
+    {
+        try
+        {
+            var path = Environment.ExpandEnvironmentVariables(folder);
+            if (!Directory.Exists(path)) return;
+
+            long budget = 6L * 1024 * 1024;
+            foreach (var file in Directory.GetFiles(path)
+                         .OrderByDescending(f => new FileInfo(f).LastWriteTime))
+            {
+                try
+                {
+                    var fi = new FileInfo(file);
+                    if (fi.Length > 2L * 1024 * 1024) continue;
+                    if (budget <= 0) break;
+                    var entry = zip.CreateEntry($"{entryPrefix}/{fi.Name}", CompressionLevel.Optimal);
+                    using var src = fi.OpenRead();
+                    using var dst = entry.Open();
+                    src.CopyTo(dst);
+                    budget -= fi.Length;
+                }
+                catch { }
             }
         }
         catch { }

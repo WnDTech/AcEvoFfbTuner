@@ -892,7 +892,14 @@ public sealed partial class MainViewModel
                 WriteDiagLog("PROGRESS", msg);
             });
             WriteDiagLog("STEP", "Calling DiagnosticPackService.SendAsync...");
-            var (success, message, reportId) = await DiagnosticPackService.SendAsync(dialog.Feedback, progress);
+            string? wheelSetupSummary = null;
+            try
+            {
+                if (_logitechHidpp?.IsConnected == true)
+                    wheelSetupSummary = _logitechHidpp.DiagnosticSummary;
+            }
+            catch { }
+            var (success, message, reportId) = await DiagnosticPackService.SendAsync(dialog.Feedback, progress, wheelSetupSummary);
             StatusText = message;
             WriteDiagLog("RESULT", $"Success={success}, Message={message}");
 

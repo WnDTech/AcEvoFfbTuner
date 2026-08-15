@@ -50,6 +50,22 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.4",
+            Date = new DateTime(2026, 8, 15),
+            Title = "Gentler connect, no wheel-stealing at launch, stronger TrueForce stream + wheel setup collection in diag packs",
+            Fixes =
+            [
+                "The connect-time force-direction test no longer yanks the wheel: the initial pulse is 12% → 6% and the strong retry 40% → 15% of full force",
+                "TrueForce wheels (RS50, G PRO, G923) no longer grab the wheel exclusively through DirectInput at connect — that exclusive steal instantly killed the game's FFB and raced the game's USB traffic into the startup crashes. These wheels now connect input-only (non-exclusive acquire, no motor test, no DI effects or interpolation thread); force rides the TrueForce stream exactly as before, and the game keeps its force path untouched",
+            ],
+            Improvements =
+            [
+                "TrueForce stream force scale raised 0.5 → 0.8: the stream was halving an already wheel-capped signal — a wheel set to 5 of 8 Nm strength with the 0.5 scale delivered ~0.3-0.6 Nm of actual torque, which is felt as nothing. With the wheel's own strength at its 8 Nm max, the streamed force is now proportionate",
+                "Diagnostic packs now include a WheelbaseSetup section: the wheel's own HID++ settings readback (strength, rotation, mode, TrueForce level, damping), the Logitech USB device tree, G HUB install state and a bounded copy of G HUB data — so users never have to hunt for files when reporting setup issues",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.3",
             Date = new DateTime(2026, 8, 15),
             Title = "WER crash-dump setup moved into the installer + app self-heal with confirmation logging",
