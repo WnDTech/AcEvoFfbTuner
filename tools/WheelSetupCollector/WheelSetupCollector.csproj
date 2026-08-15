@@ -10,6 +10,11 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
+    <!-- WinForms/WPF native DLLs (PresentationNative, wpfgfx, D3DCompiler...) are
+         excluded from the single-file bundle by default and must sit next to the
+         exe — force them into the bundle so the exe is truly standalone. -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <PublishTrimmed>false</PublishTrimmed>
     <InvariantGlobalization>true</InvariantGlobalization>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
