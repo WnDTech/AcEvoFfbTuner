@@ -903,12 +903,6 @@ public sealed partial class MainViewModel
             StatusText = message;
             WriteDiagLog("RESULT", $"Success={success}, Message={message}");
 
-            if (success && reportId != null)
-            {
-                _feedbackPollTimer.Start();
-                _ = PollFeedbackRepliesAsync();
-            }
-
             if (!success)
             {
                 DiagnosticPackStatus = "Failed";
@@ -936,55 +930,6 @@ public sealed partial class MainViewModel
     {
         return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "AcEvoFfbTuner", "diag_send.log");
-    }
-
-    private async Task PollFeedbackRepliesAsync()
-    {
-        if (_feedbackPolling) return;
-        _feedbackPolling = true;
-        try
-        {
-            if (FeedbackRelayService.GetActiveReports().Count == 0)
-            {
-                _feedbackPollTimer.Stop();
-                return;
-            }
-
-            var replies = await FeedbackRelayService.PollForRepliesAsync();
-            if (replies.Count > 10) replies = replies[^10..];
-            foreach (var (reportId, msg) in replies)
-            {
-                Application.Current?.Dispatcher.Invoke(() =>
-                {
-                    if (Application.Current.MainWindow is not Views.MainWindow mw) return;
-                    var preview = msg.Content.Replace("\r", " ").Replace("\n", " ").Trim();
-                    if (preview.Length > 140) preview = preview[..140] + "…";
-                    if (msg.IsFix)
-                    {
-                        mw.ShowToast($"Fix available — Report {reportId}", preview, 8000);
-                        _ = CheckForUpdatesAsync();
-                    }
-                    else
-                    {
-                        mw.ShowToast($"Support reply — Report {reportId}", preview, 6000);
-                    }
-                });
-            }
-        }
-        catch { }
-        finally
-        {
-            _feedbackPolling = false;
-        }
-    }
-
-    [RelayCommand]
-    private void ShowFeedbackChat()
-    {
-        var mainWin = Application.Current?.MainWindow;
-        if (mainWin == null) return;
-        var dialog = new Views.FeedbackChatDialog { Owner = mainWin };
-        dialog.ShowDialog();
     }
 
     private static void WriteDiagLog(string category, string detail)

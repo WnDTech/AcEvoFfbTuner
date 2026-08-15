@@ -463,9 +463,6 @@
                             </ControlTemplate>
                         </Button.Template>
                     </Button>
-                    <Button Content="Chat" Command="{Binding ShowFeedbackChatCommand}" Cursor="Hand"
-                            Margin="0,0,8,0" Padding="12,6" FontSize="13" VerticalAlignment="Center"
-                            ToolTip="Check support replies for your diagnostic reports" />
                     <Button Command="{Binding SendDiagnosticPackCommand}" Cursor="Hand"
                             Margin="0,0,8,0" VerticalAlignment="Center"
                             ToolTip="Send diagnostic data to the developer">

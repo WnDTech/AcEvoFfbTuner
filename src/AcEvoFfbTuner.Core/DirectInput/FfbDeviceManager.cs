@@ -457,7 +457,8 @@ public sealed class FfbDeviceManager : IDisposable
         ConnLog($"WindowHandle: 0x{_windowHandle.ToInt64():X8} IsZero={_windowHandle == IntPtr.Zero}");
         ConnLog($"Primary acquired: {_isAcquired}, Secondary acquired: {_secondaryAcquired}");
         ConnLog($"DirectInput instance: {_directInput != null}, Device: {_device != null}");
-        InputOnlyMode = WheelbaseFactory.IsTrueForceStreamWheel(deviceInfo.ProductName);
+        InputOnlyMode = WheelbaseFactory.IsTrueForceStreamWheel(deviceInfo.ProductName)
+                        && !WheelbaseFactory.ForceDiForTrueForce;
         ConnLog($"InputOnlyMode: {InputOnlyMode} — TrueForce-stream wheel: force rides the HID stream, DI acquired input-only (non-exclusive, no effects)");
 
         DisconnectDevice();

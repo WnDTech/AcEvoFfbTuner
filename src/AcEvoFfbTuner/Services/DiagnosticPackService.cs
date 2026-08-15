@@ -126,12 +126,6 @@ public sealed class DiagnosticPackService
             try
             {
                 var (threadId, channelId, starterMessageId) = await PostToDiscordAsync(feedback, zipSizeMb, videoLink, reportId);
-                try
-                {
-                    await FeedbackRelayService.RegisterAsync(reportId, threadId, channelId,
-                        DiscordWebhookUrl, starterMessageId);
-                }
-                catch { }
                 try { File.Delete(zipPath); } catch { }
                 progress?.Report("Sent successfully!");
                 return (true, $"Diagnostic pack sent ({zipSizeMb:F1} MB) — Report ID: {reportId}", reportId);

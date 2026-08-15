@@ -32,7 +32,6 @@ public sealed class AppSettings
     public string? OpenAiApiKey { get; set; }
     public string OpenAiModel { get; set; } = "deepseek-v4-flash";
     public string AiBaseUrl { get; set; } = "https://opencode.ai/zen/go/v1";
-    public string FeedbackRelayUrl { get; set; } = "http://127.0.0.1:8090";
 
     // Profile Hub — used by Share-to-Hub and Browse-Hub features
     public string HubApiBaseUrl { get; set; } = "https://ffbtuner.wndtech.tips/api/hub.php";
@@ -68,6 +67,18 @@ public sealed class AppSettings
 
     /// <summary>OLED screen layout: 0 = Gear + Speed, 1 = Speed only.</summary>
     public int OledScreen { get; set; }
+
+    /// <summary>Experimental: drive TrueForce wheels (RS50/G PRO/G923) through
+    /// DirectInput force instead of the HID TrueForce stream — the stream never
+    /// engages, so no contention with the game's stream, and DI effects carry
+    /// the force. Applies at the next connect.</summary>
+    public bool LogitechDiForceMode { get; set; }
+
+    /// <summary>True once a Logitech wheel has connected on this machine — the
+    /// Logitech settings cards stay visible afterwards (with status text) so
+    /// the controls never vanish when the wheel is unplugged or the interface
+    /// is held by a game.</summary>
+    public bool LogitechEverConnected { get; set; }
 
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");

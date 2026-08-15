@@ -50,6 +50,21 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.14",
+            Date = new DateTime(2026, 8, 16),
+            Title = "Relay removed, DirectInput-force mode for TrueForce wheels, Logitech settings never disappear",
+            Fixes =
+            [
+                "Removed the local support-relay (two-way chat) entirely: it only ever ran on the developer's machine, and its connection attempts spammed every user log with 'Register exception' errors every minute. Diagnostic packs go to Discord directly as before",
+                "The Logitech wheel settings cards (FFB strength, rotation, profile slot, OLED screen, TrueForce stream) no longer disappear — once a Logitech wheel has ever connected on a machine, the cards stay visible with status text (the controls vanished before whenever the wheel was unplugged or a game held the settings interface, which looked like missing features)",
+            ],
+            Improvements =
+            [
+                "Experimental DirectInput-force mode for TrueForce wheels (RS50/G PRO/G923): a toggle on the TrueForce stream card routes force through DirectInput instead of the HID stream — the stream never engages, so there is no contention with the game's stream (the in-game dead-wheel + buzzing issue), and DI effects including haptics carry the force. Applies at the next connect",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.13",
             Date = new DateTime(2026, 8, 16),
             Title = "OLED frames now sent fire-and-forget — no more timeout stalls while the force stream is active",

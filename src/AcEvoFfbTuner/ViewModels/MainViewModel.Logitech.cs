@@ -212,10 +212,23 @@ public sealed partial class MainViewModel
     [ObservableProperty] private int _logitechRotationDegrees = 1080;
     [ObservableProperty] private int _logitechProfileSlot = -1;
 
+    /// <summary>Experimental: drive TrueForce wheels via DirectInput force
+    /// instead of the HID stream (no stream contention with the game). Applies
+    /// at the next connect.</summary>
+    [ObservableProperty] private bool _logitechDiForceMode;
+
     /// <summary>True while the connected wheel is a Logitech device — the
     /// wheel settings card stays visible even when the HID++ interface is
     /// unavailable (the game can hold it), so the controls never vanish.</summary>
     [ObservableProperty] private bool _logitechWheelDetected;
+
+    partial void OnLogitechWheelDetectedChanged(bool value)
+        => OnPropertyChanged(nameof(LogitechCardsVisible));
+
+    /// <summary>The Logitech cards are visible once a Logitech wheel has ever
+    /// connected on this machine (persisted) — so the settings never disappear
+    /// when the wheel is unplugged or a game holds the interface.</summary>
+    public bool LogitechCardsVisible => LogitechWheelDetected || _appSettings.LogitechEverConnected;
 
     /// <summary>Slot selector options: -1 = keep the wheel's current mode
     /// (default — never yanks the user out of their chosen slot), 0 = desktop
@@ -245,6 +258,11 @@ public sealed partial class MainViewModel
 
         LogitechHidppConnected = false;
         LogitechWheelDetected = true;
+        if (!_appSettings.LogitechEverConnected)
+        {
+            _appSettings.LogitechEverConnected = true;
+            _appSettings.Save();
+        }
         LogitechHidppStatus = "Connecting to wheel HID++ interface...";
         AddSystemLog($"Connecting Logitech HID++ settings interface for {productName}...");
 
@@ -475,6 +493,16 @@ public sealed partial class MainViewModel
         _appSettings.LogitechProfileSlot = value;
         _appSettings.Save();
         ApplyLogitechProfileSlot(value);
+    }
+
+    partial void OnLogitechDiForceModeChanged(bool value)
+    {
+        _appSettings.LogitechDiForceMode = value;
+        _appSettings.Save();
+        WheelbaseFactory.ForceDiForTrueForce = value;
+        AddSystemLog(value
+            ? "TrueForce stream disabled — force will go through DirectInput from the next connect"
+            : "TrueForce stream enabled — force via the HID stream from the next connect");
     }
 
     /// <summary>Switch the wheel to the user-chosen profile slot (-1 = keep

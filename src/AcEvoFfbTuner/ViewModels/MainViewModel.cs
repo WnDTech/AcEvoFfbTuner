@@ -1476,8 +1476,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public HubClient HubClient { get; }
 
     private readonly DispatcherTimer _uiUpdateTimer;
-    private readonly DispatcherTimer _feedbackPollTimer;
-    private bool _feedbackPolling;
     private bool _updateCheckRunning;
 
     public MainViewModel()
@@ -1683,9 +1681,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         _uiUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
         _uiUpdateTimer.Tick += OnUiUpdate;
-
-        _feedbackPollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
-        _feedbackPollTimer.Tick += async (_, _) => await PollFeedbackRepliesAsync();
 
         _voiceService.Enabled = _appSettings.VoiceEnabled;
         _voiceService.Volume = _appSettings.VoiceVolume;
@@ -3441,7 +3436,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _uiUpdateTimer.Stop();
-        _feedbackPollTimer.Stop();
         _voiceService.Dispose();
         _gameRecordingService.Dispose();
         _discordPresence.Dispose();

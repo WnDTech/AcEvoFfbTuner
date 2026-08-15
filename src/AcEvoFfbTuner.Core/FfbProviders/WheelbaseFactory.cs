@@ -169,14 +169,23 @@ public sealed class WheelbaseFactory
         return n.Contains("RS50") || n.Contains("G PRO") || n.Contains("GPRO") || n.Contains("G923");
     }
 
+    /// <summary>Experimental: force TrueForce wheels (RS50/G PRO/G923) onto the
+    /// DirectInput force path instead of the HID stream. Set from the app
+    /// settings (LogitechDiForceMode) — the stream never engages, so there is
+    /// no stream contention with the game, and DI effects (incl. haptics)
+    /// carry the force. Applies at the next connect.</summary>
+    public static bool ForceDiForTrueForce { get; set; }
+
     public static IFFBProvider CreateProvider(WheelbaseVendor vendor, FfbDeviceManager deviceManager)
     {
-        Log($"Vendor: {vendor}");
+        Log($"Vendor: {vendor}" + (ForceDiForTrueForce ? " (DI-force mode for TrueForce wheels)" : ""));
 
         return vendor switch
         {
             WheelbaseVendor.Simucube => new SimucubeProvider(),
-            WheelbaseVendor.Logitech => new LogitechTrueForceProvider(),
+            WheelbaseVendor.Logitech => ForceDiForTrueForce
+                ? new GenericDirectInputProvider(deviceManager)
+                : new LogitechTrueForceProvider(),
             WheelbaseVendor.Asetek => new AsetekProvider(),
             WheelbaseVendor.Fanatec => new FanatecProvider(deviceManager),
             WheelbaseVendor.VNM => new VnmProvider(),

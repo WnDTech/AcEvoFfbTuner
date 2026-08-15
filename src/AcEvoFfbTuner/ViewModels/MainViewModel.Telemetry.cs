@@ -756,12 +756,6 @@ public sealed partial class MainViewModel
 
         _ = CheckForUpdatesAsync();
         _ = EnsureFfmpegAsync();
-
-        if (FeedbackRelayService.GetActiveReports().Count > 0)
-        {
-            _feedbackPollTimer.Start();
-            _ = PollFeedbackRepliesAsync();
-        }
     }
 
     public void LoadAppSettings()
@@ -792,6 +786,11 @@ public sealed partial class MainViewModel
         RefreshVoices();
         _voiceInitialized = true;
         RefreshRecordingDevices();
+
+        // Experimental DI-force mode for TrueForce wheels — must be in place
+        // before any connect selects the provider.
+        LogitechDiForceMode = _appSettings.LogitechDiForceMode;
+        WheelbaseFactory.ForceDiForTrueForce = _appSettings.LogitechDiForceMode;
     }
 
     public void RestoreButtonSettings()
