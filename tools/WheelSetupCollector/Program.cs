@@ -80,6 +80,7 @@ try
     WriteEntry(zip, "info/system.txt", BuildSystemInfo());
     WriteEntry(zip, "info/logitech_devices.txt", BuildDeviceTreeInfo());
     WriteEntry(zip, "info/logitech_registry.txt", BuildRegistryInfo());
+    WriteEntry(zip, "info/running_processes.txt", BuildProcessInfo());
 
     Console.WriteLine($"Done. {found.Count} item(s) collected.");
     Console.WriteLine();
@@ -175,6 +176,51 @@ static void WriteBytesEntry(ZipArchive zip, string entryName, byte[] content)
     var entry = zip.CreateEntry(entryName, CompressionLevel.Optimal);
     using var dst = entry.Open();
     dst.Write(content, 0, content.Length);
+}
+
+static string BuildProcessInfo()
+{
+    var sb = new StringBuilder();
+    sb.AppendLine("=== Running processes / services (Logitech + wheel-related) ===");
+    sb.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+    sb.AppendLine("This answers: is G HUB (or its background service/agent) actually RUNNING?");
+    sb.AppendLine();
+    try
+    {
+        foreach (var p in Process.GetProcesses().OrderBy(p => p.ProcessName))
+        {
+            var n = p.ProcessName.ToLowerInvariant();
+            if (n.Contains("lghub") || n.Contains("logi") || n.Contains("lgs") || n.Contains("ghub")
+                || n.Contains("steering") || n.Contains("trueforce") || n.Contains("wheel"))
+            {
+                sb.AppendLine($"PROCESS: {p.ProcessName} (PID {p.Id})");
+            }
+        }
+    }
+    catch (Exception ex) { sb.AppendLine($"ERROR: {ex.Message}"); }
+    sb.AppendLine();
+    foreach (var svc in new[] { "LGHubService", "LogiGaming", "LogitechGaming", "lghub_agent", "LGCore" })
+    {
+        try
+        {
+            var psi = new ProcessStartInfo("sc.exe", $"query {svc}")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true
+            };
+            using var p = Process.Start(psi);
+            var outText = p?.StandardOutput.ReadToEnd() ?? "";
+            var state = string.Join(" | ", outText.Split('\n').Select(l => l.Trim())
+                .Where(l => l.StartsWith("STATE") || l.StartsWith("SERVICE_NAME")));
+            sb.AppendLine($"SERVICE {svc}: {(state.Length > 0 ? state : "(not present / query failed)")}");
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine($"SERVICE {svc}: ERROR {ex.Message}");
+        }
+    }
+    return sb.ToString();
 }
 
 static string BuildSystemInfo()
