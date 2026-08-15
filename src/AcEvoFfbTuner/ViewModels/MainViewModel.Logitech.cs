@@ -107,6 +107,9 @@ public sealed partial class MainViewModel
 
     partial void OnOledEnabledChanged(bool value)
     {
+        if (_logitechUiLoading) return;
+        _appSettings.OledEnabled = value;
+        _appSettings.Save();
         if (!value)
         {
             // HID++ calls must never run on the UI thread (up to 1 s timeouts
@@ -121,6 +124,13 @@ public sealed partial class MainViewModel
         AddSystemLog(value
             ? "Wheel OLED enabled (experimental — display writes over HID++ 0x8130)"
             : "Wheel OLED disabled — panel returned to its default screen");
+    }
+
+    partial void OnOledScreenChanged(int value)
+    {
+        if (_logitechUiLoading) return;
+        _appSettings.OledScreen = value;
+        _appSettings.Save();
     }
 
     private void UpdateOledStatus()
@@ -305,6 +315,8 @@ public sealed partial class MainViewModel
                     LogitechFfbStrengthNm = _appSettings.LogitechFfbStrengthNm;
                     LogitechRotationDegrees = _appSettings.LogitechRotationDegrees;
                     LogitechProfileSlot = _appSettings.LogitechProfileSlot;
+                    OledEnabled = _appSettings.OledEnabled;
+                    OledScreen = _appSettings.OledScreen;
                     _logitechUiLoading = false;
 
                     // The wheel's desktop profile loads DEFAULTS (5 Nm) unless a

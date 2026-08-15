@@ -62,6 +62,13 @@ public sealed class AppSettings
     /// wheel, persist across restarts).</summary>
     public int LogitechProfileSlot { get; set; } = -1;
 
+    /// <summary>Dynamic OLED (0x8130) screen enabled — the wheel's display
+    /// shows live telemetry (gear + speed). Persisted so it survives restarts.</summary>
+    public bool OledEnabled { get; set; }
+
+    /// <summary>OLED screen layout: 0 = Gear + Speed, 1 = Speed only.</summary>
+    public int OledScreen { get; set; }
+
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
 

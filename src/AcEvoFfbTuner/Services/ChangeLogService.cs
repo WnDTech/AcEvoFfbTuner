@@ -50,6 +50,18 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.12",
+            Date = new DateTime(2026, 8, 16),
+            Title = "Dynamic OLED screen control moved into the Logitech wheel settings + the setting persists",
+            Improvements =
+            [
+                "The wheel's Dynamic OLED (0x8130) live-telemetry screen is now controlled from the Logitech wheel settings card on the Devices page (Screen live checkbox + Gear+Speed / Speed-only layouts), where all other Logitech settings live — no more hunting for it",
+                "The OLED screen choice persists across app restarts",
+                "First real-hardware validation of the OLED frame format is now possible: enable Screen live (no game needed), press Start, and the wheel's display should show gear and speed (fn3 frames over HID++ 0x8130, 2 Hz pacing, distinct SW-ID)",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.11",
             Date = new DateTime(2026, 8, 16),
             Title = "The FFB strength slider now actually writes while the game is running",
