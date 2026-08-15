@@ -77,22 +77,48 @@ internal sealed class CollectorForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Segoe UI", 9.5f);
 
+        // App logo header + title-bar icon, so it's clearly part of the
+        // AC Evo FFB Tuner and not some random tool.
+        try
+        {
+            using var stream = System.Reflection.Assembly.GetExecutingAssembly()
+                .GetManifestResourceStream("WheelSetupCollector.Resources.app_icon.png");
+            if (stream != null)
+            {
+                var logo = new PictureBox
+                {
+                    Image = Image.FromStream(stream),
+                    Location = new Point(12, 14),
+                    Size = new Size(64, 64),
+                    SizeMode = PictureBoxSizeMode.Zoom
+                };
+                Controls.Add(logo);
+            }
+        }
+        catch { }
+        try
+        {
+            var icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath ?? "");
+            if (icon != null) Icon = icon;
+        }
+        catch { }
+
         var intro = new Label
         {
             Text = "Select your wheelbase manufacturer(s), then click Collect.\n" +
                    "The tool gathers the setup data the developer needs to implement\n" +
                    "your wheelbase properly - one zip file, no hunting for files.",
-            Location = new Point(12, 10),
+            Location = new Point(92, 12),
             AutoSize = true
         };
         Controls.Add(intro);
 
-        var manLabel = new Label { Text = "Manufacturers:", Location = new Point(12, 78), AutoSize = true };
+        var manLabel = new Label { Text = "Manufacturers:", Location = new Point(92, 80), AutoSize = true };
         Controls.Add(manLabel);
 
         _manufacturers = new CheckedListBox
         {
-            Location = new Point(12, 100),
+            Location = new Point(92, 102),
             Size = new Size(300, 180),
             CheckOnClick = true,
             IntegralHeight = false
@@ -104,7 +130,7 @@ internal sealed class CollectorForm : Form
         _collectButton = new Button
         {
             Text = "Collect data && create ZIP",
-            Location = new Point(12, 295),
+            Location = new Point(92, 297),
             Size = new Size(300, 40),
             Font = new Font("Segoe UI", 10f, FontStyle.Bold)
         };
@@ -114,15 +140,15 @@ internal sealed class CollectorForm : Form
         _status = new Label
         {
             Text = "",
-            Location = new Point(12, 345),
+            Location = new Point(12, 347),
             Size = new Size(576, 20)
         };
         Controls.Add(_status);
 
         _log = new ListBox
         {
-            Location = new Point(12, 370),
-            Size = new Size(576, 178),
+            Location = new Point(12, 372),
+            Size = new Size(576, 176),
             IntegralHeight = false,
             Font = new Font("Consolas", 9f)
         };

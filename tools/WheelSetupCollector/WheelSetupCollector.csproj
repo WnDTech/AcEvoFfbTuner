@@ -20,6 +20,13 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <UseWindowsForms>true</UseWindowsForms>
     <DebugType>none</DebugType>
+    <!-- The main app's icon: the collector exe shows it in Explorer and the
+         title bar, so it clearly belongs to the AC Evo FFB Tuner. -->
+    <ApplicationIcon>Resources\wheel.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\app_icon.png" />
+  </ItemGroup>
 
 </Project>
