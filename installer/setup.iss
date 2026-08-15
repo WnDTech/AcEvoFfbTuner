@@ -60,5 +60,31 @@ begin
   Exec('taskkill', '/f /im AcEvoFfbTuner.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
+// One-time elevated WER LocalDumps setup: Windows then writes a minidump for
+// every crash of AcEvoFfbTuner.exe — including the connect-time crashes that
+// corrupt the process so badly the in-process crash filter cannot run (five
+// field crashes shipped no crash.log/crash.dmp for exactly that reason).
+// Only runs when the keys are missing, so it prompts (UAC) at most once per
+// machine; updates skip it. The app also self-heals via EnsureWerLocalDumps.
+const
+  WerDumpsKey = 'SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\AcEvoFfbTuner.exe';
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    if not RegValueExists(HKLM, WerDumpsKey, 'DumpType') then
+      ShellExec('runas', 'reg.exe',
+        'add "HKLM\' + WerDumpsKey + '" /v DumpType /t REG_DWORD /d 1 /f',
+        '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    if not RegValueExists(HKLM, WerDumpsKey, 'DumpCount') then
+      ShellExec('runas', 'reg.exe',
+        'add "HKLM\' + WerDumpsKey + '" /v DumpCount /t REG_DWORD /d 5 /f',
+        '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  end;
+end;
+
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\{#AppName}"

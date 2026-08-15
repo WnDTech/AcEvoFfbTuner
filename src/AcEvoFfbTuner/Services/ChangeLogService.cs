@@ -50,6 +50,16 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.3",
+            Date = new DateTime(2026, 8, 15),
+            Title = "WER crash-dump setup moved into the installer + app self-heal with confirmation logging",
+            Fixes =
+            [
+                "The WER LocalDumps setup now also runs from the installer (one UAC prompt at install, only when the keys are missing — updates skip it), so the crash-dump capture is configured even if the app crashes before its own setup could complete. The in-app setup now retries until it is confirmed active and logs every attempt to wer_dumps.log (which ships in diag packs), so we can see exactly what happened if dumps are still missing",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.2",
             Date = new DateTime(2026, 8, 15),
             Title = "Crash dumps now written by Windows itself (WER LocalDumps) — even crashes that kill the in-process filter are captured",

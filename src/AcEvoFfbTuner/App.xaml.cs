@@ -103,17 +103,35 @@ public partial class App : Application
     /// corrupt the process so badly the in-process native filter cannot run
     /// (the field RS50 crashes ship no crash.log/crash.dmp for exactly that
     /// reason). Dumps land in %LOCALAPPDATA%\CrashDumps and the diag pack
-    /// builder ships the newest one. Requests elevation once (UAC); if the
-    /// user declines, the flag is still set so we don't nag every launch.
+    /// builder ships the newest one. The installer performs the same setup,
+    /// so this is a self-heal for machines where the install-time prompt was
+    /// skipped or declined. The flag is only set once the keys are confirmed
+    /// present, so a declined UAC retries on the next launch.
     /// </summary>
     private static void EnsureWerLocalDumps()
     {
+        const string subkey = @"SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\AcEvoFfbTuner.exe";
+        const string fullKey = @"HKLM\" + subkey;
+        var log = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "AcEvoFfbTuner", "wer_dumps.log");
+
+        void LogWer(string msg)
+        {
+            try
+            {
+                File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {msg}\n");
+            }
+            catch { }
+        }
+
         try
         {
-            if (Settings.WerLocalDumpsConfigured) return;
-
-            const string subkey = @"SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\AcEvoFfbTuner.exe";
-            const string fullKey = @"HKLM\" + subkey;
+            if (Settings.WerLocalDumpsConfigured)
+            {
+                LogWer("configured flag set — skipping");
+                return;
+            }
 
             bool configured = false;
             try
@@ -125,6 +143,7 @@ public partial class App : Application
 
             if (!configured)
             {
+                LogWer("keys missing — attempting one-time elevated setup");
                 try
                 {
                     var psi = new System.Diagnostics.ProcessStartInfo("cmd.exe",
@@ -138,13 +157,38 @@ public partial class App : Application
                     using var p = System.Diagnostics.Process.Start(psi);
                     p?.WaitForExit(15000);
                 }
+                catch (Exception ex)
+                {
+                    LogWer($"elevated setup failed/declined — {ex.GetType().Name}: {ex.Message}");
+                }
+
+                try
+                {
+                    using var k = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(subkey, false);
+                    configured = k?.GetValue("DumpType") is int dt && dt == 1;
+                }
                 catch { }
             }
 
-            Settings.WerLocalDumpsConfigured = true;
-            Settings.Save();
+            if (configured)
+            {
+                Settings.WerLocalDumpsConfigured = true;
+                Settings.Save();
+                LogWer("confirmed — WER LocalDumps active");
+            }
+            else
+            {
+                LogWer("not confirmed — will retry on next launch");
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            try
+            {
+                File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ERROR: {ex.GetType().Name}: {ex.Message}\n");
+            }
+            catch { }
+        }
     }
 
     private static int NativeExceptionFilter(IntPtr exceptionPointers)
