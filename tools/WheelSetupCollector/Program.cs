@@ -26,8 +26,13 @@ var found = new List<string>();
 
 try
 {
-    using var fs = new FileStream(zipPath, FileMode.Create);
-    using var zip = new ZipArchive(fs, ZipArchiveMode.Create);
+    // Inner block: fs+zip dispose HERE (central directory written + flushed),
+    // so the file on disk is complete before the self-verification below.
+    // (using var at try level would dispose only at the END of the try block
+    // — the verification would read a still-open, incomplete file.)
+    {
+        using var fs = new FileStream(zipPath, FileMode.Create);
+        using var zip = new ZipArchive(fs, ZipArchiveMode.Create);
     // ── README ──────────────────────────────────────────────────────────────
     var readme = new StringBuilder();
     readme.AppendLine("Wheel Setup Collector — collected data");
@@ -84,6 +89,7 @@ try
     WriteEntry(zip, "info/logitech_devices.txt", BuildDeviceTreeInfo());
     WriteEntry(zip, "info/logitech_registry.txt", BuildRegistryInfo());
     WriteEntry(zip, "info/running_processes.txt", BuildProcessInfo());
+    }   // ← fs + zip disposed: zip file is now complete on disk
 
     // ── Self-verification ───────────────────────────────────────────────────
     // Some setups (OneDrive-redirected Desktop, AV hooks) can leave the zip
