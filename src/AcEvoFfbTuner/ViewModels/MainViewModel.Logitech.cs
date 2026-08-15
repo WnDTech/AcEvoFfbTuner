@@ -533,15 +533,6 @@ public sealed partial class MainViewModel
         var provider = _logitechHidpp;
         if (provider?.IsConnected != true) return;
 
-        // Never write on unknown wheel state: a failed settings read means the
-        // wheel isn't answering (the game holds the HID++ interface) — writing
-        // the UI's clamped values can throttle the wheel to 1 Nm.
-        if (!provider.LastSettingsReadOk)
-        {
-            LogitechHidppStatus = "HID++ — wheel settings unreadable, write skipped (is the game holding the settings interface?)";
-            return;
-        }
-
         bool force = _logitechWriteForceNext;
         _logitechWriteForceNext = false;
 
@@ -553,12 +544,20 @@ public sealed partial class MainViewModel
         // slider Minimum clamps garbage/zero reads to 1.0 Nm, and a blind write
         // of that clamped value previously throttled the wheel's motor gain to 1 Nm.
         // A forced write (connect-time apply) bypasses this check deliberately.
+        // NOTE: user-intent writes are attempted even when the last settings read
+        // failed (the game can hold the HID++ interface while the wheel still
+        // accepts SETs) — only the failed-read ECHO is blocked, never the write.
         bool strengthChanged = Math.Abs(strength - provider.FfbStrengthNm) >= 0.01f;
         bool rotationChanged = rotation != provider.RotationDegrees;
         if (!force && !strengthChanged && !rotationChanged)
         {
             LogitechHidppStatus = "HID++ — wheel settings unchanged, nothing written";
             return;
+        }
+
+        if (!provider.LastSettingsReadOk)
+        {
+            LogitechHidppStatus = "HID++ — settings read-back unavailable (game holding the interface?) — attempting write anyway";
         }
 
         // Persist what the user wants so the next connect applies it again

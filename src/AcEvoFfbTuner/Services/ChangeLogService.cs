@@ -50,6 +50,16 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.11",
+            Date = new DateTime(2026, 8, 16),
+            Title = "The FFB strength slider now actually writes while the game is running",
+            Fixes =
+            [
+                "Changing the FFB strength/rotation sliders did nothing when the game held the wheel's settings interface: a failed settings read blocked ALL writes, so the slider snapped back to the wheel's value. User-intent slider changes are now always attempted (the wheel may still accept SETs even when GETs time out) — only the failed-read echo into the sliders is blocked, which is what previously caused the 1 Nm throttle bug",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.10",
             Date = new DateTime(2026, 8, 16),
             Title = "The app no longer hijacks your chosen wheel profile slot + the wheel settings card never disappears",
