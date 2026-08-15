@@ -13,7 +13,10 @@
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- No EnableCompressionInSingleFile: compressed single-file payloads are
+         a common silent-block false positive for third-party antivirus.
+         Uncompressed is larger but far less likely to be eaten. -->
+
     <DebugType>none</DebugType>
   </PropertyGroup>
 

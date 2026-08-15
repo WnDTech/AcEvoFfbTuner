@@ -7,8 +7,12 @@
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32;
+
+[DllImport("user32.dll", CharSet = CharSet.Unicode)]
+static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
 
 Console.WriteLine("Wheel Setup Collector");
 Console.WriteLine("=====================");
@@ -24,7 +28,6 @@ try
 {
     using var fs = new FileStream(zipPath, FileMode.Create);
     using var zip = new ZipArchive(fs, ZipArchiveMode.Create);
-
     // ── README ──────────────────────────────────────────────────────────────
     var readme = new StringBuilder();
     readme.AppendLine("Wheel Setup Collector — collected data");
@@ -82,6 +85,28 @@ try
     WriteEntry(zip, "info/logitech_registry.txt", BuildRegistryInfo());
     WriteEntry(zip, "info/running_processes.txt", BuildProcessInfo());
 
+    // ── Self-verification ───────────────────────────────────────────────────
+    // Some setups (OneDrive-redirected Desktop, AV hooks) can leave the zip
+    // without its final directory record — reopen and validate it before
+    // declaring success; on failure fall back to %TEMP% and say so.
+    try
+    {
+        using var check = System.IO.Compression.ZipFile.OpenRead(zipPath);
+        if (check.Entries.Count == 0)
+            throw new InvalidOperationException("zip contains no entries");
+    }
+    catch (Exception verifyEx)
+    {
+        var fallback = Path.Combine(Path.GetTempPath(), zipName);
+        File.Copy(zipPath, fallback, true);
+        try { File.Delete(zipPath); } catch { }
+        zipPath = fallback;
+        using var verify = System.IO.Compression.ZipFile.OpenRead(zipPath);
+        if (verify.Entries.Count == 0)
+            throw new InvalidOperationException("zip verify failed: " + verifyEx.Message);
+        Console.WriteLine($"NOTE: Desktop write was incomplete — using fallback copy instead.");
+    }
+
     Console.WriteLine($"Done. {found.Count} item(s) collected.");
     Console.WriteLine();
     Console.WriteLine($"Zip saved to:");
@@ -94,11 +119,34 @@ try
         System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{zipPath}\"");
     }
     catch { }
+
+    // Visible end-dialog: a console window alone is easy to miss, and if the
+    // zip path scrolls off it's hard to find. The message box is the final
+    // confirmation that the tool finished. (P/Invoke MessageBoxW — WinForms
+    // is incompatible with trimming.)
+    try
+    {
+        int yes = MessageBoxW(IntPtr.Zero,
+            $"The wheel setup zip is ready:\n\n{zipPath}\n\n" +
+            $"Send this file to the developer.\n\nOpen the folder?",
+            "Wheel Setup Collector - done", 0x44 /* YESNO | ICONINFORMATION */);
+        if (yes == 6 /* IDYES */)
+            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{zipPath}\"");
+    }
+    catch { }
 }
 catch (Exception ex)
 {
     Console.WriteLine();
     Console.WriteLine($"FAILED: {ex.Message}");
+    try
+    {
+        MessageBoxW(IntPtr.Zero,
+            $"The collector failed:\n\n{ex.Message}\n\n" +
+            "Please tell the developer exactly what this says.",
+            "Wheel Setup Collector - error", 0x10 /* ICONERROR */);
+    }
+    catch { }
     Console.WriteLine("Press Enter to close...");
     Console.ReadLine();
 }
