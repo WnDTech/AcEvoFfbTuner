@@ -421,14 +421,19 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         return IsDesktopMode;
     }
 
-    /// <summary>Select an onboard profile slot 1-5 (its stored settings then apply).</summary>
+    /// <summary>Select an onboard profile slot 1-5 (its stored settings then
+    /// apply and PERSIST across wheel restarts — desktop mode/G HUB profile 0
+    /// does NOT persist, user-verified on the RS50).</summary>
     public bool SetOnboardSlot(byte slot)
     {
         Log($"SetOnboardSlot: slot {slot}");
         if (_featureProfile == 0 || !SendSet(_featureProfile, 2, [slot, 0x00, 0x00]))
             return false;
         ProfileMode = slot;
-        return true;
+        Thread.Sleep(50);
+        ReadProfileMode();
+        Log($"SetOnboardSlot: mode now {(IsDesktopMode ? "desktop" : ProfileMode.ToString())}");
+        return !IsDesktopMode && ProfileMode == slot;
     }
 
     /// <summary>Re-read all settings from the wheel (for UI refresh).</summary>
@@ -503,8 +508,7 @@ public sealed class LogitechHidppWheelProvider : IDisposable
         }
     }
 
-    private void ReadProfileMode()
-    {
+    public void ReadProfileMode()    {
         var resp = ReadValue(_featureProfile, 1);
         if (resp == null)
         {

@@ -230,12 +230,24 @@ public sealed partial class MainViewModel
             {
                 bool ok = provider.Connect();
 
-                // The wheel boots in onboard mode, which silently ignores live host
-                // SETs — switch to desktop mode automatically so slider changes apply
-                // immediately with zero user intervention.
+                // The wheel boots in onboard mode, which silently ignores live
+                // host SETs — and DESKTOP mode (G HUB profile 0) does NOT
+                // persist: settings reset on every wheel restart (user-verified
+                // on the RS50). Onboard slots 1-5 store settings in the wheel's
+                // flash and survive restarts. Default to an onboard slot: keep
+                // the user's active slot if it's already 1-5, otherwise select
+                // slot 1 — the strength/rotation force-push below then sticks
+                // across reboots with no G HUB involved.
                 if (ok)
                 {
-                    provider.SetDesktopMode();
+                    provider.ReadProfileMode();
+                    if (provider.ProfileMode is 0 or 0xFF)
+                    {
+                        if (provider.SetOnboardSlot(1))
+                            AddSystemLog("Logitech HID++: wheel was in desktop mode (settings do not persist) — switched to onboard slot 1 so settings survive restarts");
+                        else
+                            AddSystemLog($"Logitech HID++: could not switch to onboard slot 1 ({provider.LastError}) — settings will reset on wheel restart");
+                    }
                     provider.ReadAllSettingsForUi();
 
                     // Read-only OLED layout query — safe, and the descriptor
@@ -460,7 +472,11 @@ public sealed partial class MainViewModel
                     UpdateLogitechModeInfo();
                     if (!provider.IsDesktopMode && provider.ProfileMode != 0xFF)
                     {
-                        LogitechHidppStatus = "Written to wheel — switch to Desktop mode to hear it immediately (onboard slot settings are stored and apply when the slot is active)";
+                        LogitechHidppStatus = $"Written to wheel — stored in onboard slot {provider.ProfileMode} (persists across restarts)";
+                    }
+                    else
+                    {
+                        LogitechHidppStatus = "Written to wheel — desktop mode does not persist settings across restarts (use an onboard slot to keep them)";
                     }
                 });
             }

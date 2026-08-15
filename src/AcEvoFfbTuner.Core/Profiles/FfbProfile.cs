@@ -558,7 +558,7 @@ public sealed class FfbProfile
             {
                 Name = "ACCTEST",
                 GameMatch = "AssettoCorsaCompetizione",
-                OutputGain = 0.5f,
+                OutputGain = 1.0f,
                 NormalizationScale = 1000f,
                 ForceScale = 1.0f,
                 SoftClipThreshold = 0.8f,
@@ -600,6 +600,13 @@ public sealed class FfbProfile
                 maxTorqueNm: 5.5f, outputGain: 0.621f, normalizationScale: 1000f,
                 viscousDamping: 0.15f, speedDamping: 0.50f, friction: 0.15f, inertia: 0.10f,
                 vibrationMaster: 0.50f),
+
+            // ──── Logitech RS50 / G PRO (8Nm) — TrueForce stream wheel ────
+            "Default - Logitech RS50/G PRO" => CreateDefaultWheelbaseProfile("Default - Logitech RS50/G PRO",
+                maxTorqueNm: 8.0f, outputGain: 0.5f, normalizationScale: 1000f,
+                viscousDamping: 0.18f, speedDamping: 0.50f, friction: 0.15f, inertia: 0.10f,
+                vibrationMaster: 0.42f,
+                forceInvert: true),
 
             // ──── Logitech G27 (2.5Nm) — gear-driven, same VID as G29 ────
             "Default - Logitech G27" => CreateGearDrivenProfile("Default - Logitech G27",
@@ -666,7 +673,7 @@ public sealed class FfbProfile
             _ => new FfbProfile
             {
                 Name = name,
-                OutputGain = 0.621f,
+                OutputGain = 0.8f,
                 NormalizationScale = 1000f,
                 MzScale = 5f, FxScale = 4000f, FyScale = 5000f,
                 SoftClipThreshold = 0.8f,
@@ -784,6 +791,7 @@ public sealed class FfbProfile
         "Default", "Heavy", "Light", "ACCTEST", "Moza R5 - Final Stable Baseline",
         "Default - Logitech G27",
         "Default - Logitech G29/G920",
+        "Default - Logitech RS50/G PRO",
         "Default - Thrustmaster T300/TX",
         "Default - Fanatec CSL DD 5Nm",
         "Default - Fanatec CSL DD 8Nm",

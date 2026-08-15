@@ -17,6 +17,7 @@ public static class WheelbaseAutoConfigurator
         ("Default - Fanatec CSL DD 5Nm", 5.0f),
         ("Moza R5 - Final Stable Baseline", 5.5f),
         ("Default - Fanatec CSL DD 8Nm", 8.0f),
+        ("Default - Logitech RS50/G PRO", 8.0f),
         ("Default - Moza R9", 9.0f),
         ("Default - Fanatec ClubSport DD", 15.0f),
         ("Default - Simagic Alpha", 15.0f),
@@ -45,7 +46,7 @@ public static class WheelbaseAutoConfigurator
 
     public static FfbProfile SelectNearestProfile(float torqueNm, string deviceName)
     {
-        string nearest = FindNearestProfileName(torqueNm);
+        string nearest = FindNearestProfileName(torqueNm, deviceName);
         var profile = FfbProfile.GetDefaultProfile(nearest);
 
         profile.Name = $"Auto - {deviceName} ({torqueNm:F1}Nm)";
@@ -57,7 +58,7 @@ public static class WheelbaseAutoConfigurator
 
     public static FfbProfile GenerateProfile(float torqueNm, string deviceName, EvoDetectedSettings? evoSettings)
     {
-        string nearest = FindNearestProfileName(torqueNm);
+        string nearest = FindNearestProfileName(torqueNm, deviceName);
         var profile = FfbProfile.GetDefaultProfile(nearest);
 
         profile.Name = $"Auto - {deviceName} ({torqueNm:F1}Nm)";
@@ -73,8 +74,18 @@ public static class WheelbaseAutoConfigurator
         return profile;
     }
 
-    private static string FindNearestProfileName(float torqueNm)
+    private static string FindNearestProfileName(float torqueNm, string? deviceName = null)
     {
+        // TrueForce-stream Logitech wheels get their own baseline regardless of
+        // the torque-based pick (an 8 Nm RS50 would otherwise land on the
+        // Fanatec CSL DD 8Nm profile).
+        if (!string.IsNullOrEmpty(deviceName))
+        {
+            var n = deviceName.ToUpperInvariant();
+            if (n.Contains("RS50") || n.Contains("G PRO") || n.Contains("GPRO") || n.Contains("G923"))
+                return "Default - Logitech RS50/G PRO";
+        }
+
         string nearest = BuiltInProfilesByTorque[0].ProfileName;
         float minDiff = float.MaxValue;
 

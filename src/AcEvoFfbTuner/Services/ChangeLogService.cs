@@ -50,6 +50,18 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.7",
+            Date = new DateTime(2026, 8, 15),
+            Title = "Wheel settings now persist across restarts (onboard slot) + stronger default profiles + Logitech RS50/G PRO baseline",
+            Fixes =
+            [
+                "Wheel strength/rotation reset on every wheel restart: desktop mode (the G HUB profile) does not store settings in the wheel — onboard slots 1-5 do (user-verified on the RS50). The app no longer forces desktop mode on connect: it keeps the active onboard slot (or selects slot 1) and writes the settings there, so strength 8 Nm and the rotation survive restarts with no G HUB involved. The manual 'switch to desktop mode' button remains for live tweaking",
+                "New default profiles are stronger: the generic default profile gain 0.62 → 0.8, the ACCTEST baseline 0.5 → 1.0 — new users no longer start with the force halved",
+                "New 'Default - Logitech RS50/G PRO' baseline (8 Nm, force inversion on, DD damping) — the wizard now assigns it to RS50/G PRO/G923 wheels by name instead of the Fanatec CSL DD 8Nm profile",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.6",
             Date = new DateTime(2026, 8, 15),
             Title = "Wheel FFB test fixed for input-only wheels + startup crash root cause removed (DI access serialized)",
