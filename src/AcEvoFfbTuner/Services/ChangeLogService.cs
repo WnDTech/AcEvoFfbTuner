@@ -50,6 +50,16 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.5",
+            Date = new DateTime(2026, 8, 15),
+            Title = "Wheel strength and rotation now applied automatically at every connect — G HUB never needed",
+            Fixes =
+            [
+                "The wheel's desktop profile loads DEFAULT settings (5 Nm strength) unless a host pushes values — so users without G HUB were stuck at half torque no matter what the app showed. The app now force-applies the persisted FFB strength (default 8 Nm) and rotation (default 1080°) to the wheel at every connect, and slider changes are saved and re-applied on the next connect. No G HUB required for wheel configuration",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.4",
             Date = new DateTime(2026, 8, 15),
             Title = "Gentler connect, no wheel-stealing at launch, stronger TrueForce stream + wheel setup collection in diag packs",

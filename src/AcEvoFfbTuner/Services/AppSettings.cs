@@ -45,6 +45,16 @@ public sealed class AppSettings
     /// minidump for every crash, even ones that kill the in-process filter.</summary>
     public bool WerLocalDumpsConfigured { get; set; }
 
+    /// <summary>Persisted Logitech wheel FFB strength in Nm (1-8). Applied to
+    /// the wheel at every connect — the wheel's desktop profile loads defaults
+    /// (5 Nm) otherwise, and without a deliberate write the wheel stays there
+    /// until a slider is touched.</summary>
+    public float LogitechFfbStrengthNm { get; set; } = 8.0f;
+
+    /// <summary>Persisted Logitech wheel rotation in degrees (90-2700).
+    /// Applied to the wheel at every connect alongside the strength.</summary>
+    public int LogitechRotationDegrees { get; set; } = 1080;
+
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
 

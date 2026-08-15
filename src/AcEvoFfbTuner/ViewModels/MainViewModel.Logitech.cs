@@ -194,8 +194,8 @@ public sealed partial class MainViewModel
     [ObservableProperty] private string _logitechHidppStatus = "Logitech wheel settings: not connected";
     [ObservableProperty] private string _logitechModeInfo = "";
     [ObservableProperty] private bool _logitechIsDesktopMode;
-    [ObservableProperty] private float _logitechFfbStrengthNm = 4.0f;
-    [ObservableProperty] private int _logitechRotationDegrees = 900;
+    [ObservableProperty] private float _logitechFfbStrengthNm = 8.0f;
+    [ObservableProperty] private int _logitechRotationDegrees = 1080;
 
     private void ConnectLogitechHidpp(string productName)
     {
@@ -259,16 +259,22 @@ public sealed partial class MainViewModel
                     AddSystemLog($"Logitech HID++ connected: {provider.DiagnosticSummary}");
 
                     _logitechUiLoading = true;
-                    LogitechFfbStrengthNm = provider.FfbStrengthNm;
-                    LogitechRotationDegrees = provider.RotationDegrees;
+                    LogitechFfbStrengthNm = _appSettings.LogitechFfbStrengthNm;
+                    LogitechRotationDegrees = _appSettings.LogitechRotationDegrees;
                     _logitechUiLoading = false;
 
-                    // Feed the TrueForce stream provider the wheel's real rotation
-                    // so its init range push is a no-op (the pump thread waits for
-                    // this before replaying the captured 2700° sequence).
+                    // The wheel's desktop profile loads DEFAULTS (5 Nm) unless a
+                    // host pushes values — force-apply the persisted
+                    // strength/rotation at every connect so G HUB is never needed.
+                    ScheduleLogitechWrite(force: true);
+
+                    // Feed the TrueForce stream provider the rotation we are
+                    // pushing (not the wheel's pre-write value) so its init
+                    // range push is a no-op (the pump thread waits for this
+                    // before replaying the captured 2700° sequence).
                     if (ActiveTrueForceProvider is { } tf2)
                     {
-                        tf2.RotationDegrees = provider.RotationDegrees;
+                        tf2.RotationDegrees = LogitechRotationDegrees;
                         UpdateTrueForceStatus();
                     }
 
@@ -370,6 +376,8 @@ public sealed partial class MainViewModel
 
     // ── Slider changes → debounced write to the wheel (background thread) ──
 
+    private bool _logitechWriteForceNext;
+
     partial void OnLogitechFfbStrengthNmChanged(float value)
     {
         if (_logitechUiLoading || _logitechHidpp?.IsConnected != true) return;
@@ -382,8 +390,9 @@ public sealed partial class MainViewModel
         ScheduleLogitechWrite();
     }
 
-    private void ScheduleLogitechWrite()
+    private void ScheduleLogitechWrite(bool force = false)
     {
+        if (force) _logitechWriteForceNext = true;
         _logitechWriteDebounce ??= new System.Windows.Threading.DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(500)
@@ -400,6 +409,9 @@ public sealed partial class MainViewModel
         var provider = _logitechHidpp;
         if (provider?.IsConnected != true) return;
 
+        bool force = _logitechWriteForceNext;
+        _logitechWriteForceNext = false;
+
         float strength = LogitechFfbStrengthNm;
         int rotation = LogitechRotationDegrees;
 
@@ -407,13 +419,20 @@ public sealed partial class MainViewModel
         // changed (e.g. a slider clamp round-trip on load) — don't write. The
         // slider Minimum clamps garbage/zero reads to 1.0 Nm, and a blind write
         // of that clamped value previously throttled the wheel's motor gain to 1 Nm.
+        // A forced write (connect-time apply) bypasses this check deliberately.
         bool strengthChanged = Math.Abs(strength - provider.FfbStrengthNm) >= 0.01f;
         bool rotationChanged = rotation != provider.RotationDegrees;
-        if (!strengthChanged && !rotationChanged)
+        if (!force && !strengthChanged && !rotationChanged)
         {
             LogitechHidppStatus = "HID++ — wheel settings unchanged, nothing written";
             return;
         }
+
+        // Persist what the user wants so the next connect applies it again
+        // (the wheel's desktop profile reloads defaults otherwise).
+        _appSettings.LogitechFfbStrengthNm = strength;
+        _appSettings.LogitechRotationDegrees = rotation;
+        _appSettings.Save();
 
         AddSystemLog($"Logitech HID++ write: strength={strength:F1} Nm{(strengthChanged ? "" : " (unchanged)")}, rotation={rotation}°{(rotationChanged ? "" : " (unchanged)")}");
 
