@@ -180,7 +180,11 @@ public sealed partial class MainViewModel
         {
             try
             {
-                hp.OledWriteFrame(9, fields, new[] { 19, 10, 19, 10 });
+                // Fire-and-forget: while the TrueForce stream is active the
+                // wheel never answers HID++ requests, so a response wait would
+                // stall every push and block the shared gate — the write itself
+                // is what matters for the display.
+                hp.OledWriteFrame(9, fields, new[] { 19, 10, 19, 10 }, waitForResponse: false);
             }
             catch (Exception ex)
             {

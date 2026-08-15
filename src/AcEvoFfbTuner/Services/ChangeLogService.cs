@@ -50,6 +50,16 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.13",
+            Date = new DateTime(2026, 8, 16),
+            Title = "OLED frames now sent fire-and-forget — no more timeout stalls while the force stream is active",
+            Fixes =
+            [
+                "The first hardware OLED test showed every frame write timing out: while the TrueForce stream is active the wheel never answers HID++ requests, so each fn3 frame stalled for the full 1 s timeout and blocked the shared settings gate. The OLED frames are now sent fire-and-forget (the write goes out immediately, no response wait) — so the display can update even while force is streaming, and the settings reads are no longer starved by OLED pushes",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.12",
             Date = new DateTime(2026, 8, 16),
             Title = "Dynamic OLED screen control moved into the Logitech wheel settings + the setting persists",

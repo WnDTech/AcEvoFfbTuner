@@ -626,8 +626,13 @@ public sealed class LogitechHidppWheelProvider : IDisposable
 
     /// <summary>fn3 — set layout + typed field text. Fields are padded with
     /// spaces to their layout capacity (spaces are content; the firmware
-    /// renderer draws fixed-width fields). Layout J = 19/10/19/10.</summary>
-    public bool OledWriteFrame(byte layoutIndex, string[] fields, int[] capacities, int timeoutMs = 1000)
+    /// renderer draws fixed-width fields). Layout J = 19/10/19/10.
+    /// When <paramref name="waitForResponse"/> is false the frame is sent
+    /// fire-and-forget: while the TrueForce stream is active the wheel never
+    /// answers HID++ requests, so waiting would stall the shared gate for the
+    /// full timeout on every push — the write itself still goes out.</summary>
+    public bool OledWriteFrame(byte layoutIndex, string[] fields, int[] capacities,
+        bool waitForResponse = true, int timeoutMs = 1000)
     {
         if (_featureOled == 0 || _oledWriteHandle == InvalidHandle) return false;
         if (fields.Length == 0 || fields.Length != capacities.Length) return false;
@@ -653,9 +658,41 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             off += cap;
         }
 
+        if (!waitForResponse)
+        {
+            bool sent = WriteVeryLong(_featureOled, 0x03, payload);
+            Log($"OledWriteFrame: layout {(char)('A' + layoutIndex)} (fn3) {(sent ? "sent" : "write FAILED")}");
+            return sent;
+        }
+
         var resp = RequestResponseVeryLong(_featureOled, 0x03, payload, timeoutMs);
         Log($"OledWriteFrame: layout {(char)('A' + layoutIndex)} (fn3) {(resp != null ? "ok" : "FAILED")}");
         return resp != null;
+    }
+
+    /// <summary>Fire-and-forget very-long report write (no response wait, no
+    /// gate hold) — used for the OLED frames while the stream is active, when
+    /// the wheel never answers HID++ requests but may still process the write.</summary>
+    private bool WriteVeryLong(byte featureIndex, byte fn, byte[] payload)
+    {
+        if (payload.Length > 60) return false;
+        try
+        {
+            byte[] buf = new byte[64];
+            buf[0] = 0x12; // very-long report — the only collection wide enough for a frame
+            buf[1] = 0xFF;
+            buf[2] = featureIndex;
+            buf[3] = (byte)((fn << 4) | OledSwId);
+            Array.Copy(payload, 0, buf, 4, payload.Length);
+
+            Log($"TX(vlong,no-wait): {Hex(buf, 12)} (len 64, {payload.Length} payload bytes)");
+            return HidD_SetOutputReport(_oledWriteHandle, buf, buf.Length);
+        }
+        catch (Exception ex)
+        {
+            Log($"TX(vlong,no-wait): HidD_SetOutputReport threw: {ex.Message}");
+            return false;
+        }
     }
 
     private byte[]? RequestResponseVeryLong(byte featureIndex, byte fn, byte[] payload, int timeoutMs)
