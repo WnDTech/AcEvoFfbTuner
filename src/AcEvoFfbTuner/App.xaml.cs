@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
@@ -49,10 +51,35 @@ public partial class App : Application
     [DllImport("kernel32.dll")]
     private static extern uint GetCurrentThreadId();
 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr CreateFileW(string lpFileName, uint dwDesiredAccess, uint dwShareMode,
+        IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(IntPtr hObject);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool WriteFile(IntPtr hFile, byte[] lpBuffer, int nNumberOfBytesToWrite,
+        out uint lpNumberOfBytesWritten, IntPtr lpOverlapped);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool CreateDirectory(string lpPathName, IntPtr lpSecurityAttributes);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern uint SetFilePointer(IntPtr hFile, int lDistanceToMove, IntPtr lpDistanceToMoveHigh, uint dwMoveMethod);
+
     [DllImport("dbghelp.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool MiniDumpWriteDump(IntPtr process, uint processId, IntPtr file, uint dumpType,
-        IntPtr exceptionParam, IntPtr userStreamParam, IntPtr callbackParam);
+        ref MiniDumpExceptionInformation exceptionParam, IntPtr userStreamParam, IntPtr callbackParam);
+
+    private const uint GENERIC_WRITE = 0x40000000;
+    private const uint FILE_SHARE_READ = 0x1;
+    private const uint OPEN_ALWAYS = 4;
+    private const uint CREATE_ALWAYS = 2;
+    private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
+    private const uint FILE_END = 2;
+    private static readonly IntPtr InvalidHandle = new(-1);
 
     private const uint MiniDumpNormal = 0x00000000;
     private const uint MiniDumpWithDataSegs = 0x00000002;
@@ -87,37 +114,57 @@ public partial class App : Application
             }
         }
 
-        try
-        {
-            File.AppendAllText(CrashLogPath,
-                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] CRASH (NativeExceptionFilter): code=0x{code:X8} address=0x{address.ToInt64():X}\n");
-        }
-        catch { }
+        // ── Native-only crash capture ──────────────────────────────────────
+        // A corrupted heap can kill the managed filter before any managed
+        // allocation succeeds (File.AppendAllText, FileStream, etc.) — which is
+        // why crash.log/crash.dmp were missing from the field packs. Everything
+        // below uses raw P/Invoke with no managed allocations so the dump
+        // survives even a badly corrupted process.
 
+        string? dumpDir = null;
+        try { dumpDir = Path.GetDirectoryName(DumpPath); } catch { }
+
+        IntPtr logFile = InvalidHandle, dumpFile = InvalidHandle;
         try
         {
-            var dir = Path.GetDirectoryName(DumpPath);
-            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-            using var fs = new FileStream(DumpPath, FileMode.Create, FileAccess.Write, FileShare.None);
-            var exInfo = new MiniDumpExceptionInformation
+            if (dumpDir != null)
             {
-                ThreadId = GetCurrentThreadId(),
-                ExceptionPointers = exceptionPointers,
-                ClientPointers = false
-            };
-            IntPtr exInfoPtr = Marshal.AllocHGlobal(Marshal.SizeOf<MiniDumpExceptionInformation>());
-            try
-            {
-                Marshal.StructureToPtr(exInfo, exInfoPtr, false);
-                MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), fs.SafeFileHandle.DangerousGetHandle(),
-                    MiniDumpNormal | MiniDumpWithDataSegs | MiniDumpWithThreadInfo, exInfoPtr, IntPtr.Zero, IntPtr.Zero);
-            }
-            finally
-            {
-                Marshal.FreeHGlobal(exInfoPtr);
+                if (dumpDir.Length > 0) CreateDirectory(dumpDir, IntPtr.Zero);
+                logFile = CreateFileW(CrashLogPath, GENERIC_WRITE, FILE_SHARE_READ, IntPtr.Zero, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, IntPtr.Zero);
+                if (logFile != InvalidHandle)
+                {
+                    SetFilePointer(logFile, 0, IntPtr.Zero, FILE_END);
+                    string line = string.Format(CultureInfo.InvariantCulture,
+                        "[{0:yyyy-MM-dd HH:mm:ss.fff}] CRASH (NativeExceptionFilter): code=0x{1:X8} address=0x{2:X}\n",
+                        DateTime.Now, code, address.ToInt64());
+                    byte[] bytes = Encoding.UTF8.GetBytes(line);
+                    WriteFile(logFile, bytes, bytes.Length, out _, IntPtr.Zero);
+                    CloseHandle(logFile);
+                    logFile = InvalidHandle;
+                }
+
+                dumpFile = CreateFileW(DumpPath, GENERIC_WRITE, 0, IntPtr.Zero, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, IntPtr.Zero);
+                if (dumpFile != InvalidHandle)
+                {
+                    var exInfo = new MiniDumpExceptionInformation
+                    {
+                        ThreadId = GetCurrentThreadId(),
+                        ExceptionPointers = exceptionPointers,
+                        ClientPointers = false
+                    };
+                    MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), dumpFile,
+                        MiniDumpNormal | MiniDumpWithDataSegs | MiniDumpWithThreadInfo, ref exInfo, IntPtr.Zero, IntPtr.Zero);
+                    CloseHandle(dumpFile);
+                    dumpFile = InvalidHandle;
+                }
             }
         }
         catch { }
+        finally
+        {
+            if (logFile != InvalidHandle) { try { CloseHandle(logFile); } catch { } }
+            if (dumpFile != InvalidHandle) { try { CloseHandle(dumpFile); } catch { } }
+        }
 
         // Best-effort TrueForce session-end handshake (init packets 67/68)
         // BEFORE WER terminates the process — a crash while the stream is

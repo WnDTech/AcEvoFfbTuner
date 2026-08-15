@@ -50,6 +50,16 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.1",
+            Date = new DateTime(2026, 8, 15),
+            Title = "Crash dumps now survive heap corruption — native-only crash capture path",
+            Fixes =
+            [
+                "The native crash filter used managed file APIs (File.AppendAllText, FileStream), which can fail inside a corrupted process — the 1.27.0 field crashes shipped no crash.log or crash.dmp at all. The filter now writes crash.log and the minidump using raw Win32 calls only (CreateFileW, WriteFile, MiniDumpWriteDump with no managed allocations), so the next crash produces a dump with the real faulting stack instead of just the event-log offset",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.0",
             Date = new DateTime(2026, 8, 14),
             Title = "TrueForce session can no longer be left latched on the wheel — crash-safe teardown + full silence at zero force",
