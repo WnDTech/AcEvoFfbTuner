@@ -198,7 +198,7 @@
                     <!-- Logitech HID++ direct wheel settings (no G HUB) -->
                     <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
                             BorderThickness="1" BorderBrush="#33FF9800"
-                            Visibility="{Binding LogitechHidppConnected, Converter={StaticResource BoolToVis}}">
+                            Visibility="{Binding LogitechWheelDetected, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock Text="LOGITECH WHEEL SETTINGS" FontSize="12" FontWeight="Bold" Foreground="#FFFF9800" VerticalAlignment="Center" />

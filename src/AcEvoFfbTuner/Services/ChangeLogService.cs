@@ -50,6 +50,17 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.10",
+            Date = new DateTime(2026, 8, 16),
+            Title = "The app no longer hijacks your chosen wheel profile slot + the wheel settings card never disappears",
+            Fixes =
+            [
+                "The app could switch the wheel from the user's chosen profile slot (e.g. slot 5) to slot 1 at connect — the persisted slot defaulted to 1 and overrode the wheel's current mode. The default is now \"Keep current\": the app leaves the wheel exactly where the user put it, and the slot selector offers Keep current / Desktop / slots 1-5 explicitly",
+                "The Logitech wheel settings card (FFB strength, rotation, slot) disappeared entirely when the HID++ interface was unavailable (the game can hold it). The card now stays visible whenever a Logitech wheel is connected, with the status text explaining that the settings interface is being held",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.9",
             Date = new DateTime(2026, 8, 16),
             Title = "Choose which wheel profile slot the app uses — presets are never overwritten",

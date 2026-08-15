@@ -196,13 +196,19 @@ public sealed partial class MainViewModel
     [ObservableProperty] private bool _logitechIsDesktopMode;
     [ObservableProperty] private float _logitechFfbStrengthNm = 8.0f;
     [ObservableProperty] private int _logitechRotationDegrees = 1080;
-    [ObservableProperty] private int _logitechProfileSlot = 1;
+    [ObservableProperty] private int _logitechProfileSlot = -1;
 
-    /// <summary>Slot selector options: 0 = desktop mode (live, resets on wheel
-    /// restart), 1-5 = onboard slots (persist). Users pick the slot so the app
-    /// never overwrites their preset profiles.</summary>
+    /// <summary>True while the connected wheel is a Logitech device — the
+    /// wheel settings card stays visible even when the HID++ interface is
+    /// unavailable (the game can hold it), so the controls never vanish.</summary>
+    [ObservableProperty] private bool _logitechWheelDetected;
+
+    /// <summary>Slot selector options: -1 = keep the wheel's current mode
+    /// (default — never yanks the user out of their chosen slot), 0 = desktop
+    /// mode (live, resets on wheel restart), 1-5 = onboard slots (persist).</summary>
     public List<KeyValuePair<int, string>> LogitechProfileSlotOptions { get; } =
     [
+        new(-1, "Keep current (don't switch)"),
         new(0, "Desktop (live — resets on restart)"),
         new(1, "Slot 1 (persists)"),
         new(2, "Slot 2 (persists)"),
@@ -218,11 +224,13 @@ public sealed partial class MainViewModel
         if (!IsLogitechDevice(productName))
         {
             LogitechHidppConnected = false;
+            LogitechWheelDetected = false;
             LogitechHidppStatus = "Logitech wheel settings: not applicable";
             return;
         }
 
         LogitechHidppConnected = false;
+        LogitechWheelDetected = true;
         LogitechHidppStatus = "Connecting to wheel HID++ interface...";
         AddSystemLog($"Connecting Logitech HID++ settings interface for {productName}...");
 
@@ -244,17 +252,20 @@ public sealed partial class MainViewModel
             {
                 bool ok = provider.Connect();
 
-                // The wheel boots in onboard mode, which silently ignores live
-                // host SETs — and DESKTOP mode (G HUB profile 0) does NOT
-                // persist: settings reset on every wheel restart (user-verified
-                // on the RS50). Onboard slots 1-5 store settings in the wheel's
-                // flash and survive restarts. Apply the USER-CHOSEN slot (from
-                // the wheel settings page) so their preset profiles are never
-                // overwritten: 0 = desktop mode, 1-5 = onboard slot.
+                // Wheel mode: apply the USER-CHOSEN slot from the wheel
+                // settings page. -1 (default) = keep the wheel's current mode —
+                // never yank the user out of their chosen profile slot.
                 if (ok)
                 {
                     int slot = _appSettings.LogitechProfileSlot;
-                    if (slot <= 0)
+                    if (slot == -1)
+                    {
+                        provider.ReadProfileMode();
+                        AddSystemLog(provider.IsDesktopMode
+                            ? "Logitech HID++: keeping the wheel's current mode (desktop)"
+                            : $"Logitech HID++: keeping the wheel's current mode (onboard slot {provider.ProfileMode})");
+                    }
+                    else if (slot <= 0)
                     {
                         if (provider.SetDesktopMode())
                             AddSystemLog("Logitech HID++: desktop mode selected — settings apply live but reset on wheel restart");
@@ -450,15 +461,19 @@ public sealed partial class MainViewModel
         ApplyLogitechProfileSlot(value);
     }
 
-    /// <summary>Switch the wheel to the user-chosen profile slot (0 = desktop
-    /// mode, 1-5 = onboard slots) and push the persisted settings there.</summary>
+    /// <summary>Switch the wheel to the user-chosen profile slot (-1 = keep
+    /// current, 0 = desktop mode, 1-5 = onboard slots) and push the persisted
+    /// settings there.</summary>
     private void ApplyLogitechProfileSlot(int slot)
     {
         var provider = _logitechHidpp;
         if (provider?.IsConnected != true) return;
-        AddSystemLog(slot <= 0
-            ? $"Logitech HID++: switching to desktop mode"
-            : $"Logitech HID++: switching to onboard slot {slot}");
+        AddSystemLog(slot switch
+        {
+            -1 => "Logitech HID++: keeping the wheel's current profile",
+            0 => "Logitech HID++: switching to desktop mode",
+            _ => $"Logitech HID++: switching to onboard slot {slot}"
+        });
 
         var tf = ActiveTrueForceProvider;
         tf?.Pause();
@@ -466,17 +481,27 @@ public sealed partial class MainViewModel
         {
             try
             {
-                bool ok = slot <= 0
-                    ? provider.SetDesktopMode()
-                    : provider.SetOnboardSlot((byte)slot);
+                bool ok;
+                if (slot == -1)
+                {
+                    provider.ReadProfileMode();
+                    ok = true;
+                }
+                else
+                {
+                    ok = slot == 0 ? provider.SetDesktopMode() : provider.SetOnboardSlot((byte)slot);
+                }
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
                 {
                     if (!ReferenceEquals(_logitechHidpp, provider)) return;
                     UpdateLogitechModeInfo();
                     LogitechHidppStatus = ok
-                        ? (slot <= 0
-                            ? "HID++ — desktop mode active (live changes, resets on restart)"
-                            : $"HID++ — onboard slot {slot} active (settings persist)")
+                        ? (slot switch
+                        {
+                            -1 => "HID++ — keeping the wheel's current mode",
+                            0 => "HID++ — desktop mode active (live changes, resets on restart)",
+                            _ => $"HID++ — onboard slot {slot} active (settings persist)"
+                        })
                         : $"HID++ — slot switch FAILED ({provider.LastError})";
                     if (ok && provider.LastSettingsReadOk)
                         ScheduleLogitechWrite(force: true);
