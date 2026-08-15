@@ -50,6 +50,17 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.8",
+            Date = new DateTime(2026, 8, 16),
+            Title = "Fixed: the app could throttle the wheel to 1 Nm when the game holds the settings interface",
+            Fixes =
+            [
+                "When the game held the wheel's settings interface, the app's settings reads failed — and the failed read (0) fed the strength slider, which clamped to its 1.0 Nm minimum and wrote 1 Nm to the wheel, overriding the user's 8 Nm (the slider then 'jumped back to 0' on the next failed read). The app now tracks whether the last read actually succeeded: failed reads are never echoed into the sliders, writes are skipped while the wheel state is unknown, and the connect-time apply is skipped too — the wheel keeps whatever the user set",
+                "The crash-dump setup flag could block re-verification even when the registry keys were never written (early versions set the flag unconditionally). The app now always verifies the keys and re-runs the one-time setup if they're missing — so the next crash finally produces a dump",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.7",
             Date = new DateTime(2026, 8, 15),
             Title = "Wheel settings now persist across restarts (onboard slot) + stronger default profiles + Logitech RS50/G PRO baseline",

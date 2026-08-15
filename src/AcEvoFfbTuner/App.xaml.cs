@@ -127,12 +127,10 @@ public partial class App : Application
 
         try
         {
-            if (Settings.WerLocalDumpsConfigured)
-            {
-                LogWer("configured flag set — skipping");
-                return;
-            }
-
+            // ALWAYS verify the keys — the flag alone is not proof (early
+            // versions set it unconditionally even when the UAC was declined).
+            // Missing keys = no crash dumps, so retry the one-time elevated
+            // setup until it sticks.
             bool configured = false;
             try
             {
@@ -141,34 +139,39 @@ public partial class App : Application
             }
             catch { }
 
-            if (!configured)
+            if (configured)
             {
-                LogWer("keys missing — attempting one-time elevated setup");
-                try
-                {
-                    var psi = new System.Diagnostics.ProcessStartInfo("cmd.exe",
-                        $"/c reg add \"{fullKey}\" /v DumpType /t REG_DWORD /d 1 /f & reg add \"{fullKey}\" /v DumpCount /t REG_DWORD /d 5 /f")
-                    {
-                        UseShellExecute = true,
-                        Verb = "runas",
-                        WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
-                        CreateNoWindow = true
-                    };
-                    using var p = System.Diagnostics.Process.Start(psi);
-                    p?.WaitForExit(15000);
-                }
-                catch (Exception ex)
-                {
-                    LogWer($"elevated setup failed/declined — {ex.GetType().Name}: {ex.Message}");
-                }
-
-                try
-                {
-                    using var k = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(subkey, false);
-                    configured = k?.GetValue("DumpType") is int dt && dt == 1;
-                }
-                catch { }
+                Settings.WerLocalDumpsConfigured = true;
+                Settings.Save();
+                LogWer("confirmed — WER LocalDumps active");
+                return;
             }
+
+            LogWer("keys missing — attempting one-time elevated setup");
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("cmd.exe",
+                    $"/c reg add \"{fullKey}\" /v DumpType /t REG_DWORD /d 1 /f & reg add \"{fullKey}\" /v DumpCount /t REG_DWORD /d 5 /f")
+                {
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+                    CreateNoWindow = true
+                };
+                using var p = System.Diagnostics.Process.Start(psi);
+                p?.WaitForExit(15000);
+            }
+            catch (Exception ex)
+            {
+                LogWer($"elevated setup failed/declined — {ex.GetType().Name}: {ex.Message}");
+            }
+
+            try
+            {
+                using var k = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(subkey, false);
+                configured = k?.GetValue("DumpType") is int dt && dt == 1;
+            }
+            catch { }
 
             if (configured)
             {

@@ -448,9 +448,17 @@ public sealed class LogitechHidppWheelProvider : IDisposable
 
     // ─────────────────────────────── Internals ───────────────────────────────
 
+    /// <summary>True when the last <see cref="ReadAllSettings"/> got VALID
+    /// responses from the wheel. When the game holds the HID++ interface the
+    /// reads time out and this stays false — callers must NOT write strength/
+    /// rotation based on unknown state (a failed read feeding the UI slider
+    /// clamped to its 1.0 minimum previously throttled the wheel to 1 Nm).</summary>
+    public bool LastSettingsReadOk { get; private set; } = true;
+
     private void ReadAllSettings()
     {
         ReadProfileMode();
+        LastSettingsReadOk = true;
 
         var strength = ReadValue(_featureFfbStrength, 1);
         if (strength != null)
@@ -464,11 +472,13 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             }
             else
             {
+                LastSettingsReadOk = false;
                 Log($"ReadAllSettings: strength read-back 0x{v:X4} = {readNm:F2} Nm OUT OF RANGE (1-8 Nm) — ignoring");
             }
         }
         else
         {
+            LastSettingsReadOk = false;
             Log("ReadAllSettings: strength read FAILED/timeout");
         }
 
@@ -483,11 +493,13 @@ public sealed class LogitechHidppWheelProvider : IDisposable
             }
             else
             {
+                LastSettingsReadOk = false;
                 Log($"ReadAllSettings: rotation read-back {readBack}° OUT OF RANGE (90-2700) — ignoring");
             }
         }
         else
         {
+            LastSettingsReadOk = false;
             Log("ReadAllSettings: rotation read FAILED/timeout");
         }
 

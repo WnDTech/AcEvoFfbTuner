@@ -278,7 +278,18 @@ public sealed partial class MainViewModel
                     // The wheel's desktop profile loads DEFAULTS (5 Nm) unless a
                     // host pushes values — force-apply the persisted
                     // strength/rotation at every connect so G HUB is never needed.
-                    ScheduleLogitechWrite(force: true);
+                    // BUT only when the wheel's current state is KNOWN: if the
+                    // settings read failed (the game holds the HID++ interface),
+                    // a blind write could clobber the user's onboard values —
+                    // skip and let the wheel keep what it has.
+                    if (provider.LastSettingsReadOk)
+                    {
+                        ScheduleLogitechWrite(force: true);
+                    }
+                    else
+                    {
+                        LogitechHidppStatus = "HID++ — wheel settings unreadable (game holding the interface?); not writing";
+                    }
 
                     // Feed the TrueForce stream provider the rotation we are
                     // pushing (not the wheel's pre-write value) so its init
@@ -350,6 +361,14 @@ public sealed partial class MainViewModel
                 {
                     if (ReferenceEquals(_logitechHidpp, provider))
                     {
+                        // Only echo valid read-backs into the UI — a failed read
+                        // (game holding the HID++ interface) must not clamp the
+                        // slider to its minimum and trigger a write.
+                        if (!provider.LastSettingsReadOk)
+                        {
+                            LogitechHidppStatus = "HID++ — wheel settings unreadable (game holding the interface?)";
+                            return;
+                        }
                         _logitechUiLoading = true;
                         LogitechFfbStrengthNm = provider.FfbStrengthNm;
                         LogitechRotationDegrees = provider.RotationDegrees;
@@ -421,6 +440,15 @@ public sealed partial class MainViewModel
         var provider = _logitechHidpp;
         if (provider?.IsConnected != true) return;
 
+        // Never write on unknown wheel state: a failed settings read means the
+        // wheel isn't answering (the game holds the HID++ interface) — writing
+        // the UI's clamped values can throttle the wheel to 1 Nm.
+        if (!provider.LastSettingsReadOk)
+        {
+            LogitechHidppStatus = "HID++ — wheel settings unreadable, write skipped (is the game holding the settings interface?)";
+            return;
+        }
+
         bool force = _logitechWriteForceNext;
         _logitechWriteForceNext = false;
 
@@ -463,6 +491,15 @@ public sealed partial class MainViewModel
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
                 {
                     if (!ReferenceEquals(_logitechHidpp, provider)) return;
+                    // Only echo the read-back into the UI when it actually
+                    // succeeded — a failed read feeding the slider clamps it to
+                    // the 1.0 minimum and schedules another write (the 1 Nm
+                    // throttle bug). Keep the user's values and flag the state.
+                    if (!provider.LastSettingsReadOk)
+                    {
+                        LogitechHidppStatus = "HID++ — write attempted but read-back failed; keeping your values (is the game holding the settings interface?)";
+                        return;
+                    }
                     _logitechUiLoading = true;
                     LogitechFfbStrengthNm = provider.FfbStrengthNm;
                     LogitechRotationDegrees = provider.RotationDegrees;
