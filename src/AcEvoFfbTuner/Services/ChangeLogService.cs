@@ -50,6 +50,16 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.9",
+            Date = new DateTime(2026, 8, 16),
+            Title = "Choose which wheel profile slot the app uses — presets are never overwritten",
+            Improvements =
+            [
+                "The wheel settings page now has a Profile slot selector: Desktop (live changes, resets on restart) or onboard slots 1-5 (settings stored in the wheel, survive restarts). The app applies your chosen slot at every connect and switches immediately when you change it — so if you have preset profiles saved in the wheel, pick a free slot and the app will never write over them",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.8",
             Date = new DateTime(2026, 8, 16),
             Title = "Fixed: the app could throttle the wheel to 1 Nm when the game holds the settings interface",

@@ -55,6 +55,12 @@ public sealed class AppSettings
     /// Applied to the wheel at every connect alongside the strength.</summary>
     public int LogitechRotationDegrees { get; set; } = 1080;
 
+    /// <summary>Which wheel profile the app writes settings to: 0 = desktop
+    /// mode (G HUB profile — live changes, but resets on wheel restart),
+    /// 1-5 = onboard slots (settings stored in the wheel, persist across
+    /// restarts). The user chooses so their preset slots are never overwritten.</summary>
+    public int LogitechProfileSlot { get; set; } = 1;
+
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
 

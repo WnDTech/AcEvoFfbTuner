@@ -220,11 +220,15 @@
                                 SectionColor="#FFFF9800" Margin="0,8,0,0" />
 
                             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                <Button Content="Switch to Desktop Mode" Command="{Binding SwitchToDesktopModeCommand}"
-                                        Height="30" Padding="12,0"
-                                        Background="#33FF9800" Foreground="#FFFF9800"
-                                        BorderThickness="1" BorderBrush="#55FF9800" Cursor="Hand" FontSize="12" FontWeight="SemiBold"
-                                        Visibility="{Binding LogitechIsDesktopMode, Converter={StaticResource InvertBoolToVis}}" />
+                                <TextBlock Text="Profile slot:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <ComboBox ItemsSource="{Binding LogitechProfileSlotOptions}"
+                                          SelectedValue="{Binding LogitechProfileSlot, Mode=TwoWay}"
+                                          SelectedValuePath="Key" DisplayMemberPath="Value"
+                                          Width="260" Height="28" VerticalContentAlignment="Center"
+                                          Background="#FF21262D" Foreground="#FFE6EDF3" BorderBrush="#3347A15C"
+                                          Cursor="Hand" FontSize="12"
+                                          ToolTip="Which wheel profile the app writes to. Onboard slots (1-5) store settings in the wheel and survive restarts; Desktop applies live but resets on wheel restart. Pick a slot you don't use for presets." />
                                 <Button Content="Re-read Settings" Command="{Binding RefreshLogitechWheelCommand}"
                                         Height="30" Padding="12,0" Margin="8,0,0,0"
                                         Background="#FF21262D" Foreground="#FFE6EDF3"
