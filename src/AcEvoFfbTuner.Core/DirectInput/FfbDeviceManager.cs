@@ -43,6 +43,13 @@ public sealed class FfbDeviceManager : IDisposable
     /// lets the game keep its force path untouched.</summary>
     public bool InputOnlyMode { get; set; }
 
+    /// <summary>Serializes ALL DirectInput device creation across the app.
+    /// The field crashes (offset 0x279e58/0x28299c, every version) happen when
+    /// the FFB connect and the pedal-source enumeration create DI devices on
+    /// the same wheel CONCURRENTLY — two threads hammering the same COM device
+    /// object faults natively (0xc0000005), which try/catch cannot catch.</summary>
+    public static readonly object DirectInputAccessLock = new();
+
     private bool _isAcquired;
     private bool _secondaryAcquired;
     private int _maxForceMagnitude = 10000;
@@ -494,16 +501,19 @@ public sealed class FfbDeviceManager : IDisposable
             try
             {
                 ConnLog("Creating Joystick...");
-                _device = new DI.Joystick(_directInput!, deviceInfo.DeviceInstance.InstanceGuid);
-                ConnLog(InputOnlyMode
-                    ? "Joystick created OK. Setting cooperative level NonExclusive|Background (input only)..."
-                    : "Joystick created OK. Setting cooperative level Exclusive|Background...");
-                _device.SetCooperativeLevel(handle,
-                    InputOnlyMode
-                        ? DI.CooperativeLevel.Background | DI.CooperativeLevel.NonExclusive
-                        : DI.CooperativeLevel.Exclusive | DI.CooperativeLevel.Background);
-                ConnLog(InputOnlyMode ? "Cooperative level set. Acquiring (non-exclusive)..." : "Cooperative level set. Acquiring...");
-                _device.Acquire();
+                lock (DirectInputAccessLock)
+                {
+                    _device = new DI.Joystick(_directInput!, deviceInfo.DeviceInstance.InstanceGuid);
+                    ConnLog(InputOnlyMode
+                        ? "Joystick created OK. Setting cooperative level NonExclusive|Background (input only)..."
+                        : "Joystick created OK. Setting cooperative level Exclusive|Background...");
+                    _device.SetCooperativeLevel(handle,
+                        InputOnlyMode
+                            ? DI.CooperativeLevel.Background | DI.CooperativeLevel.NonExclusive
+                            : DI.CooperativeLevel.Exclusive | DI.CooperativeLevel.Background);
+                    ConnLog(InputOnlyMode ? "Cooperative level set. Acquiring (non-exclusive)..." : "Cooperative level set. Acquiring...");
+                    _device.Acquire();
+                }
                 _isAcquired = true;
                 ResetAxisDetection();
                 ConnLog(InputOnlyMode ? "ACQUIRED (input-only, non-exclusive — game keeps its force path)" : "EXCLUSIVE ACQUIRED SUCCESSFULLY");
@@ -1523,11 +1533,14 @@ public sealed class FfbDeviceManager : IDisposable
         try
         {
             _directInput ??= new DI.DirectInput();
-            _secondaryDevice = new DI.Joystick(_directInput, deviceInfo.DeviceInstance.InstanceGuid);
-            _secondaryDevice.SetCooperativeLevel(
-                _windowHandle != IntPtr.Zero ? _windowHandle : GetDesktopWindow(),
-                DI.CooperativeLevel.NonExclusive | DI.CooperativeLevel.Background);
-            _secondaryDevice.Acquire();
+            lock (DirectInputAccessLock)
+            {
+                _secondaryDevice = new DI.Joystick(_directInput, deviceInfo.DeviceInstance.InstanceGuid);
+                _secondaryDevice.SetCooperativeLevel(
+                    _windowHandle != IntPtr.Zero ? _windowHandle : GetDesktopWindow(),
+                    DI.CooperativeLevel.NonExclusive | DI.CooperativeLevel.Background);
+                _secondaryDevice.Acquire();
+            }
             _secondaryAcquired = true;
             return true;
         }

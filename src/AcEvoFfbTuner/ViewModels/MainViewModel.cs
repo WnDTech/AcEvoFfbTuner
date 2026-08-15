@@ -938,11 +938,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             WheelFfbTestStatus = "Wheel not connected — connect a device first";
             return;
         }
-        if (!_deviceManager.SupportsPeriodicEffects)
-        {
-            WheelFfbTestStatus = "Device reports no force feedback support";
-            return;
-        }
 
         WheelFfbTestActive = true;
         _telemetryLoop.SuppressOutput = true;
@@ -961,6 +956,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
         else
         {
+            // The DI gate only applies to DI-force wheels: TrueForce wheels are
+            // input-only at the DI layer (no periodic effects), but their force
+            // rides the stream — the gate above must not block the stream test.
+            if (!_deviceManager.SupportsPeriodicEffects)
+            {
+                WheelFfbTestActive = false;
+                WheelFfbTestStatus = "Device reports no force feedback support";
+                return;
+            }
             _deviceManager.SendConstantForce(WheelFfbTestIntensity);
             AddSystemLog($"WHEEL FFB TEST: sending {WheelFfbTestIntensity * 100:F0}% force — hold the wheel!");
             WheelFfbTestStatus = $"Sending {WheelFfbTestIntensity * 100:F0}% force — you should feel the wheel pull. Auto-stops in 3s.";

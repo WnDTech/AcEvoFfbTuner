@@ -50,6 +50,17 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.6",
+            Date = new DateTime(2026, 8, 15),
+            Title = "Wheel FFB test fixed for input-only wheels + startup crash root cause removed (DI access serialized)",
+            Fixes =
+            [
+                "The wheel FFB test reported \"Device reports no force feedback support\" on TrueForce wheels — the input-only DI mode disables DI periodic effects, but the test gate checked that before reaching the TrueForce-stream path. The gate now only applies to DI-force wheels; on the RS50/G PRO/G923 the test runs through the stream as intended",
+                "Startup crashes (offsets 0x279e58/0x28299c in every field pack) are now understood and fixed: at connect, the FFB manager and the pedal-source enumeration create DirectInput devices on the same wheel CONCURRENTLY — two threads hammering the same COM device faults natively (0xc0000005), which try/catch cannot catch. All DirectInput device creation is now serialized through one shared lock",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.5",
             Date = new DateTime(2026, 8, 15),
             Title = "Wheel strength and rotation now applied automatically at every connect — G HUB never needed",

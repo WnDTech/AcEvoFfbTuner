@@ -1,3 +1,4 @@
+using AcEvoFfbTuner.Core.DirectInput;
 using DI = SharpDX.DirectInput;
 
 namespace AcEvoFfbTuner.Core.PedalInput.Sources;
@@ -112,16 +113,24 @@ public sealed class DirectInputPedalSource : IPedalInputSource, IDisposable
                     continue;
                 }
 
-                var joystick = new DI.Joystick(_directInput, instance.InstanceGuid);
-                joystick.SetCooperativeLevel(IntPtr.Zero, DI.CooperativeLevel.NonExclusive | DI.CooperativeLevel.Background);
-
-                _allDevices.Add(new PedalDeviceHandle
+                // Serialized with the FFB connect: concurrent DI device
+                // creation on the same wheel (this enumeration + the FFB
+                // manager's connect) faults natively in SharpDX (0xc0000005,
+                // offsets 0x279e58/0x28299c in every field pack) — try/catch
+                // cannot catch it, only serialization can.
+                lock (FfbDeviceManager.DirectInputAccessLock)
                 {
-                    Joystick = joystick,
-                    ProductName = instance.ProductName,
-                    InstanceGuid = instance.InstanceGuid,
-                    IsFfbCapable = isFfb
-                });
+                    var joystick = new DI.Joystick(_directInput, instance.InstanceGuid);
+                    joystick.SetCooperativeLevel(IntPtr.Zero, DI.CooperativeLevel.NonExclusive | DI.CooperativeLevel.Background);
+
+                    _allDevices.Add(new PedalDeviceHandle
+                    {
+                        Joystick = joystick,
+                        ProductName = instance.ProductName,
+                        InstanceGuid = instance.InstanceGuid,
+                        IsFfbCapable = isFfb
+                    });
+                }
                 _enumLog.Add($"  ADDED: \"{instance.ProductName}\"");
             }
             catch (Exception ex)
