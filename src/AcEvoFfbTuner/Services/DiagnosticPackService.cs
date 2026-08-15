@@ -236,6 +236,22 @@ public sealed class DiagnosticPackService
                         }
                     }
                     catch { }
+                    // WER LocalDumps minidump (written by Windows itself — survives
+                    // crashes that kill the in-process filter). Newest one only.
+                    try
+                    {
+                        var werDump = GetNewestWerDump();
+                        if (werDump != null
+                            && totalBytes + new FileInfo(werDump).Length <= maxAttachmentBytes)
+                        {
+                            var entry = zip.CreateEntry("Logs/wer_crash.dmp", CompressionLevel.Optimal);
+                            using var source = File.OpenRead(werDump);
+                            using var dest = entry.Open();
+                            source.CopyTo(dest);
+                            totalBytes += new FileInfo(werDump).Length;
+                        }
+                    }
+                    catch { }
                 }
             }
 
@@ -369,6 +385,44 @@ public sealed class DiagnosticPackService
             }
         }
         catch { }
+        // WER LocalDumps minidump (written by Windows itself — survives crashes
+        // that kill the in-process filter). Newest one only.
+        try
+        {
+            var werDump = GetNewestWerDump();
+            if (werDump != null)
+            {
+                var entryName = "Logs/wer_crash.dmp";
+                var entry = zip.CreateEntry(entryName, CompressionLevel.Optimal);
+                using var source = File.OpenRead(werDump);
+                using var dest = entry.Open();
+                source.CopyTo(dest);
+                progress?.Report($"Added: {entryName}");
+            }
+        }
+        catch { }
+    }
+
+    /// <summary>Newest WER LocalDumps minidump for this exe, or null. WER writes
+    /// these to %LOCALAPPDATA%\CrashDumps on every crash once the LocalDumps
+    /// registry keys are set (see App.EnsureWerLocalDumps) — including crashes
+    /// that corrupt the process so badly the in-process filter cannot run.</summary>
+    private static string? GetNewestWerDump()
+    {
+        try
+        {
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "CrashDumps");
+            if (!Directory.Exists(dir)) return null;
+            var files = Directory.GetFiles(dir, "AcEvoFfbTuner.exe*.dmp");
+            if (files.Length == 0) return null;
+            return files.OrderByDescending(f => new FileInfo(f).LastWriteTime).First();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static void AddRecordingManifestToZip(ZipArchive zip, IProgress<string>? progress)

@@ -40,6 +40,11 @@ public sealed class AppSettings
     public string HubAuthorName { get; set; } = "";
     public string HubAuthorId { get; set; } = "";
 
+    /// <summary>True once the WER LocalDumps registry keys for this exe have
+    /// been requested (one-time elevated setup) — Windows then writes a
+    /// minidump for every crash, even ones that kill the in-process filter.</summary>
+    public bool WerLocalDumpsConfigured { get; set; }
+
     private static readonly string BasePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
 

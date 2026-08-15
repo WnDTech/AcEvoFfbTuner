@@ -50,6 +50,17 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.27.2",
+            Date = new DateTime(2026, 8, 15),
+            Title = "Crash dumps now written by Windows itself (WER LocalDumps) — even crashes that kill the in-process filter are captured",
+            Fixes =
+            [
+                "The startup crashes on the RS50 corrupt the process so badly that no in-process crash handler can run — five field crashes shipped no crash.log and no minidump at all. The app now sets the Windows Error Reporting LocalDumps keys for AcEvoFfbTuner.exe (one-time elevated setup, UAC prompt once) so Windows itself writes a minidump to %LOCALAPPDATA%\\CrashDumps on every crash, no matter how corrupt the process gets",
+                "Diagnostic packs now include the newest WER minidump (Logs/wer_crash.dmp) alongside the in-process one — the next crash will finally show the real faulting stack instead of just the event-log offset",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.1",
             Date = new DateTime(2026, 8, 15),
             Title = "Crash dumps now survive heap corruption — native-only crash capture path",

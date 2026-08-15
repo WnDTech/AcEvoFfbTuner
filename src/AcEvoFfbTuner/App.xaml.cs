@@ -97,6 +97,56 @@ public partial class App : Application
         catch { }
     }
 
+    /// <summary>
+    /// One-time elevated setup of WER LocalDumps (HKLM) so Windows itself
+    /// writes a minidump for every crash of this exe — including crashes that
+    /// corrupt the process so badly the in-process native filter cannot run
+    /// (the field RS50 crashes ship no crash.log/crash.dmp for exactly that
+    /// reason). Dumps land in %LOCALAPPDATA%\CrashDumps and the diag pack
+    /// builder ships the newest one. Requests elevation once (UAC); if the
+    /// user declines, the flag is still set so we don't nag every launch.
+    /// </summary>
+    private static void EnsureWerLocalDumps()
+    {
+        try
+        {
+            if (Settings.WerLocalDumpsConfigured) return;
+
+            const string subkey = @"SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\AcEvoFfbTuner.exe";
+            const string fullKey = @"HKLM\" + subkey;
+
+            bool configured = false;
+            try
+            {
+                using var k = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(subkey, false);
+                configured = k?.GetValue("DumpType") is int dt && dt == 1;
+            }
+            catch { }
+
+            if (!configured)
+            {
+                try
+                {
+                    var psi = new System.Diagnostics.ProcessStartInfo("cmd.exe",
+                        $"/c reg add \"{fullKey}\" /v DumpType /t REG_DWORD /d 1 /f & reg add \"{fullKey}\" /v DumpCount /t REG_DWORD /d 5 /f")
+                    {
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+                        CreateNoWindow = true
+                    };
+                    using var p = System.Diagnostics.Process.Start(psi);
+                    p?.WaitForExit(15000);
+                }
+                catch { }
+            }
+
+            Settings.WerLocalDumpsConfigured = true;
+            Settings.Save();
+        }
+        catch { }
+    }
+
     private static int NativeExceptionFilter(IntPtr exceptionPointers)
     {
         if (Interlocked.Exchange(ref _inNativeFilter, 1) != 0)
@@ -217,6 +267,11 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
 
         Settings = AppSettings.Load();
+
+        // One-time elevated WER LocalDumps setup — fire-and-forget; the UAC
+        // prompt (if any) is a single user action per machine, and the flag
+        // prevents repeats even if the user declines.
+        Task.Run(EnsureWerLocalDumps);
 
         ThemeManager.ApplyTheme(Settings.ThemeName);
 
