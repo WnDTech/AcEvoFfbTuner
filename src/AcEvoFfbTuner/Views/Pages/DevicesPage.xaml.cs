@@ -1,17 +1,20 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using AcEvoFfbTuner.Controls;
 using AcEvoFfbTuner.ViewModels;
-using AcEvoFfbTuner.Views;
 
 namespace AcEvoFfbTuner.Views.Pages;
 
 public partial class DevicesPage : UserControl
 {
     private MainViewModel? _vm;
+    private readonly Dictionary<string, SectionCard> _cardsByTag = new();
+    private readonly Dictionary<string, FrameworkElement> _panels = new();
 
     public event EventHandler? Hf8MotorTestRequested;
 
@@ -19,6 +22,76 @@ public partial class DevicesPage : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        Loaded += OnLoaded;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        CacheCards();
+        BuildPanelMap();
+        ShowSection("Wheelbase");
+    }
+
+    private void CacheCards()
+    {
+        foreach (var card in FindSectionCards(this))
+        {
+            if (card.Tag is string tag && !string.IsNullOrEmpty(tag) && !_cardsByTag.ContainsKey(tag))
+            {
+                _cardsByTag[tag] = card;
+                card.Selected += OnCardSelected;
+            }
+        }
+    }
+
+    private void BuildPanelMap()
+    {
+        _panels["Wheelbase"] = WheelPanel;
+        _panels["Led"] = LedPanel;
+        _panels["Haptic"] = HapticPanel;
+        _panels["Buttons"] = ButtonsPanel;
+        _panels["Pedals"] = PedalPanel;
+    }
+
+    private void OnCardSelected(object sender, RoutedEventArgs e)
+    {
+        if (sender is SectionCard card && card.Tag is string tag)
+            ShowSection(tag);
+    }
+
+    private void ShowSection(string tag)
+    {
+        if (!_cardsByTag.TryGetValue(tag, out var card)) return;
+        if (!_panels.TryGetValue(tag, out var panel)) return;
+
+        foreach (var kv in _panels)
+            kv.Value.Visibility = kv.Key == tag ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (var kv in _cardsByTag)
+            kv.Value.IsSelected = kv.Key == tag;
+
+        DetailHeader.Text = card.Title;
+        var brush = card.SectionBrush ?? (Brush)FindResource("SectionOutput");
+        DetailHeader.Foreground = brush;
+        DetailHeaderAccent.Background = brush;
+
+        if (tag == "Led")
+            UpdateLedPreview();
+    }
+
+    private static IEnumerable<SectionCard> FindSectionCards(DependencyObject parent)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(parent))
+        {
+            if (child is SectionCard sectionCard)
+                yield return sectionCard;
+
+            if (child is DependencyObject depChild)
+            {
+                foreach (var nested in FindSectionCards(depChild))
+                    yield return nested;
+            }
+        }
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -41,22 +114,6 @@ public partial class DevicesPage : UserControl
         {
             Dispatcher.BeginInvoke(UpdateLedPreview);
         }
-    }
-
-    private void OnTabChecked(object sender, RoutedEventArgs e)
-    {
-        if (LedPanel == null) return;
-
-        if (sender is not RadioButton rb) return;
-
-        WheelPanel.Visibility = rb == WheelbaseTab ? Visibility.Visible : Visibility.Collapsed;
-        LedPanel.Visibility = rb == LedTab ? Visibility.Visible : Visibility.Collapsed;
-        HapticPanel.Visibility = rb == HapticTab ? Visibility.Visible : Visibility.Collapsed;
-        ButtonsPanel.Visibility = rb == ButtonsTab ? Visibility.Visible : Visibility.Collapsed;
-        PedalPanel.Visibility = rb == PedalsTab ? Visibility.Visible : Visibility.Collapsed;
-
-        if (rb == LedTab)
-            UpdateLedPreview();
     }
 
     private void UpdateLedPreview()
@@ -117,56 +174,6 @@ public partial class DevicesPage : UserControl
             };
             LedPreviewBar.Children.Add(ellipse);
         }
-    }
-
-    private bool _sidebarCollapsed;
-
-    private void OnToggleCollapse(object sender, RoutedEventArgs e)
-    {
-        _sidebarCollapsed = !_sidebarCollapsed;
-        ApplySidebarState();
-    }
-
-    private void ApplySidebarState()
-    {
-        if (_sidebarCollapsed)
-        {
-            SidebarCol.Width = new GridLength(50);
-            HeaderLabel.Visibility = Visibility.Collapsed;
-
-            foreach (var btn in new[] { LedTab, HapticTab, ButtonsTab, PedalsTab })
-                SetTemplateLabelVisibility(btn, "TabLabel", Visibility.Collapsed);
-
-            SetTemplateLabelVisibility(PedalsTab, "PedalsWipBadge", Visibility.Collapsed);
-
-            SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Collapsed);
-            CollapseBtn.ToolTip = "Expand sidebar";
-
-            if (CollapseBtn.Template?.FindName("CollapseArrow", CollapseBtn) is TextBlock arrow)
-                arrow.Text = "▸";
-        }
-        else
-        {
-            SidebarCol.Width = new GridLength(200);
-            HeaderLabel.Visibility = Visibility.Visible;
-
-            foreach (var btn in new[] { LedTab, HapticTab, ButtonsTab, PedalsTab })
-                SetTemplateLabelVisibility(btn, "TabLabel", Visibility.Visible);
-
-            SetTemplateLabelVisibility(PedalsTab, "PedalsWipBadge", Visibility.Visible);
-
-            SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Visible);
-            CollapseBtn.ToolTip = "Collapse sidebar";
-
-            if (CollapseBtn.Template?.FindName("CollapseArrow", CollapseBtn) is TextBlock arrow)
-                arrow.Text = "◂";
-        }
-    }
-
-    private static void SetTemplateLabelVisibility(Control control, string name, Visibility visibility)
-    {
-        if (control.Template?.FindName(name, control) is FrameworkElement fe)
-            fe.Visibility = visibility;
     }
 
     private void OnOpenMotorTest(object sender, RoutedEventArgs e)

@@ -12,6 +12,7 @@ public enum NavPage
     Devices,
     Profiles,
     Hub,
+    TestDrive,
     Overlays,
     Settings,
     Help

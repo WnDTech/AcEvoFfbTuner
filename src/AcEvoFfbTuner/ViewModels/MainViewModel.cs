@@ -1474,6 +1474,45 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public int DeviceButtonCount => _deviceManager.ButtonCount;
     public FfbCoachService CoachService => _coachService;
     public HubClient HubClient { get; }
+    public BetaClient BetaClient { get; }
+
+    /// <summary>Signed Test Drive session token (X-Beta-Session). Backed by
+    /// settings.json so the app session survives restarts.</summary>
+    public string? BetaSessionToken
+    {
+        get => _appSettings.BetaSessionToken;
+        private set
+        {
+            _appSettings.BetaSessionToken = value;
+            _appSettings.Save();
+        }
+    }
+
+    /// <summary>Cached beta user (name/avatar/tier/status) — paints the Test
+    /// Drive page instantly before the first API call completes.</summary>
+    public string? BetaUserCacheJson
+    {
+        get => _appSettings.BetaUserCacheJson;
+        private set
+        {
+            _appSettings.BetaUserCacheJson = value;
+            _appSettings.Save();
+        }
+    }
+
+    /// <summary>Test Drive build channel: when true the updater offers beta
+    /// (prerelease) builds. Eligibility is server-gated (me.betaChannel); this
+    /// persists the tester's choice.</summary>
+    public bool BetaChannel
+    {
+        get => _appSettings.BetaChannel;
+        set
+        {
+            if (_appSettings.BetaChannel == value) return;
+            _appSettings.BetaChannel = value;
+            _appSettings.Save();
+        }
+    }
 
     private readonly DispatcherTimer _uiUpdateTimer;
     private bool _updateCheckRunning;
@@ -1488,6 +1527,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _coachService = new FfbCoachService(_profileManager, _pipeline);
         InitializeAiCoach();
         HubClient = new HubClient(_appSettings.HubApiBaseUrl, _appSettings.HubApiKey);
+        BetaClient = new BetaClient(_appSettings.BetaApiBaseUrl);
 
         _deviceManager.DeviceRequiresReconnect += () => Application.Current?.Dispatcher.BeginInvoke(() =>
         {
@@ -1814,6 +1854,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OsoyooStopTestCommand = new RelayCommand(OnOsoyooStopTest);
         StartWheelFfbTestCommand = new RelayCommand(OnStartWheelFfbTest);
         StopWheelFfbTestCommand = new RelayCommand(OnStopWheelFfbTest);
+
+        // Silent background refresh of the cached Test Drive user — no toasts,
+        // the Test Drive page paints from BetaUserCacheJson meanwhile.
+        _ = RefreshBetaUserCacheAsync();
      }
 
 

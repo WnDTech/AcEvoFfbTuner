@@ -17,6 +17,22 @@ namespace AcEvoFfbTuner.Core.FfbProcessing;
 /// </summary>
 public sealed class R3eFfbPipeline : FfbPipeline
 {
+    public R3eFfbPipeline()
+    {
+        // R3E's centering force matches the steer sign (force = +sign(steer) * |F|).
+        // Without this, GripGuard misclassifies the centering force as "pulling
+        // away" and clamps it whenever front slip exceeds the peak angle — the
+        // wheel goes light and releases mid-corner (feels like it pulls away
+        // from center). EVO keeps the default convention.
+        GripGuard.CenteringForceMatchesSteerSign = true;
+
+        // R3E's GForce.Z is negative during braking (driver pushed forward),
+        // which made the dynamic detail LIGHTEN the wheel under braking.
+        // Magnitude-based keeps the weight-transfer heaviness in both
+        // directions. EVO/LMU keep the signed behavior.
+        DynamicEffects.AbsLongitudinalG = true;
+    }
+
     private float _dcBlockSmooth;
     private float _prevDetailOutput;
 
@@ -34,8 +50,16 @@ public sealed class R3eFfbPipeline : FfbPipeline
     public float BrakeBoostGain { get; set; } = 0.15f;
     public float BrakeBoostThreshold { get; set; } = 0.1f;
 
-    /// <summary>Core force multiplier. Default 3.0 for column-force games to compensate for the conversion from SteeringForce.</summary>
-    public override float CoreForceMultiplier { get; set; } = 3.0f;
+    /// <summary>
+    /// Core force multiplier. Default 1.0: R3E's SteeringForcePercentage is
+    /// already a 0-1 normalized signal, so 1.0 maps it 1:1 (with MasterGain
+    /// and OutputGain on top). The old 3.0 default was a leftover from the
+    /// pre-2026-08-16 tuning where GripGuard mis-clamped the centering force
+    /// in corners — with the clamp fixed, high multipliers pin the output at
+    /// the clip and flatten all force variation (verified in 2026-08-16
+    /// snapshot: corner |ForceOut| p50 0.845 / p90 0.975, 22% clipping).
+    /// </summary>
+    public override float CoreForceMultiplier { get; set; } = 1.0f;
 
     /// <summary>
     /// Tyre grip scale: how strongly average front tyre grip attenuates core force.
@@ -93,17 +117,32 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // CORE PATH — Direct SteeringForce to output
         // ═════════════════════════════════════════════════════════════════
 
-        // Brake weight-transfer boost
+        // Brake weight-transfer boost (multiplicative) + absolute heaviness.
         float brakeBoost = 1f;
+        float brakeHeaviness = 0f;
         if (raw.BrakeInput > BrakeBoostThreshold)
         {
             float brakeIntensity = Math.Min(
                 (raw.BrakeInput - BrakeBoostThreshold) / (1f - BrakeBoostThreshold), 1f);
             brakeBoost = 1f + BrakeBoostGain * brakeIntensity;
+            // Absolute heaviness: R3E's SteeringForce barely responds to brake
+            // load (verified 2026-08-16 snapshot: output/SteeringForce ratio
+            // DROPS to 0.59 under braking vs 1.51 otherwise), so a purely
+            // multiplicative boost cannot create the weight-transfer feel the
+            // physics lacks. This adds toward-center resistance proportional
+            // to brake input, scaled from the same BrakeBoostGain slider.
+            brakeHeaviness = brakeIntensity * BrakeBoostGain * MasterGain;
         }
 
-        // Centering direction: always push toward center regardless of
-        // SteeringForce sign convention (may vary by game/version).
+        // Centering direction: force points the SAME direction as the steer
+        // angle. Verified 2026-08-16 from live telemetry: R3E reports steer
+        // positive to the RIGHT (confirmed via load asymmetry in snapshots),
+        // and a positive output pushes LEFT on this device pass-through — so
+        // +sign(steer) IS toward center. Flipping it produced a full
+        // pull-away into the corner (user-confirmed + snapshot: 28/28 corner
+        // frames opposite-signed). Do NOT change without re-verifying on
+        // hardware. The reader's Mz synth (-absForce * steerSign) is
+        // diagnostics-only and does not feed this path.
         // At exactly 0° steer → sign = 0 → no centering force.
         float steerSign = raw.SteerAngle > 0f ? 1f : raw.SteerAngle < 0f ? -1f : 0f;
         float magnitude = Math.Abs(steeringForce);
@@ -154,6 +193,12 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // interact with the smoothstep at small angles)
         coreOutput *= brakeBoost;
 
+        // Additive brake heaviness in the centering direction: the wheel
+        // gets heavier as weight transfers to the front. Zero when the core
+        // is zero (straight line — nothing to resist).
+        if (brakeHeaviness > 0f)
+            coreOutput += Math.Sign(coreOutput) * brakeHeaviness;
+
         // Speed fade: zero below 0.5 km/h, ramp to full at 5 km/h
         if (raw.SpeedKmh < 0.5f)
         {
@@ -201,12 +246,6 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // Pass coreOutput so the Pacejka shape path works (Math.Sign(coreOutput))
         // and the clamp scales with actual steering force instead of ±0.1.
         detailForce += SlipEnhancer.Apply(coreOutput, raw);
-
-        // Enhanced slip vibration: speed-oscillating texture from per-wheel
-        // SlipRatio, modulated by wheel load and separated front/rear.
-        // Controlled by slipGain (front) and rearSlipGain sliders.
-        // Provides realistic "sliding on gravel" texture when tyres slip.
-        detailForce += SynthesizeSlipVibration(raw);
 
         // Dynamic effects: lateral/longitudinal G, suspension, yaw rate.
         // Adds cornering feel, brake dive, road texture from suspension.
@@ -291,8 +330,11 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // Direction-based suppression: prevent detail from reversing core
         // at small steer angles where core force is naturally weak.
         // Additionally, when the driver is actively steering with a clear
-        // direction (|SteerAngle| > 0.02), prevent detail from opposing it
-        // even if the core force has dropped out (SteeringForce near zero).
+        // direction (|SteerAngle| > 0.04), cap detail that pushes OPPOSITE
+        // the steer (the away-from-center direction — centering force here
+        // matches the steer sign) to a small fraction of MasterGain — even
+        // if the core force has dropped out (SteeringForce near zero),
+        // cornering detail can't drag the wheel off center.
         if (coreOutput > 0f && detailForce < 0f)
             detailForce = Math.Max(detailForce, -coreOutput * 0.5f);
         else if (coreOutput < 0f && detailForce > 0f)
@@ -313,6 +355,16 @@ public sealed class R3eFfbPipeline : FfbPipeline
                     detailForce = Math.Max(detailForce, maxOpposing);
             }
         }
+
+        // Enhanced slip vibration: speed-oscillating texture from per-wheel
+        // SlipRatio, modulated by wheel load and separated front/rear.
+        // Controlled by slipGain (front) and rearSlipGain sliders.
+        // Provides realistic "sliding on gravel" texture when tyres slip.
+        // Added AFTER the direction-based suppression: the texture is a
+        // bipolar zero-mean oscillation, and the suppression clamp would
+        // half-wave-rectify it into a directional pulsing pull whenever the
+        // away-from-center half-cycle coincided with active steering.
+        detailForce += SynthesizeSlipVibration(raw);
 
         // Detail EMA smoothing: alpha is inverted so slider = 0 is none, higher = smoother.
         // alpha = 1 - DetailSmoothing: at 0 → alpha=1 (raw), at 0.6 → alpha=0.4, at 0.9 → alpha=0.1

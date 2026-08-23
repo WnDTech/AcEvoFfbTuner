@@ -431,6 +431,7 @@ public partial class App : Application
     {
         try
         {
+            Services.ChangeLogService.BetaChannel = Settings.BetaChannel;
             await Services.ChangeLogService.InitializeAsync();
 
             var currentVersion = Services.ChangeLogService.CurrentVersion;

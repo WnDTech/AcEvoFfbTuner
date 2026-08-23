@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using AcEvoFfbTuner.Controls;
 using AcEvoFfbTuner.Core;
 
 namespace AcEvoFfbTuner.Views.Pages;
@@ -11,6 +13,8 @@ namespace AcEvoFfbTuner.Views.Pages;
 public sealed partial class OverlaysPage : UserControl
 {
     private bool _loaded;
+    private readonly Dictionary<string, SectionCard> _cardsByTag = new();
+    private readonly Dictionary<string, FrameworkElement> _panels = new();
 
     public OverlaysPage()
     {
@@ -21,6 +25,10 @@ public sealed partial class OverlaysPage : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        CacheCards();
+        BuildPanelMap();
+        ShowSection("Dashboard");
+
         _loaded = false;
         var ips = FfbLiveServer.GetLocalNetworkAddresses();
         var activeIp = FfbLiveServer.GetActiveNetworkAddress();
@@ -43,6 +51,66 @@ public sealed partial class OverlaysPage : UserControl
         UpdateBuilderUrl();
 
         UpdateNetworkStatus();
+    }
+
+    private void CacheCards()
+    {
+        foreach (var card in FindSectionCards(this))
+        {
+            if (card.Tag is string tag && !string.IsNullOrEmpty(tag) && !_cardsByTag.ContainsKey(tag))
+            {
+                _cardsByTag[tag] = card;
+                card.Selected += OnCardSelected;
+            }
+        }
+    }
+
+    private void BuildPanelMap()
+    {
+        _panels["Dashboard"] = DtlDashboard;
+        _panels["Streamer"] = DtlStreamer;
+        _panels["Builder"] = DtlBuilder;
+        _panels["Clipping"] = DtlClipping;
+        _panels["Setup"] = DtlSetup;
+        _panels["Network"] = DtlNetwork;
+    }
+
+    private void OnCardSelected(object sender, RoutedEventArgs e)
+    {
+        if (sender is SectionCard card && card.Tag is string tag)
+            ShowSection(tag);
+    }
+
+    private void ShowSection(string tag)
+    {
+        if (!_cardsByTag.TryGetValue(tag, out var card)) return;
+        if (!_panels.TryGetValue(tag, out var panel)) return;
+
+        foreach (var kv in _panels)
+            kv.Value.Visibility = kv.Key == tag ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (var kv in _cardsByTag)
+            kv.Value.IsSelected = kv.Key == tag;
+
+        DetailHeader.Text = card.Title;
+        var brush = card.SectionBrush ?? (Brush)FindResource("SectionOutput");
+        DetailHeader.Foreground = brush;
+        DetailHeaderAccent.Background = brush;
+    }
+
+    private static IEnumerable<SectionCard> FindSectionCards(DependencyObject parent)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(parent))
+        {
+            if (child is SectionCard sectionCard)
+                yield return sectionCard;
+
+            if (child is DependencyObject depChild)
+            {
+                foreach (var nested in FindSectionCards(depChild))
+                    yield return nested;
+            }
+        }
     }
 
     private void UpdateNetworkStatus()

@@ -27,6 +27,28 @@ Our goal is to **fix the code** so we can establish a reliable baseline profile 
 - Keep release notes and the hardcoded changelog entry in sync — same content, same wording.
 - Editing the release body (`gh release edit <tag> --notes-file`) triggers the `discord-release-notify.yml` workflow, which posts the release link + version notes to Discord channel 1440318628661825587 (the same bot token as the feedback relay, stored as the `DISCORD_BOT_TOKEN` repo secret). Editing the body again re-posts; run the workflow manually (`workflow_dispatch`) to re-post the latest release.
 
+### Release Procedures — "push" vs "beta"
+When the user says **"push"** they mean the full STABLE release procedure below. When they say **"beta"** they mean a beta prerelease — same core procedure plus the beta-specific rules. Never shortcut either: a release is not done until the GitHub release exists WITH full What's New notes and the Discord announce has fired.
+
+**"push" = stable release:**
+1. Bump version in the csproj (`<Version>`), add the hardcoded `ChangeLogService.cs` entry, and update the README feature list (see Release Notes above).
+2. Write the What's New notes (`### Features` / `### Improvements` / `### Fixes`) — identical content in the hardcoded changelog entry and the release body.
+3. Full clean build + tests: `dotnet clean AcEvoFfbTuner.slnx -c Release -q 2>&1; dotnet build AcEvoFfbTuner.slnx -c Release` then `dotnet test src/AcEvoFfbTuner.Tests/... -c Release --no-build`.
+4. Commit + push, then create tag `v<X.Y.Z>` (must match the csproj version exactly) and `git push origin <tag>`.
+5. Wait for the Build & Release workflow to finish, then verify the release exists and is NOT a prerelease: `gh release view vX.Y.Z`.
+6. Write the full release notes into the body: `gh release edit vX.Y.Z --notes-file <file>`. NEVER leave the auto-generated "Full Changelog" link-only body.
+7. The Discord announce fires automatically on publish/edit (re-post with `workflow_dispatch` if needed).
+
+**"beta" = beta prerelease (Test Drive channel):**
+1. Version format `X.Y.Z-beta.N` (e.g. `1.29.0-beta.1`), always a HIGHER numeric `X.Y.Z` than the current stable — testers ride the next release number. Never publish a beta after the stable with the same `X.Y.Z` is out (it confuses the beta updater's equal-version upgrade rule).
+2. The csproj `<Version>` gets the NUMERIC part only (`1.29.0`) — `System.Version` cannot parse the `-beta.N` suffix and a suffixed `AssemblyVersion` throws at runtime. The suffix lives only in: the git tag (`v1.29.0-beta.1`), the installer display name, the hardcoded changelog entry (full string — the version comparators handle the suffix), and `InformationalVersion` (the workflow stamps the FULL version via `-p:InformationalVersion` so the app can tell `beta.1` from `beta.2` when their numeric versions are equal).
+3. The Build & Release workflow auto-marks the release `prerelease: true` when the tag contains `-` — no manual flag needed.
+4. Same full What's New notes requirement (`gh release edit vX.Y.Z-beta.N --notes-file <file>`), same build/test step.
+5. Verify with `gh release view v1.29.0-beta.1` that it is a prerelease.
+6. No extra gating work: stable-channel users never see prereleases in the updater or What's New; only Test Drive testers with the build channel enabled (server-gated by `me.betaChannel` = approved/paused) receive the beta. If it's the first beta after enabling the channel, confirm the server's `beta.php` with `me.betaChannel` is deployed.
+7. The Discord announce posts the beta release too — that is intended (tells testers a beta is up).
+8. Workflow `workflow_dispatch` accepts a version input for both stable and beta tags.
+
 ### Local Backups
 - The official local backup directory is: `C:\Users\paul_\OneDrive\Documents\APP\ACEVO - Telemetry FFB\backups\YYYY-MM-DD\src`
 - Always create a dated backup before making sweeping or experimental changes: `Copy-Item -Path src -Destination "backups\$(Get-Date -Format 'yyyy-MM-dd')\src" -Recurse`

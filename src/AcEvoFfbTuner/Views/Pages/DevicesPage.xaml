@@ -12,172 +12,108 @@
     </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="SidebarCol" Width="200" />
+            <ColumnDefinition Width="370" MinWidth="320" MaxWidth="440" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- ═══ LEFT: VERTICAL DEVICE TABS (COLLAPSIBLE) ═══ -->
-        <Border x:Name="SidebarBorder" Grid.Column="0" Background="{StaticResource BgPanel}"
-                BorderThickness="0,0,1,0" BorderBrush="{DynamicResource BorderBrush}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+        <!-- ═══ LEFT: COMPACT DEVICE NAV (click a device → settings on the right) ═══ -->
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,16,12,20">
+            <StackPanel>
 
-                <StackPanel x:Name="SidebarContent" Grid.Row="0" Margin="0,20,0,0">
-                    <TextBlock x:Name="HeaderLabel" Text="DEVICES" FontSize="11" FontWeight="Bold"
-                               Foreground="{StaticResource TextDimBrush}" Margin="16,0,0,12" />
+                <TextBlock Text="D E V I C E S" FontSize="12" FontWeight="Bold"
+                           Foreground="{StaticResource TextDimBrush}" Margin="0,4,0,12" />
 
-                    <RadioButton x:Name="WheelbaseTab" GroupName="DeviceTab" IsChecked="True"
-                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="Wheelbase &amp; wheel">
-                        <RadioButton.Template>
-                            <ControlTemplate TargetType="RadioButton">
-                                <Border x:Name="TabBd" Background="Transparent" Padding="12,10" BorderThickness="3,0,0,0" BorderBrush="Transparent">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="🎡" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                        <TextBlock x:Name="TabLabel" Text="Wheelbase" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
-                                    </Trigger>
-                                    <Trigger Property="IsChecked" Value="True">
-                                        <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
-                                        <Setter TargetName="TabBd" Property="BorderBrush" Value="#FF47A1FF" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </RadioButton.Template>
-                    </RadioButton>
+                <!-- WHEELBASE -->
+                <controls:SectionCard Title="WHEELBASE"
+                                      Tag="Wheelbase"
+                                      SectionBrush="#FF47A1FF"
+                                      Selectable="True" IsSelected="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="{Binding DeviceName, FallbackValue='No device', TargetNullValue='No device'}" Foreground="#FFE6EDF3" />
+                            <Run Text="  ·  " /><Run Text="{Binding IsDeviceConnected, StringFormat='Connected: {0}'}" Foreground="#FF7EE787" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
 
-                    <RadioButton x:Name="LedTab" GroupName="DeviceTab"
-                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="LED Effects">
-                        <RadioButton.Template>
-                            <ControlTemplate TargetType="RadioButton">
-                                <Border x:Name="TabBd" Background="Transparent" Padding="12,10" BorderThickness="3,0,0,0" BorderBrush="Transparent">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="💡" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                        <TextBlock x:Name="TabLabel" Text="LED Effects" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
-                                    </Trigger>
-                                    <Trigger Property="IsChecked" Value="True">
-                                        <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
-                                        <Setter TargetName="TabBd" Property="BorderBrush" Value="#FF79C0FF" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </RadioButton.Template>
-                    </RadioButton>
+                <!-- LED EFFECTS -->
+                <controls:SectionCard Title="LED EFFECTS"
+                                      Tag="Led"
+                                      SectionBrush="#FF79C0FF"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="{Binding LedVisibleCount, StringFormat='{}{0} LEDs'}" Foreground="#FF79C0FF" />
+                            <Run Text="  ·  " /><Run Text="{Binding LedSupportedInfo}" Foreground="#FF79C0FF" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
 
-                    <RadioButton x:Name="HapticTab" GroupName="DeviceTab"
-                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="Haptic Pad">
-                        <RadioButton.Template>
-                            <ControlTemplate TargetType="RadioButton">
-                                <Border x:Name="TabBd" Background="Transparent" Padding="12,10" BorderThickness="3,0,0,0" BorderBrush="Transparent">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="📳" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                        <TextBlock x:Name="TabLabel" Text="Haptic Pad" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
-                                    </Trigger>
-                                    <Trigger Property="IsChecked" Value="True">
-                                        <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
-                                        <Setter TargetName="TabBd" Property="BorderBrush" Value="#FFD2A8FF" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </RadioButton.Template>
-                    </RadioButton>
+                <!-- HAPTIC PAD -->
+                <controls:SectionCard Title="HAPTIC PAD"
+                                      Tag="Haptic"
+                                      SectionBrush="#FFD2A8FF"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FFD2A8FF" TextWrapping="Wrap"
+                                   Text="{Binding Hf8ConnectionStatus}" />
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
 
-                    <RadioButton x:Name="ButtonsTab" GroupName="DeviceTab"
-                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="Buttons">
-                        <RadioButton.Template>
-                            <ControlTemplate TargetType="RadioButton">
-                                <Border x:Name="TabBd" Background="Transparent" Padding="12,10" BorderThickness="3,0,0,0" BorderBrush="Transparent">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="🎮" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                        <TextBlock x:Name="TabLabel" Text="Buttons" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
-                                    </Trigger>
-                                    <Trigger Property="IsChecked" Value="True">
-                                        <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
-                                        <Setter TargetName="TabBd" Property="BorderBrush" Value="#FFE3B341" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </RadioButton.Template>
-                    </RadioButton>
+                <!-- BUTTONS -->
+                <controls:SectionCard Title="BUTTONS"
+                                      Tag="Buttons"
+                                      SectionBrush="#FFE3B341"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="Snapshot" Foreground="#FFE3B341" />
+                            <Run Text=" · " /><Run Text="Panic Stop" Foreground="#FFE3B341" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
 
-                    <RadioButton x:Name="PedalsTab" GroupName="DeviceTab"
-                                 Checked="OnTabChecked" Cursor="Hand" ToolTip="Pedals (work in progress)">
-                        <RadioButton.Template>
-                            <ControlTemplate TargetType="RadioButton">
-                                <Border x:Name="TabBd" Background="Transparent" Padding="12,10" BorderThickness="3,0,0,0" BorderBrush="Transparent">
-                                    <Grid>
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="🦶" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                            <TextBlock x:Name="TabLabel" Text="Pedals" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                        <Border x:Name="PedalsWipBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                                Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,-6,-6,0">
-                                            <TextBlock Text="WIP" FontSize="9" FontWeight="Bold" Foreground="#FFF0A030" />
-                                        </Border>
-                                    </Grid>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="TabBd" Property="Background" Value="#1AFFFFFF" />
-                                    </Trigger>
-                                    <Trigger Property="IsChecked" Value="True">
-                                        <Setter TargetName="TabBd" Property="Background" Value="#0DFFFFFF" />
-                                        <Setter TargetName="TabBd" Property="BorderBrush" Value="#FF56D4A0" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </RadioButton.Template>
-                    </RadioButton>
-                </StackPanel>
-
-                <Button x:Name="CollapseBtn" Grid.Row="2" Click="OnToggleCollapse" Cursor="Hand"
-                        HorizontalAlignment="Stretch" Background="Transparent" BorderThickness="0"
-                        Padding="12,8" Margin="0,0,0,8" ToolTip="Collapse sidebar">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="CbBd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock x:Name="CollapseArrow" Text="◂" FontSize="14" Foreground="#FF8B949E"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                    <TextBlock x:Name="CollapseLabel" Text="Collapse" FontSize="12" Foreground="#FF8B949E"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
+                <!-- PEDALS -->
+                <controls:SectionCard Title="PEDALS"
+                                      Tag="Pedals"
+                                      SectionBrush="#FF56D4A0"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <StackPanel>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                                <Run Text="Serial pedal haptics" />
+                                <Run Text="  ·  " /><Run Text="{Binding OsoyooIsConnected, StringFormat='Connected: {0}'}" Foreground="#FF7EE787" />
+                            </TextBlock>
+                            <Border Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,4,0,0"
+                                    HorizontalAlignment="Left">
+                                <TextBlock Text="WIP" FontSize="9" FontWeight="Bold" Foreground="#FFF0A030" />
                             </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="CbBd" Property="Background" Value="#1AFFFFFF" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
-            </Grid>
-        </Border>
+                        </StackPanel>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
 
-        <!-- ═══ RIGHT: CONTENT PANELS ═══ -->
-        <Grid Grid.Column="1">
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ═══ RIGHT: SELECTED DEVICE SETTINGS ═══ -->
+        <Border Grid.Column="1" Margin="0,16,24,20"
+                Background="{StaticResource BgPanel}"
+                BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                CornerRadius="10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <!-- Device header -->
+                    <StackPanel Margin="24,20,24,0">
+                        <DockPanel>
+                            <Border x:Name="DetailHeaderAccent" DockPanel.Dock="Left" Width="4"
+                                    CornerRadius="2" Background="#FF47A1FF"
+                                    VerticalAlignment="Stretch" />
+                            <TextBlock x:Name="DetailHeader" Text="WHEELBASE" FontSize="18" FontWeight="Bold"
+                                       Foreground="#FF47A1FF"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" />
+                        </DockPanel>
+                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,12,0,16" />
+                    </StackPanel>
 
             <!-- ═══════════════════════════════════════════ -->
             <!-- PANEL 1: LED EFFECTS                      -->
@@ -1496,7 +1432,8 @@
                     </Border>
                 </StackPanel>
             </ScrollViewer>
-
-        </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
     </Grid>
 </UserControl>

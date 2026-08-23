@@ -1,0 +1,82 @@
+;/*++
+;
+; Copyright (c) 2026 FakeWheel. All rights reserved.
+;
+; fake_rs50.inx - INF source for the Fake RS50 VHF client driver (UMDF 2).
+;
+; Install: devcon install fake_rs50.inf root\FakeRs50
+;
+;--*/
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = Sample
+ClassGuid   = {78A1C341-4539-11d3-B88D-00C04FAD5171}
+Provider    = %ProviderString%
+DriverVer   = 01/01/2025,1.0.0.0
+CatalogFile = fake_rs50.cat
+PnpLockdown = 1
+
+[ClassInstall32]
+Addreg=SampleClassReg
+
+[SampleClassReg]
+HKR,,,0,%ClassName%
+HKR,,Icon,,-5
+
+[Manufacturer]
+%ManufacturerString% = FakeWheel,NT$ARCH$.10.0...22000 ; wudfrd.inf mechanism requires Win11+
+
+[FakeWheel.NT$ARCH$.10.0...22000]
+%DeviceDesc% = FakeRs50Install, root\FakeRs50
+
+[SourceDisksFiles]
+FakeRs50.dll = 1
+
+[SourceDisksNames]
+1 = %Disk_Description%
+
+; =================== UMDF Device ==================================
+
+[FakeRs50Install.NT]
+CopyFiles = UMDriverCopy
+Include = hidvhf.inf
+Needs = vhfservice.NT
+Include = wudfrd.inf
+Needs = WUDFRD.NT
+
+[FakeRs50Install.NT.hw]
+AddReg = FakeRs50_AddRegHW
+Include = wudfrd.inf
+Needs = WUDFRD.NT.HW
+
+[FakeRs50Install.NT.Services]
+Include = wudfrd.inf
+Needs = WUDFRD.NT.Services
+Include = hidvhf.inf
+Needs = vhfservice.NT.Services
+
+[FakeRs50_AddRegHW]
+HKR, , "LowerFilters", 0x00010000, "vhf" ; FLG_ADDREG_TYPE_MULTI_SZ | FLG_ADDREG_NOCLOBBER
+
+[FakeRs50Install.NT.Wdf]
+UmdfDispatcher = FileHandle
+UmdfService = FakeRs50,FakeRs50_Install
+UmdfServiceOrder = FakeRs50
+UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
+
+[FakeRs50_Install]
+UmdfLibraryVersion = $UMDFVERSION$
+ServiceBinary = %13%\FakeRs50.dll
+
+[DestinationDirs]
+UMDriverCopy = 13
+
+[UMDriverCopy]
+FakeRs50.dll
+
+[Strings]
+ProviderString     = "FakeWheel"
+ManufacturerString = "FakeWheel"
+ClassName          = "FakeWheel Sample"
+Disk_Description   = "Fake RS50 virtual wheel driver"
+DeviceDesc         = "FakeWheel RS50 Base for PC"

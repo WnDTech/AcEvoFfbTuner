@@ -1,0 +1,47 @@
+=== UNIQUE TX (first connect block, lines 1-2300) ===
+Connect:   HID++ interface confirmed — FFBStrength at index 0x16 (write outLen=7, 1 read channels)
+Connect: feature indices — rotation=0x18 profile=0x17 trueforce=0x19 damping=0x14
+FindFeatureIndex: 0x8133 -> index 0x14 (type 0x00, ver 0x00)
+FindFeatureIndex: 0x8136 -> index 0x16 (type 0x00, ver 0x00)
+FindFeatureIndex: 0x8137 -> index 0x17 (type 0x00, ver 0x00)
+FindFeatureIndex: 0x8138 -> index 0x18 (type 0x00, ver 0x00)
+FindFeatureIndex: querying 0x8133 via Root fn=0...
+FindFeatureIndex: querying 0x8136 via Root fn=0...
+FindFeatureIndex: querying 0x8137 via Root fn=0...
+FindFeatureIndex: querying 0x8138 via Root fn=0...
+FindFeatureIndex: querying 0x8139 via Root fn=0...
+TX: 10 FF 00 0A 81 33 00 (report len 7)
+TX: 10 FF 00 0A 81 36 00 (report len 7)
+TX: 10 FF 00 0A 81 37 00 (report len 7)
+TX: 10 FF 00 0A 81 38 00 (report len 7)
+TX: 10 FF 00 0A 81 39 00 (report len 7)
+TX: 10 FF 14 1A 00 00 00 (report len 7)
+TX: 10 FF 16 1A 00 00 00 (report len 7)
+TX: 10 FF 17 1A 00 00 00 (report len 7)
+TX: 10 FF 17 2A 00 00 00 (report len 7)
+TX: 10 FF 18 1A 00 00 00 (report len 7)
+TX: 10 FF 19 1A 00 00 00 (report len 7)
+
+=== UNIQUE RX (first connect block) ===
+RX(GetInputReport(64)): id=0x12 feat=0x00 fn=0 12 FF 00 0A 14 00 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x00 fn=0 12 FF 00 0A 16 00 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x00 fn=0 12 FF 00 0A 17 00 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x00 fn=0 12 FF 00 0A 18 00 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x00 fn=0 12 FF 00 0A 19 00 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x10 fn=3 12 FF 10 3C 01 02 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x14 fn=0 12 FF 14 00 00 00 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x14 fn=1 12 FF 14 1A 00 00 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x16 fn=1 12 FF 16 1A 9F FF 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x17 fn=1 12 FF 17 1A 00 01 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x17 fn=2 12 FF 17 2A 00 00 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x18 fn=1 12 FF 18 1A 04 38 00 00 00 00
+RX(GetInputReport(64)): id=0x12 feat=0x19 fn=1 12 FF 19 1A 00 00 00 00 00 00
+RX(GetInputReport(64)): unsolicited event (feat 0x00 fn=0) — no pending request
+RX(GetInputReport(64)): unsolicited event (feat 0x10 fn=3) — no pending request
+RX(GetInputReport(64)): unsolicited event (feat 0x14 fn=0) — no pending request
+RX(GetInputReport(64)): unsolicited event (feat 0x14 fn=1) — no pending request
+RX(GetInputReport(64)): unsolicited event (feat 0x16 fn=1) — no pending request
+RX(GetInputReport(64)): unsolicited event (feat 0x17 fn=1) — no pending request
+RX(GetInputReport(64)): unsolicited event (feat 0x17 fn=2) — no pending request
+RX(GetInputReport(64)): unsolicited event (feat 0x18 fn=1) — no pending request
+RX(GetInputReport(64)): unsolicited event (feat 0x19 fn=1) — no pending request

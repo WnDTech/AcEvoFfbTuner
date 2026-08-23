@@ -847,15 +847,27 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private async Task SendDiagnosticPack()
     {
+        await SendDiagnosticPackCore(null);
+    }
+
+    /// <summary>Send a diagnostic pack linked to a Test Drive task code. On
+    /// success the caller reports the task via task_report with the report id.</summary>
+    public async Task<(bool Success, string? ReportId, string Message)> SendDiagnosticPackForTaskAsync(string taskCode)
+    {
+        return await SendDiagnosticPackCore(taskCode);
+    }
+
+    private async Task<(bool Success, string? ReportId, string Message)> SendDiagnosticPackCore(string? taskCode)
+    {
         var mainWin = Application.Current?.MainWindow;
-        WriteDiagLog("START", $"MainWindow={mainWin?.GetType().Name ?? "null"}");
-        if (mainWin == null) return;
+        WriteDiagLog("START", $"MainWindow={mainWin?.GetType().Name ?? "null"}, taskCode={taskCode ?? "none"}");
+        if (mainWin == null) return (false, null, "Main window not available");
 
         var dialog = new Views.FeedbackDialog { Owner = mainWin };
         if (dialog.ShowDialog() != true)
         {
             WriteDiagLog("CANCELLED", "User cancelled feedback dialog");
-            return;
+            return (false, null, "Cancelled");
         }
 
         IsSendingDiagnosticPack = true;
@@ -879,7 +891,7 @@ public sealed partial class MainViewModel
                     StatusText = "Diagnostic pack cancelled - no telemetry data captured";
                     DiagnosticPackStatus = "Cancelled";
                     WriteDiagLog("CANCELLED", "User cancelled pack after empty-snapshot warning");
-                    return;
+                    return (false, null, "Cancelled — no telemetry data captured");
                 }
             }
 
@@ -899,9 +911,9 @@ public sealed partial class MainViewModel
                     wheelSetupSummary = _logitechHidpp.DiagnosticSummary;
             }
             catch { }
-            var (success, message, reportId) = await DiagnosticPackService.SendAsync(dialog.Feedback, progress, wheelSetupSummary);
+            var (success, message, reportId) = await DiagnosticPackService.SendAsync(dialog.Feedback, progress, wheelSetupSummary, taskCode);
             StatusText = message;
-            WriteDiagLog("RESULT", $"Success={success}, Message={message}");
+            WriteDiagLog("RESULT", $"Success={success}, Message={message}, taskCode={taskCode ?? "none"}");
 
             if (!success)
             {
@@ -912,6 +924,7 @@ public sealed partial class MainViewModel
             {
                 DiagnosticPackStatus = message;
             }
+            return (success, reportId, message);
         }
         catch (Exception ex)
         {
@@ -919,6 +932,7 @@ public sealed partial class MainViewModel
             DiagnosticPackStatus = "Error";
             WriteDiagLog("ERROR", $"{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
             MessageBox.Show(mainWin, $"Failed to send diagnostics:\n\n{ex.Message}\n\nLog: {DiagLogDir()}", "Send Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            return (false, null, ex.Message);
         }
         finally
         {
@@ -969,8 +983,8 @@ public sealed partial class MainViewModel
         try
         {
             var service = new GitHubUpdateService();
-            LogUpdate($"CheckForUpdates: current version={service.CurrentVersion}, checking...");
-            var update = await service.CheckForUpdateAsync();
+            LogUpdate($"CheckForUpdates: current version={service.CurrentVersion}, channel={(BetaChannel ? "beta" : "stable")}, checking...");
+            var update = await service.CheckForUpdateAsync(BetaChannel);
 
             if (update != null)
             {
@@ -1039,6 +1053,68 @@ public sealed partial class MainViewModel
         {
             IsDownloadingUpdate = false;
             DownloadProgressPercent = 0;
+        }
+    }
+
+    /* ---------- Test Drive session ---------- */
+
+    /// <summary>Persist a fresh app sign-in: the signed session token plus a
+    /// cached user snapshot for instant paint on the Test Drive page.</summary>
+    public void SetBetaSession(string token, BetaUserDto? user, BetaApplicationDto? application)
+    {
+        BetaSessionToken = token;
+        BetaUserCacheJson = SerializeBetaUserCache(user, application);
+    }
+
+    /// <summary>Sign out: clear the persisted token and cached user.</summary>
+    public void ClearBetaSession()
+    {
+        BetaSessionToken = null;
+        BetaUserCacheJson = null;
+    }
+
+    /// <summary>Update the persisted beta user cache (instant paint on the next
+    /// app start / page open before the first API call completes).</summary>
+    public void CacheBetaUser(BetaUserDto? user, BetaApplicationDto? application)
+    {
+        BetaUserCacheJson = SerializeBetaUserCache(user, application);
+    }
+
+    private static string? SerializeBetaUserCache(BetaUserDto? user, BetaApplicationDto? application)
+    {
+        if (user == null) return null;
+        return JsonSerializer.Serialize(new BetaUserCache
+        {
+            Name = user.Name,
+            Avatar = user.Avatar,
+            Tier = application?.Tier,
+            Status = application?.Status,
+            BetaChannel = application != null &&
+                          (application.Status == "approved" || application.Status == "paused")
+        }, Services.BetaClient.JsonOptions);
+    }
+
+    /// <summary>Silent background refresh of the cached Test Drive user. On a
+    /// 401 the expired token + cache are cleared (signed out); on network
+    /// failure the cache is kept and the page shows its offline state.</summary>
+    public async Task RefreshBetaUserCacheAsync()
+    {
+        var token = BetaSessionToken;
+        if (string.IsNullOrEmpty(token)) return;
+        try
+        {
+            var result = await BetaClient.GetMeAsync(token);
+            if (result.Unauthorized)
+            {
+                ClearBetaSession();
+                return;
+            }
+            if (result.Ok && result.User != null)
+                BetaUserCacheJson = SerializeBetaUserCache(result.User, result.Application);
+        }
+        catch
+        {
+            // offline — keep the cached user
         }
     }
 }

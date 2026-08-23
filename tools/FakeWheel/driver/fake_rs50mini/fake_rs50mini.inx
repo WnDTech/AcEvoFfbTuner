@@ -1,0 +1,89 @@
+;/*++
+;
+; Copyright (c) 2026 FakeWheel. All rights reserved.
+;
+; fake_rs50mini.inx - INF source for the Fake RS50 HID minidriver (UMDF 2).
+;
+; Install: devcon install fake_rs50mini.inf root\FakeRs50Mini
+;
+;--*/
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = Sample
+ClassGuid   = {78A1C341-4539-11d3-B88D-00C04FAD5171}
+Provider    = %ProviderString%
+DriverVer   = 01/01/2025,1.0.0.0
+CatalogFile = fake_rs50mini.cat
+
+[ClassInstall32]
+Addreg=SampleClassReg
+
+[SampleClassReg]
+HKR,,,0,%ClassName%
+HKR,,Icon,,-5
+
+[Manufacturer]
+%ManufacturerString%=FakeWheel, NT$ARCH$.6.3
+
+[FakeWheel.NT$ARCH$.6.3]
+%DeviceDesc%=FakeRs50MiniInstall, root\FakeRs50Mini
+
+[FakeRs50MiniInstall.NT]
+CopyFiles=UMDriverCopy
+
+[FakeRs50MiniInstall.NT.hw]
+AddReg=FakeRs50Mini_AddReg
+
+[FakeRs50MiniInstall.NT.Services]
+AddService=WUDFRd,0x000001f8,WUDFRD_ServiceInstall
+AddService=mshidumdf, 0x000001fa, mshidumdf.AddService ;flag 0x2 sets this as the service for the device
+
+[FakeRs50Mini_AddReg]
+HKR,,"LowerFilters",0x00010008,"WUDFRd" ; FLG_ADDREG_TYPE_MULTI_SZ | FLG_ADDREG_APPEND
+
+[mshidumdf.AddService]
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\mshidumdf.sys
+
+[WUDFRD_ServiceInstall]
+DisplayName    = %WudfRdDisplayName%
+ServiceType    = 1
+StartType      = 3
+ErrorControl   = 1
+ServiceBinary  = %12%\WUDFRd.sys
+
+[FakeRs50MiniInstall.NT.Wdf]
+UmdfService="FakeRs50Mini", FakeRs50Mini_Install
+UmdfServiceOrder=FakeRs50Mini
+UmdfKernelModeClientPolicy=AllowKernelModeClients
+UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
+UmdfMethodNeitherAction=Copy
+UmdfFsContextUsePolicy=CanUseFsContext2
+
+[FakeRs50Mini_Install]
+UmdfLibraryVersion=$UMDFVERSION$
+ServiceBinary="%12%\UMDF\FakeRs50Mini.dll"
+
+; ================= copy files =====================
+
+[UMDriverCopy]
+FakeRs50Mini.dll,,,0x00004000  ; COPYFLG_IN_USE_RENAME
+
+[SourceDisksNames]
+1=%Disk_Description%,,,
+
+[SourceDisksFiles]
+FakeRs50Mini.dll=1
+
+[DestinationDirs]
+UMDriverCopy=12,UMDF ; copy to drivers\umdf
+
+[Strings]
+ProviderString     = "FakeWheel"
+ManufacturerString = "FakeWheel"
+ClassName          = "FakeWheel Sample"
+Disk_Description   = "Fake RS50 virtual wheel HID minidriver"
+DeviceDesc         = "FakeWheel RS50 Base for PC"
+WudfRdDisplayName  = "Windows Driver Foundation - User-mode Driver Framework Reflector"

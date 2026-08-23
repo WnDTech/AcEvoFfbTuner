@@ -60,6 +60,13 @@ lib/simucube/sc-bridge/build/
 ## Local backups (per repo workflow)
 backups/
 
+## Downloaded vendor SDK archives (kept locally, never committed)
+LED_SDK_9.00.zip
+LogitechSteeringWheelSDK_8.75.30.zip
+
+## FakeWheel: vendored upstream driver repo (embedded git — would become a broken gitlink)
+tools/FakeWheel/driver/_upstream/
+
 ## ffmpeg binary — downloaded at runtime by FfmpegDownloader
 src/AcEvoFfbTuner/ffmpeg.exe
 

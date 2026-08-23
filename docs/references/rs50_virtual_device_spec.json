@@ -1,0 +1,99 @@
+{
+  "date": "2026-08-22",
+  "source": "WheelbaseData_20260822_114214.zip",
+  "device": {
+    "name": "Logitech G HUB RS50 (USB)",
+    "vid": 0x046D,
+    "pid": 0xC276,
+    "guid": "e1a6ede0-d5d1-11f0-8003-444553540000",
+    "interfaces": [
+      { "mi": 0, "desc": "Joystick (HID)", "usagePage": 0x0001, "usage": 0x0004, "reportSize": { "in": 31, "out": 0 } },
+      { "mi": 1, "desc": "HID++", "collections": [
+        { "index": 0, "reportId": 0x10, "usagePage": 0xFF43, "usage": 0x0701, "inLen": 7, "outLen": 7 },
+        { "index": 1, "reportId": 0x11, "usagePage": 0xFF43, "usage": 0x0702, "inLen": 20, "outLen": 20 },
+        { "index": 2, "reportId": 0x12, "usagePage": 0xFF43, "usage": 0x0704, "inLen": 64, "outLen": 64 }
+      ]},
+      { "mi": 2, "desc": "TrueForce Stream", "usagePage": 0xFFFD, "usage": 0xFD01, "inLen": 64, "outLen": 64, "rateHz": 250 }
+    ]
+  },
+  "hidpp": {
+    "reportIds": [0x10, 0x11, 0x12],
+    "deviceIndex": 0xFF,
+    "features": {
+      "0x0000": { "name": "Root", "index": 0x00, "type": 0x00, "ver": 0x00 },
+      "0x0001": { "name": "DeviceInfo", "index": 0x01, "type": 0x00, "ver": 0x00 },
+      "0x8136": { "name": "FFBStrength", "index": 0x16, "type": 0x00, "ver": 0x00, "default": "0xFFFF (8.0 Nm)" },
+      "0x8137": { "name": "Profile", "index": 0x17, "type": 0x00, "ver": 0x00, "default": "0x05 (slot 5)" },
+      "0x8138": { "name": "Rotation", "index": 0x18, "type": 0x00, "ver": 0x00, "default": "0x0438 (1080° BE)" },
+      "0x8139": { "name": "TrueForce", "index": 0x19, "type": 0x00, "ver": 0x00, "default": "0x0000" },
+      "0x8133": { "name": "Damping", "index": 0x14, "type": 0x00, "ver": 0x00, "default": "0x0000" },
+      "0x8130": { "name": "OLED", "index": 0x12, "type": 0x00, "ver": 0x00 }
+    },
+    "protocol": {
+      "command": "SET_FEATURE (0xB0100) on HID++ OUT endpoint",
+      "response": "GET_INPUT_REPORT (0xB0104) on HID++ IN endpoint",
+      "asyncEvents": true,
+      "asyncReportId": 0x12
+    }
+  },
+  "trueforce": {
+    "interface": "MI_02",
+    "usagePage": 0xFFFD,
+    "usage": 0xFD01,
+    "rateHz": 250,
+    "packetSize": 64,
+    "initSequence": {
+      "passes": 2,
+      "packetsPerPass": 68,
+      "intervalMs": 2,
+      "rangePatch": { "type": 0x0E, "from": 2700, "to": 1080 }
+    },
+    "streamParams": {
+      "rotation": 1080,
+      "invert": true,
+      "scale": 0.80,
+      "smoothingMs": 1.0,
+      "sessionStartSeq": 69
+    },
+    "teardown": "neutral + 0x04/0x03 handshake"
+  },
+  "directInput": {
+    "mode": "InputOnly",
+    "cooperativeLevel": "NonExclusive|Background",
+    "exclusive": false,
+    "effects": false,
+    "note": "TrueForce stream provides force; game keeps its force path"
+  },
+  "defaultSettings": {
+    "strengthNm": 8.0,
+    "rotationDegrees": 1080,
+    "profileSlot": 5,
+    "trueforcePercent": 0,
+    "dampingPercent": 0
+  },
+  "ghubDependency": "REQUIRED - FFB will NOT work without G HUB running",
+  "defaultProfile": {
+    "outputGain": 0.5,
+    "wheelMaxTorqueNm": 8,
+    "forceInvertEnabled": true,
+    "steeringLockDegrees": 900,
+    "mzFrontGain": 0.42,
+    "fxFrontGain": 0.15,
+    "fyFrontGain": 0.2,
+    "fyInverted": true,
+    "mzScale": 5,
+    "fxScale": 4000,
+    "fyScale": 5000,
+    "vibrations": {
+      "masterGain": 0.42,
+      "curbGain": 1.0,
+      "slipGain": 0.8,
+      "absGain": 1.0
+    },
+    "advanced": {
+      "maxSlewRate": 0.85,
+      "centerSuppressionDegrees": 1.5,
+      "noiseFloor": 0.003
+    }
+  }
+}

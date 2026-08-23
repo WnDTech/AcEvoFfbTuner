@@ -1,243 +1,373 @@
 <UserControl x:Class="AcEvoFfbTuner.Views.Pages.OverlaysPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </UserControl.Resources>
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24">
-        <StackPanel MaxWidth="800">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="370" MinWidth="320" MaxWidth="440" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-            <TextBlock Text="Overlays" FontSize="32" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
-            <TextBlock TextWrapping="Wrap" FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,24">
-                OBS browser source overlays for live telemetry. Add a Browser Source in OBS and point it to one of the URLs below. Each overlay can use a different source address.
-            </TextBlock>
+        <!-- ═══ LEFT: COMPACT OVERLAY NAV (click an overlay → details on the right) ═══ -->
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,16,12,20">
+            <StackPanel>
 
-            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                <TextBlock Text="O V E R L A Y S" FontSize="12" FontWeight="Bold"
+                           Foreground="{StaticResource TextDimBrush}" Margin="0,4,0,8" />
+                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12">
+                    OBS browser source overlays for live telemetry. Add a Browser Source in OBS and point it to one of the URLs. Each overlay can use a different source address.
+                </TextBlock>
+
+                <!-- FFB TELEMETRY DASHBOARD -->
+                <controls:SectionCard Title="FFB TELEMETRY DASHBOARD"
+                                      Tag="Dashboard"
+                                      SectionBrush="#FF4FC3F7"
+                                      Selectable="True" IsSelected="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="Live charts: " Foreground="#FF4FC3F7" />
+                            <Run Text="force output, Mz/Fx/Fy channels, LUT, damping, pipeline stages" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- OBS STREAMER OVERLAY -->
+                <controls:SectionCard Title="OBS STREAMER OVERLAY"
+                                      Tag="Streamer"
+                                      SectionBrush="#FF79C0FF"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="Streamer-friendly: " Foreground="#FF79C0FF" />
+                            <Run Text="speed, gear, RPM bar, force, track map, waveform" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- CUSTOM OVERLAY BUILDER -->
+                <controls:SectionCard Title="CUSTOM OVERLAY BUILDER"
+                                      Tag="Builder"
+                                      SectionBrush="#FFD2A8FF"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="Tick modules — " Foreground="#FFD2A8FF" />
+                            <Run Text="the URL updates automatically" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- CLIPPING INDICATOR -->
+                <controls:SectionCard Title="CLIPPING INDICATOR"
+                                      Tag="Clipping"
+                                      SectionBrush="#FFFF7B72"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="Big CLIPPING/OK indicator " Foreground="#FFFF7B72" />
+                            <Run Text="to warn viewers when FFB is clipping" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- OBS SETUP GUIDE -->
+                <controls:SectionCard Title="OBS SETUP GUIDE"
+                                      Tag="Setup"
+                                      SectionBrush="#FFE3B341"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="Step-by-step " Foreground="#FFE3B341" />
+                            <Run Text="browser source setup" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- NETWORK ACCESS -->
+                <controls:SectionCard Title="NETWORK ACCESS"
+                                      Tag="Network"
+                                      SectionBrush="#FF56D4A0"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="LAN access — " Foreground="#FF56D4A0" />
+                            <Run Text="URL ACL + firewall rule" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ═══ RIGHT: SELECTED OVERLAY DETAILS ═══ -->
+        <Border Grid.Column="1" Margin="0,16,24,20"
+                Background="{StaticResource BgPanel}"
+                BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                CornerRadius="10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <TextBlock Text="FFB Telemetry Dashboard" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
-                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
-                        Full telemetry dashboard with live charts: force output, Mz/Fx/Fy channels, raw tire data, LUT curve, damping, and pipeline stages. Includes speed, steer angle, clipping indicator, and frozen frame analysis.
-                    </TextBlock>
-                    <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" x:Name="UrlDashboard" Text=""
-                                         Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
-                                         Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
-                                         VerticalAlignment="Center" Padding="8,4"
-                                         PreviewMouseLeftButtonDown="SelectAllOnClick" />
-                                <Button Grid.Column="1" Content="Copy" Tag="UrlDashboard"
-                                        Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                    <!-- Overlay header -->
+                    <StackPanel Margin="24,20,24,0">
+                        <DockPanel>
+                            <Border x:Name="DetailHeaderAccent" DockPanel.Dock="Left" Width="4"
+                                    CornerRadius="2" Background="#FF4FC3F7"
+                                    VerticalAlignment="Stretch" />
+                            <TextBlock x:Name="DetailHeader" Text="FFB TELEMETRY DASHBOARD" FontSize="18" FontWeight="Bold"
+                                       Foreground="#FF4FC3F7"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" />
+                        </DockPanel>
+                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,12,0,16" />
+                    </StackPanel>
+
+                    <!-- FFB TELEMETRY DASHBOARD -->
+                    <StackPanel x:Name="DtlDashboard">
+                        <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="FFB Telemetry Dashboard" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                                    Full telemetry dashboard with live charts: force output, Mz/Fx/Fy channels, raw tire data, LUT curve, damping, and pipeline stages. Includes speed, steer angle, clipping indicator, and frozen frame analysis.
+                                </TextBlock>
+                                <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" x:Name="UrlDashboard" Text=""
+                                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                                     VerticalAlignment="Center" Padding="8,4"
+                                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                            <Button Grid.Column="1" Content="Copy" Tag="UrlDashboard"
+                                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                            <ComboBox Grid.Column="1" x:Name="SourceDashboard" IsEditable="True"
+                                                      SelectionChanged="OnDashboardSourceChanged"
+                                                      LostFocus="OnDashboardSourceLostFocus"
+                                                      Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                                      BorderBrush="#FF484F58" FontSize="13" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock FontSize="12" Foreground="#FF607D8B" Margin="0,0,0,4">
+                                    <Run FontWeight="Bold" Text="Themes:" /> dark, transparent, compact, clipping
+                                </TextBlock>
+                                <TextBlock FontSize="12" Foreground="#FF607D8B">
+                                    <Run FontWeight="Bold" Text="Options:" /> ?theme=dark&amp;charts=all&amp;stats=all
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- OBS STREAMER OVERLAY -->
+                    <StackPanel x:Name="DtlStreamer" Visibility="Collapsed">
+                        <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="OBS Streamer Overlay" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                                    Clean streamer-friendly overlay showing speed, gear, RPM bar, force (Nm), clipping indicator, Mz/Fx/Fy channel values, lap counter, track position map, and scrolling force waveform. Optimized for OBS browser source with transparent background support.
+                                </TextBlock>
+                                <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" x:Name="UrlOverlay" Text=""
+                                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                                     VerticalAlignment="Center" Padding="8,4"
+                                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                            <Button Grid.Column="1" Content="Copy" Tag="UrlOverlay"
+                                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                            <ComboBox Grid.Column="1" x:Name="SourceOverlay" IsEditable="True"
+                                                      SelectionChanged="OnOverlaySourceChanged"
+                                                      LostFocus="OnOverlaySourceLostFocus"
+                                                      Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                                      BorderBrush="#FF484F58" FontSize="13" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock FontSize="12" Foreground="#FF607D8B" Margin="0,0,0,4">
+                                    <Run FontWeight="Bold" Text="Options:" /> ?opacity=0.7&amp;showTrack=true&amp;showWaveform=true&amp;mods=speed,force,waveform,track,pedals,tires,gforce
+                                </TextBlock>
+                                <TextBlock FontSize="12" Foreground="#FF607D8B">
+                                    <Run FontWeight="Bold" Text="Tip:" /> Use "?opacity=0.8" to reduce transparency.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- CUSTOM OVERLAY BUILDER -->
+                    <StackPanel x:Name="DtlBuilder" Visibility="Collapsed">
+                        <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Custom Overlay Builder" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                                    Build your own stream HUD: tick the modules you want and the URL updates automatically. Paste it into an OBS Browser Source (1920x1080, transparent background supported).
+                                </TextBlock>
+                                <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <TextBlock Text="Modules:" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,6" />
+                                        <WrapPanel>
+                                            <CheckBox x:Name="BxSpeed" Content="Speed, gear, RPM &amp; flags" IsChecked="True"
+                                                      Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                                      Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                            <CheckBox x:Name="BxForce" Content="Force, clipping &amp; channels" IsChecked="True"
+                                                      Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                                      Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                            <CheckBox x:Name="BxWaveform" Content="Force waveform" IsChecked="True"
+                                                      Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                                      Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                            <CheckBox x:Name="BxTrack" Content="Track map" IsChecked="True"
+                                                      Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                                      Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                            <CheckBox x:Name="BxPedals" Content="Pedals &amp; steering" IsChecked="True"
+                                                      Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                                      Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                            <CheckBox x:Name="BxTires" Content="Tire heat" IsChecked="True"
+                                                      Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                                      Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                            <CheckBox x:Name="BxGforce" Content="G-force meter" IsChecked="True"
+                                                      Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
+                                                      Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
+                                        </WrapPanel>
+                                        <Grid Margin="0,8,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" x:Name="UrlBuilder" Text=""
+                                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                                     VerticalAlignment="Center" Padding="8,4"
+                                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                            <Button Grid.Column="1" Content="Copy" Tag="UrlBuilder"
+                                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                            <ComboBox Grid.Column="1" x:Name="SourceBuilder" IsEditable="True"
+                                                      SelectionChanged="OnBuilderSourceChanged"
+                                                      LostFocus="OnBuilderSourceLostFocus"
+                                                      Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                                      BorderBrush="#FF484F58" FontSize="13" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock FontSize="12" Foreground="#FF607D8B">
+                                    <Run FontWeight="Bold" Text="Tip:" /> Modules are also usable directly in the URL: ?mods=speed,pedals,tires,gforce. Add ?opacity=0.8 for a lighter look.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- CLIPPING INDICATOR -->
+                    <StackPanel x:Name="DtlClipping" Visibility="Collapsed">
+                        <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Clipping Indicator" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                                    Minimal overlay that only shows a large CLIPPING/OK indicator. Ideal as a thin OBS browser source overlay on your stream to warn viewers when FFB is clipping.
+                                </TextBlock>
+                                <Border Background="#FF0D1117" CornerRadius="6" Padding="4">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" x:Name="UrlClipping" Text=""
+                                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                                     VerticalAlignment="Center" Padding="8,4"
+                                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                            <Button Grid.Column="1" Content="Copy" Tag="UrlClipping"
+                                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                            <ComboBox Grid.Column="1" x:Name="SourceClipping" IsEditable="True"
+                                                      SelectionChanged="OnClippingSourceChanged"
+                                                      LostFocus="OnClippingSourceLostFocus"
+                                                      Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                                      BorderBrush="#FF484F58" FontSize="13" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- OBS SETUP GUIDE -->
+                    <StackPanel x:Name="DtlSetup" Visibility="Collapsed">
+                        <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="OBS Setup Guide" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                                    1. Open OBS Studio and add a new Browser Source to your scene.<LineBreak />
+                                    2. Set the URL to one of the overlay URLs above.<LineBreak />
+                                    3. Set width to 1920 and height to 1080 (or match your canvas).<LineBreak />
+                                    4. Enable "Refresh browser when scene becomes active" for auto-connect.<LineBreak />
+                                    5. For transparent overlays, add "?theme=transparent" to the URL.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- NETWORK ACCESS -->
+                    <StackPanel x:Name="DtlNetwork" Visibility="Collapsed">
+                        <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Network Access" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                                <TextBlock x:Name="NetworkStatusLine" FontSize="13" Foreground="#FF8B949E" Text="Checking..." />
+                                <TextBlock x:Name="NetworkDetailLine" FontSize="12" Foreground="#FF607D8B" Margin="0,4,0,0" />
+                                <Button x:Name="NetworkBtn" Content="Enable Network Access (URL ACL + Firewall)"
+                                        Click="OnEnableNetworkAccess" Cursor="Hand"
+                                        Margin="0,12,0,0" Padding="12,8" HorizontalAlignment="Left"
                                         Background="#FF30363D" Foreground="#FFE6EDF3"
-                                        BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
-                            </Grid>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
-                                <ComboBox Grid.Column="1" x:Name="SourceDashboard" IsEditable="True"
-                                          SelectionChanged="OnDashboardSourceChanged"
-                                          LostFocus="OnDashboardSourceLostFocus"
-                                          Background="#FF0D1117" Foreground="#FFE6EDF3"
-                                          BorderBrush="#FF484F58" FontSize="13" />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-                    <TextBlock FontSize="12" Foreground="#FF607D8B" Margin="0,0,0,4">
-                        <Run FontWeight="Bold" Text="Themes:" /> dark, transparent, compact, clipping
-                    </TextBlock>
-                    <TextBlock FontSize="12" Foreground="#FF607D8B">
-                        <Run FontWeight="Bold" Text="Options:" /> ?theme=dark&amp;charts=all&amp;stats=all
-                    </TextBlock>
-                </StackPanel>
-            </Border>
+                                        BorderThickness="1" BorderBrush="#FF484F58" FontSize="13" />
+                                <TextBlock x:Name="NetworkResult" FontSize="12" Foreground="#FF607D8B" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
 
-            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="OBS Streamer Overlay" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
-                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
-                        Clean streamer-friendly overlay showing speed, gear, RPM bar, force (Nm), clipping indicator, Mz/Fx/Fy channel values, lap counter, track position map, and scrolling force waveform. Optimized for OBS browser source with transparent background support.
-                    </TextBlock>
-                    <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" x:Name="UrlOverlay" Text=""
-                                         Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
-                                         Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
-                                         VerticalAlignment="Center" Padding="8,4"
-                                         PreviewMouseLeftButtonDown="SelectAllOnClick" />
-                                <Button Grid.Column="1" Content="Copy" Tag="UrlOverlay"
-                                        Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
-                                        Background="#FF30363D" Foreground="#FFE6EDF3"
-                                        BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
-                            </Grid>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
-                                <ComboBox Grid.Column="1" x:Name="SourceOverlay" IsEditable="True"
-                                          SelectionChanged="OnOverlaySourceChanged"
-                                          LostFocus="OnOverlaySourceLostFocus"
-                                          Background="#FF0D1117" Foreground="#FFE6EDF3"
-                                          BorderBrush="#FF484F58" FontSize="13" />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-                    <TextBlock FontSize="12" Foreground="#FF607D8B" Margin="0,0,0,4">
-                        <Run FontWeight="Bold" Text="Options:" /> ?opacity=0.7&amp;showTrack=true&amp;showWaveform=true&amp;mods=speed,force,waveform,track,pedals,tires,gforce
-                    </TextBlock>
-                    <TextBlock FontSize="12" Foreground="#FF607D8B">
-                        <Run FontWeight="Bold" Text="Tip:" /> Use "?opacity=0.8" to reduce transparency.
-                    </TextBlock>
                 </StackPanel>
-            </Border>
-
-            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Custom Overlay Builder" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
-                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
-                        Build your own stream HUD: tick the modules you want and the URL updates automatically. Paste it into an OBS Browser Source (1920x1080, transparent background supported).
-                    </TextBlock>
-                    <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
-                        <StackPanel>
-                            <TextBlock Text="Modules:" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,6" />
-                            <WrapPanel>
-                                <CheckBox x:Name="BxSpeed" Content="Speed, gear, RPM &amp; flags" IsChecked="True"
-                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
-                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
-                                <CheckBox x:Name="BxForce" Content="Force, clipping &amp; channels" IsChecked="True"
-                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
-                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
-                                <CheckBox x:Name="BxWaveform" Content="Force waveform" IsChecked="True"
-                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
-                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
-                                <CheckBox x:Name="BxTrack" Content="Track map" IsChecked="True"
-                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
-                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
-                                <CheckBox x:Name="BxPedals" Content="Pedals &amp; steering" IsChecked="True"
-                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
-                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
-                                <CheckBox x:Name="BxTires" Content="Tire heat" IsChecked="True"
-                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
-                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
-                                <CheckBox x:Name="BxGforce" Content="G-force meter" IsChecked="True"
-                                          Checked="OnBuilderChanged" Unchecked="OnBuilderChanged"
-                                          Foreground="#FFE6EDF3" FontSize="13" Margin="0,0,14,6" />
-                            </WrapPanel>
-                            <Grid Margin="0,8,0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" x:Name="UrlBuilder" Text=""
-                                         Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
-                                         Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
-                                         VerticalAlignment="Center" Padding="8,4"
-                                         PreviewMouseLeftButtonDown="SelectAllOnClick" />
-                                <Button Grid.Column="1" Content="Copy" Tag="UrlBuilder"
-                                        Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
-                                        Background="#FF30363D" Foreground="#FFE6EDF3"
-                                        BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
-                            </Grid>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
-                                <ComboBox Grid.Column="1" x:Name="SourceBuilder" IsEditable="True"
-                                          SelectionChanged="OnBuilderSourceChanged"
-                                          LostFocus="OnBuilderSourceLostFocus"
-                                          Background="#FF0D1117" Foreground="#FFE6EDF3"
-                                          BorderBrush="#FF484F58" FontSize="13" />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-                    <TextBlock FontSize="12" Foreground="#FF607D8B">
-                        <Run FontWeight="Bold" Text="Tip:" /> Modules are also usable directly in the URL: ?mods=speed,pedals,tires,gforce. Add ?opacity=0.8 for a lighter look.
-                    </TextBlock>
-                </StackPanel>
-            </Border>
-
-            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Clipping Indicator" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
-                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
-                        Minimal overlay that only shows a large CLIPPING/OK indicator. Ideal as a thin OBS browser source overlay on your stream to warn viewers when FFB is clipping.
-                    </TextBlock>
-                    <Border Background="#FF0D1117" CornerRadius="6" Padding="4">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" x:Name="UrlClipping" Text=""
-                                         Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
-                                         Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
-                                         VerticalAlignment="Center" Padding="8,4"
-                                         PreviewMouseLeftButtonDown="SelectAllOnClick" />
-                                <Button Grid.Column="1" Content="Copy" Tag="UrlClipping"
-                                        Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
-                                        Background="#FF30363D" Foreground="#FFE6EDF3"
-                                        BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
-                            </Grid>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
-                                <ComboBox Grid.Column="1" x:Name="SourceClipping" IsEditable="True"
-                                          SelectionChanged="OnClippingSourceChanged"
-                                          LostFocus="OnClippingSourceLostFocus"
-                                          Background="#FF0D1117" Foreground="#FFE6EDF3"
-                                          BorderBrush="#FF484F58" FontSize="13" />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </Border>
-
-            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="OBS Setup Guide" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
-                    <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
-                        1. Open OBS Studio and add a new Browser Source to your scene.<LineBreak />
-                        2. Set the URL to one of the overlay URLs above.<LineBreak />
-                        3. Set width to 1920 and height to 1080 (or match your canvas).<LineBreak />
-                        4. Enable "Refresh browser when scene becomes active" for auto-connect.<LineBreak />
-                        5. For transparent overlays, add "?theme=transparent" to the URL.
-                    </TextBlock>
-                </StackPanel>
-            </Border>
-
-            <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Network Access" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
-                    <TextBlock x:Name="NetworkStatusLine" FontSize="13" Foreground="#FF8B949E" Text="Checking..." />
-                    <TextBlock x:Name="NetworkDetailLine" FontSize="12" Foreground="#FF607D8B" Margin="0,4,0,0" />
-                    <Button x:Name="NetworkBtn" Content="Enable Network Access (URL ACL + Firewall)"
-                            Click="OnEnableNetworkAccess" Cursor="Hand"
-                            Margin="0,12,0,0" Padding="12,8" HorizontalAlignment="Left"
-                            Background="#FF30363D" Foreground="#FFE6EDF3"
-                            BorderThickness="1" BorderBrush="#FF484F58" FontSize="13" />
-                    <TextBlock x:Name="NetworkResult" FontSize="12" Foreground="#FF607D8B" Margin="0,6,0,0" />
-                </StackPanel>
-            </Border>
-
-        </StackPanel>
-    </ScrollViewer>
+            </ScrollViewer>
+        </Border>
+    </Grid>
 </UserControl>

@@ -50,6 +50,34 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.28.0-beta.1",
+            Date = new DateTime(2026, 8, 23),
+            Title = "Test Drive program beta: Discord sign-in, tasks & Podium in-app, beta build channel, R3E steering feel overhaul",
+            Features =
+            [
+                "Test Drive Program (beta): the new Test Drive page brings the tester program into the app — Discord sign-in (secure loopback OAuth with PKCE, no passwords), your application status and tier, open tasks with instructions, the Podium leaderboard, and one-click diagnostic submission linked to the task you're working on (each pack opens its own Discord thread with the task code)",
+                "Beta build channel: once you're signed in as an approved tester the app can switch to the beta channel — the updater then offers prerelease builds and What's New shows beta releases, so you ride the next version before it ships. Stable-channel users never see a beta",
+                "R3E: synthesized slip vibration — a speed-oscillating \"sliding on gravel\" texture built from per-wheel slip ratio, wheel-load modulated and separated front/rear, controlled by the existing slip gain sliders",
+            ],
+            Improvements =
+            [
+                "R3E steering feel overhaul (verified on hardware + snapshots 2026-08-16): the GripGuard no longer misreads R3E's centering force as \"pulling away\" mid-corner — the wheel no longer goes light and releases at slip peak",
+                "R3E braking now adds weight-transfer heaviness: brake input adds toward-center resistance proportional to the BrakeBoostGain slider, because the game's raw steering force barely responds to brake load",
+                "R3E core force multiplier corrected 3.0 → 1.0: R3E's force is already 0-1 normalized, so the old multiplier pinned the output at full clip and flattened all force variation (22% clipping in corners)",
+                "R3E: cornering detail can no longer drag the wheel off center — while steering, detail pushing away from center is capped",
+                "Devices page redesigned: the settings are now grouped into selectable section cards (Wheelbase / LED / Haptics / Buttons / Pedals) that open one section at a time, and your selection is remembered",
+                "FFB Tuning, Overlays, and Settings pages moved to the same selectable section-card design, with search and a persisted selection on tuning",
+                "Diagnostic packs now post to a dedicated Discord thread (with package size, video, and task code), instead of a single channel flood",
+                "WheelSetupCollector: elevated USB capture helper — per-hub USBPcap capture, or Windows' built-in USB tracing when USBPcap isn't installed (no driver install needed), with automatic fallback",
+            ],
+            Fixes =
+            [
+                "Fixed an intermittent startup crash when the wheel is powered on: the page-level section-card setup hit a WPF binding race during Loaded — restore/search is now deferred until bindings settle",
+                "R3E: braking no longer lightens the wheel — the sign convention of the game's longitudinal G was inverted, so braking produced a negative detail term",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.27.14",
             Date = new DateTime(2026, 8, 16),
             Title = "Relay removed, DirectInput-force mode for TrueForce wheels, Logitech settings never disappear",
@@ -899,6 +927,11 @@ public static class ChangeLogService
     [Obsolete("Use GetEntriesSinceAsync or AllEntries instead.")]
     public static List<ChangeLogEntry> Entries => HardcodedEntries;
 
+    /// <summary>When true (Test Drive build channel), prerelease releases
+    /// appear in What's New; stable-channel users only see stable releases.
+    /// Set by the app at startup before InitializeAsync.</summary>
+    public static bool BetaChannel { get; set; }
+
     public static string CurrentVersion =>
         Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.0.0";
 
@@ -921,6 +954,7 @@ public static class ChangeLogService
                     if (releases?.Count > 0)
                     {
                         _gitHubEntries = releases
+                            .Where(r => !r.Prerelease || BetaChannel)
                             .Select(ParseRelease)
                             .Where(e => e != null)
                             .ToList()!;
@@ -1173,5 +1207,6 @@ public static class ChangeLogService
         [JsonPropertyName("name")] public string? Name { get; set; }
         [JsonPropertyName("body")] public string? Body { get; set; }
         [JsonPropertyName("published_at")] public DateTime? PublishedAt { get; set; }
+        [JsonPropertyName("prerelease")] public bool Prerelease { get; set; }
     }
 }

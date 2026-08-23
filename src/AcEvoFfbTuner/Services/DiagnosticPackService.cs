@@ -83,7 +83,7 @@ public sealed class DiagnosticPackService
         }
     }
 
-    public static async Task<(bool Success, string Message, string? ReportId)> SendAsync(string feedback, IProgress<string>? progress = null, string? wheelSetupSummary = null)
+    public static async Task<(bool Success, string Message, string? ReportId)> SendAsync(string feedback, IProgress<string>? progress = null, string? wheelSetupSummary = null, string? taskCode = null)
     {
         var reportId = NewReportId();
         try
@@ -125,7 +125,7 @@ public sealed class DiagnosticPackService
             progress?.Report("Posting to Discord...");
             try
             {
-                var (threadId, channelId, starterMessageId) = await PostToDiscordAsync(feedback, zipSizeMb, videoLink, reportId);
+                var (threadId, channelId, starterMessageId) = await PostToDiscordAsync(feedback, zipSizeMb, videoLink, reportId, taskCode);
                 try { File.Delete(zipPath); } catch { }
                 progress?.Report("Sent successfully!");
                 return (true, $"Diagnostic pack sent ({zipSizeMb:F1} MB) — Report ID: {reportId}", reportId);
@@ -149,27 +149,35 @@ public sealed class DiagnosticPackService
         }
     }
 
-    private static async Task<(string ThreadId, string ChannelId, string StarterMessageId)> PostToDiscordAsync(string feedback, double zipSizeMb, string? videoLink, string reportId)
+    private static async Task<(string ThreadId, string ChannelId, string StarterMessageId)> PostToDiscordAsync(string feedback, double zipSizeMb, string? videoLink, string reportId, string? taskCode = null)
     {
         var truncatedFeedback = feedback.Length > 1500 ? feedback[..1500] + "..." : feedback;
 
+        var threadName = $"Diag Pack {reportId} — {DateTime.Now:yyyy-MM-dd HH:mm}";
+        var content = $"**New diagnostic pack submitted** — Report ID: **`{reportId}`** ({zipSizeMb:F1} MB)" +
+                      (videoLink != null ? $"\n📹 [Session Video]({videoLink})" : "") +
+                      (taskCode != null ? $"\n**Task: `{taskCode}`**" : "") +
+                      $"\n\n**Feedback:**\n{truncatedFeedback}";
+
+        var fields = new List<object>
+        {
+            new Dictionary<string, object> { ["name"] = "Report ID", ["value"] = reportId, ["inline"] = true },
+            new Dictionary<string, object> { ["name"] = "Package Size", ["value"] = $"{zipSizeMb:F1} MB", ["inline"] = true },
+            new Dictionary<string, object> { ["name"] = "Video", ["value"] = videoLink != null ? "Included" : "None", ["inline"] = true },
+        };
+        if (taskCode != null)
+            fields.Add(new Dictionary<string, object> { ["name"] = "Task Code", ["value"] = taskCode, ["inline"] = true });
+
         var payload = new Dictionary<string, object>
         {
-            ["thread_name"] = $"Diag Pack {reportId} — {DateTime.Now:yyyy-MM-dd HH:mm}",
-            ["content"] = $"**New diagnostic pack submitted** — Report ID: **`{reportId}`** ({zipSizeMb:F1} MB)" +
-                          (videoLink != null ? $"\n📹 [Session Video]({videoLink})" : "") +
-                          $"\n\n**Feedback:**\n{truncatedFeedback}",
+            ["thread_name"] = threadName,
+            ["content"] = content,
             ["embeds"] = new[]
             {
                 new Dictionary<string, object>
                 {
                     ["color"] = 0x00D4AA,
-                    ["fields"] = new object[]
-                    {
-                        new Dictionary<string, object> { ["name"] = "Report ID", ["value"] = reportId, ["inline"] = true },
-                        new Dictionary<string, object> { ["name"] = "Package Size", ["value"] = $"{zipSizeMb:F1} MB", ["inline"] = true },
-                        new Dictionary<string, object> { ["name"] = "Video", ["value"] = videoLink != null ? "Included" : "None", ["inline"] = true },
-                    },
+                    ["fields"] = fields.ToArray(),
                     ["footer"] = new Dictionary<string, object> { ["text"] = "AC EVO FFB Tuner" },
                     ["timestamp"] = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
                 }

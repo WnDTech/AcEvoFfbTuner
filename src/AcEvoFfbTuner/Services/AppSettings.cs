@@ -39,6 +39,23 @@ public sealed class AppSettings
     public string HubAuthorName { get; set; } = "";
     public string HubAuthorId { get; set; } = "";
 
+    // Test Drive — Discord sign-in, application status, tasks, Podium
+    public string BetaApiBaseUrl { get; set; } = "https://ffbtuner.wndtech.tips/api/beta.php";
+
+    /// <summary>Signed Test Drive session token (from app_token), sent as the
+    /// X-Beta-Session header. Null/empty = signed out.</summary>
+    public string? BetaSessionToken { get; set; }
+
+    /// <summary>Cached beta user JSON (name/avatar/tier/status) so the Test
+    /// Drive page can paint instantly before the first API call completes.</summary>
+    public string? BetaUserCacheJson { get; set; }
+
+    /// <summary>Test Drive build channel: when true the updater offers
+    /// prerelease (beta) builds. Only meaningful for approved testers — the
+    /// server gates eligibility via `me.betaChannel`; this just persists the
+    /// user's choice.</summary>
+    public bool BetaChannel { get; set; }
+
     /// <summary>True once the WER LocalDumps registry keys for this exe have
     /// been requested (one-time elevated setup) — Windows then writes a
     /// minidump for every crash, even ones that kill the in-process filter.</summary>

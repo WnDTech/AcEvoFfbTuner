@@ -1,9 +1,12 @@
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using AcEvoFfbTuner.Controls;
 using AcEvoFfbTuner.Services;
 using AcEvoFfbTuner.ViewModels;
 
@@ -14,6 +17,9 @@ public partial class SettingsPage : UserControl
     private static readonly string AppDataDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "AcEvoFfbTuner");
+
+    private readonly Dictionary<string, SectionCard> _cardsByTag = new();
+    private readonly Dictionary<string, FrameworkElement> _panels = new();
 
     public event EventHandler? TestingGuideRequested;
     public event EventHandler? CalibrationWizardRequested;
@@ -26,6 +32,10 @@ public partial class SettingsPage : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        CacheCards();
+        BuildPanelMap();
+        ShowSection("App");
+
         if (DataContext is MainViewModel vm)
         {
             vm.SystemLogEntries.CollectionChanged -= OnLogChanged;
@@ -38,6 +48,66 @@ public partial class SettingsPage : UserControl
             if (args.NewValue is MainViewModel newVm)
                 newVm.SystemLogEntries.CollectionChanged += OnLogChanged;
         };
+    }
+
+    private void CacheCards()
+    {
+        foreach (var card in FindSectionCards(this))
+        {
+            if (card.Tag is string tag && !string.IsNullOrEmpty(tag) && !_cardsByTag.ContainsKey(tag))
+            {
+                _cardsByTag[tag] = card;
+                card.Selected += OnCardSelected;
+            }
+        }
+    }
+
+    private void BuildPanelMap()
+    {
+        _panels["App"] = DtlApp;
+        _panels["Startup"] = DtlStartup;
+        _panels["Theme"] = DtlTheme;
+        _panels["Voice"] = DtlVoice;
+        _panels["AiCoach"] = DtlAiCoach;
+        _panels["Debug"] = DtlDebug;
+    }
+
+    private void OnCardSelected(object sender, RoutedEventArgs e)
+    {
+        if (sender is SectionCard card && card.Tag is string tag)
+            ShowSection(tag);
+    }
+
+    private void ShowSection(string tag)
+    {
+        if (!_cardsByTag.TryGetValue(tag, out var card)) return;
+        if (!_panels.TryGetValue(tag, out var panel)) return;
+
+        foreach (var kv in _panels)
+            kv.Value.Visibility = kv.Key == tag ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (var kv in _cardsByTag)
+            kv.Value.IsSelected = kv.Key == tag;
+
+        DetailHeader.Text = card.Title;
+        var brush = card.SectionBrush ?? (Brush)FindResource("SectionOutput");
+        DetailHeader.Foreground = brush;
+        DetailHeaderAccent.Background = brush;
+    }
+
+    private static IEnumerable<SectionCard> FindSectionCards(DependencyObject parent)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(parent))
+        {
+            if (child is SectionCard sectionCard)
+                yield return sectionCard;
+
+            if (child is DependencyObject depChild)
+            {
+                foreach (var nested in FindSectionCards(depChild))
+                    yield return nested;
+            }
+        }
     }
 
     private void OnLogChanged(object? sender, NotifyCollectionChangedEventArgs e)

@@ -55,12 +55,62 @@ public sealed class GitHubUpdateService
 
     public Version CurrentVersion { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0);
 
-    public async Task<UpdateInfo?> CheckForUpdateAsync()
+    /// <summary>Exact installed release tag from InformationalVersion (e.g.
+    /// "1.29.0-beta.1"). The assembly version is numeric-only, so the beta
+    /// iteration number lives here — the updater needs it to tell beta.1 from
+    /// beta.2 when the numeric versions are equal.</summary>
+    public string CurrentReleaseTag { get; } = GetCurrentReleaseTag();
+
+    private static string GetCurrentReleaseTag()
     {
         try
         {
-            Log($"CheckForUpdate: requesting {ApiUrl}");
-            var response = await _http.GetAsync(ApiUrl);
+            var attr = Assembly.GetExecutingAssembly()
+                .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>();
+            var raw = attr?.InformationalVersion ?? "";
+            int plus = raw.IndexOf('+');
+            if (plus >= 0) raw = raw[..plus];
+            return raw.Trim().TrimStart('v', 'V');
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    /// <summary>Parse a release tag into (numeric version, beta iteration or
+    /// null). Handles "1.29.0" and "1.29.0-beta.2".</summary>
+    private static (Version? Numeric, int? Beta) ParseReleaseVersion(string? tag)
+    {
+        var t = (tag ?? "").TrimStart('v', 'V');
+        int dash = t.IndexOf('-');
+        var numericPart = dash >= 0 ? t[..dash] : t;
+        if (!Version.TryParse(numericPart, out var numeric)) return (null, null);
+        int? beta = null;
+        if (dash >= 0)
+        {
+            var suffix = t[(dash + 1)..];
+            if (suffix.StartsWith("beta.", StringComparison.OrdinalIgnoreCase) &&
+                int.TryParse(suffix[5..], out var n))
+                beta = n;
+        }
+        return (numeric, beta);
+    }
+
+    /// <summary>Check for an update. Stable channel (default) uses
+    /// releases/latest — GitHub never returns prereleases there, so release
+    /// users can never receive a beta build. Beta channel (Test Drive testers)
+    /// lists the newest releases and rides the latest prerelease; a stable
+    /// final with the SAME numeric version upgrades a beta build.</summary>
+    public async Task<UpdateInfo?> CheckForUpdateAsync(bool betaChannel = false)
+    {
+        try
+        {
+            var url = betaChannel
+                ? $"https://api.github.com/repos/{Owner}/{Repo}/releases?per_page=10"
+                : ApiUrl;
+            Log($"CheckForUpdate: channel={(betaChannel ? "beta" : "stable")}, requesting {url}");
+            var response = await _http.GetAsync(url);
             Log($"CheckForUpdate: HTTP {(int)response.StatusCode} {response.StatusCode}");
             if (!response.IsSuccessStatusCode)
             {
@@ -70,14 +120,54 @@ public sealed class GitHubUpdateService
             }
 
             var json = await response.Content.ReadAsStringAsync();
-            var release = JsonSerializer.Deserialize<GitHubRelease>(json);
+            GitHubRelease? release;
+            if (betaChannel)
+            {
+                var list = JsonSerializer.Deserialize<List<GitHubRelease>>(json);
+                release = list?.FirstOrDefault(r => !r.Draft);
+                if (release == null)
+                {
+                    Log("CheckForUpdate: beta channel — no non-draft release found");
+                    return null;
+                }
+                Log($"CheckForUpdate: beta channel picked {release.TagName} (prerelease={release.Prerelease})");
+            }
+            else
+            {
+                release = JsonSerializer.Deserialize<GitHubRelease>(json);
+            }
             if (release == null) { Log("CheckForUpdate: failed to deserialize release JSON"); return null; }
 
-            var tagName = release.TagName?.TrimStart('v', 'V') ?? "";
-            Log($"CheckForUpdate: remote tag={release.TagName}, parsed={tagName}, current={CurrentVersion}");
-            if (!Version.TryParse(tagName, out var latestVersion)) { Log($"CheckForUpdate: version parse failed for '{tagName}'"); return null; }
+            var (latestVersion, latestBeta) = ParseReleaseVersion(release.TagName);
+            Log($"CheckForUpdate: remote tag={release.TagName}, parsed={latestVersion}{(latestBeta != null ? $"-beta.{latestBeta}" : "")}, installed={CurrentReleaseTag}, assembly={CurrentVersion}");
+            if (latestVersion == null) { Log($"CheckForUpdate: version parse failed for '{release.TagName}'"); return null; }
 
-            if (latestVersion <= CurrentVersion) { Log($"CheckForUpdate: {latestVersion} <= {CurrentVersion}, no update"); return null; }
+            var (instVersion, instBeta) = ParseReleaseVersion(CurrentReleaseTag);
+            instVersion ??= CurrentVersion;
+
+            bool offer;
+            if (betaChannel)
+            {
+                // Beta channel: newest published release was picked above.
+                //  - higher numeric version → always offer
+                //  - equal numeric + STABLE final → upgrades the beta build
+                //  - equal numeric + newer beta iteration (beta.1 → beta.2) → offer
+                //  - equal numeric + same/older beta, or stable installed → no
+                offer = latestVersion > instVersion
+                    || (latestVersion == instVersion && !release.Prerelease && instBeta != null)
+                    || (latestVersion == instVersion && release.Prerelease &&
+                        instBeta != null && latestBeta != null && latestBeta > instBeta);
+            }
+            else
+            {
+                // Stable channel: releases/latest never returns prereleases.
+                offer = latestVersion > instVersion;
+            }
+            if (!offer)
+            {
+                Log($"CheckForUpdate: channel={(betaChannel ? "beta" : "stable")} — {release.TagName} is not newer than installed {CurrentReleaseTag}, no update");
+                return null;
+            }
 
             var asset = release.Assets?.FirstOrDefault(a =>
                 a.Name?.Contains("Setup", StringComparison.OrdinalIgnoreCase) == true &&
@@ -232,6 +322,8 @@ internal sealed class GitHubRelease
     [JsonPropertyName("body")] public string? Body { get; set; }
     [JsonPropertyName("html_url")] public string? HtmlUrl { get; set; }
     [JsonPropertyName("published_at")] public DateTime? PublishedAt { get; set; }
+    [JsonPropertyName("draft")] public bool Draft { get; set; }
+    [JsonPropertyName("prerelease")] public bool Prerelease { get; set; }
     [JsonPropertyName("assets")] public List<GitHubAsset>? Assets { get; set; }
 }
 

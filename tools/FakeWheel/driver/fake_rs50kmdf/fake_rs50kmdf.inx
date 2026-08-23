@@ -1,0 +1,83 @@
+;/*++
+;
+; Copyright (c) 2026 FakeWheel. All rights reserved.
+;
+; fake_rs50kmdf.inx - INF source for the Fake RS50 VHF client driver (KMDF).
+;
+; Install: devcon install fake_rs50kmdf.inf root\FakeRs50Kmdf
+; Requires test signing (Secure Boot OFF in the target).
+;
+;--*/
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = Sample
+ClassGuid   = {78A1C341-4539-11d3-B88D-00C04FAD5171}
+Provider    = %ProviderString%
+DriverVer   = 01/01/2025,1.0.0.0
+CatalogFile = fake_rs50kmdf.cat
+PnpLockdown = 1
+
+[ClassInstall32]
+Addreg=SampleClassReg
+
+[SampleClassReg]
+HKR,,,0,%ClassName%
+HKR,,Icon,,-5
+
+[Manufacturer]
+%ManufacturerString% = FakeWheel,NT$ARCH$.10.0...22000 ; hidvhf.inf mechanism requires Win11+
+
+[FakeWheel.NT$ARCH$.10.0...22000]
+%DeviceDesc% = FakeRs50KmdfInstall, root\FakeRs50Kmdf
+
+[SourceDisksFiles]
+FakeRs50Kmdf.sys = 1
+
+[SourceDisksNames]
+1 = %Disk_Description%
+
+; =================== Device ==================================
+
+[FakeRs50KmdfInstall.NT]
+CopyFiles = DriverCopy
+Include = hidvhf.inf
+Needs = vhfservice.NT
+
+[FakeRs50KmdfInstall.NT.hw]
+AddReg = FakeRs50Kmdf_AddRegHW
+Include = hidvhf.inf
+Needs = vhfservice.NT.HW
+
+[FakeRs50KmdfInstall.NT.Services]
+AddService = FakeRs50Kmdf, 0x00000002, FakeRs50Kmdf_ServiceInstall ; flag 0x2 = associate as function driver
+Include = hidvhf.inf
+Needs = vhfservice.NT.Services
+
+[FakeRs50Kmdf_AddRegHW]
+HKR, , "LowerFilters", 0x00010000, "vhf" ; FLG_ADDREG_TYPE_MULTI_SZ | FLG_ADDREG_NOCLOBBER
+
+[FakeRs50KmdfInstall.NT.Wdf]
+KmdfService=FakeRs50Kmdf, FakeRs50Kmdf_wdfsect
+
+[FakeRs50Kmdf_wdfsect]
+KmdfLibraryVersion=$KMDFVERSION$
+
+[FakeRs50Kmdf_ServiceInstall]
+DisplayName    = %DeviceDesc%
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\FakeRs50Kmdf.sys
+
+[DestinationDirs]
+DriverCopy = 12 ; %SystemRoot%\System32\drivers
+
+[DriverCopy]
+FakeRs50Kmdf.sys
+
+[Strings]
+ProviderString     = "FakeWheel"
+ManufacturerString = "FakeWheel"
+ClassName          = "FakeWheel Sample"
+Disk_Description   = "Fake RS50 virtual wheel KMDF VHF driver"
+DeviceDesc         = "FakeWheel RS50 Base for PC"

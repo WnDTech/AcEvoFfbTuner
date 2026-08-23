@@ -9,6 +9,16 @@ public sealed class FfbDynamicEffects
     public float SuspensionGain { get; set; } = 0.0f;
     public float YawRateGain { get; set; } = 0.0f;
 
+    /// <summary>
+    /// R3E: the longitudinal axis sign convention is reversed vs the feel
+    /// intent — braking (driver pushed forward = -Z) produced a NEGATIVE
+    /// detail term that made the wheel LIGHTER under braking (verified in
+    /// 2026-08-16 snapshot: detail p10 = -0.27 while braking). With this
+    /// flag the magnitude is used, so braking AND acceleration both add
+    /// weight-transfer heaviness. Default false = EVO/LMU unchanged.
+    /// </summary>
+    public bool AbsLongitudinalG { get; set; } = false;
+
     private float _prevSuspFront;
     private float _prevSuspRear;
     private float _smGForce;
@@ -22,6 +32,7 @@ public sealed class FfbDynamicEffects
 
         float lateralG = raw.AccG.Length > 0 ? raw.AccG[0] : 0f;
         float longitudinalG = raw.AccG.Length > 1 ? raw.AccG[1] : 0f;
+        if (AbsLongitudinalG) longitudinalG = Math.Abs(longitudinalG);
 
         float gForce = lateralG * LateralGGain + longitudinalG * LongitudinalGGain;
         gForce = Math.Clamp(gForce, -0.15f, 0.15f);

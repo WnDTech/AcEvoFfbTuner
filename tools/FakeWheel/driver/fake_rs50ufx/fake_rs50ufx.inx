@@ -1,0 +1,68 @@
+;/*++
+;
+; FakeWheel RS50 — virtual Logitech RS50 USB Function Driver (UFX)
+;
+;--*/
+[Version]
+Signature="$WINDOWS NT$"
+Class=System
+ClassGuid={4D36E97D-E325-11CE-BFC1-08002BE10318}
+Provider=%ProviderString%
+DriverVer=01/01/2025,1.0.0.0
+CatalogFile=fake_rs50ufx.cat
+PnpLockdown=1
+
+[Manufacturer]
+%ManufacturerString%=FakeWheel,NT$ARCH$.6.1
+
+[FakeWheel.NT$ARCH$.6.1]
+%DeviceDesc%=FakeRs50Ufx, root\FakeRs50Ufx
+
+[FakeRs50Ufx.NT]
+CopyFiles=KMDriverCopy
+
+[FakeRs50Ufx.NT.hw]
+AddReg=FakeRs50Ufx_AddReg
+
+[FakeRs50Ufx.NT.Services]
+AddService=FakeRs50Ufx,0,FakeRs50Ufx_Service_Inst
+
+[FakeRs50Ufx_AddReg]
+HKR,,"HardwareID",0x00010008, \
+    "USB\VID_046D&PID_C276&REV_0100", \
+    "USB\VID_046D&PID_C276", \
+    "USB\VID_046D&UP:FF00_U:0001", \
+    "USB\HID_DEVICE_UP:FF00_U:0001"
+
+[FakeRs50Ufx_Service_Inst]
+DisplayName    = %ServiceDesc%
+ServiceType    = 1
+StartType      = 3
+ErrorControl   = 1
+ServiceBinary  = %12%\FakeRs50Ufx.sys
+
+[FakeRs50Ufx.NT.Wdf]
+KmdfService=FakeRs50Ufx, FakeRs50Ufx_wdfsect
+
+[FakeRs50Ufx_wdfsect]
+KmdfLibraryVersion=$KMDFVERSION$
+
+[KMDriverCopy]
+FakeRs50Ufx.sys
+
+[SourceDisksNames]
+1=%DiskDesc%,,,
+
+[SourceDisksFiles]
+FakeRs50Ufx.sys=1
+
+[DestinationDirs]
+KMDriverCopy=12
+
+[Strings]
+ProviderString     = "FakeWheel"
+ManufacturerString = "FakeWheel"
+ClassName          = "USB Function Device"
+Disk_Description   = "Fake RS50 USB Function Driver (UFX)"
+DeviceDesc         = "FakeWheel RS50 USB Function Device"
+ServiceDesc        = "FakeWheel RS50 USB Function Driver (UFX)"

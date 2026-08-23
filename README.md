@@ -222,6 +222,12 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 - One-click diagnostic pack submission (profiles, track maps, snapshots with HTML replays, recording manifest, and logs)
 - In-app email integration with automatic video upload from latest recording
 
+### Test Drive Program (beta)
+
+- In-app tester program: Discord sign-in (secure loopback OAuth with PKCE), application status, tasks, and Podium leaderboard
+- One-click diagnostic submission linked to the active task — each pack opens its own Discord thread
+- **Beta build channel** for approved testers: the updater offers prerelease builds and What's New shows beta releases; stable-channel users never see a beta
+
 ### Additional Features
 
 - **In-App Help Guide** — Searchable, plain-language reference covering every page, section, and slider with "feel" descriptions; accessible from the sidebar

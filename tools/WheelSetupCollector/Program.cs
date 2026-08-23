@@ -25,7 +25,33 @@ internal static class Program
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         var form = new CollectorForm();
-        if (Environment.GetCommandLineArgs().Contains("--auto"))
+        var args = Environment.GetCommandLineArgs();
+
+        if (args.Length >= 3 && args[1] == "--capture-only")
+        {
+            // Elevated capture helper: launched by the main instance with
+            // runas (one UAC). Captures the selected USBPcap hub(s) filtered
+            // by the given duration, then exits.
+            var dir = args[2];
+            int seconds = args.Length >= 4 && int.TryParse(args[3], out var s) ? s : 60;
+            var hubSpec = args.Length >= 5 ? args[4] : "all";
+            Environment.ExitCode = RunUsbCapture(dir, seconds, hubSpec) ? 0 : 1;
+            return;
+        }
+
+        if (args.Contains("--list-usb"))
+        {
+            // Debug: dump the capture-point list the UI would show.
+            var sb = new StringBuilder();
+            foreach (var (hubNumber, devices, _) in CollectorForm.BuildHubDeviceList())
+                sb.AppendLine($"USB {hubNumber}: {devices}");
+            if (!string.IsNullOrEmpty(CollectorForm.LastBuildError))
+                sb.AppendLine("ERROR: " + CollectorForm.LastBuildError);
+            File.WriteAllText(Path.Combine(Path.GetTempPath(), "collector_usb_list.txt"), sb.ToString());
+            return;
+        }
+
+        if (args.Contains("--auto"))
         {
             // Headless mode (used by the developer / automated runs): collect
             // everything, no dialogs, exit code 0 = success.
@@ -36,6 +62,252 @@ internal static class Program
         }
         Application.Run(form);
     }
+
+    /// <summary>Elevated capture helper body. Two methods:
+    /// 1) A SPECIFIC device selected → per-hub usbpcap pcaps (compact,
+    ///    per-hub files; the selected device's traffic is isolated during
+    ///    analysis). Requires usbpcap already installed.
+    /// 2) "All USB hubs" (or no usbpcap) → Windows' own USB tracing (ETW —
+    ///    nothing installed, nothing to uninstall, no drivers).
+    /// The capture files land in <paramref name="dir"/>.</summary>
+    private static bool RunUsbCapture(string dir, int seconds, string hubSpec)
+    {
+        try
+        {
+            Directory.CreateDirectory(dir);
+            foreach (var f in Directory.GetFiles(dir)) { try { File.Delete(f); } catch { } }
+
+            bool deviceSelected = !string.Equals(hubSpec, "all", StringComparison.OrdinalIgnoreCase);
+            var usbpcap = FindUsbpcapCmd();
+
+            if (deviceSelected && usbpcap != null)
+            {
+                WriteStatus(dir, "Capturing per-hub pcap files (usbpcap) — your device's traffic is isolated during analysis");
+                return RunUsbpcapCapture(dir, seconds, "all");
+            }
+
+            if (deviceSelected)
+                WriteStatus(dir, "Device selection needs usbpcap (not installed) — capturing ALL USB traffic instead");
+
+            WriteStatus(dir, "Starting Windows USB tracing (built-in — no driver installation needed)...");
+            if (RunEtlCapture(dir, seconds))
+                return true;
+
+            if (usbpcap != null)
+            {
+                WriteStatus(dir, "Windows tracing failed — falling back to usbpcap...");
+                return RunUsbpcapCapture(dir, seconds, "all");
+            }
+
+            WriteStatus(dir, "Windows USB tracing failed and usbpcap is not installed — no capture was made");
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Captures USB traffic using Windows' built-in ETW providers
+    /// (Microsoft-Windows-USB-USBPORT + UCX) via logman — part of Windows,
+    /// nothing is installed. The trace is just a log file: it records traffic,
+    /// it cannot change anything on the PC.</summary>
+    private static bool RunEtlCapture(string dir, int seconds)
+    {
+        try
+        {
+            var etl = Path.Combine(dir, "usb.etl");
+
+            // Remove any leftover trace from a crashed run (ignore errors).
+            RunProcess("logman.exe", "delete usbtrace -ets", 5000);
+
+            // logman allows only ONE -p per create — add the second provider
+            // via an update on the same trace.
+            bool created = RunProcess("logman.exe",
+                $"create trace usbtrace -p \"Microsoft-Windows-USB-USBPORT\" 0xffffffffffffffff 0xff " +
+                $"-o \"{etl}\" -ets", 15000);
+            if (created)
+                RunProcess("logman.exe",
+                    "update trace usbtrace -p \"Microsoft-Windows-USB-UCX\" 0xffffffffffffffff 0xff -ets", 15000);
+
+            if (!created)
+            {
+                WriteStatus(dir, "Could not start Windows USB tracing (logman failed)");
+                return false;
+            }
+
+            for (int s = 1; s <= seconds; s++)
+            {
+                Thread.Sleep(1000);
+                WriteStatus(dir, $"Capturing USB traffic (Windows tracing) — {s}/{seconds} s — DRIVE THE GAME NOW");
+            }
+
+            RunProcess("logman.exe", "stop usbtrace -ets", 15000);
+
+            if (!File.Exists(etl) || new FileInfo(etl).Length < 4096)
+            {
+                try { File.Delete(etl); } catch { }
+                WriteStatus(dir, "Windows USB trace came back empty");
+                return false;
+            }
+
+            WriteStatus(dir, "Capture done — Windows USB trace saved (nothing to uninstall)");
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Runs a command line, waits up to the timeout, returns success.</summary>
+    private static bool RunProcess(string file, string args, int timeoutMs)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo(file, args)
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            using var p = Process.Start(psi);
+            if (p == null) return false;
+            if (!p.WaitForExit(timeoutMs))
+            {
+                try { p.Kill(); } catch { }
+                return false;
+            }
+            return p.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>usbpcap capture (only used when it is already installed):
+    /// per-hub pcap files covering all hubs, 512-byte snaplen. The selected
+    /// device's traffic is isolated during analysis (each hub is its own
+    /// small file). <paramref name="spec"/> is kept for the hub-number path
+    /// but the standard flow uses "all".</summary>
+    private static bool RunUsbpcapCapture(string dir, int seconds, string spec)
+    {
+        try
+        {
+            Directory.CreateDirectory(dir);
+            var usbpcap = FindUsbpcapCmd();
+            if (usbpcap == null) return false;
+
+            // Enumerate capture devices. NOTE: this usbpcapcmd build prints only
+            // help text (no live device list — and its help contains the
+            // "\\.\USBPcap1" example, which would wrongly stop the list at hub 1),
+            // so always probe USBPcap1..6 and let failed opens be ignored.
+            var devices = new List<string>();
+            for (int i = 1; i <= 6; i++) devices.Add($@"\\.\USBPcap{i}");
+
+            // Optional hub-number selection.
+            if (!string.Equals(spec, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                var wanted = spec.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                devices = devices.Where(d =>
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(d, @"USBPcap(\d+)");
+                    return m.Success && wanted.Contains(m.Groups[1].Value);
+                }).ToList();
+            }
+
+            WriteStatus(dir, $"Starting capture on {devices.Count} USB hub(s)...");
+
+            var procs = new List<Process>();
+            var pcapPaths = new List<string>();
+            int idx = 1;
+            foreach (var dev in devices)
+            {
+                var outPath = Path.Combine(dir, $"usbcap{idx++}.pcap");
+                pcapPaths.Add(outPath);
+                try
+                {
+                    // All devices on the root hub, 512-byte snaplen.
+                    var psi = new ProcessStartInfo(usbpcap,
+                        $"-d {dev} -o \"{outPath}\" -A -s 512")
+                    {
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    procs.Add(Process.Start(psi)!);
+                }
+                catch { }
+            }
+
+            int alive = procs.Count(p => !p.HasExited);
+            WriteStatus(dir, alive > 0
+                ? $"Capturing on {alive} USB hub(s) — DRIVE THE GAME NOW"
+                : "Capture could not start — no USB hub opened");
+
+            for (int s = 1; s <= seconds; s++)
+            {
+                Thread.Sleep(1000);
+                int aliveNow = procs.Count(p => !p.HasExited);
+                WriteStatus(dir, aliveNow > 0
+                    ? $"Capturing on {aliveNow} USB hub(s) — {s}/{seconds} s — DRIVE THE GAME NOW"
+                    : $"Capture stalled ({s}/{seconds} s) — no USB hub is being captured");
+            }
+
+            WriteStatus(dir, "Stopping capture and saving...");
+
+            foreach (var p in procs)
+            {
+                try { if (!p.HasExited) p.Kill(); } catch { }
+            }
+            foreach (var p in procs) { try { p.WaitForExit(3000); p.Dispose(); } catch { } }
+
+            // Drop empty/failed pcaps.
+            foreach (var f in pcapPaths)
+            {
+                try { if (!File.Exists(f) || new FileInfo(f).Length == 0) File.Delete(f); } catch { }
+            }
+            int saved = Directory.GetFiles(dir, "*.pcap").Length;
+            WriteStatus(dir, saved > 0 ? $"Capture done — {saved} pcap file(s) saved" : "Capture done — no data captured");
+            return saved > 0;
+        }
+        catch
+        {
+            WriteStatus(dir, "Capture failed");
+            return false;
+        }
+    }
+
+    /// <summary>Live progress file the elevated capture helper writes and the
+    /// main instance reads to show the user what is happening.</summary>
+    private static void WriteStatus(string dir, string text)
+    {
+        try { File.WriteAllText(Path.Combine(dir, "status.txt"), text); } catch { }
+    }
+
+    internal static string? FindUsbpcapCmd()
+    {
+        foreach (var p in new[]
+                 {
+                     @"C:\Program Files\USBPcap\usbpcapcmd.exe",
+                     @"C:\Program Files (x86)\USBPcap\usbpcapcmd.exe"
+                 })
+        {
+            if (File.Exists(p)) return p;
+        }
+        try
+        {
+            foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';'))
+            {
+                if (dir.Length == 0) continue;
+                var cand = Path.Combine(dir.Trim('"'), "usbpcapcmd.exe");
+                if (File.Exists(cand)) return cand;
+            }
+        }
+        catch { }
+        return null;
+    }
 }
 
 internal sealed class CollectorForm : Form
@@ -44,6 +316,12 @@ internal sealed class CollectorForm : Form
     private readonly Button _collectButton;
     private readonly ListBox _log;
     private readonly Label _status;
+    private CheckBox? _usbCaptureCheck;
+    private ComboBox? _usbHubCombo;
+
+    private const int CaptureSeconds = 60;
+    private static readonly string CaptureDir =
+        Path.Combine(Path.GetTempPath(), "wheelcollector_usbcapture");
 
     /// <summary>True in --auto mode: no dialogs, no explorer, headless.</summary>
     public bool Headless { get; set; }
@@ -71,9 +349,9 @@ internal sealed class CollectorForm : Form
     public CollectorForm()
     {
         Text = "Wheelbase Data Collector - AC Evo FFB Tuner";
-        ClientSize = new Size(600, 560);
-        FormBorderStyle = FormBorderStyle.FixedSingle;
-        MaximizeBox = false;
+        ClientSize = new Size(640, 580);
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MinimumSize = new Size(600, 560);
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Segoe UI", 9.5f);
 
@@ -121,7 +399,8 @@ internal sealed class CollectorForm : Form
             Location = new Point(92, 102),
             Size = new Size(300, 180),
             CheckOnClick = true,
-            IntegralHeight = false
+            IntegralHeight = false,
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
         foreach (var m in Manufacturers)
             _manufacturers.Items.Add(m.Name, true);
@@ -137,22 +416,77 @@ internal sealed class CollectorForm : Form
         _collectButton.Click += (_, _) => StartCollection();
         Controls.Add(_collectButton);
 
+        _usbCaptureCheck = new CheckBox
+        {
+            Text = "Capture USB traffic (60 s) — shows what the game sends to the wheel",
+            Location = new Point(92, 345),
+            AutoSize = true,
+            Checked = false,
+            Font = new Font("Segoe UI", 9f)
+        };
+        _usbCaptureCheck.CheckedChanged += (_, _) => UpdateCollectButtonText();
+        Controls.Add(_usbCaptureCheck);
+        var captureTip = new ToolTip();
+        captureTip.SetToolTip(_usbCaptureCheck,
+            "Uses Windows' built-in USB tracing — nothing is installed, nothing to uninstall, no drivers, no BIOS/Secure Boot changes, no reboot. While capturing, drive in the game so the trace shows the wheel's USB traffic. One admin confirmation.");
+
+        var hubLabel = new Label
+        {
+            Text = "Capture:",
+            Location = new Point(92, 373),
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9f)
+        };
+        Controls.Add(hubLabel);
+
+        _usbHubCombo = new ComboBox
+        {
+            Location = new Point(150, 369),
+            Width = 360,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Font = new Font("Segoe UI", 9f),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+        };
+        _usbHubCombo.Items.Add("All USB hubs");
+        foreach (var (hubNumber, devices, _) in BuildHubDeviceList())
+            _usbHubCombo.Items.Add($"USB {hubNumber}: {devices}");
+        _usbHubCombo.SelectedIndex = 0;
+
+        // The dropdown must show the full device names — size it to the widest
+        // item instead of clipping at the control width.
+        try
+        {
+            int maxW = 0;
+            foreach (var item in _usbHubCombo.Items)
+                maxW = Math.Max(maxW, TextRenderer.MeasureText(item.ToString() ?? "", _usbHubCombo.Font).Width);
+            _usbHubCombo.DropDownWidth = Math.Max(_usbHubCombo.Width, maxW + 40);
+        }
+        catch { }
+
+        Controls.Add(_usbHubCombo);
+        var hubTip = new ToolTip();
+        hubTip.SetToolTip(_usbHubCombo,
+            "What to capture. Selecting your wheel (e.g. 'Logitech G HUB RS50') uses per-hub pcap files (compact, easy to analyse — needs usbpcap installed); 'All USB hubs' captures everything with Windows' built-in tracing (no install). Without usbpcap, a device selection falls back to the full trace.");
+
         _status = new Label
         {
             Text = "",
-            Location = new Point(12, 347),
-            Size = new Size(576, 20)
+            Location = new Point(12, 398),
+            Size = new Size(576, 20),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
         Controls.Add(_status);
 
         _log = new ListBox
         {
-            Location = new Point(12, 372),
-            Size = new Size(576, 176),
+            Location = new Point(12, 423),
+            Size = new Size(576, 130),
             IntegralHeight = false,
-            Font = new Font("Consolas", 9f)
+            Font = new Font("Consolas", 9f),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
         };
         Controls.Add(_log);
+        UpdateCollectButtonText();
     }
 
     private void Log(string msg)
@@ -182,6 +516,15 @@ internal sealed class CollectorForm : Form
             else _status.Text = msg;
         }
         catch { }
+    }
+
+    /// <summary>The Collect button reflects what it will actually do — the
+    /// USB capture is part of the collection when its checkbox is ticked.</summary>
+    private void UpdateCollectButtonText()
+    {
+        _collectButton.Text = _usbCaptureCheck?.Checked == true
+            ? "Collect data, capture USB (60 s) && create ZIP"
+            : "Collect data && create ZIP";
     }
 
     private void StartCollection()
@@ -230,6 +573,29 @@ internal sealed class CollectorForm : Form
 
                 Log("--- Generic info (always collected) ---");
                 CollectGeneric(zip, found);
+
+                if (!Headless && _usbCaptureCheck?.Checked == true)
+                {
+                    Log("--- USB capture phase (DRIVE THE GAME NOW) ---");
+                    Log("Using Windows built-in USB tracing — nothing is installed, nothing to uninstall");
+                    var helper = LaunchCaptureHelper();
+                    if (helper != null)
+                    {
+                        Log("USB capture running — see the countdown window, DRIVE THE GAME NOW");
+                        try
+                        {
+                            Invoke((Action)(() => ShowCaptureDialog(helper)));
+                        }
+                        catch { }
+                        try { helper.WaitForExit(25000); } catch { }
+                        Log("USB capture finished — bundling the captured traffic into the zip...");
+                    }
+                    else
+                    {
+                        Log("USB capture could not start (elevation declined?) — skipping");
+                    }
+                    AddCaptureFilesToZip(zip, found);
+                }
             }
 
             // Self-verification: the zip must be complete on disk.
@@ -298,6 +664,290 @@ internal sealed class CollectorForm : Form
         sb.AppendLine();
         sb.AppendLine("Send this zip to the developer as-is.");
         return sb.ToString();
+    }
+
+    // ─────────────────────── USB capture (usbpcap) ─────────────────────────
+
+    /// <summary>VID prefix → vendor name, so wheels that enumerate with generic
+    /// names ("USB Serial Device (COM4)") are still identifiable.</summary>
+    private static readonly Dictionary<string, string> KnownVendors = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["046D"] = "Logitech", ["0EB7"] = "Fanatec", ["346E"] = "Moza",
+        ["044F"] = "Thrustmaster", ["0F0D"] = "Simagic", ["26B4"] = "Simagic",
+        ["21D1"] = "Simucube", ["1915"] = "Simucube", ["231D"] = "Asetek",
+    };
+
+    /// <summary>Builds the capture-point list for the UI: each entry is one
+    /// USB capture device (~USBPcapN, in bus order) labelled with the devices
+    /// attached to it — grouped per composite device (all its interfaces share
+    /// the base key) and named by friendly name or vendor+VID, so the user
+    /// picks the entry that shows their wheel. Also returns the VID base keys
+    /// of the entry's devices (used for address-filtered capture).</summary>
+    internal static List<(int HubNumber, string Devices, List<string> VidKeys)> BuildHubDeviceList()
+    {
+        LastBuildError = null;
+        var result = new List<(int, string, List<string>)>();
+        try
+        {
+            using var usb = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Enum\USB");
+            if (usb == null) return result;
+
+            // Group by the COMPOSITE base key (strip the &MI_xx interface
+            // suffix) — all interfaces of a device belong to one entry.
+            var groups = new Dictionary<string, (string VidKey, List<(string Name, string? Parent)> Members)>(StringComparer.OrdinalIgnoreCase);
+            foreach (var sub in usb.GetSubKeyNames())
+            {
+                string baseKey = sub;
+                int mi = sub.IndexOf("&MI_", StringComparison.OrdinalIgnoreCase);
+                if (mi > 0) baseKey = sub.Substring(0, mi);
+
+                using var key = usb.OpenSubKey(sub);
+                if (key == null) continue;
+                foreach (var inst in key.GetSubKeyNames())
+                {
+                    using var ik = key.OpenSubKey(inst);
+                    if (ik == null) continue;
+                    string? parent = ik.GetValue("ParentIdPrefix") as string;
+                    string? friendly = ik.GetValue("FriendlyName") as string;
+                    string? desc = ik.GetValue("DeviceDesc") as string;
+                    string name = friendly ?? CleanDeviceDesc(desc) ?? sub;
+                    if (!groups.TryGetValue(baseKey, out var g))
+                    {
+                        g = (sub, new List<(string, string?)>());
+                        groups[baseKey] = g;
+                    }
+                    g.Members.Add((name, parent));
+                }
+            }
+
+            var hubParents = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            var compositeLabel = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var compositeParent = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var (inst, g) in groups)
+            {
+                bool isHub = g.Members.Any(m => m.Name.Contains("Hub", StringComparison.OrdinalIgnoreCase))
+                             || g.VidKey.StartsWith("ROOT_HUB", StringComparison.OrdinalIgnoreCase);
+                var parent = g.Members.Select(m => m.Parent).FirstOrDefault(p => !string.IsNullOrEmpty(p));
+                if (isHub)
+                {
+                    hubParents[inst] = parent;
+                    continue;
+                }
+
+                // Label: prefer a friendly name; else vendor + VID + member names.
+                var friendly = g.Members
+                    .Select(m => m.Name)
+                    .FirstOrDefault(n => !string.IsNullOrEmpty(n)
+                        && !n.Contains("Input Device", StringComparison.OrdinalIgnoreCase)
+                        && !n.Contains("Composite Device", StringComparison.OrdinalIgnoreCase)
+                        && !n.Contains("Serial Device", StringComparison.OrdinalIgnoreCase)
+                        && !n.Contains("Hub", StringComparison.OrdinalIgnoreCase));
+                string label;
+                if (!string.IsNullOrEmpty(friendly))
+                {
+                    label = friendly;
+                }
+                else
+                {
+                    string vid = g.VidKey.StartsWith("VID_", StringComparison.OrdinalIgnoreCase) && g.VidKey.Length >= 8
+                        ? g.VidKey.Substring(4, 4)
+                        : "";
+                    string vendor = vid.Length > 0 && KnownVendors.TryGetValue(vid, out var v) ? v + " " : "";
+                    var descs = g.Members.Select(m => m.Name).Distinct().ToList();
+                    label = $"{vendor}{g.VidKey}: {string.Join(", ", descs)}";
+                }
+                compositeLabel[inst] = label;
+                compositeParent[inst] = parent;
+            }
+
+            // Walk each composite's parent chain to its top-level ancestor.
+            string TopAncestor(string? parent)
+            {
+                var cur = parent;
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                while (!string.IsNullOrEmpty(cur) && seen.Add(cur))
+                {
+                    string? hubInst = null;
+                    foreach (var id in hubParents.Keys)
+                    {
+                        if (string.Equals(id, cur, StringComparison.OrdinalIgnoreCase)
+                            || id.StartsWith(cur + "&", StringComparison.OrdinalIgnoreCase))
+                        {
+                            hubInst = id;
+                            break;
+                        }
+                    }
+                    if (hubInst == null || !hubParents.TryGetValue(hubInst, out var up)) break;
+                    cur = up;
+                }
+                return cur ?? "";
+            }
+
+            var byTop = new Dictionary<string, (List<string> Labels, List<string> Vids)>(StringComparer.OrdinalIgnoreCase);
+            var order = new List<string>();
+            foreach (var (inst, label) in compositeLabel)
+            {
+                string top = TopAncestor(compositeParent[inst]);
+                if (!byTop.TryGetValue(top, out var entry))
+                {
+                    entry = (new List<string>(), new List<string>());
+                    byTop[top] = entry;
+                    order.Add(top);
+                }
+                entry.Labels.Add(label);
+                if (inst.StartsWith("VID_", StringComparison.OrdinalIgnoreCase))
+                    entry.Vids.Add(inst);
+            }
+
+            int n = 1;
+            foreach (var top in order)
+            {
+                var names = byTop[top].Labels.Distinct().ToList();
+                string label = names.Count > 0
+                    ? string.Join(", ", names.Take(3)) + (names.Count > 3 ? $" +{names.Count - 3} more" : "")
+                    : "(nothing attached)";
+                result.Add((n, label, byTop[top].Vids.Distinct().ToList()));
+                n++;
+            }
+        }
+        catch (Exception ex)
+        {
+            LastBuildError = ex.ToString();
+        }
+        return result;
+    }
+
+    /// <summary>Last BuildHubDeviceList exception (debug/diagnostic use).</summary>
+    internal static string? LastBuildError;
+
+    /// <summary>Strips the '@oemXX.inf,%key%;' prefix Windows puts on DeviceDesc
+    /// values, leaving the readable device name.</summary>
+    private static string? CleanDeviceDesc(string? desc)
+    {
+        if (string.IsNullOrEmpty(desc)) return null;
+        int semi = desc.LastIndexOf(';');
+        if (semi >= 0 && desc.Contains('%')) return desc[(semi + 1)..].Trim();
+        return desc;
+    }
+
+    /// <summary>Launches the elevated capture helper (one UAC): this exe with
+    /// --capture-only, which runs the Windows USB tracing (ETW) — or the
+    /// usbpcap fallback if it is already installed — for the given duration.</summary>
+    private static Process? LaunchCaptureHelper()
+    {
+        try
+        {
+            Directory.CreateDirectory(CaptureDir);
+            foreach (var f in Directory.GetFiles(CaptureDir)) { try { File.Delete(f); } catch { } }
+            var exe = Environment.ProcessPath ?? Application.ExecutablePath;
+
+            // Capture selection: combo index 0 = all (Windows tracing);
+            // any device entry = per-hub usbpcap pcaps when available.
+            string hubSpec = "all";
+            if (Form.ActiveForm is CollectorForm cf && cf._usbHubCombo is { } combo && combo.SelectedIndex > 0)
+                hubSpec = "device";
+
+            var psi = new ProcessStartInfo(exe, $"--capture-only \"{CaptureDir}\" {CaptureSeconds} {hubSpec}")
+            {
+                UseShellExecute = true,
+                Verb = "runas",
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
+            return Process.Start(psi);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Modal countdown dialog shown while the USB capture runs —
+    /// the user drives the game during this window. Shows the live status
+    /// the elevated helper reports via status.txt.</summary>
+    private void ShowCaptureDialog(Process helper)
+    {
+        var statusPath = Path.Combine(CaptureDir, "status.txt");
+        using var dlg = new Form
+        {
+            Text = "USB Capture",
+            ClientSize = new Size(440, 210),
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            StartPosition = FormStartPosition.CenterScreen,
+            MaximizeBox = false,
+            MinimizeBox = false,
+            Font = new Font("Segoe UI", 9.5f)
+        };
+        var label = new Label
+        {
+            Text = "DRIVE NOW — capturing USB traffic.\n" +
+                   "Drive in the game so the capture shows what the game\n" +
+                   "sends to the wheel. Do not close this window.",
+            Location = new Point(16, 14),
+            AutoSize = true,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold)
+        };
+        var phase = new Label
+        {
+            Location = new Point(16, 96),
+            Size = new Size(400, 40),
+            ForeColor = Color.Firebrick,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold)
+        };
+        var countdown = new Label { Location = new Point(16, 138), AutoSize = true };
+        var bar = new ProgressBar { Location = new Point(16, 164), Width = 400, Maximum = CaptureSeconds * 10 };
+        dlg.Controls.Add(label);
+        dlg.Controls.Add(phase);
+        dlg.Controls.Add(countdown);
+        dlg.Controls.Add(bar);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var timer = new System.Windows.Forms.Timer { Interval = 100 };
+        timer.Tick += (_, _) =>
+        {
+            int remain = CaptureSeconds - (int)sw.Elapsed.TotalSeconds;
+            countdown.Text = $"Remaining: {remain} s";
+            bar.Value = Math.Min(bar.Maximum, (int)(sw.Elapsed.TotalSeconds * 10));
+
+            try
+            {
+                if (File.Exists(statusPath))
+                {
+                    var status = File.ReadAllText(statusPath);
+                    if (!string.IsNullOrWhiteSpace(status)) phase.Text = status;
+                }
+            }
+            catch { }
+
+            if (helper.HasExited || remain <= 0)
+            {
+                timer.Stop();
+                dlg.Close();
+            }
+        };
+        timer.Start();
+        dlg.ShowDialog(this);
+        timer.Stop();
+    }
+
+    /// <summary>Adds the captured traffic files (usb.etl from Windows tracing,
+    /// or pcaps from the usbpcap fallback) to the zip, compressed.</summary>
+    private static void AddCaptureFilesToZip(ZipArchive zip, List<string> found)
+    {
+        foreach (var f in Directory.GetFiles(CaptureDir))
+        {
+            if (!f.EndsWith(".etl", StringComparison.OrdinalIgnoreCase)
+                && !f.EndsWith(".pcap", StringComparison.OrdinalIgnoreCase))
+                continue;
+            try
+            {
+                var fi = new FileInfo(f);
+                if (fi.Length == 0) continue;
+                WriteBytesEntry(zip, $"usbcapture/{fi.Name}", File.ReadAllBytes(f));
+                found.Add($"usbcapture/{fi.Name} ({fi.Length / 1024} KB)");
+            }
+            catch { }
+        }
     }
 
     // ─────────────────────────── collection core ───────────────────────────

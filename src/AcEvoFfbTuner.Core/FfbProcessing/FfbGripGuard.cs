@@ -6,6 +6,16 @@ public sealed class FfbGripGuard
 {
     public bool Enabled { get; set; } = true;
 
+    /// <summary>
+    /// True when the game's centering force points the SAME direction as the
+    /// steer angle (R3E: force = +sign(steer) * |SteeringForce| is toward
+    /// center — verified 2026-08-16 from live telemetry and hardware feel).
+    /// EVO/LMU use the opposite convention (centering force opposes steer),
+    /// so this defaults to false. When true, the "pulling away" classification
+    /// and the mechanical trail direction are inverted to match.
+    /// </summary>
+    public bool CenteringForceMatchesSteerSign { get; set; } = false;
+
     public float PeakSlipAngle { get; set; } = 0.10f;
 
     public float AttenuationStrength { get; set; } = 1.0f;
@@ -33,6 +43,8 @@ public sealed class FfbGripGuard
         float forceSign = absForce > 0.001f ? Math.Sign(force) : 0f;
 
         bool isPullingAway = steerSign != 0f && forceSign == steerSign;
+        if (CenteringForceMatchesSteerSign)
+            isPullingAway = steerSign != 0f && forceSign != steerSign;
 
         if (smoothSlip < PeakSlipAngle)
         {
@@ -62,7 +74,8 @@ public sealed class FfbGripGuard
             float speedFactor = Math.Clamp((raw.SpeedKmh - MinSpeedKmh) / 30.0f, 0f, 1f);
             float absSteer = Math.Abs(raw.SteerAngle);
             float steerFactor = Math.Clamp(absSteer * 10f, 0f, 1f);
-            float centeringForce = -steerSign * MechanicalTrailGain * speedFactor * steerFactor;
+            float trailDir = CenteringForceMatchesSteerSign ? steerSign : -steerSign;
+            float centeringForce = trailDir * MechanicalTrailGain * speedFactor * steerFactor;
             force += centeringForce;
         }
 

@@ -46,14 +46,21 @@ jobs:
           } else {
             $ver = '0.0.0-dev'
           }
+          # Beta builds: tag "v1.29.0-beta.1" → prerelease release; the ASSEMBLY
+          # version must stay numeric (System.Version cannot parse the suffix),
+          # so the build uses the numeric part only.
+          $beta = if ($ver -match '-') { 'true' } else { 'false' }
+          $buildVer = ($ver -split '-')[0]
           "version=$ver" >> $env:GITHUB_OUTPUT
+          "buildVersion=$buildVer" >> $env:GITHUB_OUTPUT
           "tag=v$ver" >> $env:GITHUB_OUTPUT
+          "prerelease=$beta" >> $env:GITHUB_OUTPUT
 
       - name: Restore dependencies
         run: dotnet restore AcEvoFfbTuner.slnx
 
       - name: Build
-        run: dotnet build AcEvoFfbTuner.slnx -c ${{ env.CONFIGURATION }} -p:Version=${{ steps.version.outputs.version }} --no-restore
+        run: dotnet build AcEvoFfbTuner.slnx -c ${{ env.CONFIGURATION }} -p:Version=${{ steps.version.outputs.buildVersion }} -p:InformationalVersion=${{ steps.version.outputs.version }} --no-restore
 
       - name: Publish (self-contained single-file)
         run: >
@@ -64,7 +71,8 @@ jobs:
           -p:PublishSingleFile=true
           -p:EnableCompressionInSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:Version=${{ steps.version.outputs.version }}
+          -p:Version=${{ steps.version.outputs.buildVersion }}
+          -p:InformationalVersion=${{ steps.version.outputs.version }}
           -o ./publish
 
       - name: Build Inno Setup installer
@@ -104,6 +112,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: "AC Evo FFB Tuner ${{ steps.version.outputs.tag }}"
           draft: false
+          prerelease: ${{ steps.version.outputs.prerelease }}
           generate_release_notes: true
           files: |
             ./installer-output/AcEvoFfbTuner-Setup-*.exe
