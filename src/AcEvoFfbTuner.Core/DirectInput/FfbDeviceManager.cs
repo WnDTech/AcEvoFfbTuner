@@ -68,7 +68,7 @@ public sealed class FfbDeviceManager : IDisposable
     private volatile bool _reconnectRequested;
     private const int MaxReconnectAttempts = 3;
     private int _inlineReacquireCount;
-    private const int MaxInlineReacquireAttempts = 2;
+    private const int MaxInlineReacquireAttempts = 30;
 
     /// <summary>
     /// When true, the force output to the device is inverted (multiplied by -1).
@@ -1200,31 +1200,49 @@ public sealed class FfbDeviceManager : IDisposable
             try { _device.Unacquire(); } catch { }
             _isAcquired = false;
 
-            Thread.Sleep(100);
-
-            // Re-bind the cooperative level with the CURRENT window handle before
-            // acquiring. The app's HWND can be recreated mid-session (theme change,
-            // fullscreen transitions); acquiring with a stale HWND fails with
-            // ERROR_INVALID_WINDOW_HANDLE and leaves the device permanently dead.
+            // Polling loop: try to re-acquire every 10ms for up to 500ms.
+            // EVO 0.9's device recovery periodically re-acquires exclusive DI
+            // access every ~1.2s for ~120ms. A single Sleep(100) was too coarse
+            // and would either miss the window or land during game-ownership.
             var handle = _windowHandle != IntPtr.Zero ? _windowHandle : GetDesktopWindow();
             _device.SetCooperativeLevel(handle, DI.CooperativeLevel.Exclusive | DI.CooperativeLevel.Background);
-            ConnLog($"Re-acquire re-bound cooperative level to handle 0x{handle.ToInt64():X8}");
+            bool acquired = false;
+            const int pollIntervalMs = 10;
+            const int maxWaitMs = 500;
+            for (int waited = 0; waited < maxWaitMs; waited += pollIntervalMs)
+            {
+                try
+                {
+                    _device.Acquire();
+                    acquired = true;
+                    break;
+                }
+                catch
+                {
+                    Thread.Sleep(pollIntervalMs);
+                }
+            }
 
-            _device.Acquire();
+            if (!acquired)
+                throw new Exception("Failed to acquire device within polling window");
+
             _isAcquired = true;
             ResetAxisDetection();
             _consecutiveForceErrors = 0;
             _inlineReacquireCount = 0;
             LastError = null;
+
+            // The effect handles are stale after Unacquire/Acquire. They are already
+            // destroyed above (_constantForceEffect == null). The interpolation thread's
+            // next SendConstantForceDirect call will detect null and recreate the effect
+            // with the current _targetForce, resuming FFB without manual intervention.
+            _targetForce = _currentForce;
+            System.Threading.Interlocked.Exchange(ref _lastTargetUpdateTicks, System.Diagnostics.Stopwatch.GetTimestamp());
             ConnLog("Re-acquire SUCCESS — device recovered");
         }
         catch (Exception ex)
         {
             ConnLog($"Re-acquire FAILED: {ex.InnerException?.Message ?? ex.Message}");
-            // The device is now unacquired and SendConstantForceDirect early-returns
-            // before counting further errors, so _consecutiveForceErrors can never
-            // reach MaxConsecutiveErrors on its own. Escalate to a full reconnect
-            // immediately instead of waiting for failures that will never accrue.
             _consecutiveForceErrors = MaxConsecutiveErrors;
             if (!_reconnectRequested)
             {

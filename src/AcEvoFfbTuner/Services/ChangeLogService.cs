@@ -50,6 +50,17 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.28.0-beta.2",
+            Date = new DateTime(2026, 8, 28),
+            Title = "AC EVO 0.9 workaround: polling re-acquire loop prevents full device reconnects",
+            Fixes =
+            [
+                "AC EVO 0.9 workaround: the game now periodically re-acquires exclusive DirectInput access every ~1.2 seconds (\"FFB Device Recovery\"), which kicks third-party FFB apps off the device. The re-acquire logic now polls every 10ms instead of sleeping 100ms, grabbing the device the instant the game releases it — and MaxInlineReacquireAttempts raised from 2 to 30, so a single unlucky timing no longer escalates into a full device disconnect and reconnect cycle",
+                "Website banner added to index.html and beta.html warning all users that EVO 0.9 affects every third-party FFB app (all wheelbases), with a link to the GitHub issue (#8) tracking the upstream bug report filed with Kunos",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.28.0-beta.1",
             Date = new DateTime(2026, 8, 23),
             Title = "Test Drive program beta: Discord sign-in, tasks & Podium in-app, beta build channel, R3E steering feel overhaul",
