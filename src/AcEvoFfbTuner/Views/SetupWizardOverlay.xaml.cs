@@ -64,7 +64,30 @@ public partial class SetupWizardOverlay : Window
     private float _intensityMultiplier = 1.0f; // Slider/Preset modifier (0.5 to 1.2)
     private float _polarityFlipTarget; // target MzFrontGain for gradual flip
     private float _polarityFlipStep;   // per-frame increment
+    private float _polarityFlipFyTarget; // target FyFrontGain for gradual flip (own step — magnitude preserved)
+    private float _polarityFlipFyStep;   // Fy per-frame increment
     private int _polarityFlipFrames;   // frames remaining in gradual flip
+    private float _preFlipMz;          // MzFrontGain before the flip — revert target
+    private float _preFlipFy;          // FyFrontGain before the flip — revert target
+    private bool _flipWasApplied;      // a centering flip ran — verification must follow
+    private float _flipSavedOutputGain = -1f; // -1 = attenuation inactive
+    private int _flipRestoreFrames;
+    private const float FlipAttenuation = 0.35f;
+    private const int FlipRestoreGraceFrames = 25;
+
+    // Post-flip verification: sample cornering again and prove the new
+    // direction is correct — otherwise revert so a wrong flip can never
+    // strand the user with a runaway wheel.
+    private enum VerifyPhase { None, Verifying, Passed, Reverted }
+    private VerifyPhase _verifyPhase = VerifyPhase.None;
+    private int _verifyCornerFrames;
+    private int _verifyFightFrames;
+    private int _verifyTotalFrames;
+    private const int VerifyMinCornerFrames = 40;
+    private const int VerifyMaxFrames = 600;
+    private const float VerifySteerThreshold = 0.12f;
+    private const float VerifyForceThreshold = 0.02f;
+    private const float VerifyFightRevertRatio = 0.6f;
     private const int CenterSampleCount = 600;
     private int _centerSampleIndex;
     private float[] _centerForceSamples = new float[CenterSampleCount];
@@ -93,6 +116,8 @@ public partial class SetupWizardOverlay : Window
     private enum BrakingPhase { Idle, Monitoring, QuestionShown }
     private BrakingPhase _brakingPhase = BrakingPhase.Idle;
     private const int BrakeSampleTarget = 1;
+    private const int BrakeTimeoutFrames = 1500; // ~25s at 60fps — never hang the wizard
+    private int _brakeMonitorFrames;
     private int _brakeSampleCount;
     private float _brakeFxSum;
     private float _brakeForceSum;
@@ -376,6 +401,10 @@ public partial class SetupWizardOverlay : Window
 
     private void OnNext(object? sender, RoutedEventArgs? e)
     {
+        // Manual navigation cancels any pending auto-advance so the two can
+        // never race and skip a step.
+        _advanceStep = -1;
+
         if (_currentStep == MaxSteps - 1)
         {
             SaveAndFinish();
@@ -391,27 +420,67 @@ public partial class SetupWizardOverlay : Window
         _polarityDetermined = true;
 
         // Start gradual flip over 30 frames (~0.5s) instead of instant reversal
-        float currentMz = _pipeline.ChannelMixer.MzFrontGain;
-        _polarityFlipTarget = -currentMz;
-        _polarityFlipFrames = 30;
-        _polarityFlipStep = (_polarityFlipTarget - currentMz) / _polarityFlipFrames;
+        BeginPolarityFlip(-_pipeline.ChannelMixer.MzFrontGain);
         _calibratedMasterGain = _pipeline.MasterGain;
 
         // Commit final target to profile data model
         if (_viewModel?.SelectedProfile != null)
         {
             _viewModel.SelectedProfile.MzFront.Gain = _polarityFlipTarget;
-            _viewModel.SelectedProfile.FyFront.Gain = -_pipeline.ChannelMixer.FyFrontGain;
+            _viewModel.SelectedProfile.FyFront.Gain = _polarityFlipFyTarget;
         }
 
         // Hide question, show result
         PolarityQuestionPanel.Visibility = Visibility.Collapsed;
         SetPhaseBanner("\u2713 CENTERING FIXING", "Adjusting centering direction gradually...", "#FF66BB6A");
-        Step3Status.Text = $"\u2713 Reversing centering direction smoothly \u2014 hold the wheel...";
+        Step3Status.Text = $"\u2713 Reversing centering direction smoothly \u2014 hold the wheel (force lowered)...";
         Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-        Log($"User polarity: Gradual flip from {currentMz:F2} to {_polarityFlipTarget:F2} over {_polarityFlipFrames} frames");
-        
-        
+        Log($"User polarity: Gradual flip Mz to {_polarityFlipTarget:F2} over {_polarityFlipFrames} frames");
+    }
+
+    // While a polarity flip or revert is running, hold OutputGain at a reduced
+    // level so the direction change can never whip the wheel at full force.
+    private void EnsureFlipAttenuation()
+    {
+        if (_flipSavedOutputGain < 0f)
+        {
+            _flipSavedOutputGain = _pipeline.OutputGain;
+            _pipeline.OutputGain = _flipSavedOutputGain * FlipAttenuation;
+            Log($"Flip attenuation: OutputGain {_flipSavedOutputGain:F2} -> {_pipeline.OutputGain:F2}");
+        }
+        _flipRestoreFrames = FlipRestoreGraceFrames;
+    }
+
+    private void UpdateFlipAttenuation()
+    {
+        if (_flipSavedOutputGain < 0f) return;
+        if (_flipRestoreFrames > 0)
+        {
+            _flipRestoreFrames--;
+            return;
+        }
+        _pipeline.OutputGain = _flipSavedOutputGain;
+        Log($"Flip attenuation restored: OutputGain -> {_pipeline.OutputGain:F2}");
+        _flipSavedOutputGain = -1f;
+    }
+
+    // Starts a gradual Mz/Fy sign flip (or revert) while attenuating force.
+    // Fy is flipped with its OWN step so its magnitude is preserved — the old
+    // code added the Mz step to Fy, which distorted Fy's gain (e.g. +0.25 -> -0.59).
+    private void BeginPolarityFlip(float targetMz)
+    {
+        float currentMz = _pipeline.ChannelMixer.MzFrontGain;
+        float currentFy = _pipeline.ChannelMixer.FyFrontGain;
+        _preFlipMz = currentMz;
+        _preFlipFy = currentFy;
+        _polarityFlipTarget = targetMz;
+        _polarityFlipFyTarget = -currentFy;
+        _polarityFlipFrames = 30;
+        _polarityFlipStep = (_polarityFlipTarget - currentMz) / _polarityFlipFrames;
+        _polarityFlipFyStep = (_polarityFlipFyTarget - currentFy) / _polarityFlipFrames;
+        _flipWasApplied = true;
+        EnsureFlipAttenuation();
+        Log($"Polarity flip: Mz {currentMz:F2}->{targetMz:F2}, Fy {currentFy:F2}->{_polarityFlipFyTarget:F2} over {_polarityFlipFrames} frames (attenuated)");
     }
 
     private void OnPolarityNo(object sender, RoutedEventArgs e)
@@ -710,10 +779,10 @@ public partial class SetupWizardOverlay : Window
     public void UpdateLiveValues(float speedKmh, float mainForce, float steerAngle, bool isClipping, float mzFront, float brake = 0f, float gas = 0f)
     {
         if (++_logFrame % 100 == 0)
-            Log($"ULV: step={_currentStep} speed={speedKmh:F1} force={mainForce:F4}");
+            Log($"ULV: step={_currentStep} speed={speedKmh:F1} force={mainForce:F4} flip={_polarityFlipFrames} verify={_verifyPhase} brake={_brakingPhase}");
 
-        // Gradual polarity flip: apply in small increments over 30 frames (~0.5s)
-        // to prevent sudden force reversals that could rip the wheel from the user's hands.
+        // Gradual polarity flip/revert: apply in small increments over ~30 frames
+        // with OutputGain attenuated so the reversal can never whip the wheel.
         if (_polarityFlipFrames > 0)
         {
             _polarityFlipFrames--;
@@ -726,14 +795,28 @@ public partial class SetupWizardOverlay : Window
                 newMz = _polarityFlipTarget;
                 _polarityFlipFrames = 0;
             }
+            float oldFy = _pipeline.ChannelMixer.FyFrontGain;
+            float newFy = oldFy + _polarityFlipFyStep;
+            if ((_polarityFlipFyStep > 0f && newFy >= _polarityFlipFyTarget) ||
+                (_polarityFlipFyStep < 0f && newFy <= _polarityFlipFyTarget))
+            {
+                newFy = _polarityFlipFyTarget;
+            }
             _pipeline.ChannelMixer.MzFrontGain = newMz;
-            _pipeline.ChannelMixer.FyFrontGain += _polarityFlipStep; // same step for Fy
+            _pipeline.ChannelMixer.FyFrontGain = newFy;
             // Sync viewmodel for save
             if (_viewModel != null)
             {
                 _viewModel.MzFrontGain = newMz;
-                _viewModel.FyFrontGain = _pipeline.ChannelMixer.FyFrontGain;
+                _viewModel.FyFrontGain = newFy;
             }
+            EnsureFlipAttenuation();
+        }
+        else
+        {
+            // Flipping done — restore full force (also covers manual step changes
+            // mid-flip: never leave the force attenuated outside step 2).
+            UpdateFlipAttenuation();
         }
 
         // Welcome step: keep checking device connection so the Next button
@@ -766,9 +849,12 @@ public partial class SetupWizardOverlay : Window
             else
             {
                 _advanceStep = -1;
+                int scheduledStep = _currentStep;
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    if (_currentStep < MaxSteps - 1) OnNext(null, null);
+                    // Only advance if the user hasn't already navigated manually.
+                    if (_currentStep == scheduledStep && scheduledStep < MaxSteps - 1)
+                        OnNext(null, null);
                 }));
             }
         }
@@ -782,13 +868,85 @@ public partial class SetupWizardOverlay : Window
             // Strength calibration always runs — it auto-advances when data collection completes
             UpdateAutoTyreForces(speedKmh, mainForce, steerAngle, mzFront);
 
-            // Braking pull detection: runs after polarity question is resolved
-            if (_brakingPhase == BrakingPhase.Monitoring)
+            if (_verifyPhase == VerifyPhase.None && _flipWasApplied)
+            {
+                // Flip finished — verify the new direction before trusting it.
+                _verifyPhase = VerifyPhase.Verifying;
+                _verifyCornerFrames = 0;
+                _verifyFightFrames = 0;
+                _verifyTotalFrames = 0;
+                Step3Status.Text = "Checking the new centering direction — drive through a few corners...";
+                Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+            }
+            else if (_verifyPhase == VerifyPhase.Verifying)
+            {
+                UpdatePolarityVerification(speedKmh, steerAngle, mzFront, mainForce);
+            }
+            else if (_brakingPhase == BrakingPhase.Monitoring)
+            {
+                // Braking pull detection: runs after polarity is settled
                 UpdateBrakingPull(speedKmh, steerAngle, mzFront, mainForce, brake);
-
-            // After auto-flip completes, start braking monitoring
-            if (_polarityFlipFrames <= 0 && _brakingPhase == BrakingPhase.Idle && _polarityDetermined && _step2Phase == AutoPhase.Manual)
+            }
+            else if (_brakingPhase == BrakingPhase.Idle && _polarityDetermined && _step2Phase == AutoPhase.Manual)
+            {
                 StartBrakingMonitoring();
+                if (_verifyPhase == VerifyPhase.Reverted)
+                {
+                    Step2Status.Text = "Centering test failed and was reverted. If the wheel still pulls, the pull is likely the game fighting for the wheel — continue to the next step.";
+                    Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+                }
+            }
+        }
+    }
+
+    // After a centering flip, drive is sampled again. The Mz channel is the
+    // centering authority (no vibration contamination). If the force still
+    // pulls away from center, the flip was wrong and is reverted — the wizard
+    // can never leave the user with a runaway wheel.
+    private void UpdatePolarityVerification(float speedKmh, float steerAngle, float mzFront, float mainForce)
+    {
+        _verifyTotalFrames++;
+        bool columnForce = _pipeline is R3eFfbPipeline or LmuFfbPipeline;
+        bool invertSign = _viewModel?.ForceInvertEnabled == true;
+        bool forceActive = columnForce ? Math.Abs(mainForce) > VerifyForceThreshold : Math.Abs(mzFront) > VerifyForceThreshold;
+        if (speedKmh > 15f && Math.Abs(steerAngle) > VerifySteerThreshold && forceActive)
+        {
+            _verifyCornerFrames++;
+            bool pullAway = columnForce
+                ? (invertSign ? -mainForce : mainForce) * steerAngle < -0.0001f
+                : mzFront * steerAngle > 0.0001f;
+            if (pullAway)
+                _verifyFightFrames++;
+        }
+
+        float runRatio = _verifyCornerFrames > 0 ? (float)_verifyFightFrames / _verifyCornerFrames : 0f;
+        Step3Status.Text = $"Checking centering — corners: {_verifyCornerFrames}/{VerifyMinCornerFrames}  |  pull-away: {runRatio * 100f:F0}%";
+        Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+
+        bool enoughData = _verifyCornerFrames >= VerifyMinCornerFrames || _verifyTotalFrames >= VerifyMaxFrames;
+        if (!enoughData) return;
+
+        if (_verifyCornerFrames >= VerifyMinCornerFrames && runRatio > VerifyFightRevertRatio)
+        {
+            // New direction is worse — revert to the pre-flip gains.
+            _verifyPhase = VerifyPhase.Reverted;
+            Log($"VERIFY FAILED: {runRatio * 100f:F0}% pull-away after flip ({_verifyFightFrames}/{_verifyCornerFrames}) — reverting centering direction");
+            Step3Status.Text = $"\u26A0 New direction wrong ({runRatio * 100f:F0}% pull-away) — reverting...";
+            Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
+            _polarityFlipTarget = _preFlipMz;
+            _polarityFlipFyTarget = _preFlipFy;
+            _polarityFlipFrames = 20;
+            _polarityFlipStep = (_polarityFlipTarget - _pipeline.ChannelMixer.MzFrontGain) / _polarityFlipFrames;
+            _polarityFlipFyStep = (_polarityFlipFyTarget - _pipeline.ChannelMixer.FyFrontGain) / _polarityFlipFrames;
+            EnsureFlipAttenuation();
+        }
+        else
+        {
+            _verifyPhase = VerifyPhase.Passed;
+            Log($"VERIFY PASSED: {runRatio * 100f:F0}% pull-away after flip ({_verifyFightFrames}/{_verifyCornerFrames}) — centering correct");
+            Step3Status.Text = "\u2713 Centering direction verified";
+            Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+            StartBrakingMonitoring();
         }
     }
 
@@ -796,6 +954,7 @@ public partial class SetupWizardOverlay : Window
     {
         _brakingPhase = BrakingPhase.Monitoring;
         _brakeSampleCount = 0;
+        _brakeMonitorFrames = 0;
         _brakeFxSum = 0f;
         _brakeForceSum = 0f;
         Log("BrakingPull: monitoring started");
@@ -804,6 +963,21 @@ public partial class SetupWizardOverlay : Window
     private void UpdateBrakingPull(float speedKmh, float steerAngle, float mzFront, float mainForce, float brakeInput)
     {
         if (_brakingPhase == BrakingPhase.QuestionShown) return;
+        _brakeMonitorFrames++;
+
+        // Timeout: never leave the user stuck on step 2. If no straight-line
+        // brake sample arrives within ~25s (wheel fighting, low speed, no
+        // braking), skip the brake test and continue.
+        if (_brakeMonitorFrames >= BrakeTimeoutFrames)
+        {
+            Log($"Braking pull: timeout after {_brakeMonitorFrames} frames — skipping brake test");
+            Step2Status.Text = "\u2713 Brake test skipped (no sample) — continuing";
+            Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
+            _brakingPhase = BrakingPhase.QuestionShown;
+            _advanceStep = _currentStep;
+            _advanceStepDelay = 30;
+            return;
+        }
 
         const float brakeThreshold = 0.15f;
         const float steerStraightThreshold = 0.04f;
@@ -1240,14 +1414,25 @@ public partial class SetupWizardOverlay : Window
                     _step2PeakForce = absF;
                 }
 
-                // 2. POLARITY DETECTION: Track if force pushes AWAY from center
-                // If user turns right (steer > 0) and force pushes right (mainForce > 0), it's a runaway force.
-                // Normalize to physical force direction: positive = push right
-                float behaviorCheck = _viewModel?.ForceInvertEnabled == true ? -mainForce : mainForce;
+                // 2. POLARITY DETECTION: Track if force pushes AWAY from center.
+                // Sign conventions differ per game family (verified on hardware):
+                //  - EVO/ACC mixer pipelines: centering force OPPOSES steer.
+                //    Uses the clean Mz channel (post-gain) — the final
+                //    mainForce also carries vibration whose positive-magnitude
+                //    bias contaminates sign detection and triggers false flips.
+                //  - R3E/LMU column-force pipelines: force points SAME direction
+                //    as steer (steer right => positive output pushes left =
+                //    toward center on standard hardware). Pull-away = opposite sign.
+                bool columnForce = _pipeline is R3eFfbPipeline or LmuFfbPipeline;
+                bool invertSign = _viewModel?.ForceInvertEnabled == true;
+                bool forceActive = columnForce ? Math.Abs(mainForce) > 0.02f : Math.Abs(mzFront) > 0.02f;
                 if (Math.Abs(steerAngle) > 0.05f)
                 {
                     _cornerTurnFrames++;
-                    if (behaviorCheck * steerAngle > 0.001f) // Same sign = pulling away from center into lock
+                    bool pullAway = columnForce
+                        ? (invertSign ? -mainForce : mainForce) * steerAngle < -0.0001f
+                        : mzFront * steerAngle > 0.0001f;
+                    if (forceActive && pullAway)
                     {
                         _cornerFightFrames++;
                     }
@@ -1300,20 +1485,17 @@ public partial class SetupWizardOverlay : Window
                 if (runawayRatio > 0.55f) // Definite inverted behavior detected
                 {
                     // Automatically invert the target for the gradual correction shift
-                    float currentMz = _pipeline.ChannelMixer.MzFrontGain;
-                    _polarityFlipTarget = -currentMz;
-                    _polarityFlipFrames = 30;
-                    _polarityFlipStep = (_polarityFlipTarget - currentMz) / _polarityFlipFrames;
+                    BeginPolarityFlip(-_pipeline.ChannelMixer.MzFrontGain);
                     _calibratedMasterGain = _pipeline.MasterGain;
+                    _polarityDetermined = true;
 
                     if (PolarityQuestionPanel != null) PolarityQuestionPanel.Visibility = Visibility.Collapsed;
-                    _polarityDetermined = true;
 
                     Step2Status.Text = $"Auto-correcting centering... (Peak: {(_step2PeakForce * 100f):F0}%)";
                     Step2Status.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x00));
-                    Step3Status.Text = $"Hold the wheel steady — reversing centering direction...";
+                    Step3Status.Text = $"Hold the wheel steady — reversing centering direction (force lowered)...";
                     Step3Status.Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0xBB, 0x6A));
-                    Log($"AUTO polarity: gradual flip from {currentMz:F2} to {_polarityFlipTarget:F2} over {_polarityFlipFrames} frames (runaway={runawayRatio*100:F0}%)");
+                    Log($"AUTO polarity: gradual flip (runaway={runawayRatio * 100f:F0}%)");
                 }
                 else
                 {

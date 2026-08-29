@@ -50,6 +50,22 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.28.0-beta.3",
+            Date = new DateTime(2026, 8, 29),
+            Title = "Setup wizard polarity flip safety overhaul — prevents runaway wheel and wizard hang",
+            Fixes =
+            [
+                "Fixed the Fy (lateral force) gain being destroyed during the polarity flip — the old code added the Mz step to Fy, turning a +0.25 Fy into -0.59 (2.4x wrong magnitude), which produced the strong unbalanced pull users reported (5MDM-R2LX)",
+                "The polarity flip now attenuates OutputGain to 35% during the direction reversal, preventing the wheel from whipping at full force when the sign changes mid-corner",
+                "Post-flip verification: after flipping the centering direction, the wizard now monitors corner frames for ~10 s — if the wheel still pulls away from center, the flip is automatically reverted so a wrong flip can never strand the user with a runaway wheel",
+                "Added a 25-second timeout to the braking-pull test so the wizard can never hang if the user can't brake straight (e.g. wheel fighting, no speed, or already stopped)",
+                "Polarity detection now uses the clean Mz channel (post-gain, pre-detail) for EVO/ACC instead of the vibration-laden final output — EVO's kerb vibration has a positive-magnitude bias that inflated the false-runaway count and triggered unnecessary flips",
+                "Manual Next-button click now cancels any pending auto-advance, preventing a race condition where manual navigation and the auto-advance timer could skip a step",
+                "R3E/LMU polarity detection sign convention corrected — these column-force pipelines produce force in the SAME direction as steer (verified on hardware), while EVO/ACC produce force OPPOSITE to steer. The old code treated same-sign as pull-away for all pipelines, always triggering a false flip for R3E/LMU",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.28.0-beta.2",
             Date = new DateTime(2026, 8, 28),
             Title = "AC EVO 0.9 workaround: polling re-acquire loop prevents full device reconnects",
