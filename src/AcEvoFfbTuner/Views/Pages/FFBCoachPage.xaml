@@ -66,12 +66,11 @@
         <DataTemplate x:Key="MessageTemplate">
             <Border Name="Bubble"
                     CornerRadius="8" Padding="14,10"
-                    MaxWidth="780"
                     Margin="0,0,0,8"
                     BorderThickness="1">
                 <Border.Style>
                     <Style TargetType="Border">
-                        <Setter Property="HorizontalAlignment" Value="Left" />
+                        <Setter Property="HorizontalAlignment" Value="Stretch" />
                         <Setter Property="Background" Value="#1AFFFFFF" />
                         <Setter Property="BorderBrush" Value="#22FFFFFF" />
                         <Style.Triggers>
@@ -84,15 +83,16 @@
                     </Style>
                 </Border.Style>
                 <StackPanel>
-                    <!-- Message text with icon -->
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Name="IconBlock" Text="{Binding Icon}"
-                                   FontSize="16" Margin="0,0,6,0"
-                                   Visibility="{Binding Icon, Converter={StaticResource NullToVis}}" />
-                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
-                                   FontSize="15" LineHeight="22"
-                                   Foreground="#FFE6EDF3" />
-                    </StackPanel>
+                    <!-- Single wrapping TextBlock (icon + text as Runs) so short
+                         messages hug content while long messages fill the full
+                         available width and wrap on any monitor size. A Grid with
+                         a *-column would force every bubble to full width. -->
+                    <TextBlock TextWrapping="Wrap"
+                               FontSize="15" LineHeight="22"
+                               Foreground="#FFE6EDF3"
+                               HorizontalAlignment="Stretch">
+                        <Run Text="{Binding Icon, Mode=OneWay}" FontSize="16" /><Run Text="  " FontSize="15" /><Run Text="{Binding Text, Mode=OneWay}" />
+                    </TextBlock>
 
                     <!-- Answer buttons -->
                     <ItemsControl Name="AnswersPanel" ItemsSource="{Binding Answers}"
@@ -137,6 +137,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -242,12 +243,60 @@
                 <!-- Message list -->
                 <ItemsControl x:Name="MessageList"
                               ItemsSource="{Binding CoachMessages}"
-                              ItemTemplate="{StaticResource MessageTemplate}" />
+                              ItemTemplate="{StaticResource MessageTemplate}"
+                              HorizontalAlignment="Stretch"
+                              HorizontalContentAlignment="Stretch">
+                    <ItemsControl.ItemContainerStyle>
+                        <Style>
+                            <Setter Property="FrameworkElement.HorizontalAlignment" Value="Stretch" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                </ItemsControl>
             </StackPanel>
         </ScrollViewer>
 
+        <!-- ===== PENDING RECOMMENDATIONS ===== -->
+        <Border Grid.Row="2" Background="#FF151B23" BorderThickness="0,1,0,0" BorderBrush="#FF30363D"
+                Padding="16,10" Visibility="{Binding CoachHasPendingRecs, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <DockPanel Margin="0,0,0,8">
+                    <TextBlock Text="PENDING RECOMMENDATIONS" FontSize="12" FontWeight="Bold"
+                               Foreground="#FF00BCD4" VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Apply All" Command="{Binding CoachApplyAllCommand}"
+                                Style="{StaticResource CoachActionBtn}" Padding="10,4" FontSize="12" />
+                        <Button Content="Undo" Command="{Binding CoachUndoCommand}"
+                                Style="{StaticResource CoachActionBtn}" Padding="10,4" FontSize="12" Margin="6,0,0,0" />
+                    </StackPanel>
+                </DockPanel>
+                <ItemsControl ItemsSource="{Binding CoachPendingRecs}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,8" Margin="0,0,0,6"
+                                    BorderThickness="1" BorderBrush="#22FFFFFF">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center" MaxWidth="600">
+                                        <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="#FFE6EDF3" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Description}" FontSize="12"
+                                                   Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Content="Apply"
+                                            Command="{Binding DataContext.CoachApplyRecCommand,
+                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource CoachPrimaryBtn}" Padding="12,4" FontSize="12"
+                                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
         <!-- ===== INPUT BAR ===== -->
-        <Border Grid.Row="2" x:Name="InputBar"
+        <Border Grid.Row="3" x:Name="InputBar"
                 Background="#FF151B23" BorderThickness="0,1,0,0" BorderBrush="#FF30363D"
                 Padding="16,10" Visibility="Collapsed">
             <Grid>
