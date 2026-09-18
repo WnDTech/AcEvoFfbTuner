@@ -75,7 +75,11 @@ public partial class SettingsPage : UserControl
     private void OnCardSelected(object sender, RoutedEventArgs e)
     {
         if (sender is SectionCard card && card.Tag is string tag)
+        {
             ShowSection(tag);
+            if (tag == "AiCoach" && DataContext is MainViewModel vm)
+                vm.RefreshAiModelsCommand.Execute(null);
+        }
     }
 
     private void ShowSection(string tag)

@@ -68,8 +68,23 @@ public class FfbPipeline
     public float MaxSlewRate { get; set; } = 0.85f;
 
     public float SteerDirDeadzone { get; set; } = 0.004f;
+    /// <summary>
+    /// RESERVED (not consumed by base Process): center deadzone width in degrees.
+    /// Round-trips profile ↔ pipeline so saved values are preserved. Game-specific
+    /// centering lives in subclass overrides (e.g. R3E ApplyCenteringOverride).
+    /// Do NOT wire into the base core path without a baseline re-tune.
+    /// </summary>
     public float CenterSuppressionDegrees { get; set; } = 1.5f;
+    /// <summary>
+    /// RESERVED (not consumed by base Process): output deadband for noise rejection.
+    /// Round-trips profile ↔ pipeline so saved values are preserved.
+    /// Do NOT wire into the base core path without a baseline re-tune.
+    /// </summary>
     public float HysteresisThreshold { get; set; } = 0.015f;
+    /// <summary>
+    /// RESERVED (not consumed by base Process): watchdog ticks for the hysteresis deadband.
+    /// Round-trips profile ↔ pipeline so saved values are preserved.
+    /// </summary>
     public int HysteresisWatchdogFrames { get; set; } = 5;
     public float CenterKneePower { get; set; } = 1.0f;
 
@@ -94,7 +109,20 @@ public class FfbPipeline
     public float ReverseDetailPass { get; set; } = 0.50f;
     public int ReverseGearValue { get; set; } = 0;
 
+    // ─── Phase 1 safety scaffold: new effects default OFF (zero-impact) ───
+    // Each effect is gated behind Enabled=false + Gain=0 and a virtual no-op
+    // hook. Subclasses override per-game; base returns input unchanged.
+    public bool SoftLockEnabled { get; set; } = false;
+    public float SoftLockStrength { get; set; } = 0f;
+    public float SoftLockDegrees { get; set; } = 900f;
+    public bool GyroEnabled { get; set; } = false;
+    public float GyroGain { get; set; } = 0f;
+    public bool TcWheelEnabled { get; set; } = false;
+    public float TcWheelGain { get; set; } = 0f;
+
     private float _prevDetailOutput;
+    private float _gyroSmooth;
+    private float _tcWheelSmooth;
     private float _shiftMuteDuration = 0.030f;
     private float _fadeInDuration = 0.030f;
     private float _shiftTimeTracker;
@@ -305,6 +333,11 @@ public class FfbPipeline
         // Hook for subclasses to modify detailForce before final mix
         OnDetailForceProcessed(coreOutput, ref detailForce);
 
+        // Phase 1 scaffold hooks — no-op unless enabled + overridden per-game.
+        // Gyro stabilizer (detail-path opposing torque) and TC wheel feel.
+        detailForce = ApplyGyroStabilizer(detailForce, raw);
+        detailForce = ApplyTcWheelEffect(detailForce, raw);
+
         // ═══════════════════════════════════════════════════════════════════════
         // FINAL MIX — Core (zero-latency) + Detail (filtered)
         // ═══════════════════════════════════════════════════════════════════════
@@ -316,6 +349,10 @@ public class FfbPipeline
 
         // Output clipper (soft clip at threshold)
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
+
+        // Soft lock end-stop: progressive wall past steering lock.
+        // Disabled by default (SoftLockEnabled=false, Strength=0).
+        finalOutput = ApplySoftLock(finalOutput, raw);
 
         // Noise floor gate (amplified at low speed for physics jitter suppression)
         // Wet weather: raise noise floor (water film masks tiny surface details)
@@ -378,6 +415,8 @@ public class FfbPipeline
 
 
         _prevDetailOutput = 0f;
+        _gyroSmooth = 0f;
+        _tcWheelSmooth = 0f;
         _shiftTimeTracker = 0f;
         _lastGear = 1;
         _gearShiftPrevForce = 0f;
@@ -401,6 +440,79 @@ public class FfbPipeline
     protected virtual float ApplyCenteringOverride(float coreOutput, FfbRawData raw)
     {
         return coreOutput;
+    }
+
+    /// <summary>
+    /// Soft-lock end-stop wall: progressive resistance toward center once the
+    /// normalized steer position passes 92% of full lock.
+    /// Convention: codebase-wide SteerAngle is normalized -1..1 (see
+    /// FfbChannelMixer center blend, R3e ApplyCenteringOverride), so lock is
+    /// always |SteerAngle| = 1 regardless of per-car SteerDegrees.
+    /// Direction follows GripGuard.CenteringForceMatchesSteerSign (R3E sets it;
+    /// EVO/LMU/AC/ACC use the default), so no per-game direction override is
+    /// needed — subclasses only need to CALL this in their final mix.
+    /// Fail-safes: disabled/zero-gain = passthrough; |steer| outside
+    /// [0.92, 1.5] = passthrough (values above 1.5 mean unexpected units —
+    /// never synthesize a wall from them); output hard-clamped to ±1.
+    /// </summary>
+    protected virtual float ApplySoftLock(float force, FfbRawData raw)
+    {
+        if (!SoftLockEnabled || SoftLockStrength <= 0f)
+            return force;
+        float abs = Math.Abs(raw.SteerAngle);
+        if (abs < 0.92f || abs > 1.5f)
+            return force;
+        float steerSign = Math.Sign(raw.SteerAngle);
+        if (steerSign == 0f)
+            return force;
+        float t = Math.Min((abs - 0.92f) / 0.08f, 1.2f);
+        float wall = t * t * SoftLockStrength * 0.6f;
+        float towardCenter = GripGuard.CenteringForceMatchesSteerSign ? steerSign : -steerSign;
+        return Math.Clamp(force + towardCenter * wall, -1f, 1f);
+    }
+
+    /// <summary>
+    /// Gyro yaw stabilizer (detail path): torque opposing yaw rate, EMA-smoothed
+    /// and clamped to ±0.15 (same envelope as FfbDynamicEffects yaw).
+    /// Source is raw.LocalAngularVel[1], the same yaw signal the dynamic yaw
+    /// term uses — no sign-convention branch (consistent with YawRateGain
+    /// precedent; use a negative gain if the direction feels wrong for a game).
+    /// Gated on GyroEnabled + gain. NaN/Inf yaw is ignored (fail-safe).
+    /// </summary>
+    protected virtual float ApplyGyroStabilizer(float detailForce, FfbRawData raw)
+    {
+        if (!GyroEnabled || Math.Abs(GyroGain) <= 0.0001f)
+            return detailForce;
+        float yaw = raw.LocalAngularVel.Length > 1 ? raw.LocalAngularVel[1] : 0f;
+        if (float.IsNaN(yaw) || float.IsInfinity(yaw))
+            return detailForce;
+        float target = Math.Clamp(-yaw * GyroGain * 0.25f, -0.15f, 0.15f);
+        _gyroSmooth = _gyroSmooth * 0.8f + target * 0.2f;
+        return detailForce + _gyroSmooth;
+    }
+
+    /// <summary>
+    /// TC-cut wheel feel (detail path): gentle toward-center nudge while the
+    /// game reports a LIVE traction-control cut, EMA-smoothed (fast attack,
+    /// natural release) and capped at ±0.12.
+    /// Trigger uses live-activity flags only — raw.TcActiveGfx (EVO graphics
+    /// TcActive; R3E injected IsTcActive = AidSettings.Tc == 5) or
+    /// raw.TcinAction (EVO/AC physics, ACC slip-synthesized). Static
+    /// setup values are never consulted. LMU exposes neither flag yet, so the
+    /// effect stays inert there until the reader provides TC state.
+    /// Direction follows GripGuard.CenteringForceMatchesSteerSign (R3E-aware).
+    /// Gated on TcWheelEnabled + gain.
+    /// </summary>
+    protected virtual float ApplyTcWheelEffect(float detailForce, FfbRawData raw)
+    {
+        if (!TcWheelEnabled || Math.Abs(TcWheelGain) <= 0.0001f)
+            return detailForce;
+        bool cutting = raw.TcActiveGfx || raw.TcinAction != 0;
+        float steerSign = Math.Abs(raw.SteerAngle) > 0.002f ? Math.Sign(raw.SteerAngle) : 0f;
+        float centerDir = GripGuard.CenteringForceMatchesSteerSign ? steerSign : -steerSign;
+        float target = cutting && steerSign != 0f ? centerDir * Math.Abs(TcWheelGain) * 0.12f : 0f;
+        _tcWheelSmooth = _tcWheelSmooth * 0.7f + target * 0.3f;
+        return detailForce + _tcWheelSmooth;
     }
 
     public float ApplyGearShiftFilter(float currentForce, float deltaTime, int currentGear)

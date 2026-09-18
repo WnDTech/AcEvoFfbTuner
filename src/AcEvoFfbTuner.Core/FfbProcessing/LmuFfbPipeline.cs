@@ -134,6 +134,10 @@ public sealed class LmuFfbPipeline : FfbPipeline
 
         OnDetailForceProcessed(coreForce, ref detailForce);
 
+        // Gyro stabilizer + TC wheel feel (no-ops unless enabled).
+        detailForce = ApplyGyroStabilizer(detailForce, raw);
+        detailForce = ApplyTcWheelEffect(detailForce, raw);
+
         // ═══════════════════════════════════════════════════════════════════════
         // FINAL MIX
         // ═══════════════════════════════════════════════════════════════════════
@@ -141,6 +145,9 @@ public sealed class LmuFfbPipeline : FfbPipeline
         float finalOutput = filteredCore + detailForce;
 
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
+
+        // Soft-lock end-stop (no-op unless SoftLockEnabled).
+        finalOutput = ApplySoftLock(finalOutput, raw);
 
         float speedNoiseScale = raw.SpeedKmh < 10.0f
             ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 0.5f : 1.0f;

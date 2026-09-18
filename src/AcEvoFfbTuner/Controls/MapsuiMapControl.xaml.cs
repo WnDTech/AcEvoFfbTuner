@@ -85,6 +85,15 @@ public partial class MapsuiMapControl : UserControl
         return new TileLayer(tileSource) { Name = "Satellite" };
     }
 
+    /// <summary>Shows or hides the ESRI satellite base layer (e.g. from the
+    /// Live Map satellite toggle). Track/car overlays are unaffected.</summary>
+    public void SetSatelliteVisible(bool visible)
+    {
+        var layer = _map.Layers.FirstOrDefault(l => l.Name == "Satellite");
+        if (layer != null)
+            layer.Enabled = visible;
+    }
+
     private static MPoint ToMercator(double lon, double lat)
     {
         var (x, y) = SphericalMercator.FromLonLat(lon, lat);

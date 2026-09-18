@@ -90,6 +90,7 @@ public sealed class FfbDeviceManager : IDisposable
     private Thread? _interpolationThread;
     private volatile bool _interpolationRunning;
     private bool _timerResolutionSet;
+    private long _lastMozaMotorUpdateTicks;
 
     // Timestamp of the last physics packet arrival, used for time-based interpolation
     private long _lastTargetUpdateTicks;
@@ -286,13 +287,12 @@ public sealed class FfbDeviceManager : IDisposable
 
             ConnLog($"AutoDetect: baseline axis={baseline:F0}");
 
-            // Measure the MAXIMUM deflection during a longer 400ms pulse — a DD
-            // motor takes time to visibly move, and a 100ms single sample was
-            // unreliable (missed movement, especially with a lightly held wheel).
-            // Pulse forces kept gentle: the detection only needs a small,
-            // measurable nudge — a strong connect-time yank startled users and
-            // fought the game when it was already holding the wheel.
-            float pulseDelta = MeasureMaxDeflection(0.06f, 400);
+            // Detection only needs a tiny nudge: the axis threshold is ~20
+            // counts out of 65535, so a brief 3% pulse is plenty. Force is
+            // cut the instant deflection crosses threshold (see
+            // MeasureMaxDeflection), so the wheel barely twitches instead of
+            // visibly swinging on every connect.
+            float pulseDelta = MeasureMaxDeflection(0.03f, 250);
             if (float.IsNaN(pulseDelta))
             {
                 bool fallback = staticFallback ?? false;
@@ -308,11 +308,11 @@ public sealed class FfbDeviceManager : IDisposable
             const float minDelta = 20f;
 
             // A weak pulse can be fully masked when the user holds the wheel —
-            // retry once at a still-gentle 15% before falling back to the
-            // static database (was 40% — far too strong on connect).
+            // retry once at a still-gentle 6% before falling back to the
+            // static database. Never yank: detection needs only a small nudge.
             if (Math.Abs(delta) < minDelta)
             {
-                float strongDelta = MeasureMaxDeflection(0.15f, 400);
+                float strongDelta = MeasureMaxDeflection(0.06f, 250);
                 ConnLog($"AutoDetect: strong retry maxDeflection={strongDelta:F0}");
 
                 if (!float.IsNaN(strongDelta) && Math.Abs(strongDelta) >= minDelta)
@@ -342,8 +342,10 @@ public sealed class FfbDeviceManager : IDisposable
     /// <summary>
     /// Applies a constant force pulse and returns the maximum axis deflection
     /// measured over the pulse window (signed, relative to the axis at pulse start).
+    /// Force is cut the instant deflection crosses <paramref name="earlyExitThreshold"/>
+    /// so the wheel only twitches the minimum amount needed for detection.
     /// </summary>
-    private float MeasureMaxDeflection(float force, int durationMs)
+    private float MeasureMaxDeflection(float force, int durationMs, float earlyExitThreshold = 20f)
     {
         if (_device == null || !_isAcquired) return float.NaN;
 
@@ -363,6 +365,10 @@ public sealed class FfbDeviceManager : IDisposable
                 float d = sample - start;
                 if (Math.Abs(d) > Math.Abs(maxDelta))
                     maxDelta = d;
+                // Enough signal — stop pushing immediately so the wheel
+                // barely moves instead of riding out the full pulse window.
+                if (Math.Abs(maxDelta) >= earlyExitThreshold)
+                    break;
             }
             SendConstantForceDirect(0f);
             Thread.Sleep(150);
@@ -407,6 +413,7 @@ public sealed class FfbDeviceManager : IDisposable
 
     private readonly WheelLedController _ledController = new();
     private readonly Hf8HapticController _hf8Controller = new();
+    private readonly MozaMotorControl _mozaMotor = new();
 
     public event Action<string>? DeviceConnected;
     public event Action? DeviceDisconnected;
@@ -558,6 +565,12 @@ public sealed class FfbDeviceManager : IDisposable
                 else
                 {
                     ConnLog("LED controller connected");
+
+                    if (_ledController.HasSdkConfig)
+                    {
+                        _mozaMotor.Initialize(true);
+                        ConnLog("MOZA motor control: initialized (CoAP channel)");
+                    }
                 }
 
                 if (!_hf8Controller.TryConnect())
@@ -1273,6 +1286,8 @@ public sealed class FfbDeviceManager : IDisposable
     public bool LedSupportsBrightness => _ledController.SupportsBrightnessControl;
     public bool LedSupportsFlags => _ledController.SupportsFlagIndicators;
     public string LedVendorDisplayName => _ledController.VendorDisplayName;
+
+    public MozaMotorControl MozaMotor => _mozaMotor;
     public bool IsHf8Connected => _hf8Controller.IsConnected;
 
     public Hf8HapticController Hf8Controller => _hf8Controller;
@@ -1482,6 +1497,18 @@ public sealed class FfbDeviceManager : IDisposable
                 else
                     StopVibration();
 
+                if (_mozaMotor.IsAvailable)
+                {
+                    long lastMotorUpdate = System.Threading.Interlocked.Read(ref _lastMozaMotorUpdateTicks);
+                    float msSinceMotorUpdate = (float)((nowTicks - lastMotorUpdate) / ticksPerMs);
+                    if (msSinceMotorUpdate > 100f)
+                    {
+                        System.Threading.Interlocked.Exchange(ref _lastMozaMotorUpdateTicks, nowTicks);
+                        int motorFfb = (int)(Math.Abs(interpolated) * 100f);
+                        _mozaMotor.SetFfbStrength(Math.Clamp(motorFfb, 0, 100));
+                    }
+                }
+
                 lastLoopTick = nowTicks;
                 Thread.Sleep(1);
             }
@@ -1614,6 +1641,7 @@ public sealed class FfbDeviceManager : IDisposable
         DisconnectDevice();
         _ledController.Dispose();
         _hf8Controller.Dispose();
+        _mozaMotor.Dispose();
         _directInput?.Dispose();
     }
 }

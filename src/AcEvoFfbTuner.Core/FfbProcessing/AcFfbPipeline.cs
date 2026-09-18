@@ -112,6 +112,14 @@ public sealed class AcFfbPipeline : FfbPipeline
 
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
 
+        // Soft-lock end-stop (no-op unless SoftLockEnabled).
+        finalOutput = ApplySoftLock(finalOutput, raw);
+
+        // Gyro stabilizer + TC wheel feel (no-ops unless enabled; AC has no
+        // separate detail var so they apply post-mix — additive either way).
+        finalOutput = ApplyGyroStabilizer(finalOutput, raw);
+        finalOutput = ApplyTcWheelEffect(finalOutput, raw);
+
         _processCallCount++;
         if (_processCallCount % 300 == 0)
         {

@@ -11,14 +11,12 @@ public sealed partial class MainViewModel
     private bool _logitechRefreshInFlight;
     private System.Windows.Threading.DispatcherTimer? _logitechWriteDebounce;
     private System.Windows.Threading.DispatcherTimer? _logitechRefreshTimer;
-    private System.Windows.Threading.DispatcherTimer? _logitechSettleTimer;
     private System.Windows.Threading.DispatcherTimer? _trueForceStatusTimer;
 
     private LogitechTrueForceProvider? ActiveTrueForceProvider =>
         _telemetryLoop.ActiveProvider as LogitechTrueForceProvider;
 
     // ── TrueForce stream (RS50 / G PRO direct FFB, no G HUB) ──
-    [ObservableProperty] private bool _trueForceCardVisible;
     [ObservableProperty] private bool _trueForceEnabled = true;
     [ObservableProperty] private float _trueForceForceScale = 0.5f;
     [ObservableProperty] private string _trueForceStatus = "TrueForce stream: not connected";
@@ -207,7 +205,6 @@ public sealed partial class MainViewModel
     [ObservableProperty] private bool _logitechHidppConnected;
     [ObservableProperty] private string _logitechHidppStatus = "Logitech wheel settings: not connected";
     [ObservableProperty] private string _logitechModeInfo = "";
-    [ObservableProperty] private bool _logitechIsDesktopMode;
     [ObservableProperty] private float _logitechFfbStrengthNm = 8.0f;
     [ObservableProperty] private int _logitechRotationDegrees = 1080;
     [ObservableProperty] private int _logitechProfileSlot = -1;
@@ -266,7 +263,6 @@ public sealed partial class MainViewModel
         LogitechHidppStatus = "Connecting to wheel HID++ interface...";
         AddSystemLog($"Connecting Logitech HID++ settings interface for {productName}...");
 
-        TrueForceCardVisible = true;
         TrueForceStatus = "TrueForce stream: connecting…";
         StartTrueForceStatusTimer();
 
@@ -401,8 +397,6 @@ public sealed partial class MainViewModel
         }
         LogitechHidppConnected = false;
         LogitechModeInfo = "";
-        LogitechIsDesktopMode = false;
-        TrueForceCardVisible = false;
         TrueForceStatus = "TrueForce stream: not connected";
         OledAvailable = false;
         OledStatus = "Wheel OLED: not available";
@@ -457,7 +451,6 @@ public sealed partial class MainViewModel
         if (_logitechHidpp == null)
         {
             LogitechModeInfo = "";
-            LogitechIsDesktopMode = false;
             return;
         }
         string mode = _logitechHidpp.IsDesktopMode
@@ -466,7 +459,6 @@ public sealed partial class MainViewModel
                 ? "Mode unknown"
                 : $"Onboard profile slot {_logitechHidpp.ProfileMode} — switch to Desktop mode so live changes apply";
         LogitechModeInfo = mode;
-        LogitechIsDesktopMode = _logitechHidpp.IsDesktopMode;
         if (LogitechHidppConnected)
             LogitechHidppStatus = $"HID++ connected — {_logitechHidpp.ProductName} | {mode}";
     }

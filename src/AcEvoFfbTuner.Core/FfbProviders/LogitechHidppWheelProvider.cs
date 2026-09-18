@@ -125,7 +125,6 @@ public sealed class LogitechHidppWheelProvider : IDisposable
     private string _devicePath = "";
     private string _productName = "";
     private volatile bool _running;
-    private int _readThreadCount;
 
     // HID++ is strictly request/response and the wheel has one in-flight slot —
     // concurrent requests (UI refresh + slider write) could cross-talk responses

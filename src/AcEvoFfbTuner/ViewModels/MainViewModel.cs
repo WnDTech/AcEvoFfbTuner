@@ -1019,6 +1019,27 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _gripGuardMinSpeedKmh = 10.0f;
 
     [ObservableProperty]
+    private bool _softLockEnabled;
+
+    [ObservableProperty]
+    private float _softLockStrength;
+
+    [ObservableProperty]
+    private float _softLockDegrees = 900f;
+
+    [ObservableProperty]
+    private bool _gyroEnabled;
+
+    [ObservableProperty]
+    private float _gyroGain;
+
+    [ObservableProperty]
+    private bool _tcWheelEnabled;
+
+    [ObservableProperty]
+    private float _tcWheelGain;
+
+    [ObservableProperty]
     private bool _crashEnabled = true;
 
     [ObservableProperty]
@@ -1242,6 +1263,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _detectedTrackName = "";
+
+    [ObservableProperty]
+    private string _detectedTrackConfig = "";
+
+    [ObservableProperty]
+    private float _officialTrackLengthM;
 
     [ObservableProperty]
     private string _detectedCarModel = "";
@@ -1621,6 +1648,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             _telemetryLoop.StaticDataReceived += (trackName, config, lengthM, latitude, longitude) => Application.Current?.Dispatcher.Invoke(() =>
             {
                 DetectedTrackName = trackName;
+                DetectedTrackConfig = config;
+                OfficialTrackLengthM = lengthM;
 
                 var calibration = SatelliteMapService.LoadCalibration(trackName);
                 if (calibration != null)
@@ -1653,16 +1682,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                     StatusText = $"Connected — Track: {trackName} ({config}) {lengthM:F0}m";
                 }
 
-                if (!_telemetryLoop.MapBuilder.HasCompleteMap && !string.IsNullOrEmpty(trackName) && !_mapClearedByUser && _lastAutoLoadedTrack != trackName)
+                var mapKey = TrackMapKeys.BuildKey(trackName, config);
+                if (!_telemetryLoop.MapBuilder.HasCompleteMap && !string.IsNullOrEmpty(trackName) && !_mapClearedByUser && _lastAutoLoadedTrack != mapKey)
                 {
-                    var savedMap = TrackMap.Load(trackName);
+                    var savedMap = TrackMap.Load(trackName, config);
                     if (savedMap != null && savedMap.Waypoints.Count >= 10)
                     {
                         savedMap.InvalidateCache();
                         savedMap.GetCumulativeDistances();
                         if (savedMap.Corners.Count == 0) savedMap.Analyze();
 
-                        _lastAutoLoadedTrack = trackName;
+                        _lastAutoLoadedTrack = mapKey;
                         _telemetryLoop.MapBuilder.SetImportedMap(savedMap);
                         _telemetryLoop.PositionDetector.SetMap(savedMap);
                         _telemetryLoop.ForceHeatmap.Initialize(savedMap.Waypoints.Count);
@@ -1852,6 +1882,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OsoyooTestBrakeCommand = new RelayCommand(OnOsoyooTestBrake);
         OsoyooTestGasCommand = new RelayCommand(OnOsoyooTestGas);
         OsoyooStopTestCommand = new RelayCommand(OnOsoyooStopTest);
+        InitMozaPhfCommands();
         StartWheelFfbTestCommand = new RelayCommand(OnStartWheelFfbTest);
         StopWheelFfbTestCommand = new RelayCommand(OnStopWheelFfbTest);
 
@@ -1992,6 +2023,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 ? _telemetryLoop.DetectedTrackName
                 : $"track_{DateTime.Now:yyyyMMdd_HHmmss}";
         }
+        if (string.IsNullOrEmpty(map.ConfigName))
+            map.ConfigName = _telemetryLoop.DetectedTrackConfig;
+        if (map.OfficialLengthM <= 0)
+            map.OfficialLengthM = _telemetryLoop.OfficialTrackLengthM;
         map.Save();
         StatusText = $"Track map saved ({map.Waypoints.Count} pts, {map.Corners.Count} corners, {map.Sectors.Count} sectors, {map.TrackLengthM:F0}m) -> {map.TrackName}.json";
     }
@@ -2062,12 +2097,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         CornerCount = map.Corners.Count;
         SectorCount = map.Sectors.Count;
         StatusText = $"Imported track profile: {map.Waypoints.Count} pts, {map.Corners.Count} corners, {map.TrackLengthM:F0}m";
-    }
-
-    [RelayCommand]
-    private void SaveTrackMap()
-    {
-        CompleteAndSaveTrackMap();
     }
 
     [RelayCommand]
@@ -2194,6 +2223,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public float MaxGaugeForce => WheelMaxTorqueNm > 0 ? Math.Max(WheelMaxTorqueNm, 8f) : 10f;
 
     public string MaxForceLimitNmText => $"{MaxForceLimit:F3} ({MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
+    public string MaxForceLimitPercentText => $"{MaxForceLimit * 100:F0}%";
     public string OutputGainNmText => $"{OutputGain:F3} (peak {MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
     public string CrashSafetyClampPercentText => $"{CrashSafetyClamp * 100:F0}% ({CrashSafetyClamp * MaxForceLimit * WheelMaxTorqueNm:F2} Nm max)";
 
@@ -2506,6 +2536,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     partial void OnGripGuardAttenuationStrengthChanged(float value) => _pipeline.GripGuard.AttenuationStrength = value;
     partial void OnGripGuardMechanicalTrailGainChanged(float value) => _pipeline.GripGuard.MechanicalTrailGain = value;
     partial void OnGripGuardMinSpeedKmhChanged(float value) => _pipeline.GripGuard.MinSpeedKmh = value;
+
+    partial void OnSoftLockEnabledChanged(bool value) => _pipeline.SoftLockEnabled = value;
+    partial void OnSoftLockStrengthChanged(float value) => _pipeline.SoftLockStrength = value;
+    partial void OnSoftLockDegreesChanged(float value) => _pipeline.SoftLockDegrees = value;
+    partial void OnGyroEnabledChanged(bool value) => _pipeline.GyroEnabled = value;
+    partial void OnGyroGainChanged(float value) => _pipeline.GyroGain = value;
+    partial void OnTcWheelEnabledChanged(bool value) => _pipeline.TcWheelEnabled = value;
+    partial void OnTcWheelGainChanged(float value) => _pipeline.TcWheelGain = value;
 
     partial void OnCrashEnabledChanged(bool value) => _pipeline.CrashDetector.Enabled = value;
     partial void OnCrashImpactGainChanged(float value) => _pipeline.CrashDetector.ImpactGain = value;
@@ -3170,6 +3208,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CoachSessionState = result.State;
             foreach (var msg in result.Messages)
                 CoachMessages.Add(msg);
+            if (result.ProfileChanged)
+                RefreshProfileValues();
         }
     }
 
@@ -3185,6 +3225,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CoachSessionState = result.State;
             foreach (var msg in result.Messages)
                 CoachMessages.Add(msg);
+            if (result.ProfileChanged)
+                RefreshProfileValues();
             foreach (var rec in result.Recommendations ?? [])
                 AddPendingRec(rec);
             if (_coachService.IsAiEnabled)
@@ -3215,6 +3257,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _appSettings.Save();
         if (_aiAnalyzer != null)
             _aiAnalyzer.Model = value;
+        SyncSelectedAiModelOption();
+        OnPropertyChanged(nameof(CurrentAiModelSummary));
     }
 
     [ObservableProperty]
@@ -3226,6 +3270,140 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _appSettings.Save();
         if (_aiAnalyzer != null)
             _aiAnalyzer.BaseUrl = value;
+        if (_aiCoachInitializing) return;
+        _aiModelsDebounce?.Stop();
+        _aiModelsDebounce ??= CreateAiModelsDebounce();
+        _aiModelsDebounce.Start();
+    }
+
+    public ObservableCollection<AiModelInfo> AiModelOptions { get; } = new();
+
+    [ObservableProperty]
+    private AiModelInfo? _selectedAiModelOption;
+
+    private bool _syncingAiModel;
+
+    partial void OnSelectedAiModelOptionChanged(AiModelInfo? value)
+    {
+        if (_syncingAiModel || value == null) return;
+        if (!string.Equals(value.Id, OpenAiModel, StringComparison.Ordinal))
+            OpenAiModel = value.Id;
+    }
+
+    /// <summary>
+    /// The model actually in use right now (chat + analysis), with price and context.
+    /// Derived from <see cref="OpenAiModel"/> so it is correct whichever way the
+    /// model was set (dropdown pick or typed ID).
+    /// </summary>
+    public string CurrentAiModelSummary
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(OpenAiModel))
+                return "No model selected";
+            var info = AiModelOptions.FirstOrDefault(m => string.Equals(m.Id, OpenAiModel, StringComparison.Ordinal))
+                ?? OpenCodeGoModelCatalog.Lookup(OpenAiModel);
+            var detail = info is null
+                ? "custom model"
+                : $"{info.DisplayName} · {info.PriceLabel}{(info.ContextLabel.Length > 0 ? $" · {info.ContextLabel}" : "")}";
+            var state = HasOpenAiKey ? "active" : "needs API key";
+            return $"{OpenAiModel} — {detail} ({state})";
+        }
+    }
+
+    private void SyncSelectedAiModelOption()
+    {
+        var match = AiModelOptions.FirstOrDefault(m => string.Equals(m.Id, OpenAiModel, StringComparison.Ordinal));
+        if (match is null || ReferenceEquals(match, SelectedAiModelOption)) return;
+        _syncingAiModel = true;
+        try
+        {
+            SelectedAiModelOption = match;
+        }
+        finally
+        {
+            _syncingAiModel = false;
+        }
+    }
+
+    [ObservableProperty]
+    private string _aiModelsStatusText = "";
+
+    [ObservableProperty]
+    private bool _aiModelsLoading;
+
+    [RelayCommand]
+    private async Task RefreshAiModels()
+    {
+        await LoadAiModelsAsync();
+    }
+
+    private DispatcherTimer? _aiModelsDebounce;
+
+    private DispatcherTimer CreateAiModelsDebounce()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
+        timer.Tick += async (_, _) =>
+        {
+            timer.Stop();
+            await LoadAiModelsAsync();
+        };
+        return timer;
+    }
+
+    private async Task LoadAiModelsAsync()
+    {
+        if (AiModelsLoading) return;
+        AiModelsLoading = true;
+        AiModelsStatusText = "Fetching live model list from OpenCode Go...";
+        try
+        {
+            var baseUrl = !string.IsNullOrWhiteSpace(_appSettings.AiBaseUrl)
+                ? _appSettings.AiBaseUrl
+                : "https://opencode.ai/zen/go/v1";
+            using var lister = new FfbAIAnalyzer("", _appSettings.OpenAiModel, baseUrl);
+            var models = await lister.ListModelsAsync();
+            if (models.Count == 0)
+                throw new InvalidOperationException("gateway returned no models");
+            ApplyAiModels(models);
+            AiModelsStatusText = $"Live catalog: {models.Count} models from OpenCode Go · prices per 1M tokens · {DateTime.Now:HH:mm:ss}";
+        }
+        catch (Exception ex)
+        {
+            ApplyAiModels(OpenCodeGoModelCatalog.BuiltinModels());
+            AiModelsStatusText = $"Could not reach the model list ({ex.Message}) — showing built-in catalog";
+        }
+        finally
+        {
+            AiModelsLoading = false;
+        }
+    }
+
+    private void ApplyAiModels(IEnumerable<AiModelInfo> models)
+    {
+        var currentId = OpenAiModel;
+        var list = models.ToList();
+        if (!string.IsNullOrWhiteSpace(currentId) &&
+            !list.Any(m => string.Equals(m.Id, currentId, StringComparison.Ordinal)))
+        {
+            list.Insert(0, new AiModelInfo(currentId, currentId, null, null, null, false));
+        }
+
+        // Skip the rebuild when nothing changed: clearing the collection nukes the
+        // ComboBox selection/text, which can swallow a pick made while a fetch completes.
+        if (AiModelOptions.SequenceEqual(list))
+        {
+            SyncSelectedAiModelOption();
+            OnPropertyChanged(nameof(CurrentAiModelSummary));
+            return;
+        }
+
+        AiModelOptions.Clear();
+        foreach (var m in list)
+            AiModelOptions.Add(m);
+
+        SelectedAiModelOption = list.FirstOrDefault(m => string.Equals(m.Id, currentId, StringComparison.Ordinal));
+        OnPropertyChanged(nameof(CurrentAiModelSummary));
     }
 
     [RelayCommand]
@@ -3272,6 +3450,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             CoachDataSourceLabel = _coachService.DataSourceLabel;
             foreach (var msg in result.Messages)
                 CoachMessages.Add(msg);
+            if (result.ProfileChanged)
+                RefreshProfileValues();
             foreach (var rec in result.Recommendations ?? [])
                 AddPendingRec(rec);
             if (_coachService.IsAiEnabled)
@@ -3286,6 +3466,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public bool HasOpenAiKey => !string.IsNullOrWhiteSpace(OpenAiApiKey);
 
     private FfbAIAnalyzer? _aiAnalyzer;
+    private bool _aiCoachInitializing;
 
     private void RebuildAiCoach()
     {
@@ -3307,18 +3488,28 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         OnPropertyChanged(nameof(HasOpenAiKey));
+        OnPropertyChanged(nameof(CurrentAiModelSummary));
     }
 
     private void InitializeAiCoach()
     {
-        var apiKey = _appSettings.OpenAiApiKey ?? "";
-        var baseUrl = !string.IsNullOrWhiteSpace(_appSettings.AiBaseUrl)
-            ? _appSettings.AiBaseUrl
-            : "https://opencode.ai/zen/go/v1";
-        OpenAiApiKey = apiKey;
-        OpenAiModel = _appSettings.OpenAiModel;
-        AiBaseUrl = baseUrl;
-        RebuildAiCoach();
+        _aiCoachInitializing = true;
+        try
+        {
+            var apiKey = _appSettings.OpenAiApiKey ?? "";
+            var baseUrl = !string.IsNullOrWhiteSpace(_appSettings.AiBaseUrl)
+                ? _appSettings.AiBaseUrl
+                : "https://opencode.ai/zen/go/v1";
+            OpenAiApiKey = apiKey;
+            OpenAiModel = _appSettings.OpenAiModel;
+            AiBaseUrl = baseUrl;
+            RebuildAiCoach();
+            _ = LoadAiModelsAsync();
+        }
+        finally
+        {
+            _aiCoachInitializing = false;
+        }
 
         // AI coach logs go to file only -- not the status bar (too verbose, contains JSON)
     }

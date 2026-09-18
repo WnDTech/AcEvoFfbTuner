@@ -53,6 +53,7 @@ Select your game from a dropdown — the app automatically switches to the corre
 13. **10-Band Equalizer** — Parametric biquad EQ shaping force signal frequency content (see below)
 14. **Vibration Mixer** — Curb, slip, road surface, ABS vibration, tire scrub texture (30–50 Hz at grip limit), rear slip warning (12–25 Hz oversteer rumble), ABS force modulation
 15. **LFE/Rumble Generator** — Low-frequency effects driven by suspension travel and RPM for engine rumble and bump impacts
+16. **Wheel Limits & Aids (opt-in)** — SoftLock end-stop wall, Gyro yaw stabilizer, TC-cut centering nudge (all off by default)
 
 ### Game-Specific Pipeline Overrides
 
@@ -117,7 +118,7 @@ The app uses an `IFFBProvider` abstraction layer that allows vendor-specific SDK
 | Vendor | Provider | Status | SDK Features |
 |--------|----------|--------|--------------|
 | **Fanatec** | `FanatecProvider` | **Active** | FullForce 500Hz haptic samples, rim rumble motors, rev LED RGB control, gear digit display, torque safety capping via `FSWheelMaxTorqueGet`, Maurice (FWPnpService) detection |
-| **Moza** | DirectInput + Serial LED | Active | Native LED protocol via serial/HID |
+| **Moza** | DirectInput + Serial LED + Motor Control | Active | Native LED protocol via serial/HID; wheelbase motor tuning (FFB, damper, friction, speed damping, peak torque, road sense, inertia) pushed directly, no Pit House needed |
 | **Simucube** | `SimucubeProvider` | Stub | Simucube Link API — awaiting SDK access from Granite Devices |
 | **Logitech** | `LogitechTrueForceProvider` (TrueForce stream) | **Active** | RS50/G PRO via the native TrueForce stream (250 Hz, no G HUB, no PC-mode dependency); the stream survives game-source switches and reconnects without re-init, delivers force while the game holds the wheel exclusively, sits in silent standby when idle (zero-force idle sends nothing, so the amplifier stays quiet), and sends the session-end handshake from the crash handlers so a crashed app can never leave the wheel's TrueForce engine latched; G29/G920/G923 via DirectInput constant force + vibration |
 | **Asetek** | `AsetekProvider` | Stub | RaceHub TIC Mode — awaiting SDK access from Asetek |
@@ -154,6 +155,7 @@ Vibration feedback for the pedals via an Osoyoo Arduino Uno (or compatible seria
 | **Telemetry Sources** | ABS, brake pressure, TC cuts, throttle position, engine RPM, curb strikes, road texture, scrubbing |
 | **Live Pedal Input** | Physical pedal input mode (DirectInput) with keyboard (W/S/A) simulation fallback |
 | **Calibration** | Per-pedal deadzone, min/max, inversion, and smoothing |
+| **MOZA PHF (RS102/RS103)** | Per-pedal module mapping, intensity + frequency test, clutch channel with shift kick and RPM texture |
 
 Work in progress — the Pedals tab is tagged **WIP** in the Devices page.
 
@@ -179,7 +181,8 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 
 ### Track Mapping
 
-- Records track layout from car position data during a lap
+- Records track layout from car position data during a lap (auto-starts above 10 km/h when no map is loaded)
+- Layout-aware maps keyed by track + configuration, with offline seed-pack support
 - Auto-detects corners and sectors with labels
 - Real-time car position and heading indicator on 2D track map
 - **Satellite Map View** — Mapsui-based ESRI tile overlay with auto-alignment, calibration mode (drag to shift, scroll to rotate), and zoom-to-cursor
@@ -207,6 +210,8 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 
 - JSON-based profiles for all FFB, EQ, LFE, tyre flex, vibration, LED, and advanced settings
 - Save, rename, delete, export, and import profiles
+- **A/B Compare** — capture two live setups, toggle instantly, diff every changed path, per-setup lap summary
+- **Auto Setup from Wheel** — one-click baseline from the detected wheelbase
 - **Sidebar browser** with track/car grouping for quick profile selection
 - Optional auto-upgrade of profiles when the app updates
 - Baseline profiles included for popular wheelbases (7+ pre-configured)

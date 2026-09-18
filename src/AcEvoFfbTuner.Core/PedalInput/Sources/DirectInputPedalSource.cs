@@ -126,7 +126,7 @@ public sealed class DirectInputPedalSource : IPedalInputSource, IDisposable
                     _allDevices.Add(new PedalDeviceHandle
                     {
                         Joystick = joystick,
-                        ProductName = instance.ProductName,
+                        ProductName = instance.ProductName ?? "",
                         InstanceGuid = instance.InstanceGuid,
                         IsFfbCapable = isFfb
                     });

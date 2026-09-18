@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using AcEvoFfbTuner.Controls;
 using AcEvoFfbTuner.Core.TrackMapping;
 using AcEvoFfbTuner.ViewModels;
@@ -98,7 +99,7 @@ public partial class LiveTrackMapPage : UserControl
             _prevNpos = -1f;
             _sfAutoCalibrated = false;
             _lastNearestIdx = -1;
-            _ = LoadOsmDataAsync(trackName);
+            _ = LoadOsmDataAsync(trackName, trackLatitude, trackLongitude);
         }
 
         // Geo-reference from game telemetry — ONLY when values changed.
@@ -554,9 +555,37 @@ public partial class LiveTrackMapPage : UserControl
         return (lat2, lon2, h2);
     }
 
-    private async Task LoadOsmDataAsync(string trackName)
+    private async Task LoadOsmDataAsync(string trackName, float liveLat = 0f, float liveLon = 0f)
     {
-        try { await _trackDataService.LoadTrackDataAsync(trackName); }
+        try
+        {
+            // Live game GPS first (EVO reports real lat/lon for ANY track incl. mods),
+            // then gazetteer/Nominatim inside the service.
+            double? lat = null, lon = null;
+            string? config = null;
+            double officialLengthM = 0;
+            if (liveLat != 0 || liveLon != 0)
+            {
+                lat = liveLat;
+                lon = liveLon;
+            }
+            else if (_lastKnownLat != 0 || _lastKnownLon != 0)
+            {
+                lat = _lastKnownLat;
+                lon = _lastKnownLon;
+            }
+            if (DataContext is MainViewModel vm)
+            {
+                if (!lat.HasValue && (vm.TrackLatitude != 0 || vm.TrackLongitude != 0))
+                {
+                    lat = vm.TrackLatitude;
+                    lon = vm.TrackLongitude;
+                }
+                config = string.IsNullOrWhiteSpace(vm.DetectedTrackConfig) ? null : vm.DetectedTrackConfig;
+                officialLengthM = vm.OfficialTrackLengthM;
+            }
+            await _trackDataService.LoadTrackDataAsync(trackName, null, lat, lon, false, config, officialLengthM);
+        }
         catch { }
     }
 
@@ -658,7 +687,16 @@ public partial class LiveTrackMapPage : UserControl
         });
     }
 
-    private void OnSatelliteToggled(object sender, RoutedEventArgs e) { }
+    private void OnSatelliteToggled(object sender, RoutedEventArgs e)
+    {
+        // NOTE: IsChecked="True" in XAML fires Checked during InitializeComponent,
+        // before MapCtrl/OsmStatusText fields are assigned — ignore that early firing.
+        // The satellite layer defaults to enabled, matching the toggle default.
+        if (MapCtrl == null || OsmStatusText == null) return;
+        bool visible = sender is ToggleButton tb ? tb.IsChecked != false : SatelliteToggle.IsChecked != false;
+        MapCtrl.SetSatelliteVisible(visible);
+        OsmStatusText.Text = visible ? "Satellite imagery on" : "Satellite imagery off — track overlay only";
+    }
 
     private async void OnRefreshData(object sender, RoutedEventArgs e)
     {
@@ -679,17 +717,38 @@ public partial class LiveTrackMapPage : UserControl
             // Delete cache files so the next load gets fresh data
             _trackDataService.DeleteCache(trackName);
 
-            // Look up GPS for the force refresh
+            // Live game GPS first, then gazetteer (service tries Nominatim last).
             double? centerLat = null, centerLon = null;
-            var loc = TrackDatabase.LookupTrackLocation(trackName);
-            if (loc != null)
+            string? config = null;
+            double officialLengthM = 0;
+            if (_lastKnownLat != 0 || _lastKnownLon != 0)
             {
-                centerLat = loc.Value.lat;
-                centerLon = loc.Value.lon;
+                centerLat = _lastKnownLat;
+                centerLon = _lastKnownLon;
+            }
+            if (DataContext is MainViewModel vm)
+            {
+                if (!centerLat.HasValue && (vm.TrackLatitude != 0 || vm.TrackLongitude != 0))
+                {
+                    centerLat = vm.TrackLatitude;
+                    centerLon = vm.TrackLongitude;
+                }
+                config = string.IsNullOrWhiteSpace(vm.DetectedTrackConfig) ? null : vm.DetectedTrackConfig;
+                officialLengthM = vm.OfficialTrackLengthM;
+            }
+            if (!centerLat.HasValue)
+            {
+                var loc = TrackDatabase.LookupTrackLocation(trackName);
+                if (loc != null)
+                {
+                    centerLat = loc.Value.lat;
+                    centerLon = loc.Value.lon;
+                }
             }
 
             // Force a fresh fetch bypassing cache
-            await _trackDataService.ForceRefreshAsync(trackName, centerLat, centerLon);
+            _trackDataService.DeleteCache(trackName, config);
+            await _trackDataService.ForceRefreshAsync(trackName, centerLat, centerLon, config, officialLengthM);
 
             // Reset map centering so it re-fits the new layout
             _mapCentered = false;

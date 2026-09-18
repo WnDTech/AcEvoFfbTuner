@@ -30,12 +30,24 @@ public sealed class TrackOsmRelationService : IDisposable
         "AcEvoFfbTuner", "trackdata_relation.log");
 
     private readonly HttpClient _http;
-    private DateTime _lastFetchAttempt = DateTime.MinValue;
+    private readonly Dictionary<string, DateTime> _lastFetchByTrack = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _rateLock = new();
 
-    /// <summary>Overpass API endpoints — use as fallbacks if primary returns 429/504.</summary>
+    /// <summary>Overpass API endpoints — tried in order, fail over on 429/504/timeout.</summary>
+    private static readonly string[] OverpassUrls =
+    [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
+    ];
+
+    /// <summary>Nominatim geocoder — last-resort GPS resolver when the gazetteer
+    /// and live game GPS both miss (mod tracks). Usage-policy compliant:
+    /// single query per unknown track, proper User-Agent, 1s pacing.</summary>
+    private const string NominatimUrl = "https://nominatim.openstreetmap.org/search";
+    private DateTime _lastNominatimAttempt = DateTime.MinValue;
+
     private const int MinRacewayMembers = 5;
-
-    private const string OverpassUrl = "https://overpass-api.de/api/interpreter";
 
     public TrackOsmRelationService()
     {
@@ -63,16 +75,34 @@ public sealed class TrackOsmRelationService : IDisposable
 
     #region Cache
 
-    private static string GetCachePath(string trackName)
+    private static string GetCachePath(string trackName, string? config = null)
     {
-        var safe = string.Join("_", trackName.Split(Path.GetInvalidFileNameChars()));
+        var key = TrackMapKeys.BuildKey(trackName, config);
+        var safe = TrackMapKeys.Sanitize(key);
         return Path.Combine(CacheDir, $"{safe}_relation.json");
     }
 
-    public TrackDetailedInfo? LoadCached(string trackName)
+    private static string GetLegacyCachePath(string trackName)
+    {
+        var safe = TrackMapKeys.Sanitize(trackName);
+        return Path.Combine(CacheDir, $"{safe}_relation.json");
+    }
+
+    public TrackDetailedInfo? LoadCached(string trackName, string? config = null)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return null;
-        var path = GetCachePath(trackName);
+
+        // 1. Embedded seed pack (shipped offline data) — layout-aware, then legacy.
+        var seeded = LoadSeeded(trackName, config);
+        if (seeded != null) return seeded;
+
+        // 2. Disk cache — layout-aware key first, then legacy bare-track fallback.
+        var path = GetCachePath(trackName, config);
+        if (!File.Exists(path) && !string.IsNullOrEmpty(config))
+        {
+            var legacy = GetLegacyCachePath(trackName);
+            if (File.Exists(legacy)) path = legacy;
+        }
         if (!File.Exists(path))
         {
             Log($"No relation cache for {trackName}");
@@ -125,13 +155,56 @@ public sealed class TrackOsmRelationService : IDisposable
         }
     }
 
-    public void SaveCache(string trackName, TrackDetailedInfo info)
+    /// <summary>
+    /// Offline seed pack: pre-fetched relation JSON shipped as embedded resources
+    /// (AcEvoFfbTuner.Core.Data.Seeds.*_relation.json, generated at release time).
+    /// Lets first-run work with zero internet. Returns null when no seed exists.
+    /// </summary>
+    public TrackDetailedInfo? LoadSeeded(string trackName, string? config = null)
+    {
+        try
+        {
+            var asm = System.Reflection.Assembly.GetExecutingAssembly();
+            var key = TrackMapKeys.Sanitize(TrackMapKeys.BuildKey(trackName, config));
+            var legacyKey = TrackMapKeys.Sanitize(trackName);
+            foreach (var resName in asm.GetManifestResourceNames())
+            {
+                if (!resName.StartsWith("AcEvoFfbTuner.Core.Data.Seeds.", StringComparison.OrdinalIgnoreCase)
+                    || !resName.EndsWith("_relation.json", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var baseName = resName["AcEvoFfbTuner.Core.Data.Seeds.".Length..^".json".Length];
+                if (baseName.EndsWith("_relation", StringComparison.OrdinalIgnoreCase))
+                    baseName = baseName[..^"_relation".Length];
+                if (!baseName.Equals(key, StringComparison.OrdinalIgnoreCase)
+                    && !baseName.Equals(legacyKey, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                using var stream = asm.GetManifestResourceStream(resName);
+                if (stream == null) continue;
+                using var reader = new StreamReader(stream);
+                var data = JsonSerializer.Deserialize<TrackDetailedInfo>(reader.ReadToEnd());
+                if (data?.TrackLayout is { Count: >= 10 })
+                {
+                    data.DataSource = TrackDataSource.OsmRelation;
+                    Log($"Seed pack hit: {trackName} ({data.Corners.Count} corners, {data.TrackLayout.Count} pts)");
+                    return data;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Seed pack load error for {trackName}: {ex.Message}");
+        }
+        return null;
+    }
+
+    public void SaveCache(string trackName, TrackDetailedInfo info, string? config = null)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return;
         try
         {
-            var path = GetCachePath(trackName);
+            var path = GetCachePath(trackName, config);
             info.TrackName = trackName;
+            if (!string.IsNullOrWhiteSpace(config)) info.TrackConfig = config;
             info.FetchedAt = DateTime.UtcNow;
             info.DataSource = TrackDataSource.OsmRelation;
             info.CacheVersion = TrackDetailedInfo.CurrentCacheVersion;
@@ -152,35 +225,54 @@ public sealed class TrackOsmRelationService : IDisposable
     public async Task<TrackDetailedInfo?> FetchTrackDataAsync(
         string trackName,
         double? centerLat = null,
-        double? centerLon = null)
+        double? centerLon = null,
+        string? config = null)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return null;
 
-        // Look up GPS from TrackDatabase if not provided
-        if (!centerLat.HasValue || !centerLon.HasValue)
+        // GPS priority: (1) explicit live game GPS, (2) gazetteer, (3) Nominatim geocode.
+        if (!centerLat.HasValue || !centerLon.HasValue
+            || (centerLat.Value == 0 && centerLon.Value == 0))
         {
             var loc = TrackDatabase.LookupTrackLocation(trackName);
             if (loc.HasValue)
             {
                 centerLat = loc.Value.lat;
                 centerLon = loc.Value.lon;
+                Log($"GPS from gazetteer for {trackName}: ({centerLat:F3}, {centerLon:F3})");
             }
         }
 
-        if (!centerLat.HasValue || !centerLon.HasValue)
+        if ((!centerLat.HasValue || !centerLon.HasValue
+                || (centerLat.Value == 0 && centerLon.Value == 0)))
         {
-            Log($"No GPS for {trackName}, can't query relations");
+            var geo = await GeocodeTrackAsync(trackName, config);
+            if (geo.HasValue)
+            {
+                centerLat = geo.Value.lat;
+                centerLon = geo.Value.lon;
+            }
+        }
+
+        if (!centerLat.HasValue || !centerLon.HasValue
+            || (centerLat.Value == 0 && centerLon.Value == 0))
+        {
+            Log($"No GPS for {trackName} (gazetteer + geocode missed), can't query relations");
             return null;
         }
 
-        // Rate limiting: at most one Overpass request per 60 seconds
-        var elapsed = DateTime.UtcNow - _lastFetchAttempt;
-        if (_lastFetchAttempt != DateTime.MinValue && elapsed.TotalSeconds < 60)
+        // Per-track rate limiting: at most one Overpass request per 60s per track.
+        var rateKey = TrackMapKeys.BuildKey(trackName, config);
+        lock (_rateLock)
         {
-            Log($"Rate-limited: skipping relation fetch for {trackName} (wait {60 - elapsed.TotalSeconds:F0}s)");
-            return null;
+            if (_lastFetchByTrack.TryGetValue(rateKey, out var last)
+                && (DateTime.UtcNow - last).TotalSeconds < 60)
+            {
+                Log($"Rate-limited: skipping relation fetch for {trackName} (wait {60 - (DateTime.UtcNow - last).TotalSeconds:F0}s)");
+                return null;
+            }
+            _lastFetchByTrack[rateKey] = DateTime.UtcNow;
         }
-        _lastFetchAttempt = DateTime.UtcNow;
 
         // Use a larger bounding box for relation search (relations can extend beyond the track itself)
         double radiusDeg = 0.12; // ~13km — covers most circuits
@@ -192,61 +284,120 @@ public sealed class TrackOsmRelationService : IDisposable
         var query = BuildRelationQuery(trackName, minLat, minLon, maxLat, maxLon);
         Log($"Relation fetch: {trackName} at ({centerLat:F3}, {centerLon:F3})");
 
-        // Try fetching from the Overpass API
+        // Try each Overpass mirror in order; fail over on 429/504/timeout/connection error.
+        Exception? lastError = null;
+        foreach (var url in OverpassUrls)
+        {
+            try
+            {
+                using var content = new FormUrlEncodedContent(
+                    new[] { new KeyValuePair<string, string>("data", query) });
+                content.Headers.ContentType =
+                    new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded");
+
+                var response = await _http.PostAsync(url, content);
+                Log($"HTTP {(int)response.StatusCode} from {url} for {trackName}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    if ((int)response.StatusCode == 429 || (int)response.StatusCode == 504)
+                    {
+                        lastError = new OverpassRateLimitedException($"Overpass {(int)response.StatusCode} from {url}");
+                        continue; // try next mirror
+                    }
+                    Log($"Overpass returned {(int)response.StatusCode} for {trackName}");
+                    return null;
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                Log($"Relation response: {json.Length} bytes for {trackName}");
+
+                if (string.IsNullOrEmpty(json) || json.Length < 100)
+                {
+                    Log($"Empty/too-small response for {trackName}");
+                    return null;
+                }
+
+                var result = ParseRelationResponse(json, trackName);
+                if (result != null)
+                {
+                    Log($"Relation parsed: {result.Corners.Count} corners, {result.TrackLayout?.Count ?? 0} pts for {trackName}");
+                    if (!string.IsNullOrWhiteSpace(config)) result.TrackConfig = config;
+                    SaveCache(trackName, result, config);
+                }
+                else
+                {
+                    Log($"Failed to parse relation response for {trackName}");
+                }
+                return result;
+            }
+            catch (TaskCanceledException)
+            {
+                Log($"Timeout for {trackName} via {url} (45s), trying next mirror");
+                lastError = new TimeoutException($"Overpass timeout via {url}");
+            }
+            catch (HttpRequestException ex)
+            {
+                Log($"Connection error via {url}: {ex.Message}, trying next mirror");
+                lastError = ex;
+            }
+        }
+
+        if (lastError is OverpassRateLimitedException)
+            throw lastError;
+        Log($"All Overpass mirrors failed for {trackName}: {lastError?.Message}");
+        return null;
+    }
+
+    /// <summary>
+    /// Last-resort GPS resolver via Nominatim. Only called when the gazetteer and
+    /// live game GPS both miss. Paced to 1 query/sec per usage policy.
+    /// </summary>
+    public async Task<(double lat, double lon)?> GeocodeTrackAsync(string trackName, string? config = null)
+    {
+        if (string.IsNullOrWhiteSpace(trackName)) return null;
         try
         {
-            var content = new FormUrlEncodedContent(
-                new[] { new KeyValuePair<string, string>("data", query) });
-            content.Headers.ContentType =
-                new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded");
+            var pacing = DateTime.UtcNow - _lastNominatimAttempt;
+            if (pacing.TotalSeconds < 1.1)
+                await Task.Delay(TimeSpan.FromSeconds(1.1 - pacing.TotalSeconds));
+            _lastNominatimAttempt = DateTime.UtcNow;
 
-            var response = await _http.PostAsync(OverpassUrl, content);
-            Log($"HTTP {(int)response.StatusCode} for {trackName}");
-
+            var q = string.IsNullOrWhiteSpace(config) || config == trackName
+                ? $"{trackName} circuit"
+                : $"{trackName} {config} circuit";
+            var url = $"{NominatimUrl}?q={Uri.EscapeDataString(q)}&format=json&limit=1";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Add("User-Agent", "AcEvoFfbTuner/1.0 (track-geocoder)");
+            req.Headers.Add("Accept", "application/json");
+            var response = await _http.SendAsync(req);
             if (!response.IsSuccessStatusCode)
             {
-                Log($"Overpass returned {(int)response.StatusCode} for {trackName}");
-                if ((int)response.StatusCode == 429)
-                    throw new OverpassRateLimitedException("Overpass API rate limit exceeded");
+                Log($"Nominatim HTTP {(int)response.StatusCode} for {trackName}");
                 return null;
             }
-
             var json = await response.Content.ReadAsStringAsync();
-            Log($"Relation response: {json.Length} bytes for {trackName}");
-
-            if (string.IsNullOrEmpty(json) || json.Length < 100)
+            using var doc = JsonDocument.Parse(json);
+            foreach (var el in doc.RootElement.EnumerateArray())
             {
-                Log($"Empty/too-small response for {trackName}");
-                return null;
+                if (el.TryGetProperty("lat", out var latEl) && el.TryGetProperty("lon", out var lonEl)
+                    && double.TryParse(latEl.GetString(), System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var lat)
+                    && double.TryParse(lonEl.GetString(), System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var lon))
+                {
+                    Log($"Nominatim geocoded {trackName}: ({lat:F3}, {lon:F3})");
+                    return (lat, lon);
+                }
+                break; // limit=1
             }
-
-            var result = ParseRelationResponse(json, trackName);
-            if (result != null)
-            {
-                Log($"Relation parsed: {result.Corners.Count} corners, {result.TrackLayout?.Count ?? 0} pts for {trackName}");
-                SaveCache(trackName, result);
-            }
-            else
-            {
-                Log($"Failed to parse relation response for {trackName}");
-            }
-            return result;
-        }
-        catch (TaskCanceledException)
-        {
-            Log($"Timeout for {trackName} (45s)");
-            return null;
-        }
-        catch (HttpRequestException ex)
-        {
-            Log($"Connection error: {ex.Message}");
-            return null;
+            Log($"Nominatim no result for {trackName}");
         }
         catch (Exception ex)
         {
-            Log($"Error: {ex.Message}");
-            return null;
+            Log($"Nominatim error for {trackName}: {ex.Message}");
         }
+        return null;
     }
 
     /// <summary>

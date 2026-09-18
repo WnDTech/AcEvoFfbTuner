@@ -155,7 +155,8 @@ public sealed partial class MainViewModel
     partial void OnEqBand9GainChanged(float value) => _pipeline.Equalizer.SetBandGain(9, value);
 
     // ── Steering / output shaping ─────────────────────────────────────────
-    partial void OnSteeringLockDegreesChanged(int value) { }
+    // NOTE: SteeringLockDegrees is display-only (telemetry math + profile metadata).
+    // R3E/LMU derive lock from shared-memory steer data; no DSP hook exists, so no change handler.
     partial void OnCompressionPowerChanged(float value) => _pipeline.CompressionPower = value;
     partial void OnSignCorrectionEnabledChanged(bool value) => _pipeline.SignCorrectionEnabled = value;
     partial void OnFyInvertedChanged(bool value) => _pipeline.ChannelMixer.FyInverted = value;
@@ -234,6 +235,7 @@ public sealed partial class MainViewModel
     {
         _pipeline.OutputClipper.SoftClipThreshold = value;
         OnPropertyChanged(nameof(MaxForceLimitNmText));
+        OnPropertyChanged(nameof(MaxForceLimitPercentText));
         OnPropertyChanged(nameof(OutputGainNmText));
     }
 

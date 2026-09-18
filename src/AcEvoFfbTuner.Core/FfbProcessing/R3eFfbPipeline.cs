@@ -384,6 +384,10 @@ public sealed class R3eFfbPipeline : FfbPipeline
         }
         _prevDetailOutput = raw.SpeedKmh < 0.5f ? 0f : detailForce;
 
+        // Gyro stabilizer + TC wheel feel (no-ops unless enabled).
+        detailForce = ApplyGyroStabilizer(detailForce, raw);
+        detailForce = ApplyTcWheelEffect(detailForce, raw);
+
         // ═════════════════════════════════════════════════════════════════
         // FINAL MIX
         // ═════════════════════════════════════════════════════════════════
@@ -393,6 +397,10 @@ public sealed class R3eFfbPipeline : FfbPipeline
 
         // Soft clip
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
+
+        // Soft-lock end-stop (no-op unless SoftLockEnabled; direction follows
+        // GripGuard.CenteringForceMatchesSteerSign which R3E sets).
+        finalOutput = ApplySoftLock(finalOutput, raw);
 
         // Noise floor gate
         if (Math.Abs(finalOutput) < NoiseFloor)

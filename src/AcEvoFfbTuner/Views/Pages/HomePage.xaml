@@ -316,7 +316,7 @@
                                                 <Setter Property="Text" Value="" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsDeviceConnected}" Value="True">
-                                                        <Setter Property="Text" Value="{Binding WheelMaxTorqueNm, StringFormat='{}{0:F0}° lock'}" />
+                                                        <Setter Property="Text" Value="{Binding SteeringLockDegrees, StringFormat='{}{0:F0}° lock'}" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>

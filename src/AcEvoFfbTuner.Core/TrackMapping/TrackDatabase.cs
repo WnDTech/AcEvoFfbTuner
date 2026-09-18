@@ -56,6 +56,12 @@ public enum TrackDataSource
 public class TrackDetailedInfo
 {
     public string TrackName { get; set; } = "";
+
+    /// <summary>
+    /// Layout / configuration name (EVO TrackConfiguration, R3E LayoutName).
+    /// Empty when the game reports no layout. Part of the cache key.
+    /// </summary>
+    public string TrackConfig { get; set; } = "";
     public List<TrackCornerInfo> Corners { get; set; } = new();
     public List<TrackPoint>? TrackLayout { get; set; }
     public TrackPitInfo? Pit { get; set; }
@@ -86,8 +92,27 @@ public class TrackDetailedInfo
     /// Current cache version. Bump when the data model or processing changes.
     /// v4: Switched to OSM node-ID adjacency for circuit ordering (replaces coordinate proximity)
     /// v3: Added foreign way filtering (kart tracks, moto, etc.)
+    /// v10: Added TrackConfig (layout-aware cache keys) + OfficialLengthM validation
     /// </summary>
-    public const int CurrentCacheVersion = 9;
+    public const int CurrentCacheVersion = 10;
+}
+
+public static class TrackMapKeys
+{
+    /// <summary>
+    /// Build a layout-aware key: "track" or "track__config".
+    /// Bare track name is kept for backwards compatibility (legacy files).
+    /// </summary>
+    public static string BuildKey(string trackName, string? config)
+    {
+        var track = (trackName ?? "").Trim();
+        var cfg = (config ?? "").Trim();
+        if (string.IsNullOrEmpty(cfg)) return track;
+        return $"{track}__{cfg}";
+    }
+
+    public static string Sanitize(string key) =>
+        string.Join("_", key.Split(Path.GetInvalidFileNameChars()));
 }
 
 public static class TrackDatabase

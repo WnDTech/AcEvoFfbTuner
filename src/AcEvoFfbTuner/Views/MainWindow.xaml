@@ -4,7 +4,6 @@
         xmlns:vm="clr-namespace:AcEvoFfbTuner.ViewModels"
         xmlns:converters="clr-namespace:AcEvoFfbTuner.Converters"
         xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls"
-        xmlns:local="clr-namespace:AcEvoFfbTuner.Views"
         xmlns:pages="clr-namespace:AcEvoFfbTuner.Views.Pages"
         xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
          Title="AC Evo FFB Tuner" Height="900" Width="1280" MinWidth="900" MinHeight="600" Loaded="Window_Loaded"
@@ -34,10 +33,6 @@
             </CollectionViewSource.GroupDescriptions>
         </CollectionViewSource>
     </Window.Resources>
-
-    <Window.InputBindings>
-        <KeyBinding Gesture="Ctrl+Shift+I" Command="{x:Static local:MainWindow.OpenIconPreviewCommand}" />
-    </Window.InputBindings>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -224,7 +219,12 @@
                 <!-- Game Pill -->
                 <Button Grid.Column="4" x:Name="GamePill" Click="OnGamePillClick"
                         Cursor="Hand" VerticalAlignment="Center"
-                        ToolTip="Click to switch game. Auto-detect selects the running game automatically.">
+                        ToolTip="Click to switch game. Right-click for auto-detect. Auto-detect selects the running game automatically.">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Auto-detect game" Command="{Binding EnableAutoGameDetectCommand}" />
+                        </ContextMenu>
+                    </Button.ContextMenu>
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="PillBd" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderBrush}"

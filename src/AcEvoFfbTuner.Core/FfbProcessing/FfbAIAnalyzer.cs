@@ -13,6 +13,53 @@ public sealed class FfbAIAnalyzer : IDisposable
     private readonly string _apiKey;
     private string _model;
     private string _baseUrl;
+
+    /// <summary>
+    /// Process-stable session id sent as `x-opencode-session`. The Go gateway
+    /// requires it for routing/prompt-caching and rejects chat requests
+    /// without it (HTTP 400 MissingSessionID). Stable per process so the
+    /// provider can cache prompts across turns of a conversation.
+    /// </summary>
+    private static readonly string SessionId = Guid.NewGuid().ToString("N");
+
+    /// <summary>
+    /// Go models served via the OpenAI Responses API
+    /// (`/responses`, NOT `/chat/completions`) — see
+    /// https://opencode.ai/docs/go/#endpoints. Sending these to
+    /// /chat/completions fails (observed HTTP 500 on muse-spark).
+    /// </summary>
+    private static readonly HashSet<string> ResponsesApiModels = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "muse-spark-1.3-contributor",
+        "muse-spark-1.2-contributor",
+        "grok-4.6",
+        "gpt-5.6-luna",
+    };
+
+    /// <summary>
+    /// Go models served via the Anthropic Messages API (`/messages`) with a
+    /// non-OpenAI wire format. The coach only speaks OpenAI Chat and
+    /// Responses formats, so these are rejected with a clear message.
+    /// </summary>
+    private static readonly HashSet<string> MessagesApiModels = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "minimax-m3",
+        "minimax-m2.7",
+        "minimax-m2.5",
+        "qwen3.8-max",
+        "qwen3.8-flash",
+        "qwen3.7-max",
+        "qwen3.7-plus",
+        "qwen3.6-plus",
+        "union-alpha",
+    };
+
+    private bool UseResponsesApi => ResponsesApiModels.Contains(_model);
+    private bool UseMessagesApi => MessagesApiModels.Contains(_model);
+
+    private static string MessagesApiNotSupported(string model) =>
+        $"The model '{model}' uses the Anthropic Messages endpoint, which the FFB Coach does not support. " +
+        "Pick a chat-compatible model in Settings (e.g. deepseek-v4-flash, mimo-v2.5, glm-5.2, kimi-k2.6).";
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -40,31 +87,141 @@ public sealed class FfbAIAnalyzer : IDisposable
         _model = !string.IsNullOrWhiteSpace(model) ? model : "deepseek-v4-flash";
         _baseUrl = !string.IsNullOrWhiteSpace(baseUrl) ? baseUrl.TrimEnd('/') : "https://opencode.ai/zen/go/v1";
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(300) };
+        // The Go gateway expects a real client UA (not a generic SDK name)
+        // and a stable x-opencode-session per conversation for routing.
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("AcEvoFfbTuner-AICoach/1.0");
+        _http.DefaultRequestHeaders.Add("x-opencode-session", SessionId);
+    }
+
+    private void ApplyAuth(HttpRequestMessage request)
+    {
+        if (!string.IsNullOrEmpty(_apiKey))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+    }
+
+    /// <summary>
+    /// Extracts assistant text from an OpenAI Responses API response body
+    /// (`output[].content[].text`). Returns null when no text is found.
+    /// </summary>
+    private static string? ExtractResponsesText(string responseBody)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(responseBody);
+            if (!doc.RootElement.TryGetProperty("output", out var output) ||
+                output.ValueKind != JsonValueKind.Array)
+                return null;
+            var sb = new System.Text.StringBuilder();
+            foreach (var item in output.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object) continue;
+                if (!item.TryGetProperty("content", out var content) ||
+                    content.ValueKind != JsonValueKind.Array)
+                    continue;
+                foreach (var part in content.EnumerateArray())
+                {
+                    if (part.ValueKind != JsonValueKind.Object) continue;
+                    if (part.TryGetProperty("text", out var text) &&
+                        text.ValueKind == JsonValueKind.String)
+                        sb.Append(text.GetString());
+                }
+            }
+            var s = sb.ToString();
+            return string.IsNullOrWhiteSpace(s) ? null : s;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
 
 
     private string SystemPrompt => BuildSystemPrompt();
 
+    /// <summary>
+    /// Fetches the live model list from the gateway's /models endpoint (no auth required
+    /// on OpenCode Go) and layers on price/context info from <see cref="OpenCodeGoModelCatalog"/>.
+    /// Returns an empty list on failure so callers can fall back to the built-in catalog.
+    /// </summary>
+    public async Task<List<AiModelInfo>> ListModelsAsync(CancellationToken ct = default)
+    {
+        var results = new List<AiModelInfo>();
+        try
+        {
+            using var requestCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            requestCts.CancelAfter(TimeSpan.FromSeconds(12));
+
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/models");
+            if (!string.IsNullOrEmpty(_apiKey))
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+
+            using var response = await _http.SendAsync(request, requestCts.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                Log("WARN", $"ListModels HTTP {(int)response.StatusCode}");
+                return results;
+            }
+
+            var body = await response.Content.ReadAsStringAsync(ct);
+            var parsed = JsonSerializer.Deserialize<OpenAiModelsResponse>(body, JsonOpts);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in parsed?.Data ?? [])
+            {
+                if (string.IsNullOrWhiteSpace(entry.Id) || !seen.Add(entry.Id)) continue;
+                var info = OpenCodeGoModelCatalog.Lookup(entry.Id);
+                results.Add(info is null
+                    ? new AiModelInfo(entry.Id, entry.Id, null, null, null, false)
+                    : info);
+            }
+            Log("OK", $"ListModels: {results.Count} models from {_baseUrl}");
+            return results;
+        }
+        catch (Exception ex)
+        {
+            Log("ERR", $"ListModels failed: {ex.Message}");
+            return results;
+        }
+    }
+
     public async Task<ConversationResult> ChatAsync(List<ChatMessage> conversation, CancellationToken ct = default)
     {
-        var body = new
+        if (UseMessagesApi)
         {
-            model = _model,
-            messages = conversation,
-            temperature = 0.4,
-            max_tokens = 131072
-        };
+            Log("WARN", $"Model {_model} needs the Messages endpoint (unsupported)");
+            return new ConversationResult { Reply = MessagesApiNotSupported(_model) };
+        }
+
+        // Responses-API models (muse-spark, grok, gpt-luna) live on
+        // /responses with an `input` array; everything else uses
+        // /chat/completions with `messages`. 8192 output tokens is plenty
+        // for coach replies (131072 OOMs the gateway for some models).
+        var useResponses = UseResponsesApi;
+        var endpoint = useResponses ? "responses" : "chat/completions";
+        object body = useResponses
+            ? new
+            {
+                model = _model,
+                input = conversation,
+                temperature = 0.4,
+                max_output_tokens = 8192
+            }
+            : new
+            {
+                model = _model,
+                messages = conversation,
+                temperature = 0.4,
+                max_tokens = 8192
+            };
 
         var bodyJson = JsonSerializer.Serialize(body, JsonOpts);
         LogRequest("chat", bodyJson);
 
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/chat/completions")
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/{endpoint}")
         {
             Content = new StringContent(bodyJson, System.Text.Encoding.UTF8, "application/json")
         };
-        if (!string.IsNullOrEmpty(_apiKey))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        ApplyAuth(request);
 
         HttpResponseMessage response;
         try
@@ -83,11 +240,13 @@ public sealed class FfbAIAnalyzer : IDisposable
         if (!response.IsSuccessStatusCode)
         {
             Log("ERR", $"HTTP {response.StatusCode}: {responseBody}");
-            return new ConversationResult { Reply = $"AI returned HTTP {(int)response.StatusCode}. Check your API key and endpoint in Settings." };
+            return new ConversationResult { Reply = BuildHttpErrorReply((int)response.StatusCode, responseBody) };
         }
 
-        var chatResponse = JsonSerializer.Deserialize<OpenAiChatResponse>(responseBody, JsonOpts);
-        var content = chatResponse?.Choices?.FirstOrDefault()?.Message?.Content;
+        string? content = useResponses
+            ? ExtractResponsesText(responseBody)
+            : JsonSerializer.Deserialize<OpenAiChatResponse>(responseBody, JsonOpts)
+                ?.Choices?.FirstOrDefault()?.Message?.Content;
 
         if (string.IsNullOrWhiteSpace(content))
         {
@@ -193,24 +352,39 @@ public sealed class FfbAIAnalyzer : IDisposable
 
     public async Task<AIAnalysisResult> AnalyzeAsync(SnapshotCsvData csvData, FfbProfile profile, string gameContext, List<string>? diagnostics = null, CancellationToken ct = default)
     {
-        var messages = BuildMessages(csvData, profile, gameContext, diagnostics);
-        var body = new
+        if (UseMessagesApi)
         {
-            model = _model,
-            messages,
-            temperature = 0.3,
-            max_tokens = 131072
-        };
+            Log("WARN", $"Model {_model} needs the Messages endpoint (unsupported)");
+            return CreateFallbackResult(MessagesApiNotSupported(_model));
+        }
+
+        var messages = BuildMessages(csvData, profile, gameContext, diagnostics);
+        var useResponses = UseResponsesApi;
+        var endpoint = useResponses ? "responses" : "chat/completions";
+        object body = useResponses
+            ? new
+            {
+                model = _model,
+                input = messages,
+                temperature = 0.3,
+                max_output_tokens = 8192
+            }
+            : new
+            {
+                model = _model,
+                messages,
+                temperature = 0.3,
+                max_tokens = 8192
+            };
 
         var bodyJson = JsonSerializer.Serialize(body, JsonOpts);
         LogRequest("analyze", bodyJson);
 
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/chat/completions")
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/{endpoint}")
         {
             Content = new StringContent(bodyJson, System.Text.Encoding.UTF8, "application/json")
         };
-        if (!string.IsNullOrEmpty(_apiKey))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        ApplyAuth(request);
 
         HttpResponseMessage response;
         try
@@ -229,11 +403,13 @@ public sealed class FfbAIAnalyzer : IDisposable
         if (!response.IsSuccessStatusCode)
         {
             Log("ERR", $"HTTP {response.StatusCode}: {responseBody}");
-            return CreateFallbackResult($"AI returned HTTP {(int)response.StatusCode}. Check your API key and endpoint.");
+            return CreateFallbackResult(BuildHttpErrorReply((int)response.StatusCode, responseBody));
         }
 
-        var chatResponse = JsonSerializer.Deserialize<OpenAiChatResponse>(responseBody, JsonOpts);
-        var content = chatResponse?.Choices?.FirstOrDefault()?.Message?.Content;
+        string? content = useResponses
+            ? ExtractResponsesText(responseBody)
+            : JsonSerializer.Deserialize<OpenAiChatResponse>(responseBody, JsonOpts)
+                ?.Choices?.FirstOrDefault()?.Message?.Content;
 
         if (string.IsNullOrWhiteSpace(content))
         {
@@ -449,6 +625,31 @@ Analyze this telemetry data and the current profile values. Identify FFB issues 
 ```
 {string.Join('\n', line)}
 ```";
+    }
+
+    /// <summary>
+    /// Builds a user-facing error message that distinguishes auth problems
+    /// (401/403 = key/endpoint) from upstream provider failures (500/502/503 =
+    /// the model or gateway failed, key is fine — try a different model).
+    /// </summary>
+    private static string BuildHttpErrorReply(int status, string responseBody)
+    {
+        var detail = Truncate(responseBody?.Trim() ?? "", 300);
+        if (status == 401 || status == 403)
+            return $"AI returned HTTP {status}. Your API key was rejected — check the key and endpoint in Settings." +
+                   (detail.Length > 0 ? $" Server said: {detail}" : "");
+        if (status == 429)
+            return "AI rate limit reached (HTTP 429) — wait a minute and try again." +
+                   (detail.Length > 0 ? $" Server said: {detail}" : "");
+        if (status == 400 && detail.Contains("MissingSessionID", StringComparison.OrdinalIgnoreCase))
+            return "AI gateway rejected the request (MissingSessionID) — the app did not send a session header. " +
+                   "Update to the latest build and try a chat-compatible model (deepseek-v4-flash, mimo-v2.5, glm-5.2).";
+        if (status is 500 or 502 or 503)
+            return $"AI provider returned HTTP {status} — this is a server-side failure, your API key is fine. " +
+                   $"Try a chat-compatible model in Settings (deepseek-v4-flash, mimo-v2.5, glm-5.2)." +
+                   (detail.Length > 0 ? $" Server said: {detail}" : "");
+        return $"AI returned HTTP {status}. Check your endpoint in Settings." +
+               (detail.Length > 0 ? $" Server said: {detail}" : "");
     }
 
     private static AIAnalysisResult CreateFallbackResult(string reason)
@@ -918,6 +1119,21 @@ internal sealed class OpenAiMessage
 {
     [JsonPropertyName("content")]
     public string? Content { get; set; }
+}
+
+internal sealed class OpenAiModelsResponse
+{
+    [JsonPropertyName("data")]
+    public List<OpenAiModelEntry>? Data { get; set; }
+}
+
+internal sealed class OpenAiModelEntry
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = "";
+
+    [JsonPropertyName("owned_by")]
+    public string? OwnedBy { get; set; }
 }
 
 internal sealed class LenientFloatConverter : System.Text.Json.Serialization.JsonConverter<float>

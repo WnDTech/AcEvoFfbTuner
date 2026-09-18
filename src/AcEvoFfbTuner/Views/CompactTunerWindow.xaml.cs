@@ -138,12 +138,6 @@ public partial class CompactTunerWindow : Window
         PinIcon.Text = _isTopmost ? "\uD83D\uDCCC" : "\uD83D\uDD13";
     }
 
-    private void MinimizeMain(object sender, RoutedEventArgs e)
-    {
-        if (Application.Current.MainWindow is Window main)
-            main.WindowState = WindowState.Minimized;
-    }
-
     private void CloseWindow(object sender, RoutedEventArgs e)
     {
         Close();

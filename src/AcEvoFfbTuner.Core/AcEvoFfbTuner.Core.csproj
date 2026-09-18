@@ -36,6 +36,9 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Data\tracks.json" />
+    <!-- Offline track seed pack: pre-fetched *_relation.json files (generated at
+         release time, see Data/Seeds/README.md). Empty = fetch live via Overpass. -->
+    <EmbeddedResource Include="Data\Seeds\*_relation.json" />
   </ItemGroup>
 
   <ItemGroup>

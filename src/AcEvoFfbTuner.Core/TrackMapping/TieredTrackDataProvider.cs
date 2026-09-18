@@ -29,28 +29,34 @@ public sealed class TieredTrackDataProvider : IDisposable
     }
 
     /// <summary>
-    /// Load from the relation cache without fetching.
+    /// Load from the relation cache (or embedded seed pack) without fetching.
     /// </summary>
-    public TrackDetailedInfo? LoadBestCached(string trackName)
+    public TrackDetailedInfo? LoadBestCached(string trackName, string? config = null)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return null;
-        return _relationService.LoadCached(trackName);
+        return _relationService.LoadCached(trackName, config);
     }
 
     /// <summary>
     /// Fetch track data from OSM relations with automatic retry on failure.
     /// Returns validated track data, or null if all attempts fail.
+    /// centerLat/centerLon should be live game GPS when available (EVO reports it);
+    /// the service falls back to gazetteer then Nominatim geocoding.
+    /// officialLengthM (game-reported) cross-checks the OSM candidate when &gt; 0.
     /// </summary>
     public async Task<TrackDetailedInfo?> FetchTrackDataAsync(
         string trackName,
         IList<TrackWaypoint>? waypoints = null,
         double? centerLat = null,
-        double? centerLon = null)
+        double? centerLon = null,
+        string? config = null,
+        double officialLengthM = 0)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return null;
 
-        // Look up GPS from TrackDatabase if not provided
-        if (!centerLat.HasValue || !centerLon.HasValue)
+        // Look up GPS from TrackDatabase if not provided (service also tries Nominatim)
+        if (!centerLat.HasValue || !centerLon.HasValue
+            || (centerLat.Value == 0 && centerLon.Value == 0))
         {
             var loc = TrackDatabase.LookupTrackLocation(trackName);
             if (loc.HasValue)
@@ -66,16 +72,16 @@ public sealed class TieredTrackDataProvider : IDisposable
             TrackDetailedInfo? data;
             try
             {
-                data = await _relationService.FetchTrackDataAsync(trackName, centerLat, centerLon);
+                data = await _relationService.FetchTrackDataAsync(trackName, centerLat, centerLon, config);
             }
             catch (OverpassRateLimitedException)
             {
-                StaticLog($"Rate limited by Overpass API for {trackName} — not retrying");
+                StaticLog($"Rate limited by all Overpass mirrors for {trackName} — not retrying");
                 _relationService.StatusLog?.Invoke("Overpass rate-limited — try again in about a minute");
                 return null;
             }
 
-            if (data != null && ValidateTrackData(data, trackName))
+            if (data != null && ValidateTrackData(data, trackName, officialLengthM))
             {
                 data.DataSource = TrackDataSource.OsmRelation;
                 data.ConfidenceScore = 0.8f;
@@ -109,8 +115,10 @@ public sealed class TieredTrackDataProvider : IDisposable
 
     /// <summary>
     /// Validate that track data doesn't contain known contamination signals.
+    /// When the game reports an official length, reject OSM candidates that
+    /// disagree by more than 15% (wrong layout / wrong circuit).
     /// </summary>
-    private static bool ValidateTrackData(TrackDetailedInfo data, string trackName)
+    private static bool ValidateTrackData(TrackDetailedInfo data, string trackName, double officialLengthM = 0)
     {
         // Check for contamination in corner names
         if (data.Corners.Count > 0)
@@ -147,6 +155,18 @@ public sealed class TieredTrackDataProvider : IDisposable
             return false;
         }
 
+        // Official-length cross-check: OSM candidate must agree with the game
+        // within 15% or it's the wrong layout/circuit (e.g. GP vs Nordschleife).
+        if (officialLengthM > 500 && data.TrackLengthM > 0)
+        {
+            double diff = Math.Abs(data.TrackLengthM - officialLengthM) / officialLengthM;
+            if (diff > 0.15)
+            {
+                StaticLog($"REJECTED {trackName}: OSM length {data.TrackLengthM:F0}m disagrees with official {officialLengthM:F0}m ({diff:P0})");
+                return false;
+            }
+        }
+
         // Minimum layout points
         if (data.TrackLayout == null || data.TrackLayout.Count < 10)
         {
@@ -163,30 +183,37 @@ public sealed class TieredTrackDataProvider : IDisposable
     }
 
     /// <summary>
-    /// Delete all cached track data files for the given track.
+    /// Delete all cached track data files for the given track (layout-aware key + legacy).
     /// </summary>
-    public void DeleteCache(string trackName)
+    public void DeleteCache(string trackName, string? config = null)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return;
         try
         {
-            var safe = string.Join("_", trackName.Split(Path.GetInvalidFileNameChars()));
             var cacheDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "AcEvoFfbTuner", "TrackData");
 
-            // Delete relation cache
-            var relPath = Path.Combine(cacheDir, $"{safe}_relation.json");
-            if (File.Exists(relPath))
+            var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                File.Delete(relPath);
-                StaticLog($"Deleted relation cache: {safe}_relation.json");
+                TrackMapKeys.Sanitize(TrackMapKeys.BuildKey(trackName, config)),
+                TrackMapKeys.Sanitize(trackName),
+            };
+
+            foreach (var key in keys)
+            {
+                var relPath = Path.Combine(cacheDir, $"{key}_relation.json");
+                if (File.Exists(relPath))
+                {
+                    File.Delete(relPath);
+                    StaticLog($"Deleted relation cache: {key}_relation.json");
+                }
             }
 
             // Also delete any old bounding-box caches for this track
             if (Directory.Exists(cacheDir))
             {
-                foreach (var f in Directory.GetFiles(cacheDir, $"{safe}*.json"))
+                foreach (var f in Directory.GetFiles(cacheDir, $"{TrackMapKeys.Sanitize(trackName)}*.json"))
                 {
                     try { File.Delete(f); StaticLog($"Deleted cache: {Path.GetFileName(f)}"); } catch { }
                 }

@@ -750,14 +750,11 @@ public partial class SetupWizardOverlay : Window
         }
 
         var scope = GetSelectedScope();
-        // Re-sync viewmodel from pipeline — something (profile auto-match, LoadProfileValues)
-        // may have overwritten it since the polarity test. PushValuesToPipeline reads from
-        // viewmodel properties, so this ensures the corrected values survive the save.
-        if ((_pipeline is R3eFfbPipeline or LmuFfbPipeline) && _viewModel != null)
-        {
-            _viewModel.MzFrontGain = _pipeline.ChannelMixer.MzFrontGain;
-            _viewModel.FyFrontGain = _pipeline.ChannelMixer.FyFrontGain;
-        }
+        // Re-sync viewmodel from pipeline — the wizard (polarity flip, LUT shaping,
+        // output gain steps) writes the pipeline directly, bypassing the VM sliders.
+        // WizardSaveProfile pushes VM -> pipeline before saving, so without this the
+        // wizard's tuning would be overwritten by stale VM values and silently lost.
+        _viewModel?.SyncVmFromPipeline();
         // Diagnostic: capture pipeline and viewmodel state at save time
         float pipeMz = _pipeline.ChannelMixer.MzFrontGain;
         float vmMz = _viewModel?.MzFrontGain ?? float.NaN;

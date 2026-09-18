@@ -27,20 +27,25 @@ public class TrackDataService : IDisposable
     }
 
     /// <summary>
-    /// Load track data for the given track. Checks the tiered cache first, then
-    /// fetches from the best available source if uncached.
+    /// Load track data for the given track. Checks the seed pack + tiered cache
+    /// first, then fetches from the best available source if uncached.
+    /// centerLat/centerLon should be live game GPS when available (EVO reports it);
+    /// config is the layout name (EVO TrackConfiguration / R3E LayoutName) and
+    /// officialLengthM the game-reported length for OSM candidate validation.
     /// </summary>
     public async Task LoadTrackDataAsync(string trackName,
         IList<TrackWaypoint>? waypoints = null,
         double? centerLat = null, double? centerLon = null,
-        bool forceRefresh = false)
+        bool forceRefresh = false,
+        string? config = null,
+        double officialLengthM = 0)
     {
         _currentTrackName = trackName;
 
-        // Try cache first (checks all tiers' caches in priority order)
+        // Try cache first (seed pack + tiered caches, layout-aware)
         if (!forceRefresh)
         {
-            var cached = _provider.LoadBestCached(trackName);
+            var cached = _provider.LoadBestCached(trackName, config);
             if (cached != null)
             {
                 _currentTrackData = cached;
@@ -51,7 +56,7 @@ public class TrackDataService : IDisposable
         }
 
         // Fetch from tiered provider
-        var data = await _provider.FetchTrackDataAsync(trackName, waypoints, centerLat, centerLon);
+        var data = await _provider.FetchTrackDataAsync(trackName, waypoints, centerLat, centerLon, config, officialLengthM);
         if (data != null)
         {
             _currentTrackData = data;
@@ -69,18 +74,19 @@ public class TrackDataService : IDisposable
     /// Force a refresh from the best available source, bypassing cache.
     /// </summary>
     public async Task ForceRefreshAsync(string trackName,
-        double? centerLat = null, double? centerLon = null)
+        double? centerLat = null, double? centerLon = null,
+        string? config = null, double officialLengthM = 0)
     {
-        await LoadTrackDataAsync(trackName, null, centerLat, centerLon, forceRefresh: true);
+        await LoadTrackDataAsync(trackName, null, centerLat, centerLon, forceRefresh: true, config: config, officialLengthM: officialLengthM);
     }
 
     /// <summary>
     /// Delete all cached track data for the given track name.
     /// Call before <see cref="ForceRefreshAsync"/> to ensure a completely fresh fetch.
     /// </summary>
-    public void DeleteCache(string trackName)
+    public void DeleteCache(string trackName, string? config = null)
     {
-        _provider.DeleteCache(trackName);
+        _provider.DeleteCache(trackName, config);
     }
 
     public void ApplyCornerNames(List<TrackCorner> corners)

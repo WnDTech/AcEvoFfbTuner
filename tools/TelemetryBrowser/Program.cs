@@ -387,7 +387,7 @@ Dictionary<string, object?> HandleOpponents(string game, RawDataService raw, Acc
                     var lapDist = Convert.ToDouble(ld);
                     var pct = Math.Min(Math.Round(lapDist / maxLapDist * 100.0, 1), 100.0);
                     entry["trackPct"] = pct;
-                    result["_debug_trackPctCount"] = (int)result["_debug_trackPctCount"] + 1;
+                    result["_debug_trackPctCount"] = Convert.ToInt32(result["_debug_trackPctCount"]) + 1;
                 }
             }
         }

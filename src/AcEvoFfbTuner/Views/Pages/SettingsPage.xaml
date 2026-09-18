@@ -76,8 +76,8 @@
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
 
-                <!-- AI COACH -->
-                <controls:SectionCard Title="AI COACH"
+                <!-- FFB COACH -->
+                <controls:SectionCard Title="FFB COACH"
                                       Tag="AiCoach"
                                       SectionBrush="#FF56D4A0"
                                       Selectable="True">
@@ -162,9 +162,16 @@
                                     <ComboBoxItem Content="FFB Tuning" />
                                     <ComboBoxItem Content="Equalizer" />
                                     <ComboBoxItem Content="Track Map" />
+                                    <ComboBoxItem Content="Live Map" />
                                     <ComboBoxItem Content="Telemetry" />
+                                    <ComboBoxItem Content="FFB Coach" />
                                     <ComboBoxItem Content="Devices" />
                                     <ComboBoxItem Content="Profiles" />
+                                    <ComboBoxItem Content="Hub" />
+                                    <ComboBoxItem Content="Test Drive" />
+                                    <ComboBoxItem Content="Overlays" />
+                                    <ComboBoxItem Content="Settings" />
+                                    <ComboBoxItem Content="Help" />
                                 </ComboBox>
                                 <TextBlock Text="Choose which page the app opens to on startup." FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,0" TextWrapping="Wrap" />
                             </StackPanel>
@@ -287,9 +294,15 @@
                                           IsEnabled="{Binding VoiceEnabled}" />
                                 <StackPanel Margin="0,0,0,12" Visibility="{Binding VoiceEnabled, Converter={StaticResource BoolToVis}}">
                                     <TextBlock Text="For higher quality voices, install Windows Natural Voices." FontSize="13" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                                    <Button Content="Open Speech Settings" Command="{Binding OpenVoiceSettingsCommand}"
-                                            Padding="10,6" FontSize="13" Style="{StaticResource OutlinedButton}"
-                                            HorizontalAlignment="Left" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Install Natural Voices" Command="{Binding InstallNaturalVoicesAsyncCommand}"
+                                                Padding="10,6" FontSize="13" Style="{StaticResource OutlinedButton}"
+                                                HorizontalAlignment="Left"
+                                                ToolTip="Installs the English Natural Voice pack (requires admin)" />
+                                        <Button Content="Open Speech Settings" Command="{Binding OpenVoiceSettingsCommand}"
+                                                Padding="10,6" FontSize="13" Style="{StaticResource OutlinedButton}"
+                                                HorizontalAlignment="Left" Margin="8,0,0,0" />
+                                    </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="Volume" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
                                 <Slider Minimum="0" Maximum="100" Value="{Binding VoiceVolume, Mode=TwoWay}"
@@ -302,9 +315,9 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- AI COACH -->
+                    <!-- FFB COACH -->
                     <StackPanel x:Name="DtlAiCoach" Visibility="Collapsed">
-                        <TextBlock Text="Connect to OpenAI for AI-powered FFB analysis and tuning recommendations." FontSize="14" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap" />
+                        <TextBlock Text="Configure the AI engine behind the FFB Coach — API key, model and endpoint." FontSize="14" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap" />
                         <Border Background="{DynamicResource BgCard}" CornerRadius="8" Padding="16,14"
                                 BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                             <StackPanel>
@@ -314,29 +327,56 @@
                                 <TextBlock Text="{Binding HasOpenAiKey, StringFormat='Key configured: {0}'}"
                                            FontSize="13" Foreground="{DynamicResource TextDimBrush}"
                                            Margin="0,0,0,8" />
-                                <TextBlock Text="Your OpenCode Go API key from opencode.ai/auth. DeepSeek V4 Flash (~31K analyses/$5 window) is the default." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
+                                <TextBlock Text="Your OpenCode Go API key from opencode.ai/auth. DeepSeek V4 Flash is the default — the live model list below shows what is available and what each model costs." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
 
                                 <TextBlock Text="Model" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
-                                <ComboBox IsEditable="True" Text="{Binding OpenAiModel, UpdateSourceTrigger=PropertyChanged}" FontSize="14" Padding="6,4" MinWidth="200" HorizontalAlignment="Left">
-                                    <ComboBox.ItemsSource>
-                                        <x:Array Type="sys:String" xmlns:sys="clr-namespace:System;assembly=mscorlib">
-                                            <sys:String>deepseek-v4-flash</sys:String>
-                                            <sys:String>deepseek-v4-pro</sys:String>
-                                            <sys:String>glm-5.2</sys:String>
-                                            <sys:String>glm-5.1</sys:String>
-                                            <sys:String>kimi-k2.7-code</sys:String>
-                                            <sys:String>kimi-k2.6</sys:String>
-                                            <sys:String>mimo-v2.5-pro</sys:String>
-                                            <sys:String>mimo-v2.5</sys:String>
-                                            <sys:String>minimax-m3</sys:String>
-                                            <sys:String>minimax-m2.7</sys:String>
-                                            <sys:String>qwen3.7-max</sys:String>
-                                            <sys:String>qwen3.7-plus</sys:String>
-                                            <sys:String>qwen3.6-plus</sys:String>
-                                        </x:Array>
-                                    </ComboBox.ItemsSource>
-                                </ComboBox>
-                                <TextBlock Text="DeepSeek V4 Flash is the cheapest. For best analysis quality, try Kimi K2.7 Code or GLM-5.2." FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,8" TextWrapping="Wrap" />
+                                <Border Background="#FF161B22" CornerRadius="6" Padding="10,8" Margin="0,0,0,8"
+                                        BorderThickness="1" BorderBrush="#FF30363D">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="9" Height="9" Margin="0,0,8,0" VerticalAlignment="Center" Fill="#FF3FB950" />
+                                        <TextBlock FontSize="13" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap">
+                                            <Run Text="Currently using: " Foreground="{DynamicResource TextDimBrush}" />
+                                            <Run Text="{Binding CurrentAiModelSummary, Mode=OneWay}" FontWeight="SemiBold" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox Grid.Column="0" IsEditable="True"
+                                              ItemsSource="{Binding AiModelOptions}"
+                                              SelectedItem="{Binding SelectedAiModelOption}"
+                                              Text="{Binding OpenAiModel, UpdateSourceTrigger=PropertyChanged}"
+                                              FontSize="14" Padding="6,4" MinWidth="340"
+                                              HorizontalAlignment="Left" Margin="0,0,8,0"
+                                              ToolTip="Live model list from OpenCode Go — pick one or type any model ID">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="2,3">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding Id}" FontSize="13" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource TextBrush}" />
+                                                        <TextBlock Text="{Binding ContextLabel}" FontSize="12"
+                                                                   Foreground="{DynamicResource TextDimBrush}" Margin="10,1,0,0" />
+                                                    </StackPanel>
+                                                    <TextBlock FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,0">
+                                                        <Run Text="{Binding DisplayName, Mode=OneWay}" />
+                                                        <Run Text=" — " />
+                                                        <Run Text="{Binding PriceLabel, Mode=OneWay}" />
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshAiModelsCommand}"
+                                            Style="{StaticResource OutlinedButton}" Padding="10,4" FontSize="13"
+                                            ToolTip="Fetch the latest model list from OpenCode Go" />
+                                </Grid>
+                                <TextBlock Text="{Binding AiModelsStatusText}"
+                                           FontSize="12" Foreground="#FF8B949E" Margin="0,6,0,8" TextWrapping="Wrap" />
+                                <TextBlock Text="Prices are per 1M tokens. DeepSeek V4 Flash is the cheapest; premium models (DeepSeek V4 Pro, GLM-5.3, Kimi K3) analyse deeper. Press Refresh to check for new models." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
 
                                 <Expander Header="Advanced: Custom API Endpoint" FontSize="13" Foreground="{DynamicResource TextDimBrush}">
                                     <StackPanel Margin="0,8,0,0">

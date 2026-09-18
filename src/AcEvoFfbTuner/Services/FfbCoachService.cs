@@ -855,6 +855,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
         return new CoachResult
         {
             State = CoachSessionState.Questioning,
+            ProfileChanged = true,
             Messages =
             [
                 new CoachMessage
@@ -889,6 +890,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             return new CoachResult
             {
                 State = CoachSessionState.Questioning,
+                ProfileChanged = true,
                 Messages =
                 [
                     new CoachMessage { Text = "Last change reverted.", Icon = "↩" }
@@ -1223,7 +1225,7 @@ Analyze this data. Identify the most important FFB issues and provide specific r
             State = CoachSessionState.SelectingSource,
             Messages =
             [
-                new CoachMessage { Text = "🤖 AI Coach is not configured. Go to Settings → AI COACH to enter your OpenCode Go API key.", Icon = "ℹ️" },
+                new CoachMessage { Text = "🤖 AI Coach is not configured. Go to Settings → FFB Coach to enter your OpenCode Go API key.", Icon = "ℹ️" },
                 .. GenerateSourceSelectionMessages()
             ]
         };
@@ -1379,7 +1381,7 @@ Analyze this data. Identify the most important FFB issues and provide specific r
             State = CoachSessionState.SelectingSource,
             Messages =
             [
-                new CoachMessage { Text = "🤖 AI Coach is not configured. Go to Settings → AI COACH to enter your OpenCode Go API key.", Icon = "ℹ️" },
+                new CoachMessage { Text = "🤖 AI Coach is not configured. Go to Settings → FFB Coach to enter your OpenCode Go API key.", Icon = "ℹ️" },
                 .. GenerateSourceSelectionMessages()
             ]
         };
@@ -2069,4 +2071,10 @@ public sealed class CoachResult
     public string ActiveIssue { get; init; } = "";
     public SnapshotCsvData? CsvData { get; init; }
     public LiveProfilerStats? LiveStats { get; init; }
+    /// <summary>
+    /// True when the coach wrote the active profile + pipeline (apply/undo).
+    /// Callers must refresh VM sliders from the profile, otherwise the next
+    /// profile Save pushes stale VM values and silently reverts the change.
+    /// </summary>
+    public bool ProfileChanged { get; init; }
 }

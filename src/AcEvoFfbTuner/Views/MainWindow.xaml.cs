@@ -14,9 +14,6 @@ namespace AcEvoFfbTuner.Views;
 
 public partial class MainWindow : Window
 {
-    public static readonly RoutedCommand OpenIconPreviewCommand = new();
-
-    private IconPreviewWindow? _iconPreview;
     private TestingGuideOverlay? _guideOverlay;
     private ProfilerOverlay? _profilerOverlay;
     private TrackMapPopout? _trackMapPopout;
@@ -78,8 +75,6 @@ public partial class MainWindow : Window
                 vm.DeviceManager.SetWindowHandle(new WindowInteropHelper(this).Handle);
             }
         };
-
-        CommandBindings.Add(new CommandBinding(OpenIconPreviewCommand, OpenIconPreview));
 
         Sidebar.NavigateRequested += OnNavigateRequested;
         Sidebar.SettingsRequested += OnSettingsRequested;
@@ -232,7 +227,6 @@ public partial class MainWindow : Window
         _calibrationWizard?.Close();
         _setupWizard?.Close();
         _wheelCenterOverlay?.Close();
-        _iconPreview?.Close();
         _compactTuner?.Close();
         Application.Current.Shutdown();
     }
@@ -385,7 +379,14 @@ public partial class MainWindow : Window
             vm.Pipeline,
             vm.DeviceManager,
             vm.TelemetryLoop,
-            () => vm.SaveCurrentProfileCommand.Execute(null));
+            () =>
+            {
+                // The wizard writes the pipeline directly, bypassing the VM
+                // sliders — pull pipeline state back into the VM first so the
+                // save below persists the wizard's tuning instead of stale values.
+                vm.SyncVmFromPipeline();
+                vm.SaveCurrentProfileCommand.Execute(null);
+            });
 
         _calibrationWizard.InitializeSlidersFromPipeline();
         _calibrationWizard.Closed += (_, _) => _calibrationWizard = null;
@@ -458,7 +459,11 @@ public partial class MainWindow : Window
         if (DataContext is not ViewModels.MainViewModel vm) return;
 
         var controller = vm.DeviceManager.Hf8Controller;
-        if (controller == null || !controller.IsConnected) return;
+        if (controller == null || !controller.IsConnected)
+        {
+            vm.StatusText = "HF8 motor test unavailable — no HF8 device connected";
+            return;
+        }
 
         _hf8MotorTest = new Hf8MotorTestPopup(controller);
         _hf8MotorTest.Closed += (_, _) => _hf8MotorTest = null;
@@ -472,19 +477,6 @@ public partial class MainWindow : Window
             Clipboard.SetText(vm.DebugSnapshot);
             vm.StatusText = "Debug info copied to clipboard";
         }
-    }
-
-    private void OpenIconPreview(object sender, RoutedEventArgs e)
-    {
-        if (_iconPreview != null)
-        {
-            _iconPreview.Activate();
-            return;
-        }
-
-        _iconPreview = new IconPreviewWindow { Owner = this };
-        _iconPreview.Closed += (_, _) => _iconPreview = null;
-        _iconPreview.Show();
     }
 
     private void OnConnectionPillClick(object sender, RoutedEventArgs e)

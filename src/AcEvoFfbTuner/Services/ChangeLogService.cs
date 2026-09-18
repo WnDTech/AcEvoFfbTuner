@@ -50,6 +50,46 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.28.0-beta.4",
+            Date = new DateTime(2026, 9, 18),
+            Title = "Wheel Limits & Aids, A/B profile compare, MOZA motor + pedal haptics, layout-aware track maps",
+            Features =
+            [
+                "Wheel Limits & Aids (all off by default, zero FFB change until enabled): SoftLock progressive end-stop wall past 92% lock, Gyro stabilizer yaw-opposing torque (capped, EMA-smoothed), TC wheel toward-center nudge only on a live TC cut",
+                "A/B profile compare: capture A and B snapshots of the live pipeline, toggle between setups instantly, text diff of every changed path, and per-setup lap summary (best/avg lap, avg force, clipping)",
+                "MOZA wheelbase motor control: push FFB strength, damper, friction, speed damping, peak torque, road sense, inertia and wheel-speed limit directly to the base (no Pit House needed), with force mirrored at 10 Hz while driving",
+                "MOZA PHF pedal haptics (RS102/RS103): per-pedal module mapping (throttle/brake/clutch), intensity + frequency test, clutch channel with shift kick and RPM texture, dominant-effect frequencies (ABS ~18 Hz / TC ~30 Hz / road ~65 Hz)",
+                "FFB Coach live AI model catalog: model picker shows price per 1M tokens and context window, refreshes from the server with offline fallback, and routes chat models to the correct endpoint with actionable errors",
+                "Layout-aware track maps: maps are keyed by track + layout config with legacy fallback, one driven lap stamps config name and official length with zero internet, plus an offline seed-pack loader for first-run maps",
+                "Pedals page 4-step flow: Input (live bars) to Calibrate (axis/deadzone/min/max/invert/smoothing) to Haptic hardware to Tune, with Logitech Desktop-mode button and 500 ms buzz-test diagnostic",
+                "Auto Setup from Wheel button on the Current Profile card, ACC game filter in the profile browser, and per-lap profile attribution (profile/game/car/track stamped on every lap)",
+            ],
+            Improvements =
+            [
+                "Connect-time wheel test barely twitches now: auto-detect pulse cut to 3%/250 ms with early exit the instant deflection is seen (was 6%/400 ms)",
+                "FFB Coach chat bubbles stretch full width with wrapping text instead of clipping",
+                "Export/Share now exports the live on-screen sliders (pipeline pushed and re-synced first) instead of the stale last-saved file",
+                "Calibration wizard changes (polarity, LUT, gains) are re-synced into the UI so the next Save can no longer silently lose them",
+                "Saving a profile in one game no longer wipes another game's tuning: cross-game slip/grip/brake values are preserved, ACC ForceGain is persisted",
+                "Track data GPS priority is now live position, then gazetteer, then Nominatim; wrong-circuit OSM results are rejected when length differs by more than 15% (e.g. GP vs Nordschleife)",
+                "Overpass resilience: 3-mirror failover on 429/504/timeout with per-track 60 s rate limiting",
+                "Telemetry-first auto-record: with no map loaded, recording starts silently above 10 km/h on track (once per track, manual Clear sticks)",
+                "FFB Coach apply/undo/chat now refreshes the tuning UI immediately via ProfileChanged notification",
+                " renamed AI COACH to FFB COACH across Settings, messages and help; default Start Page adds Live Map, FFB Coach, Hub, Test Drive, Overlays, Settings and Help",
+            ],
+            Fixes =
+            [
+                "Fixed a potential crash enumerating pedals with blank HID names (null-guarded product name)",
+                "Fixed lap auto-close on Npos wrap (0.9 to 0.1) for mid-lap auto-start recordings",
+                "Fixed the satellite toggle on the live map (now actually toggles with status text) and added a hidden-satellite calibration warning on the track map page",
+                "Fixed HF8 motor test with no device: shows an unavailable status message instead of a silent no-op",
+                "Fixed TelemetryBrowser crash on nullable integer conversion",
+                "Removed the dev-only Icon Preview window (and Ctrl+Shift+I binding) and the duplicate legacy Live Map page (consolidated on Live Track Map)",
+                "FFB Coach endpoint fixes: chat models use the responses endpoint with correct token limits, stable session header fixes 400 MissingSessionID, and 401/403/429/5xx now report actionable messages",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.28.0-beta.3",
             Date = new DateTime(2026, 8, 29),
             Title = "Setup wizard polarity flip safety overhaul — prevents runaway wheel and wizard hang",

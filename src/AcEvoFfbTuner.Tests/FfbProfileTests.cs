@@ -163,6 +163,37 @@ public class FfbProfileTests
     }
 
     [Fact]
+    public void UpdateFromPipeline_OtherGamePipeline_PreservesGameSpecificKnobs()
+    {
+        // Tune R3E-specific knobs while the R3E pipeline is active.
+        var r3e = new R3eFfbPipeline();
+        var profile = FfbProfile.CreateFromPipeline(r3e, "CrossGame");
+        profile.Slip.FlatspotGain = 2.5f;
+        profile.Slip.TyreGripScale = 0.7f;
+        profile.Slip.BrakeBoostGain = 0.9f;
+        profile.Slip.GripScaleGain = 0.8f;
+
+        // Save again while a different game's (base EVO) pipeline is active:
+        // the R3E/LMU tuning must survive instead of resetting to defaults.
+        var evo = new FfbPipeline();
+        profile.UpdateFromPipeline(evo);
+        profile.Slip.FlatspotGain.Should().BeApproximately(2.5f, 1e-4f);
+        profile.Slip.TyreGripScale.Should().BeApproximately(0.7f, 1e-4f);
+        profile.Slip.BrakeBoostGain.Should().BeApproximately(0.9f, 1e-4f);
+        profile.Slip.GripScaleGain.Should().BeApproximately(0.8f, 1e-4f);
+    }
+
+    [Fact]
+    public void UpdateFromPipeline_SameGamePipeline_TakesPipelineValues()
+    {
+        var profile = FfbProfile.CreateFromPipeline(new R3eFfbPipeline(), "SameGame");
+        var r3e = new R3eFfbPipeline { FlatspotGain = 3.0f, BrakeBoostGain = 0.5f };
+        profile.UpdateFromPipeline(r3e);
+        profile.Slip.FlatspotGain.Should().BeApproximately(3.0f, 1e-4f);
+        profile.Slip.BrakeBoostGain.Should().BeApproximately(0.5f, 1e-4f);
+    }
+
+    [Fact]
     public void BuiltInCheck_DefaultNames_AreBuiltIn()
     {
         foreach (var name in FfbProfile.AllDefaultNames)

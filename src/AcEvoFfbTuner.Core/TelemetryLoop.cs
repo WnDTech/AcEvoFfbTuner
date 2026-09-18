@@ -85,6 +85,9 @@ public sealed class TelemetryLoop : IDisposable
     private int _latencyFrameCount;
 
     private string _lastDetectedTrackName = "";
+    private string _lastDetectedTrackConfig = "";
+    private float _lastOfficialTrackLengthM;
+    private bool _autoRecordFiredForTrack;
     private string _lastDetectedCarModel = "";
     private bool _staticDataRead;
     private long _lastStaticReReadTicks;
@@ -161,6 +164,8 @@ public sealed class TelemetryLoop : IDisposable
     public FfbStaticFriction StaticFriction => _staticFriction;
 
     public string DetectedTrackName => _lastDetectedTrackName;
+    public string DetectedTrackConfig => _lastDetectedTrackConfig;
+    public float OfficialTrackLengthM => _lastOfficialTrackLengthM;
     public string DetectedCarModel => _lastDetectedCarModel;
 
     public SPageFilePhysicsEvo? LatestPhysicsRaw => _latestPhysicsRaw;
@@ -395,9 +400,12 @@ public sealed class TelemetryLoop : IDisposable
 
                         _latestStaticRaw = staticData;
 
-                        if (!string.IsNullOrEmpty(newTrackName) && newTrackName != _lastDetectedTrackName)
+                        if (!string.IsNullOrEmpty(newTrackName) && (newTrackName != _lastDetectedTrackName || trackConfig != _lastDetectedTrackConfig))
                         {
                             _lastDetectedTrackName = newTrackName;
+                            _lastDetectedTrackConfig = trackConfig;
+                            _lastOfficialTrackLengthM = officialLength;
+                            _autoRecordFiredForTrack = false;
                             MapBuilder.Reset();
                             PositionDetector.ClearMap();
                             ForceHeatmap.Initialize(0);
@@ -410,6 +418,8 @@ public sealed class TelemetryLoop : IDisposable
                         else
                         {
                             _lastDetectedTrackName = newTrackName;
+                            _lastDetectedTrackConfig = trackConfig;
+                            _lastOfficialTrackLengthM = officialLength;
                         }
 
                         if (!string.IsNullOrEmpty(_lastDetectedCarModel))
@@ -821,6 +831,19 @@ public sealed class TelemetryLoop : IDisposable
 
     private void UpdateTrackPosition(FfbRawData raw)
     {
+        // Telemetry-first auto-record: with no map and no recording in progress,
+        // start silently once the car is moving on track. One driven lap then
+        // always yields a map with zero internet. Fires once per track so a
+        // manual Clear sticks until the next track change or manual record.
+        if (!MapBuilder.IsRecording && !MapBuilder.HasCompleteMap && !PositionDetector.HasMap
+            && !_autoRecordFiredForTrack
+            && !string.IsNullOrEmpty(_lastDetectedTrackName)
+            && raw.SpeedKmh > 10f && raw.IsOnTrack)
+        {
+            _autoRecordFiredForTrack = true;
+            MapBuilder.StartRecording(autoStarted: true);
+        }
+
         if (MapBuilder.IsRecording)
         {
             MapBuilder.Update(raw.CarX, raw.CarZ, raw.CarY, raw.SpeedKmh, raw.CurrentLap, raw.IsOnTrack, raw.Npos);
@@ -843,6 +866,8 @@ public sealed class TelemetryLoop : IDisposable
                 {
                     map.TrackName = _lastDetectedTrackName;
                 }
+                map.ConfigName = _lastDetectedTrackConfig;
+                map.OfficialLengthM = _lastOfficialTrackLengthM;
 
                 PositionDetector.SetMap(map);
                 ForceHeatmap.Initialize(map.Waypoints.Count);

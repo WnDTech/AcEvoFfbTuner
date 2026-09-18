@@ -134,7 +134,7 @@
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="13" Foreground="#FF8B949E">
                                 <Run Text="Gain: " /><Run Text="{Binding OutputGain, StringFormat='{}{0:F2}'}" Foreground="{StaticResource SectionOutput}" />
-                                <Run Text=" · " /><Run Text="Limit: " /><Run Text="{Binding MaxForceLimit, StringFormat='{}{0:F0}%'}" Foreground="{StaticResource SectionOutput}" />
+                                <Run Text=" · " /><Run Text="Limit: " /><Run Text="{Binding MaxForceLimitPercentText, Mode=OneWay}" Foreground="{StaticResource SectionOutput}" />
                                 <Run Text=" · " /><Run Text="Sens: " /><Run Text="{Binding ForceSensitivity, StringFormat='{}{0:F0}'}" Foreground="{StaticResource SectionOutput}" />
                             </TextBlock>
                         </controls:SectionCard.SummaryContent>
@@ -268,6 +268,20 @@
                             <TextBlock FontSize="13" Foreground="#FF8B949E">
                                 <Run Text="Gain: " /><Run Text="{Binding CoreForceMultiplier, StringFormat='{}{0:F1}x'}" Foreground="#FF79C0FF" />
                                 <Run Text=" · " /><Run Text="Scale: " /><Run Text="{Binding ForceScale, StringFormat='{}{0:F0}'}" Foreground="#FF79C0FF" />
+                            </TextBlock>
+                        </controls:SectionCard.SummaryContent>
+                    </controls:SectionCard>
+
+                    <!-- WHEEL LIMITS & AIDS -->
+                    <controls:SectionCard Title="WHEEL LIMITS &amp; AIDS"
+                                          Tag="WheelLimits"
+                                          SectionBrush="{StaticResource SectionDamping}"
+                                          Selectable="True">
+                        <controls:SectionCard.SummaryContent>
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Lock: " /><Run Text="{Binding SoftLockStrength, StringFormat='{}{0:F1}'}" Foreground="#FFE3B341" />
+                                <Run Text=" · " /><Run Text="Gyro: " /><Run Text="{Binding GyroGain, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
+                                <Run Text=" · " /><Run Text="TC: " /><Run Text="{Binding TcWheelGain, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
                             </TextBlock>
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
@@ -568,7 +582,7 @@
                                         Visibility="{Binding IsAssettoCorsaCompetizione, Converter={StaticResource BoolToVis}}"
                                         Label="Force Gain (ACC)" StringFormat="{}{0:F2}"
                                         Description="ACC-specific global force multiplier applied to the final output. Higher = stronger overall force. Default 2.5."
-                                        DefaultValue="2.5"
+                                        DefaultValue="{Binding BuiltInDefaults.Slip.ForceGain}"
                                         SectionColor="{StaticResource SectionTyreForces}" />
                                 </StackPanel>
                             </Expander>
@@ -918,6 +932,47 @@
                                 Description="Subtle texture from cold (under 75°C) or overheated (over 105°C) tyres. 0 = off. Uses LMU's real surface temperature per wheel."
                                 DefaultValue="{Binding BuiltInDefaults.Lmu.TyreTempGain}"
                                 SectionColor="{StaticResource SectionTyreSlip}" />
+                        </StackPanel>
+
+                        <!-- WHEEL LIMITS & AIDS -->
+                        <StackPanel x:Name="DtlWheelLimits" Visibility="Collapsed">
+                            <TextBlock Text="End-stop wall past full lock, yaw-rate stabilizer, and traction-control cut feel. All games. TC wheel feel needs a live TC flag (EVO, RaceRoom, Assetto Corsa, ACC) — inert on Le Mans Ultimate until TC telemetry is exposed." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+                            <TextBlock Text="Soft Lock" Style="{StaticResource SubSectionHeader}" />
+                            <DockPanel Margin="0,6">
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                    <TextBlock Text="Enable Soft Lock" Width="160" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
+                                    <CheckBox IsChecked="{Binding SoftLockEnabled}" Margin="0,0,12,0" />
+                                </StackPanel>
+                            </DockPanel>
+                            <controls:LabeledSlider Value="{Binding SoftLockStrength, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                Label="Lock Strength" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="Progressive wall past 92% steering lock, pushing back toward centre. 0 = off, 0.5 = gentle cushion, 1.0 = firm end-stop."
+                                DefaultValue="{Binding BuiltInDefaults.SoftLock.Strength}"
+                                SectionColor="{StaticResource SectionDamping}" />
+                            <TextBlock Text="Gyro Stabilizer" Style="{StaticResource SubSectionHeader}" />
+                            <DockPanel Margin="0,6">
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                    <TextBlock Text="Enable Gyro" Width="160" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
+                                    <CheckBox IsChecked="{Binding GyroEnabled}" Margin="0,0,12,0" />
+                                </StackPanel>
+                            </DockPanel>
+                            <controls:LabeledSlider Value="{Binding GyroGain, Mode=TwoWay}" Minimum="-2" Maximum="2" TickFrequency="0.05"
+                                Label="Gyro Gain" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="Torque opposing yaw rate — calms high-speed nervousness and straight-line wander. Start at 0.3. Flip negative if the direction feels wrong for your game."
+                                DefaultValue="{Binding BuiltInDefaults.Gyro.Gain}"
+                                SectionColor="{StaticResource SectionDamping}" />
+                            <TextBlock Text="TC Wheel Feel" Style="{StaticResource SubSectionHeader}" />
+                            <DockPanel Margin="0,6">
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                    <TextBlock Text="Enable TC Feel" Width="160" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
+                                    <CheckBox IsChecked="{Binding TcWheelEnabled}" Margin="0,0,12,0" />
+                                </StackPanel>
+                            </DockPanel>
+                            <controls:LabeledSlider Value="{Binding TcWheelGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                Label="TC Feel Gain" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="Gentle toward-centre nudge while traction control actively cuts power (live flag only — armed-but-idle TC does nothing). Start at 0.5."
+                                DefaultValue="{Binding BuiltInDefaults.TcWheel.Gain}"
+                                SectionColor="{StaticResource SectionDamping}" />
                         </StackPanel>
 
                         <!-- VIBRATIONS -->

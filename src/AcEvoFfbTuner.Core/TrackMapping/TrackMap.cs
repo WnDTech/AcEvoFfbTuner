@@ -99,6 +99,10 @@ public sealed class TrackFingerprint
 public sealed class TrackMap
 {
     public string TrackName { get; set; } = "";
+    /// <summary>Layout / configuration name (EVO TrackConfiguration, R3E LayoutName). Empty if unknown.</summary>
+    public string ConfigName { get; set; } = "";
+    /// <summary>Official track length reported by the game at record time (0 if unknown). Used to validate OSM candidates.</summary>
+    public float OfficialLengthM { get; set; }
     public string CarModel { get; set; } = "";
     public List<TrackWaypoint> Waypoints { get; set; } = new();
     public float TrackLengthM { get; set; }
@@ -638,8 +642,8 @@ public sealed class TrackMap
         InvalidateCache();
         GetCumulativeDistances();
         Directory.CreateDirectory(MapsDirectory);
-        var safeName = string.IsNullOrWhiteSpace(TrackName) ? "unknown" : string.Join("_", TrackName.Split(Path.GetInvalidFileNameChars()));
-        var path = Path.Combine(MapsDirectory, $"{safeName}.json");
+        var key = string.IsNullOrWhiteSpace(TrackName) ? "unknown" : TrackMapKeys.BuildKey(TrackName, ConfigName);
+        var path = Path.Combine(MapsDirectory, $"{TrackMapKeys.Sanitize(key)}.json");
         var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(path, json);
     }
@@ -652,10 +656,16 @@ public sealed class TrackMap
         File.WriteAllText(filePath, json);
     }
 
-    public static TrackMap? Load(string trackName)
+    public static TrackMap? Load(string trackName, string? config = null)
     {
-        var safeName = string.IsNullOrWhiteSpace(trackName) ? "unknown" : string.Join("_", trackName.Split(Path.GetInvalidFileNameChars()));
-        var path = Path.Combine(MapsDirectory, $"{safeName}.json");
+        // Layout-aware key first, then legacy bare-track fallback.
+        var key = string.IsNullOrWhiteSpace(trackName) ? "unknown" : TrackMapKeys.BuildKey(trackName, config);
+        var path = Path.Combine(MapsDirectory, $"{TrackMapKeys.Sanitize(key)}.json");
+        if (!File.Exists(path) && !string.IsNullOrEmpty(config))
+        {
+            var legacy = Path.Combine(MapsDirectory, $"{TrackMapKeys.Sanitize(trackName)}.json");
+            if (File.Exists(legacy)) path = legacy;
+        }
         if (!File.Exists(path)) return null;
         var json = File.ReadAllText(path);
         return JsonSerializer.Deserialize<TrackMap>(json);

@@ -47,7 +47,7 @@ public sealed class ThrustmasterDeviceDetector : IPlatformDeviceDetector
                 : "Thrustmaster";
 
             string product = device.ProductString.ToUpperInvariant();
-            string rimName = IdentifyRim(product);
+            string? rimName = IdentifyRim(product);
 
             string displayName = rimName != null ? $"{baseName} + {rimName}" : $"{baseName} wheel";
 

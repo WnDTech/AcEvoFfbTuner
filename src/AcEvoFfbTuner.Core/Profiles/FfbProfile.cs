@@ -72,6 +72,12 @@ public sealed class FfbProfile
     public float FxScale { get; set; } = 4000f;
     public float FyScale { get; set; } = 5000f;
 
+    /// <summary>
+    /// Device-only motor settings (NOT DSP): applied to the Moza wheelbase via
+    /// the device manager on profile switch. Never touches the FFB pipeline.
+    /// </summary>
+    public MozaMotorConfig MozaMotor { get; set; } = new();
+
     public LutCurveDto LutCurve { get; set; } = LutCurveDto.Linear();
 
     public int SteeringLockDegrees { get; set; } = 900;
@@ -92,6 +98,9 @@ public sealed class FfbProfile
     public CrashConfig Crash { get; set; } = new();
     public TyreConditionConfig TyreCondition { get; set; } = new();
     public WetWeatherConfig WetWeather { get; set; } = new();
+    public SoftLockConfig SoftLock { get; set; } = new();
+    public GyroConfig Gyro { get; set; } = new();
+    public TcWheelConfig TcWheel { get; set; } = new();
     public TelemetrySnapshotDto? LastTelemetrySnapshot { get; set; }
 
     public void ApplyToPipeline(FfbPipeline pipeline)
@@ -187,6 +196,17 @@ public sealed class FfbProfile
             lmu.CoreForceMultiplier = Slip.CoreForceMultiplier;
             lmu.GripScaleGain = Slip.GripScaleGain;
             lmu.TyreTempGain = Slip.TyreTempGain;
+        }
+
+        // ACC-only: global force multiplier applied to the final output.
+        // Zero impact on EVO/R3E/LMU/AC pipelines.
+        if (pipeline is AccFfbPipeline acc)
+        {
+            acc.GearChangeMuteEnabled = Slip.GearChangeMuteEnabled;
+            acc.GearSpikeThreshold = Slip.GearSpikeThreshold;
+            acc.BrakeBoostGain = Slip.BrakeBoostGain;
+            acc.BrakeBoostThreshold = Slip.BrakeBoostThreshold;
+            acc.ForceGain = Slip.ForceGain;
         }
 
         pipeline.DynamicEffects.LateralGGain = Dynamic.LateralGGain;
@@ -289,6 +309,15 @@ public sealed class FfbProfile
         pipeline.WetWeather.HydroplaningEnabled = WetWeather.HydroplaningEnabled;
         pipeline.WetWeather.HydroplaningSpeedThreshold = WetWeather.HydroplaningSpeedThreshold;
         pipeline.WetWeather.HydroplaningMaxAttenuation = WetWeather.HydroplaningMaxAttenuation;
+
+        // Phase 1 scaffold: all default OFF → zero impact on existing profiles.
+        pipeline.SoftLockEnabled = SoftLock.Enabled;
+        pipeline.SoftLockStrength = SoftLock.Strength;
+        pipeline.SoftLockDegrees = SoftLock.LockDegrees > 0f ? SoftLock.LockDegrees : SteeringLockDegrees;
+        pipeline.GyroEnabled = Gyro.Enabled;
+        pipeline.GyroGain = Gyro.Gain;
+        pipeline.TcWheelEnabled = TcWheel.Enabled;
+        pipeline.TcWheelGain = TcWheel.Gain;
     }
 
     public void ApplyToStaticFriction(FfbStaticFriction sf)
@@ -358,6 +387,15 @@ public sealed class FfbProfile
             Inertia = pipeline.Damping.InertiaWeight,
             MaxSpeedReference = pipeline.Damping.MaxSpeedReference
         };
+        // Game-specific knobs live on subclass pipelines only. When the active
+        // pipeline doesn't carry a knob, preserve the profile's existing value
+        // instead of resetting to a default — otherwise saving while a different
+        // game is active wipes that game's tuning (pipeline isolation).
+        var prevSlip = Slip;
+        var r3ePipe = pipeline as R3eFfbPipeline;
+        var lmuPipe = pipeline as LmuFfbPipeline;
+        var acPipe = pipeline as AcFfbPipeline;
+        var accPipe = pipeline as AccFfbPipeline;
         Slip = new SlipConfig
         {
             SlipRatioGain = pipeline.SlipEnhancer.SlipRatioGain,
@@ -366,30 +404,36 @@ public sealed class FfbProfile
             SlipThreshold = pipeline.SlipEnhancer.SlipThreshold,
             UseFrontOnly = pipeline.SlipEnhancer.UseFrontOnly,
              GearChangeMuteEnabled = pipeline.GearShiftFilterEnabled,
-            GearChangeMuteFrames = 20,
-            GearSpikeThreshold = (pipeline as R3eFfbPipeline)?.GearSpikeThreshold
-                               ?? (pipeline as LmuFfbPipeline)?.GearSpikeThreshold
-                               ?? (pipeline as AcFfbPipeline)?.GearSpikeThreshold
-                               ?? 3000f,
-            BrakeBoostGain = (pipeline as R3eFfbPipeline)?.BrakeBoostGain
-                           ?? (pipeline as LmuFfbPipeline)?.BrakeBoostGain
-                           ?? (pipeline as AcFfbPipeline)?.BrakeBoostGain
-                           ?? 0.4f,
-            BrakeBoostThreshold = (pipeline as R3eFfbPipeline)?.BrakeBoostThreshold
-                                 ?? (pipeline as LmuFfbPipeline)?.BrakeBoostThreshold
-                                 ?? (pipeline as AcFfbPipeline)?.BrakeBoostThreshold
-                                 ?? 0.1f,
+            GearChangeMuteFrames = prevSlip.GearChangeMuteFrames,
+            GearSpikeThreshold = r3ePipe?.GearSpikeThreshold
+                               ?? lmuPipe?.GearSpikeThreshold
+                               ?? acPipe?.GearSpikeThreshold
+                               ?? accPipe?.GearSpikeThreshold
+                               ?? prevSlip.GearSpikeThreshold,
+            BrakeBoostGain = r3ePipe?.BrakeBoostGain
+                           ?? lmuPipe?.BrakeBoostGain
+                           ?? acPipe?.BrakeBoostGain
+                           ?? accPipe?.BrakeBoostGain
+                           ?? prevSlip.BrakeBoostGain,
+            BrakeBoostThreshold = r3ePipe?.BrakeBoostThreshold
+                                 ?? lmuPipe?.BrakeBoostThreshold
+                                 ?? acPipe?.BrakeBoostThreshold
+                                 ?? accPipe?.BrakeBoostThreshold
+                                 ?? prevSlip.BrakeBoostThreshold,
              CoreForceMultiplier = pipeline.CoreForceMultiplier,
-            TyreGripScale = (pipeline as R3eFfbPipeline)?.TyreGripScale ?? 1.0f,
-            FlatspotGain = (pipeline as R3eFfbPipeline)?.FlatspotGain ?? 1.0f,
-            SurfaceFeelGain = (pipeline as R3eFfbPipeline)?.SurfaceFeelGain ?? 1.0f,
-            EngineTorqueLfeMod = (pipeline as R3eFfbPipeline)?.EngineTorqueLfeMod ?? 1.0f,
-            BrakePressureGain = (pipeline as R3eFfbPipeline)?.BrakePressureGain ?? 1.0f,
-            TcFeelGain = (pipeline as R3eFfbPipeline)?.TcFeelGain ?? 1.0f,
-            CoreSmoothing = (pipeline as R3eFfbPipeline)?.CoreSmoothing ?? 0.0f,
-            DetailSmoothing = (pipeline as R3eFfbPipeline)?.DetailSmoothing ?? 0.0f,
-            GripScaleGain = (pipeline as LmuFfbPipeline)?.GripScaleGain ?? 0.6f,
-            TyreTempGain = (pipeline as LmuFfbPipeline)?.TyreTempGain ?? 0.0f
+            TyreGripScale = r3ePipe?.TyreGripScale ?? prevSlip.TyreGripScale,
+            FlatspotGain = r3ePipe?.FlatspotGain ?? prevSlip.FlatspotGain,
+            SurfaceFeelGain = r3ePipe?.SurfaceFeelGain ?? prevSlip.SurfaceFeelGain,
+            EngineTorqueLfeMod = r3ePipe?.EngineTorqueLfeMod ?? prevSlip.EngineTorqueLfeMod,
+            BrakePressureGain = r3ePipe?.BrakePressureGain ?? prevSlip.BrakePressureGain,
+            TcFeelGain = r3ePipe?.TcFeelGain ?? prevSlip.TcFeelGain,
+            CoreSmoothing = r3ePipe?.CoreSmoothing ?? prevSlip.CoreSmoothing,
+            DetailSmoothing = r3ePipe?.DetailSmoothing ?? prevSlip.DetailSmoothing,
+            GripScaleGain = lmuPipe?.GripScaleGain ?? prevSlip.GripScaleGain,
+            TyreTempGain = lmuPipe?.TyreTempGain ?? prevSlip.TyreTempGain,
+            // ACC-only knob; preserved when another game's pipeline is active
+            // (the VM value is additionally persisted via SaveProfileMetadata).
+            ForceGain = accPipe?.ForceGain ?? prevSlip.ForceGain
         };
         Dynamic = new DynamicConfig
         {
@@ -513,6 +557,22 @@ public sealed class FfbProfile
             HydroplaningEnabled = pipeline.WetWeather.HydroplaningEnabled,
             HydroplaningSpeedThreshold = pipeline.WetWeather.HydroplaningSpeedThreshold,
             HydroplaningMaxAttenuation = pipeline.WetWeather.HydroplaningMaxAttenuation
+        };
+        SoftLock = new SoftLockConfig
+        {
+            Enabled = pipeline.SoftLockEnabled,
+            Strength = pipeline.SoftLockStrength,
+            LockDegrees = pipeline.SoftLockDegrees
+        };
+        Gyro = new GyroConfig
+        {
+            Enabled = pipeline.GyroEnabled,
+            Gain = pipeline.GyroGain
+        };
+        TcWheel = new TcWheelConfig
+        {
+            Enabled = pipeline.TcWheelEnabled,
+            Gain = pipeline.TcWheelGain
         };
     }
 
@@ -839,6 +899,9 @@ public sealed class FfbProfile
         Crash.SanitizeFloats();
         TyreCondition.SanitizeFloats();
         WetWeather.SanitizeFloats();
+        SoftLock.SanitizeFloats();
+        Gyro.SanitizeFloats();
+        TcWheel.SanitizeFloats();
     }
 
     private const float MaxSanitizedMagnitude = 1_000_000f;
@@ -1107,6 +1170,9 @@ public sealed class DampingConfig
     [JsonPropertyName("dampingSpeedReference")]
     public float MaxSpeedReference { get; set; } = 200f;
 
+    // No-ops kept for profile JSON backward compat (mirrors FfbDamping).
+    // The low-speed boost path was retired from the DSP; these are excluded
+    // from serialization and never applied to the pipeline.
     [JsonIgnore]
     public float LowSpeedDampingBoost { get; set; } = 1.0f;
 
@@ -1125,6 +1191,11 @@ public sealed class SlipConfig
     public float SlipThreshold { get; set; } = 0.10f;
     public bool UseFrontOnly { get; set; } = true;
     public bool GearChangeMuteEnabled { get; set; } = true;
+    /// <summary>
+    /// Informational only: gear-shift mute timing is fixed in-pipeline
+    /// (FfbPipeline._shiftMuteDuration/_fadeInDuration = 0.030s each).
+    /// Kept serialized so older profiles round-trip unchanged.
+    /// </summary>
     public int GearChangeMuteFrames { get; set; } = 20;
     public float GearSpikeThreshold { get; set; } = 3000f;
     public float BrakeBoostGain { get; set; } = 0.4f;
@@ -1201,10 +1272,15 @@ public sealed class VibrationConfig
 public sealed class AdvancedConfig
 {
     public float MaxSlewRate { get; set; } = 0.85f;
+    // RESERVED: round-trips profile ↔ pipeline but is not consumed by base
+    // FfbPipeline.Process (game-specific centering lives in subclass overrides).
     public float CenterSuppressionDegrees { get; set; } = 1.5f;
     public float CenterKneePower { get; set; } = 1.0f;
+    // RESERVED: round-trips profile ↔ pipeline but is not consumed by base
+    // FfbPipeline.Process. Do not wire into the core path without a baseline re-tune.
     public float HysteresisThreshold { get; set; } = 0f;
     public float NoiseFloor { get; set; } = 0.003f;
+    // RESERVED: see HysteresisThreshold.
     public int HysteresisWatchdogFrames { get; set; } = 0;
     public float CenterBlendDegrees { get; set; } = 1.0f;
     public float CenterSharpnessDegrees { get; set; } = 3.0f;
@@ -1533,4 +1609,89 @@ public sealed class WetWeatherConfig
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
     public void SanitizeFloats() { ManualIntensity = S(ManualIntensity); RoadVibSuppression = S(RoadVibSuppression); CurbSuppression = S(CurbSuppression); ScrubSuppression = S(ScrubSuppression); PeakSlipAngleMultiplier = S(PeakSlipAngleMultiplier); DampingReduction = S(DampingReduction); NoiseFloorSuppression = S(NoiseFloorSuppression); HydroplaningSpeedThreshold = S(HydroplaningSpeedThreshold); HydroplaningMaxAttenuation = S(HydroplaningMaxAttenuation); }
+}
+
+/// <summary>Soft-lock end-stop. Default OFF — zero impact until enabled.</summary>
+public sealed class SoftLockConfig
+{
+    public bool Enabled { get; set; } = false;
+    public float Strength { get; set; } = 0f;
+    public float LockDegrees { get; set; } = 900f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { Strength = S(Strength); LockDegrees = S(LockDegrees); }
+}
+
+/// <summary>Gyro yaw stabilizer. Default OFF — zero impact until enabled.</summary>
+public sealed class GyroConfig
+{
+    public bool Enabled { get; set; } = false;
+    public float Gain { get; set; } = 0f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { Gain = S(Gain); }
+}
+
+/// <summary>TC-cut wheel feel. Default OFF — zero impact until enabled.</summary>
+public sealed class TcWheelConfig
+{
+    public bool Enabled { get; set; } = false;
+    public float Gain { get; set; } = 0f;
+
+    private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
+    public void SanitizeFloats() { Gain = S(Gain); }
+}
+
+public sealed class MozaMotorConfig
+{
+    /// <summary>Game FFB intensity at wheelbase firmware level (0-100). Applied via CoAP, bypasses DirectInput.</summary>
+    public int FfbStrength { get; set; } = 80;
+
+    /// <summary>Centering spring force (0-100). Firmware-level, persists during DI blackouts.</summary>
+    public int SpringStrength { get; set; } = 0;
+
+    /// <summary>Velocity-independent damping (0-100). Firmware-level.</summary>
+    public int NaturalDamper { get; set; } = 30;
+
+    /// <summary>Static friction (0-100). Firmware-level.</summary>
+    public int NaturalFriction { get; set; } = 10;
+
+    /// <summary>Speed-proportional damping (0-100). Firmware-level.</summary>
+    public int SpeedDamping { get; set; } = 20;
+
+    /// <summary>Speed at which speed damping kicks in (0-400 km/h).</summary>
+    public int SpeedDampingStartPoint { get; set; } = 50;
+
+    /// <summary>Maximum output torque limit (50-100%). Firmware-level.</summary>
+    public int PeakTorque { get; set; } = 100;
+
+    /// <summary>Road feel sensitivity (0-10). Scales DI effect perception.</summary>
+    public int RoadSensitivity { get; set; } = 5;
+
+    /// <summary>Maximum wheel speed limit (10-100%).</summary>
+    public int LimitWheelSpeed { get; set; } = 100;
+
+    /// <summary>Wheel inertia (100-500).</summary>
+    public int NaturalInertia { get; set; } = 300;
+
+    /// <summary>Inertia ratio (100-4000).</summary>
+    public int NaturalInertiaRatio { get; set; } = 2000;
+
+    /// <summary>Apply these settings to the MOZA wheelbase via CoAP.</summary>
+    public void Apply(DirectInput.MozaMotorControl motor)
+    {
+        if (!motor.IsAvailable) return;
+
+        motor.SetFfbStrength(FfbStrength);
+        motor.SetSpringStrength(SpringStrength);
+        motor.SetNaturalDamper(NaturalDamper);
+        motor.SetNaturalFriction(NaturalFriction);
+        motor.SetSpeedDamping(SpeedDamping);
+        motor.SetSpeedDampingStartPoint(SpeedDampingStartPoint);
+        motor.SetPeakTorque(PeakTorque);
+        motor.SetRoadSensitivity(RoadSensitivity);
+        motor.SetLimitWheelSpeed(LimitWheelSpeed);
+        motor.SetNaturalInertia(NaturalInertia);
+        motor.SetNaturalInertiaRatio(NaturalInertiaRatio);
+    }
 }

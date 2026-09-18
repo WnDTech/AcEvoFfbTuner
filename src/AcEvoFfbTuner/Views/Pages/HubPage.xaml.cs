@@ -102,11 +102,11 @@ public partial class HubPage : UserControl
     private void OnFilterChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_vm == null) return;
-        _game = SelectedTag(GameFilter);
-        _wheel = SelectedTag(WheelFilter);
-        _car = SelectedTag(CarFilter);
-        _track = SelectedTag(TrackFilter);
-        _wheelType = SelectedTag(WheelTypeFilter);
+        _game = SelectedTag(GameFilter) ?? "";
+        _wheel = SelectedTag(WheelFilter) ?? "";
+        _car = SelectedTag(CarFilter) ?? "";
+        _track = SelectedTag(TrackFilter) ?? "";
+        _wheelType = SelectedTag(WheelTypeFilter) ?? "";
         _sort = SelectedTag(SortFilter) ?? "newest";
         _page = 1;
         Load();

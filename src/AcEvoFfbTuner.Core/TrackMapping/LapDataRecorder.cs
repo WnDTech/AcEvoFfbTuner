@@ -10,7 +10,20 @@ public sealed class LapSnapshot
     public float ClippingPct { get; set; }
     public float AvgSpeedKmh { get; set; }
     public WaypointForceSample[] WaypointForces { get; set; } = Array.Empty<WaypointForceSample>();
+    // Phase 3: profile attribution (additive — defaults keep old laps valid).
+    public string ProfileName { get; set; } = "";
+    public string GameName { get; set; } = "";
+    public string CarName { get; set; } = "";
+    public string TrackName { get; set; } = "";
 }
+
+public sealed record ProfileLapSummary(
+    string ProfileName,
+    int LapCount,
+    float BestLapTimeS,
+    float AvgLapTimeS,
+    float AvgClippingPct,
+    float AvgForce);
 
 public sealed class LapDataRecorder
 {
@@ -25,6 +38,16 @@ public sealed class LapDataRecorder
     private float _sumSpeed;
     private TrackForceHeatmap? _lapHeatmap;
     private int _waypointCount;
+
+    /// <summary>
+    /// Phase 3: active setup attribution, stamped onto each completed lap.
+    /// Set by the UI layer on profile switch / A-B toggle. Defaults to empty
+    /// (older laps / unknown setup). Never affects FFB processing.
+    /// </summary>
+    public string ActiveProfileName { get; set; } = "";
+    public string ActiveGameName { get; set; } = "";
+    public string ActiveCarName { get; set; } = "";
+    public string ActiveTrackName { get; set; } = "";
 
     public IReadOnlyList<LapSnapshot> CompletedLaps
     {
@@ -94,7 +117,11 @@ public sealed class LapDataRecorder
             PeakOutputForce = _peakForce,
             ClippingPct = (float)_clipCount / _sampleCount * 100f,
             AvgSpeedKmh = _sumSpeed / _sampleCount,
-            WaypointForces = _lapHeatmap.GetSnapshot() ?? Array.Empty<WaypointForceSample>()
+            WaypointForces = _lapHeatmap.GetSnapshot() ?? Array.Empty<WaypointForceSample>(),
+            ProfileName = ActiveProfileName,
+            GameName = ActiveGameName,
+            CarName = ActiveCarName,
+            TrackName = ActiveTrackName
         };
 
         _completedLaps.Add(lap);
@@ -109,6 +136,29 @@ public sealed class LapDataRecorder
         lock (_lock)
         {
             return _completedLaps.Count > 0 ? _completedLaps[^1] : null;
+        }
+    }
+
+    /// <summary>
+    /// Phase 3: per-setup aggregates for profile A/B comparison.
+    /// Groups completed laps by ProfileName (empty → "(unknown)").
+    /// Pure read — no recording state changes.
+    /// </summary>
+    public IReadOnlyList<ProfileLapSummary> GetSummaryByProfile()
+    {
+        lock (_lock)
+        {
+            return _completedLaps
+                .GroupBy(l => string.IsNullOrWhiteSpace(l.ProfileName) ? "(unknown)" : l.ProfileName)
+                .Select(g => new ProfileLapSummary(
+                    g.Key,
+                    g.Count(),
+                    g.Min(l => l.LapTimeS),
+                    g.Average(l => l.LapTimeS),
+                    g.Average(l => l.ClippingPct),
+                    g.Average(l => l.AvgOutputForce)))
+                .OrderBy(s => s.BestLapTimeS)
+                .ToList();
         }
     }
 

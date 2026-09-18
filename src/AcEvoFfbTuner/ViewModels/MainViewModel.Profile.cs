@@ -41,7 +41,20 @@ public sealed partial class MainViewModel
         value.ApplyToPipeline(_pipeline);
         value.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
         LoadProfileValues(value);
+        // Phase 3: attribute subsequent laps to this profile. A manual switch
+        // ends any A/B context (slots kept, active marker cleared).
+        _telemetryLoop.LapRecorder.ActiveProfileName = value.Name;
+        _telemetryLoop.LapRecorder.ActiveGameName = string.IsNullOrWhiteSpace(value.GameMatch) ? SelectedGame.ToString() : value.GameMatch;
+        _telemetryLoop.LapRecorder.ActiveCarName = string.IsNullOrWhiteSpace(value.CarMatch) ? DetectedCarModel : value.CarMatch;
+        _telemetryLoop.LapRecorder.ActiveTrackName = string.IsNullOrWhiteSpace(value.TrackMatch) ? DetectedTrackName : value.TrackMatch;
+        AbActiveSlot = "";
+        RefreshAbLapSummary();
         OnPropertyChanged(nameof(IsBuiltInProfileSelected));
+
+        if (_deviceManager.MozaMotor.IsAvailable)
+        {
+            value.MozaMotor.Apply(_deviceManager.MozaMotor);
+        }
     }
 
     [RelayCommand]
@@ -106,6 +119,9 @@ public sealed partial class MainViewModel
         profile.WheelMaxTorqueNm = WheelMaxTorqueNm;
         profile.ForceInvertEnabled = ForceInvertEnabled;
         profile.SteeringLockDegrees = SteeringLockDegrees;
+        // VM-owned ACC knob: the pipeline has no ForceGain on non-ACC games,
+        // so persist the slider value explicitly (runs after CreateFromPipeline).
+        profile.Slip.ForceGain = ForceGain;
         profile.Hf8.OutputRateHz = Hf8OutputRateHz;
         profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
     }
@@ -284,6 +300,33 @@ public sealed partial class MainViewModel
         }
     }
 
+    /// <summary>
+    /// Builds a detached profile holding the CURRENT on-screen/pipeline settings
+    /// (VM sliders + live pipeline state) without touching the saved file.
+    /// Export/Share must use this: the SelectedProfile object goes stale as soon
+    /// as any slider moves (it is only refreshed on Save), so exporting it
+    /// directly would silently drop unsaved adjustments.
+    /// </summary>
+    private FfbProfile BuildCurrentStateProfile()
+    {
+        PushValuesToPipeline();
+        var source = SelectedProfile;
+        var copy = new FfbProfile();
+        copy.UpdateFromPipeline(_pipeline);
+        if (source != null)
+        {
+            copy.Name = source.Name;
+            copy.GameMatch = source.GameMatch;
+            copy.Scope = source.Scope;
+            copy.MozaMotor = source.MozaMotor;
+            copy.Version = FfbProfile.CurrentVersion;
+        }
+        copy.CarMatch = ProfileCarMatch;
+        copy.TrackMatch = ProfileTrackMatch;
+        SaveNonPipelineSettings(copy);
+        return copy;
+    }
+
     [RelayCommand]
     private void ExportProfile()
     {
@@ -294,7 +337,10 @@ public sealed partial class MainViewModel
             FileName = $"{SelectedProfile.Name}.json"
         };
         if (dialog.ShowDialog() == true)
-            _profileManager.ExportProfile(SelectedProfile, dialog.FileName);
+        {
+            _profileManager.ExportProfile(BuildCurrentStateProfile(), dialog.FileName);
+            StatusText = $"Exported current settings as '{SelectedProfile.Name}'";
+        }
     }
 
     [RelayCommand]
@@ -319,7 +365,8 @@ public sealed partial class MainViewModel
     private async Task ShareProfileToHub()
     {
         if (SelectedProfile == null) return;
-        await ShareProfileToHub(SelectedProfile);
+        // Share what the user currently feels (live sliders), not the last-saved file.
+        await ShareProfileToHub(BuildCurrentStateProfile());
     }
 
     public async Task ShareProfileToHub(FfbProfile profile)
@@ -642,6 +689,14 @@ public sealed partial class MainViewModel
         GripGuardMechanicalTrailGain = profile.GripGuard.MechanicalTrailGain;
         GripGuardMinSpeedKmh = profile.GripGuard.MinSpeedKmh;
 
+        SoftLockEnabled = profile.SoftLock.Enabled;
+        SoftLockStrength = profile.SoftLock.Strength;
+        SoftLockDegrees = profile.SoftLock.LockDegrees;
+        GyroEnabled = profile.Gyro.Enabled;
+        GyroGain = profile.Gyro.Gain;
+        TcWheelEnabled = profile.TcWheel.Enabled;
+        TcWheelGain = profile.TcWheel.Gain;
+
         CrashEnabled = profile.Crash.Enabled;
         CrashImpactGain = profile.Crash.ImpactGain;
         CrashSafetyClamp = profile.Crash.SafetyClamp;
@@ -684,6 +739,251 @@ public sealed partial class MainViewModel
         StaticFrictionOutputSmoothAlpha = profile.StaticFriction.OutputSmoothAlpha;
     }
 
+    /// <summary>
+    /// Pulls live pipeline (and stationary-friction) state back into the
+    /// viewmodel sliders. Needed after flows that write the pipeline directly
+    /// and bypass the VM (calibration wizard, setup wizard polarity flip):
+    /// without this, the next Save pushes stale VM values over the pipeline
+    /// and the wizard's tuning is silently lost. Each assignment re-pushes the
+    /// same value to the pipeline via OnXChanged handlers, so this is idempotent.
+    /// Game-specific knobs are only pulled when that game's pipeline is active.
+    /// </summary>
+    public void SyncVmFromPipeline()
+    {
+        SelectedMixMode = _pipeline.ChannelMixer.MixMode;
+        OutputGain = _pipeline.OutputGain;
+        ForceSensitivity = 1000f / Math.Max(_pipeline.MasterGain, 0.001f);
+        MaxForceLimit = _pipeline.OutputClipper.SoftClipThreshold;
+        MzFrontGain = _pipeline.ChannelMixer.MzFrontGain;
+        MzFrontEnabled = _pipeline.ChannelMixer.MzFrontEnabled;
+        FxFrontGain = _pipeline.ChannelMixer.FxFrontGain;
+        FxFrontEnabled = _pipeline.ChannelMixer.FxFrontEnabled;
+        FyFrontGain = _pipeline.ChannelMixer.FyFrontGain;
+        FyFrontEnabled = _pipeline.ChannelMixer.FyFrontEnabled;
+        MzRearGain = _pipeline.ChannelMixer.MzRearGain;
+        MzRearEnabled = _pipeline.ChannelMixer.MzRearEnabled;
+        FxRearGain = _pipeline.ChannelMixer.FxRearGain;
+        FxRearEnabled = _pipeline.ChannelMixer.FxRearEnabled;
+        FyRearGain = _pipeline.ChannelMixer.FyRearGain;
+        FyRearEnabled = _pipeline.ChannelMixer.FyRearEnabled;
+        FinalFfGain = _pipeline.ChannelMixer.FinalFfGain;
+        FinalFfEnabled = _pipeline.ChannelMixer.FinalFfEnabled;
+        WheelLoadWeighting = _pipeline.ChannelMixer.WheelLoadWeighting;
+        MzScale = _pipeline.ChannelMixer.MzScale;
+        FxScale = _pipeline.ChannelMixer.FxScale;
+        FyScale = _pipeline.ChannelMixer.FyScale;
+        SpeedDamping = _pipeline.Damping.SpeedDampingCoefficient;
+        FrictionLevel = _pipeline.Damping.FrictionLevel;
+        InertiaWeight = _pipeline.Damping.InertiaWeight;
+        DampingSpeedReference = _pipeline.Damping.MaxSpeedReference;
+        SlipRatioGain = _pipeline.SlipEnhancer.SlipRatioGain;
+        SlipAngleGain = _pipeline.SlipEnhancer.SlipAngleGain;
+        SlipAngleShapeGain = _pipeline.SlipEnhancer.SlipAngleShapeGain;
+        SlipThreshold = _pipeline.SlipEnhancer.SlipThreshold;
+        SlipUseFrontOnly = _pipeline.SlipEnhancer.UseFrontOnly;
+        GearChangeMuteEnabled = _pipeline.GearShiftFilterEnabled;
+        CorneringForce = _pipeline.DynamicEffects.LateralGGain;
+        AccelerationBrakingForce = _pipeline.DynamicEffects.LongitudinalGGain;
+        RoadFeel = _pipeline.DynamicEffects.SuspensionGain;
+        CarRotationForce = _pipeline.DynamicEffects.YawRateGain;
+        TyreFlexGain = _pipeline.TyreFlex.FlexGain;
+        CarcassStiffness = _pipeline.TyreFlex.CarcassStiffness;
+        FlexSmoothing = _pipeline.TyreFlex.FlexSmoothing;
+        ContactPatchWeight = _pipeline.TyreFlex.ContactPatchWeight;
+        LoadFlexGain = _pipeline.TyreFlex.LoadFlexGain;
+        AutoGainEnabled = _pipeline.AutoGainEnabled;
+        AutoGainScale = _pipeline.AutoGainScale;
+        CurbGain = _pipeline.VibrationMixer.KerbGain;
+        SlipGain = _pipeline.VibrationMixer.SlipGain;
+        RoadGain = _pipeline.VibrationMixer.RoadGain;
+        AbsGain = _pipeline.VibrationMixer.AbsGain;
+        AbsPulseAmplitude = _pipeline.VibrationMixer.AbsPulseAmplitude;
+        VibrationMasterGain = _pipeline.VibrationMixer.MasterGain;
+        SuspensionRoadGain = _pipeline.VibrationMixer.SuspensionRoadGain;
+        ScrubGain = _pipeline.VibrationMixer.ScrubGain;
+        RearSlipGain = _pipeline.VibrationMixer.RearSlipGain;
+        OfftrackGain = _pipeline.VibrationMixer.OfftrackGain;
+        OfftrackSeverityScale = _pipeline.VibrationMixer.OfftrackSeverityScale;
+        LfeEnabled = _pipeline.LfeGenerator.Enabled;
+        LfeGain = _pipeline.LfeGenerator.Gain;
+        LfeFrequency = _pipeline.LfeGenerator.Frequency;
+        LfeSuspensionDrive = _pipeline.LfeGenerator.SuspensionDrive;
+        LfeSpeedScaling = _pipeline.LfeGenerator.SpeedScaling;
+        LfeRpmDrive = _pipeline.LfeGenerator.RpmDrive;
+        CompressionPower = _pipeline.CompressionPower;
+        ForceScale = _pipeline.ForceScale;
+        SignCorrectionEnabled = _pipeline.SignCorrectionEnabled;
+        FyInverted = _pipeline.ChannelMixer.FyInverted;
+        MaxSlewRate = _pipeline.MaxSlewRate;
+        CenterSuppressionDegrees = _pipeline.CenterSuppressionDegrees;
+        CenterKneePower = _pipeline.CenterKneePower;
+        HysteresisThreshold = _pipeline.HysteresisThreshold;
+        NoiseFloor = _pipeline.NoiseFloor;
+        HysteresisWatchdogFrames = _pipeline.HysteresisWatchdogFrames;
+        CenterBlendDegrees = _pipeline.ChannelMixer.CenterBlendDegrees;
+        CenterSharpnessDegrees = _pipeline.CenterSharpnessDegrees;
+        CoreForceMultiplier = _pipeline.CoreForceMultiplier;
+        SteerVelocityReference = _pipeline.Damping.SteerVelocityReference;
+        VelocityDeadzone = _pipeline.Damping.VelocityDeadzone;
+        LowSpeedSmoothKmh = _pipeline.ChannelMixer.LowSpeedSmoothKmh;
+        EqEnabled = _pipeline.Equalizer.MasterEnabled;
+        EqBand0Gain = _pipeline.Equalizer.GetBandGain(0);
+        EqBand1Gain = _pipeline.Equalizer.GetBandGain(1);
+        EqBand2Gain = _pipeline.Equalizer.GetBandGain(2);
+        EqBand3Gain = _pipeline.Equalizer.GetBandGain(3);
+        EqBand4Gain = _pipeline.Equalizer.GetBandGain(4);
+        EqBand5Gain = _pipeline.Equalizer.GetBandGain(5);
+        EqBand6Gain = _pipeline.Equalizer.GetBandGain(6);
+        EqBand7Gain = _pipeline.Equalizer.GetBandGain(7);
+        EqBand8Gain = _pipeline.Equalizer.GetBandGain(8);
+        EqBand9Gain = _pipeline.Equalizer.GetBandGain(9);
+
+        if (_pipeline is R3eFfbPipeline r3eSync)
+        {
+            TyreGripScale = r3eSync.TyreGripScale;
+            FlatspotGain = r3eSync.FlatspotGain;
+            SurfaceFeelGain = r3eSync.SurfaceFeelGain;
+            EngineTorqueLfeMod = r3eSync.EngineTorqueLfeMod;
+            BrakePressureGain = r3eSync.BrakePressureGain;
+            TcFeelGain = r3eSync.TcFeelGain;
+            CoreSmoothing = r3eSync.CoreSmoothing;
+            DetailSmoothing = r3eSync.DetailSmoothing;
+            BrakeBoostGain = r3eSync.BrakeBoostGain;
+            BrakeBoostThreshold = r3eSync.BrakeBoostThreshold;
+        }
+        else if (_pipeline is LmuFfbPipeline lmuSync)
+        {
+            BrakeBoostGain = lmuSync.BrakeBoostGain;
+            BrakeBoostThreshold = lmuSync.BrakeBoostThreshold;
+            GripScaleGain = lmuSync.GripScaleGain;
+            TyreTempGain = lmuSync.TyreTempGain;
+        }
+        else if (_pipeline is AcFfbPipeline acSync)
+        {
+            BrakeBoostGain = acSync.BrakeBoostGain;
+            BrakeBoostThreshold = acSync.BrakeBoostThreshold;
+        }
+        else if (_pipeline is AccFfbPipeline accSync)
+        {
+            BrakeBoostGain = accSync.BrakeBoostGain;
+            BrakeBoostThreshold = accSync.BrakeBoostThreshold;
+            ForceGain = accSync.ForceGain;
+        }
+
+        Hf8Enabled = _pipeline.Hf8SignalMapper.Enabled;
+        Hf8MasterGain = _pipeline.Hf8SignalMapper.MasterGain;
+        Hf8ZoneGain0 = _pipeline.Hf8SignalMapper.ZoneGains[0];
+        Hf8ZoneGain1 = _pipeline.Hf8SignalMapper.ZoneGains[1];
+        Hf8ZoneGain2 = _pipeline.Hf8SignalMapper.ZoneGains[2];
+        Hf8ZoneGain3 = _pipeline.Hf8SignalMapper.ZoneGains[3];
+        Hf8ZoneGain4 = _pipeline.Hf8SignalMapper.ZoneGains[4];
+        Hf8ZoneGain5 = _pipeline.Hf8SignalMapper.ZoneGains[5];
+        Hf8ZoneGain6 = _pipeline.Hf8SignalMapper.ZoneGains[6];
+        Hf8ZoneGain7 = _pipeline.Hf8SignalMapper.ZoneGains[7];
+        Hf8ZoneEnabled0 = _pipeline.Hf8SignalMapper.ZoneEnabled[0];
+        Hf8ZoneEnabled1 = _pipeline.Hf8SignalMapper.ZoneEnabled[1];
+        Hf8ZoneEnabled2 = _pipeline.Hf8SignalMapper.ZoneEnabled[2];
+        Hf8ZoneEnabled3 = _pipeline.Hf8SignalMapper.ZoneEnabled[3];
+        Hf8ZoneEnabled4 = _pipeline.Hf8SignalMapper.ZoneEnabled[4];
+        Hf8ZoneEnabled5 = _pipeline.Hf8SignalMapper.ZoneEnabled[5];
+        Hf8ZoneEnabled6 = _pipeline.Hf8SignalMapper.ZoneEnabled[6];
+        Hf8ZoneEnabled7 = _pipeline.Hf8SignalMapper.ZoneEnabled[7];
+        Hf8SrcSusp0 = _pipeline.Hf8SignalMapper.GetSourceWeight(0, 0);
+        Hf8SrcSlip0 = _pipeline.Hf8SignalMapper.GetSourceWeight(0, 1);
+        Hf8SrcKerb0 = _pipeline.Hf8SignalMapper.GetSourceWeight(0, 2);
+        Hf8SrcLatG0 = _pipeline.Hf8SignalMapper.GetSourceWeight(0, 3);
+        Hf8SrcEngine0 = _pipeline.Hf8SignalMapper.GetSourceWeight(0, 4);
+        Hf8SrcSusp1 = _pipeline.Hf8SignalMapper.GetSourceWeight(1, 0);
+        Hf8SrcSlip1 = _pipeline.Hf8SignalMapper.GetSourceWeight(1, 1);
+        Hf8SrcKerb1 = _pipeline.Hf8SignalMapper.GetSourceWeight(1, 2);
+        Hf8SrcLatG1 = _pipeline.Hf8SignalMapper.GetSourceWeight(1, 3);
+        Hf8SrcEngine1 = _pipeline.Hf8SignalMapper.GetSourceWeight(1, 4);
+        Hf8SrcSusp2 = _pipeline.Hf8SignalMapper.GetSourceWeight(2, 0);
+        Hf8SrcSlip2 = _pipeline.Hf8SignalMapper.GetSourceWeight(2, 1);
+        Hf8SrcKerb2 = _pipeline.Hf8SignalMapper.GetSourceWeight(2, 2);
+        Hf8SrcLatG2 = _pipeline.Hf8SignalMapper.GetSourceWeight(2, 3);
+        Hf8SrcEngine2 = _pipeline.Hf8SignalMapper.GetSourceWeight(2, 4);
+        Hf8SrcSusp3 = _pipeline.Hf8SignalMapper.GetSourceWeight(3, 0);
+        Hf8SrcSlip3 = _pipeline.Hf8SignalMapper.GetSourceWeight(3, 1);
+        Hf8SrcKerb3 = _pipeline.Hf8SignalMapper.GetSourceWeight(3, 2);
+        Hf8SrcLatG3 = _pipeline.Hf8SignalMapper.GetSourceWeight(3, 3);
+        Hf8SrcEngine3 = _pipeline.Hf8SignalMapper.GetSourceWeight(3, 4);
+        Hf8SrcSusp4 = _pipeline.Hf8SignalMapper.GetSourceWeight(4, 0);
+        Hf8SrcSlip4 = _pipeline.Hf8SignalMapper.GetSourceWeight(4, 1);
+        Hf8SrcKerb4 = _pipeline.Hf8SignalMapper.GetSourceWeight(4, 2);
+        Hf8SrcLatG4 = _pipeline.Hf8SignalMapper.GetSourceWeight(4, 3);
+        Hf8SrcEngine4 = _pipeline.Hf8SignalMapper.GetSourceWeight(4, 4);
+        Hf8SrcSusp5 = _pipeline.Hf8SignalMapper.GetSourceWeight(5, 0);
+        Hf8SrcSlip5 = _pipeline.Hf8SignalMapper.GetSourceWeight(5, 1);
+        Hf8SrcKerb5 = _pipeline.Hf8SignalMapper.GetSourceWeight(5, 2);
+        Hf8SrcLatG5 = _pipeline.Hf8SignalMapper.GetSourceWeight(5, 3);
+        Hf8SrcEngine5 = _pipeline.Hf8SignalMapper.GetSourceWeight(5, 4);
+        Hf8SrcSusp6 = _pipeline.Hf8SignalMapper.GetSourceWeight(6, 0);
+        Hf8SrcSlip6 = _pipeline.Hf8SignalMapper.GetSourceWeight(6, 1);
+        Hf8SrcKerb6 = _pipeline.Hf8SignalMapper.GetSourceWeight(6, 2);
+        Hf8SrcLatG6 = _pipeline.Hf8SignalMapper.GetSourceWeight(6, 3);
+        Hf8SrcEngine6 = _pipeline.Hf8SignalMapper.GetSourceWeight(6, 4);
+        Hf8SrcSusp7 = _pipeline.Hf8SignalMapper.GetSourceWeight(7, 0);
+        Hf8SrcSlip7 = _pipeline.Hf8SignalMapper.GetSourceWeight(7, 1);
+        Hf8SrcKerb7 = _pipeline.Hf8SignalMapper.GetSourceWeight(7, 2);
+        Hf8SrcLatG7 = _pipeline.Hf8SignalMapper.GetSourceWeight(7, 3);
+        Hf8SrcEngine7 = _pipeline.Hf8SignalMapper.GetSourceWeight(7, 4);
+
+        GripGuardEnabled = _pipeline.GripGuard.Enabled;
+        GripGuardPeakSlipAngle = _pipeline.GripGuard.PeakSlipAngle;
+        GripGuardAttenuationStrength = _pipeline.GripGuard.AttenuationStrength;
+        GripGuardMechanicalTrailGain = _pipeline.GripGuard.MechanicalTrailGain;
+        GripGuardMinSpeedKmh = _pipeline.GripGuard.MinSpeedKmh;
+
+        SoftLockEnabled = _pipeline.SoftLockEnabled;
+        SoftLockStrength = _pipeline.SoftLockStrength;
+        SoftLockDegrees = _pipeline.SoftLockDegrees;
+        GyroEnabled = _pipeline.GyroEnabled;
+        GyroGain = _pipeline.GyroGain;
+        TcWheelEnabled = _pipeline.TcWheelEnabled;
+        TcWheelGain = _pipeline.TcWheelGain;
+
+        CrashEnabled = _pipeline.CrashDetector.Enabled;
+        CrashImpactGain = _pipeline.CrashDetector.ImpactGain;
+        CrashSafetyClamp = _pipeline.CrashDetector.SafetyClamp;
+        CrashDecayRate = _pipeline.CrashDetector.DecayRate;
+        CrashTriggerThresholdG = _pipeline.CrashDetector.TriggerThresholdG;
+        CrashMinSpeedKmh = _pipeline.CrashDetector.MinSpeedKmh;
+        CrashSafetyOverride = _pipeline.CrashDetector.SafetyOverride;
+
+        TyreConditionEnabled = _pipeline.TyreCondition.Enabled;
+        TyreConditionBlowoutGain = _pipeline.TyreCondition.BlowoutVibrationGain;
+        TyreConditionPressureLossGain = _pipeline.TyreCondition.PressureLossGain;
+        TyreConditionDamageAsymmetryGain = _pipeline.TyreCondition.DamageAsymmetryGain;
+        TyreConditionBlowoutThreshold = _pipeline.TyreCondition.BlowoutPressureThreshold;
+        TyreConditionMaxBlowoutAmplitude = _pipeline.TyreCondition.MaxBlowoutAmplitude;
+
+        WetWeatherEnabled = _pipeline.WetWeather.Enabled;
+        WetWeatherAutoDetect = _pipeline.WetWeather.AutoDetect;
+        WetWeatherManualIntensity = _pipeline.WetWeather.ManualIntensity;
+        WetWeatherRoadVibSuppression = _pipeline.WetWeather.RoadVibSuppression;
+        WetWeatherCurbSuppression = _pipeline.WetWeather.CurbSuppression;
+        WetWeatherScrubSuppression = _pipeline.WetWeather.ScrubSuppression;
+        WetWeatherPeakSlipAngleMultiplier = _pipeline.WetWeather.PeakSlipAngleMultiplier;
+        WetWeatherDampingReduction = _pipeline.WetWeather.DampingReduction;
+        WetWeatherNoiseFloorSuppression = _pipeline.WetWeather.NoiseFloorSuppression;
+        WetWeatherHydroplaningEnabled = _pipeline.WetWeather.HydroplaningEnabled;
+        WetWeatherHydroplaningSpeedThreshold = _pipeline.WetWeather.HydroplaningSpeedThreshold;
+        WetWeatherHydroplaningMaxAttenuation = _pipeline.WetWeather.HydroplaningMaxAttenuation;
+
+        StaticFrictionGain = _telemetryLoop.StaticFriction.Gain;
+        StaticFrictionMaxElasticStretch = _telemetryLoop.StaticFriction.MaxElasticStretch;
+        StaticFrictionSpringStiffness = _telemetryLoop.StaticFriction.SpringStiffness;
+        StaticFrictionKineticFrictionBase = _telemetryLoop.StaticFriction.KineticFrictionBase;
+        StaticFrictionEngineOffDamping = _telemetryLoop.StaticFriction.EngineOffDamping;
+        StaticFrictionEngineOnDamping = _telemetryLoop.StaticFriction.EngineOnDamping;
+        StaticFrictionEngineOffScale = _telemetryLoop.StaticFriction.EngineOffScale;
+        StaticFrictionEngineOnScale = _telemetryLoop.StaticFriction.EngineOnScale;
+        StaticFrictionActiveDecay = _telemetryLoop.StaticFriction.ActiveDecay;
+        StaticFrictionReturnDecay = _telemetryLoop.StaticFriction.ReturnDecay;
+        StaticFrictionOutputSmoothAlpha = _telemetryLoop.StaticFriction.OutputSmoothAlpha;
+    }
+
     private void PushValuesToPipeline()
     {
         if (SelectedProfile != null)
@@ -712,6 +1012,7 @@ public sealed partial class MainViewModel
         _pipeline.ChannelMixer.FyScale = FyScale;
         _pipeline.ChannelMixer.MixMode = SelectedMixMode;
         _pipeline.OutputClipper.SoftClipThreshold = MaxForceLimit;
+        _pipeline.OutputGain = OutputGain;
         _pipeline.MasterGain = 1000f / Math.Max(ForceSensitivity, 1f);
         _pipeline.Damping.SpeedDampingCoefficient = SpeedDamping;
         _pipeline.Damping.FrictionLevel = FrictionLevel;
@@ -719,8 +1020,10 @@ public sealed partial class MainViewModel
         _pipeline.Damping.MaxSpeedReference = DampingSpeedReference;
         _pipeline.SlipEnhancer.SlipRatioGain = SlipRatioGain;
         _pipeline.SlipEnhancer.SlipAngleGain = SlipAngleGain;
+        _pipeline.SlipEnhancer.SlipAngleShapeGain = SlipAngleShapeGain;
         _pipeline.SlipEnhancer.SlipThreshold = SlipThreshold;
         _pipeline.SlipEnhancer.UseFrontOnly = SlipUseFrontOnly;
+        _pipeline.GearShiftFilterEnabled = GearChangeMuteEnabled;
         _pipeline.DynamicEffects.LateralGGain = CorneringForce;
         _pipeline.DynamicEffects.LongitudinalGGain = AccelerationBrakingForce;
         _pipeline.DynamicEffects.SuspensionGain = RoadFeel;
@@ -764,6 +1067,7 @@ public sealed partial class MainViewModel
         _pipeline.CoreForceMultiplier = CoreForceMultiplier;
         if (_pipeline is R3eFfbPipeline r3eLoad)
         {
+            r3eLoad.GearChangeMuteEnabled = GearChangeMuteEnabled;
             r3eLoad.TyreGripScale = TyreGripScale;
             r3eLoad.FlatspotGain = FlatspotGain;
             r3eLoad.SurfaceFeelGain = SurfaceFeelGain;
@@ -774,6 +1078,27 @@ public sealed partial class MainViewModel
             r3eLoad.DetailSmoothing = DetailSmoothing;
             r3eLoad.BrakeBoostGain = BrakeBoostGain;
             r3eLoad.BrakeBoostThreshold = BrakeBoostThreshold;
+        }
+        if (_pipeline is LmuFfbPipeline lmuLoad)
+        {
+            lmuLoad.GearChangeMuteEnabled = GearChangeMuteEnabled;
+            lmuLoad.BrakeBoostGain = BrakeBoostGain;
+            lmuLoad.BrakeBoostThreshold = BrakeBoostThreshold;
+            lmuLoad.GripScaleGain = GripScaleGain;
+            lmuLoad.TyreTempGain = TyreTempGain;
+        }
+        if (_pipeline is AcFfbPipeline acLoad)
+        {
+            acLoad.GearChangeMuteEnabled = GearChangeMuteEnabled;
+            acLoad.BrakeBoostGain = BrakeBoostGain;
+            acLoad.BrakeBoostThreshold = BrakeBoostThreshold;
+        }
+        if (_pipeline is AccFfbPipeline accLoad)
+        {
+            accLoad.GearChangeMuteEnabled = GearChangeMuteEnabled;
+            accLoad.BrakeBoostGain = BrakeBoostGain;
+            accLoad.BrakeBoostThreshold = BrakeBoostThreshold;
+            accLoad.ForceGain = ForceGain;
         }
         _pipeline.Damping.SteerVelocityReference = SteerVelocityReference;
         _pipeline.Damping.VelocityDeadzone = VelocityDeadzone;
@@ -790,11 +1115,78 @@ public sealed partial class MainViewModel
         _pipeline.Equalizer.SetBandGain(8, EqBand8Gain);
         _pipeline.Equalizer.SetBandGain(9, EqBand9Gain);
 
+        _pipeline.Hf8SignalMapper.Enabled = Hf8Enabled;
+        _pipeline.Hf8SignalMapper.MasterGain = Hf8MasterGain;
+        _pipeline.Hf8SignalMapper.ZoneGains[0] = Hf8ZoneGain0;
+        _pipeline.Hf8SignalMapper.ZoneGains[1] = Hf8ZoneGain1;
+        _pipeline.Hf8SignalMapper.ZoneGains[2] = Hf8ZoneGain2;
+        _pipeline.Hf8SignalMapper.ZoneGains[3] = Hf8ZoneGain3;
+        _pipeline.Hf8SignalMapper.ZoneGains[4] = Hf8ZoneGain4;
+        _pipeline.Hf8SignalMapper.ZoneGains[5] = Hf8ZoneGain5;
+        _pipeline.Hf8SignalMapper.ZoneGains[6] = Hf8ZoneGain6;
+        _pipeline.Hf8SignalMapper.ZoneGains[7] = Hf8ZoneGain7;
+        _pipeline.Hf8SignalMapper.ZoneEnabled[0] = Hf8ZoneEnabled0;
+        _pipeline.Hf8SignalMapper.ZoneEnabled[1] = Hf8ZoneEnabled1;
+        _pipeline.Hf8SignalMapper.ZoneEnabled[2] = Hf8ZoneEnabled2;
+        _pipeline.Hf8SignalMapper.ZoneEnabled[3] = Hf8ZoneEnabled3;
+        _pipeline.Hf8SignalMapper.ZoneEnabled[4] = Hf8ZoneEnabled4;
+        _pipeline.Hf8SignalMapper.ZoneEnabled[5] = Hf8ZoneEnabled5;
+        _pipeline.Hf8SignalMapper.ZoneEnabled[6] = Hf8ZoneEnabled6;
+        _pipeline.Hf8SignalMapper.ZoneEnabled[7] = Hf8ZoneEnabled7;
+        _pipeline.Hf8SignalMapper.SetSourceWeight(0, 0, Hf8SrcSusp0);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(0, 1, Hf8SrcSlip0);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(0, 2, Hf8SrcKerb0);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(0, 3, Hf8SrcLatG0);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(0, 4, Hf8SrcEngine0);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(1, 0, Hf8SrcSusp1);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(1, 1, Hf8SrcSlip1);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(1, 2, Hf8SrcKerb1);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(1, 3, Hf8SrcLatG1);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(1, 4, Hf8SrcEngine1);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(2, 0, Hf8SrcSusp2);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(2, 1, Hf8SrcSlip2);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(2, 2, Hf8SrcKerb2);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(2, 3, Hf8SrcLatG2);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(2, 4, Hf8SrcEngine2);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(3, 0, Hf8SrcSusp3);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(3, 1, Hf8SrcSlip3);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(3, 2, Hf8SrcKerb3);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(3, 3, Hf8SrcLatG3);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(3, 4, Hf8SrcEngine3);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(4, 0, Hf8SrcSusp4);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(4, 1, Hf8SrcSlip4);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(4, 2, Hf8SrcKerb4);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(4, 3, Hf8SrcLatG4);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(4, 4, Hf8SrcEngine4);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(5, 0, Hf8SrcSusp5);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(5, 1, Hf8SrcSlip5);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(5, 2, Hf8SrcKerb5);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(5, 3, Hf8SrcLatG5);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(5, 4, Hf8SrcEngine5);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(6, 0, Hf8SrcSusp6);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(6, 1, Hf8SrcSlip6);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(6, 2, Hf8SrcKerb6);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(6, 3, Hf8SrcLatG6);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(6, 4, Hf8SrcEngine6);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(7, 0, Hf8SrcSusp7);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(7, 1, Hf8SrcSlip7);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(7, 2, Hf8SrcKerb7);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(7, 3, Hf8SrcLatG7);
+        _pipeline.Hf8SignalMapper.SetSourceWeight(7, 4, Hf8SrcEngine7);
+
         _pipeline.GripGuard.Enabled = GripGuardEnabled;
         _pipeline.GripGuard.PeakSlipAngle = GripGuardPeakSlipAngle;
         _pipeline.GripGuard.AttenuationStrength = GripGuardAttenuationStrength;
         _pipeline.GripGuard.MechanicalTrailGain = GripGuardMechanicalTrailGain;
         _pipeline.GripGuard.MinSpeedKmh = GripGuardMinSpeedKmh;
+
+        _pipeline.SoftLockEnabled = SoftLockEnabled;
+        _pipeline.SoftLockStrength = SoftLockStrength;
+        _pipeline.SoftLockDegrees = SoftLockDegrees;
+        _pipeline.GyroEnabled = GyroEnabled;
+        _pipeline.GyroGain = GyroGain;
+        _pipeline.TcWheelEnabled = TcWheelEnabled;
+        _pipeline.TcWheelGain = TcWheelGain;
 
         _pipeline.CrashDetector.Enabled = CrashEnabled;
         _pipeline.CrashDetector.ImpactGain = CrashImpactGain;

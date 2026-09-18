@@ -9,7 +9,6 @@ public sealed partial class MainViewModel
 {
     // ── Pedal Config (from global pedal_config.json) ──
     [ObservableProperty] private bool _pedalInputEnabled;
-    [ObservableProperty] private string _pedalSourceType = "—";
     [ObservableProperty] private float _pedalGasDeadzone;
     [ObservableProperty] private float _pedalBrakeDeadzone;
     [ObservableProperty] private float _pedalClutchDeadzone;
@@ -205,7 +204,6 @@ public sealed partial class MainViewModel
             PedalLiveBrake = pedalState.BrakeInput;
             PedalLiveClutch = pedalState.ClutchInput;
             PedalLiveSource = pedalState.Source.ToString();
-            PedalSourceType = pedalState.Source.ToString();
 
             if (_pedalUpdateCounter++ % 30 == 0)
                 PedalDiagnosticInfo = pedalInput.GetDiagnosticSummary();

@@ -1,7 +1,10 @@
 <UserControl x:Class="AcEvoFfbTuner.Views.Pages.ProfilesPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls">
     <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
         <Style x:Key="FilterPillStyle" TargetType="RadioButton">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="#FF8B949E" />
@@ -67,32 +70,130 @@
     </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" MinWidth="400" />
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="480" />
+            <ColumnDefinition Width="370" MinWidth="320" MaxWidth="440" />
+            <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- LEFT: Profile management -->
-        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,20">
-            <StackPanel HorizontalAlignment="Stretch">
+        <!-- ═══ LEFT: COMPACT PROFILE NAV (click a section → details on the right) ═══ -->
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,16,12,20">
+            <StackPanel>
 
-                <TextBlock Text="PROFILES" FontSize="24" FontWeight="Black" Foreground="#FFF0883E" Margin="0,0,0,4" />
-                <TextBlock Text="Manage your FFB profiles for different cars and tracks" FontSize="15" Foreground="#FF8B949E" Margin="0,0,0,16" TextWrapping="Wrap" />
-                <Border Background="#FF30363D" Height="1" Margin="0,0,0,24" />
+                <TextBlock Text="P R O F I L E S" FontSize="12" FontWeight="Bold"
+                           Foreground="{StaticResource TextDimBrush}" Margin="0,4,0,8" />
+                <TextBlock Text="Manage your FFB profiles for different cars and tracks." FontSize="12"
+                           Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap" />
 
-                <!-- CURRENT PROFILE + DETECTION side by side -->
-                <Grid Margin="0,0,0,24">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                <!-- CURRENT PROFILE -->
+                <controls:SectionCard Title="CURRENT PROFILE"
+                                      Tag="Current"
+                                      SectionBrush="#FFF0883E"
+                                      Selectable="True" IsSelected="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="{Binding SelectedProfile.Name, FallbackValue='No profile', TargetNullValue='No profile'}" Foreground="#FFF0883E" />
+                            <Run Text="{Binding ProfileCarMatch, StringFormat='  ·  Car: {0}'}" Foreground="#FF8B949E" />
+                            <Run Text="{Binding ProfileTrackMatch, StringFormat='  ·  Track: {0}'}" Foreground="#FF8B949E" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- DETECTION -->
+                <controls:SectionCard Title="DETECTION"
+                                      Tag="Detection"
+                                      SectionBrush="#FF79C0FF"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="{Binding DetectedCarModel, StringFormat='Car: {0}'}" Foreground="#FF79C0FF" />
+                            <Run Text="  ·  " /><Run Text="{Binding DetectedTrackName, StringFormat='Track: {0}'}" Foreground="#FF79C0FF" />
+                            <Run Text="  ·  " /><Run Text="{Binding IsPerCarAutoLoadEnabled, StringFormat='Auto-load: {0}'}" Foreground="#FF79C0FF" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- ACTIONS -->
+                <controls:SectionCard Title="ACTIONS"
+                                      Tag="Actions"
+                                      SectionBrush="#FF56D4A0"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                                <Run Text="Save · Save As · Rename · Delete" Foreground="#FF56D4A0" />
+                            </TextBlock>
+                            <Border Background="#30363D" CornerRadius="3" Padding="6,1" Margin="8,0,0,0"
+                                    Visibility="{Binding IsBuiltInProfileSelected, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="BUILT-IN" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" />
+                            </Border>
+                        </StackPanel>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- IMPORT / EXPORT -->
+                <controls:SectionCard Title="IMPORT / EXPORT"
+                                      Tag="Import"
+                                      SectionBrush="#FFD2A8FF"
+                                      Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="JSON export · Import · " Foreground="#FFD2A8FF" />
+                            <Run Text="Share to Hub" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- PROFILE BROWSER -->
+                <controls:SectionCard Title="PROFILE BROWSER"
+                                       Tag="Browser"
+                                       SectionBrush="#FFE3B341"
+                                       Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="{Binding Profiles.Count, Mode=OneWay, StringFormat='{}{0} profiles'}" Foreground="#FFE3B341" />
+                            <Run Text="  ·  " /><Run Text="search, filter, group by track or car" Foreground="#FFE3B341" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- A/B COMPARE -->
+                <controls:SectionCard Title="A/B COMPARE"
+                                       Tag="AbCompare"
+                                       SectionBrush="#FF4FC3F7"
+                                       Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="{Binding AbActiveSlot, Mode=OneWay, StringFormat='Active: {0}', FallbackValue='Active: —'}" Foreground="#FF4FC3F7" />
+                            <Run Text="  ·  " /><Run Text="capture two setups, toggle, diff" Foreground="#FF4FC3F7" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ═══ RIGHT: SELECTED PROFILE SECTION ═══ -->
+        <Border Grid.Column="1" Margin="0,16,24,20"
+                Background="{StaticResource BgPanel}"
+                BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                CornerRadius="10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <!-- Section header -->
+                    <StackPanel Margin="24,20,24,0">
+                        <DockPanel>
+                            <Border x:Name="DetailHeaderAccent" DockPanel.Dock="Left" Width="4"
+                                    CornerRadius="2" Background="#FFF0883E"
+                                    VerticalAlignment="Stretch" />
+                            <TextBlock x:Name="DetailHeader" Text="CURRENT PROFILE" FontSize="18" FontWeight="Bold"
+                                       Foreground="#FFF0883E"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" />
+                        </DockPanel>
+                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,12,0,16" />
+                    </StackPanel>
 
                     <!-- CURRENT PROFILE -->
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="CURRENT PROFILE" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
+                    <StackPanel x:Name="DtlCurrent">
                         <TextBlock Text="Select and configure the active FFB profile." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
-
                         <Border Background="#FF1C2128" CornerRadius="8" Padding="16,14"
                                 BorderThickness="1" BorderBrush="#FF30363D">
                             <StackPanel>
@@ -129,15 +230,24 @@
                                             Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}"
                                             ToolTip="Fill from detected track name" />
                                 </Grid>
+
+                                <TextBlock Text="Auto Setup" FontSize="14" Foreground="#FFE6EDF3" Margin="0,12,0,4" />
+                                <TextBlock Text="Generate a wheel-matched profile from the connected device." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,4" TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Auto Setup from Wheel" Command="{Binding AutoSetupCommand}"
+                                            IsEnabled="{Binding IsAutoSetupAvailable}"
+                                            Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}"
+                                            ToolTip="Create a profile tuned to the connected wheelbase torque" />
+                                    <TextBlock Text="{Binding AutoSetupStatus}" FontSize="12" Foreground="#FF8B949E"
+                                               VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                     </StackPanel>
 
-                    <!-- DETECTION & AUTO-LOAD -->
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="DETECTION" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
+                    <!-- DETECTION -->
+                    <StackPanel x:Name="DtlDetection" Visibility="Collapsed">
                         <TextBlock Text="Live telemetry detection from AC EVO." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
-
                         <Border Background="#FF1C2128" CornerRadius="8" Padding="16,14"
                                 BorderThickness="1" BorderBrush="#FF30363D">
                             <StackPanel>
@@ -190,21 +300,10 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                </Grid>
-
-                <!-- ACTIONS + IMPORT/EXPORT side by side -->
-                <Grid Margin="0,0,0,24">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
 
                     <!-- ACTIONS -->
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="ACTIONS" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
+                    <StackPanel x:Name="DtlActions" Visibility="Collapsed">
                         <TextBlock Text="Save, rename, or delete the current profile." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
-
                         <Border Background="#FF1C2128" CornerRadius="8" Padding="16,14"
                                 BorderThickness="1" BorderBrush="#FF30363D">
                             <StackPanel>
@@ -251,10 +350,8 @@
                     </StackPanel>
 
                     <!-- IMPORT / EXPORT -->
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="IMPORT / EXPORT" FontSize="18" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,4" />
+                    <StackPanel x:Name="DtlImport" Visibility="Collapsed">
                         <TextBlock Text="Share profiles or back them up to file." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
-
                         <Border Background="#FF1C2128" CornerRadius="8" Padding="16,14"
                                 BorderThickness="1" BorderBrush="#FF30363D">
                             <StackPanel>
@@ -265,92 +362,119 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                </Grid>
 
-            </StackPanel>
-        </ScrollViewer>
+                    <!-- PROFILE BROWSER -->
+                    <StackPanel x:Name="DtlBrowser" Visibility="Collapsed">
+                        <TextBlock Text="Browse and organise your profiles by list, track, or car." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
 
-        <!-- Divider -->
-        <Border Grid.Column="1" Background="#FF30363D" Width="1" Margin="0,16,0,16" />
-
-        <!-- RIGHT: Profile browser sidebar -->
-        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="0,20,16,16">
-            <StackPanel>
-                <TextBlock Text="PROFILE BROWSER" FontSize="14" FontWeight="Bold" Foreground="#FFF0883E" Margin="8,0,0,8" />
-                <TextBlock Text="Browse and organise your profiles by list, track, or car." FontSize="12" Foreground="#FF8B949E" Margin="8,0,0,10" TextWrapping="Wrap" />
-
-                <!-- Modern filter bar -->
-                <Border Background="#FF1C2128" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D" Padding="0" Margin="0,0,0,12">
-                    <StackPanel>
-                        <!-- Row 1: Search + View mode -->
-                        <Grid Margin="8,6,8,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <!-- Search box -->
-                            <Border Background="#FF161B22" CornerRadius="6" Padding="8,4" BorderThickness="1" BorderBrush="#FF30363D">
-                                <Grid>
+                        <!-- Modern filter bar -->
+                        <Border Background="#FF1C2128" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D" Padding="0" Margin="0,0,0,12">
+                            <StackPanel>
+                                <!-- Row 1: Search + View mode -->
+                                <Grid Margin="8,6,8,4">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="&#x1F50D;" FontSize="11" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBox x:Name="SearchBox" Grid.Column="1"
-                                             Background="Transparent" BorderThickness="0"
-                                             Foreground="#FFE6EDF3" FontSize="12"
-                                             TextChanged="OnSearchTextChanged"
-                                             ToolTip="Search profiles by name" />
+
+                                    <!-- Search box -->
+                                    <Border Background="#FF161B22" CornerRadius="6" Padding="8,4" BorderThickness="1" BorderBrush="#FF30363D">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="&#x1F50D;" FontSize="11" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBox x:Name="SearchBox" Grid.Column="1"
+                                                     Background="Transparent" BorderThickness="0"
+                                                     Foreground="#FFE6EDF3" FontSize="12"
+                                                     TextChanged="OnSearchTextChanged"
+                                                     ToolTip="Search profiles by name" />
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- View mode toggle -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+                                        <RadioButton x:Name="ViewList" GroupName="ProfileViewMode" IsChecked="True"
+                                                     Checked="OnViewModeChanged" ToolTip="List View"
+                                                     Style="{StaticResource IconRadioButton}"
+                                                     FontFamily="Segoe MDL2 Assets" Content="&#xE8FD;" />
+                                        <RadioButton x:Name="ViewByTrack" GroupName="ProfileViewMode"
+                                                     Checked="OnViewModeChanged" ToolTip="Group by Track"
+                                                     Style="{StaticResource IconRadioButton}"
+                                                     FontSize="16" Content="⎔" />
+                                        <RadioButton x:Name="ViewByCar" GroupName="ProfileViewMode"
+                                                     Checked="OnViewModeChanged" ToolTip="Group by Car"
+                                                     Style="{StaticResource IconRadioButton}"
+                                                     FontFamily="Segoe MDL2 Assets" Content="&#xE804;" />
+                                    </StackPanel>
                                 </Grid>
-                            </Border>
 
-                            <!-- View mode toggle -->
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
-                                <RadioButton x:Name="ViewList" GroupName="ProfileViewMode" IsChecked="True"
-                                             Checked="OnViewModeChanged" ToolTip="List View"
-                                             Style="{StaticResource IconRadioButton}"
-                                             FontFamily="Segoe MDL2 Assets" Content="&#xE8FD;" />
-                                <RadioButton x:Name="ViewByTrack" GroupName="ProfileViewMode"
-                                             Checked="OnViewModeChanged" ToolTip="Group by Track"
-                                             Style="{StaticResource IconRadioButton}"
-                                             FontSize="16" Content="⎔" />
-                                <RadioButton x:Name="ViewByCar" GroupName="ProfileViewMode"
-                                             Checked="OnViewModeChanged" ToolTip="Group by Car"
-                                             Style="{StaticResource IconRadioButton}"
-                                             FontFamily="Segoe MDL2 Assets" Content="&#xE804;" />
+                                <!-- Divider -->
+                                <Border Background="#FF30363D" Height="1" Margin="0,0,0,4" />
+
+                                <!-- Row 2: Game filter pills -->
+                                <StackPanel Orientation="Horizontal" Margin="8,0,8,8">
+                                    <RadioButton x:Name="GameFilterAll" Content="All Games" GroupName="GameFilter" IsChecked="True"
+                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Checked="OnGameFilterChanged" />
+                                    <RadioButton x:Name="GameFilterAcEvo" Content="AC EVO" GroupName="GameFilter"
+                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Checked="OnGameFilterChanged" />
+                                    <RadioButton x:Name="GameFilterRaceroom" Content="RaceRoom" GroupName="GameFilter"
+                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Checked="OnGameFilterChanged" />
+                                    <RadioButton x:Name="GameFilterAssettoCorsa" Content="Assetto Corsa" GroupName="GameFilter"
+                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Checked="OnGameFilterChanged" />
+                                    <RadioButton x:Name="GameFilterLeMansUltimate" Content="Le Mans Ultimate" GroupName="GameFilter"
+                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Checked="OnGameFilterChanged" />
+                                    <RadioButton x:Name="GameFilterAcc" Content="ACC" GroupName="GameFilter"
+                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Checked="OnGameFilterChanged" />
+                                </StackPanel>
                             </StackPanel>
-                        </Grid>
+                        </Border>
 
-                        <!-- Divider -->
-                        <Border Background="#FF30363D" Height="1" Margin="0,0,0,4" />
-
-                        <!-- Row 2: Game filter pills -->
-                        <StackPanel Orientation="Horizontal" Margin="8,0,8,8">
-                            <RadioButton x:Name="GameFilterAll" Content="All Games" GroupName="GameFilter" IsChecked="True"
-                                         Style="{StaticResource FilterPillStyle}"
-                                         Checked="OnGameFilterChanged" />
-                            <RadioButton x:Name="GameFilterAcEvo" Content="AC EVO" GroupName="GameFilter"
-                                         Style="{StaticResource FilterPillStyle}"
-                                         Checked="OnGameFilterChanged" />
-                            <RadioButton x:Name="GameFilterRaceroom" Content="RaceRoom" GroupName="GameFilter"
-                                         Style="{StaticResource FilterPillStyle}"
-                                         Checked="OnGameFilterChanged" />
-                            <RadioButton x:Name="GameFilterAssettoCorsa" Content="Assetto Corsa" GroupName="GameFilter"
-                                         Style="{StaticResource FilterPillStyle}"
-                                         Checked="OnGameFilterChanged" />
-                            <RadioButton x:Name="GameFilterLeMansUltimate" Content="Le Mans Ultimate" GroupName="GameFilter"
-                                         Style="{StaticResource FilterPillStyle}"
-                                         Checked="OnGameFilterChanged" />
-                        </StackPanel>
+                        <!-- Profile list / tree -->
+                        <Border Background="#FF161B22" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D">
+                            <StackPanel x:Name="ProfileBrowserPanel" />
+                        </Border>
                     </StackPanel>
-                </Border>
 
-                <!-- Profile list / tree -->
-                <Border Background="#FF161B22" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D">
-                    <StackPanel x:Name="ProfileBrowserPanel" />
-                </Border>
-            </StackPanel>
-        </ScrollViewer>
+                    <!-- A/B COMPARE -->
+                    <StackPanel x:Name="DtlAbCompare" Visibility="Collapsed">
+                        <TextBlock Text="Capture two live setups, toggle between them, and see exactly what differs." FontSize="14" Foreground="#FF8B949E" Margin="0,0,0,12" TextWrapping="Wrap" />
+                        <Border Background="#FF1C2128" CornerRadius="8" Padding="16,14"
+                                BorderThickness="1" BorderBrush="#FF30363D">
+                            <StackPanel>
+                                <TextBlock Text="{Binding AbSlotAName, FallbackValue='A: (empty)'}" FontSize="13" Foreground="#FF4FC3F7" Margin="0,0,0,2" />
+                                <TextBlock Text="{Binding AbSlotBName, FallbackValue='B: (empty)'}" FontSize="13" Foreground="#FF4FC3F7" Margin="0,0,0,12" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <Button Content="Capture A" Command="{Binding CaptureAbSlotACommand}" Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}" Margin="0,0,6,0" ToolTip="Snapshot current settings into slot A" />
+                                    <Button Content="Capture B" Command="{Binding CaptureAbSlotBCommand}" Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}" Margin="0,0,6,0" ToolTip="Snapshot current settings into slot B" />
+                                    <Button Content="Toggle A/B" Command="{Binding ToggleAbSlotCommand}" Padding="10,4" FontSize="13" ToolTip="Switch live FFB between slot A and slot B" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding AbActiveSlot, StringFormat='Active slot: {0}', FallbackValue='Active slot: —'}" FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,6" />
+                                <TextBox Text="{Binding AbDiffText, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                                         FontFamily="Consolas" FontSize="12" MinHeight="120" MaxHeight="240"
+                                         VerticalScrollBarVisibility="Auto" Background="#FF161B22" Foreground="#FFE6EDF3"
+                                         BorderThickness="1" BorderBrush="#FF30363D" Padding="8" Margin="0,0,0,12" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="LAP DELTA" FontSize="12" FontWeight="Bold" Foreground="#FF4FC3F7" VerticalAlignment="Center" />
+                                    <Button Content="Refresh" Command="{Binding RefreshAbLapSummaryCommand}" Padding="10,2" FontSize="12" Style="{StaticResource OutlinedButton}" Margin="8,0,0,0" ToolTip="Re-read completed laps grouped by setup" />
+                                </StackPanel>
+                                <TextBox Text="{Binding AbLapSummaryText, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                                         FontFamily="Consolas" FontSize="12" MinHeight="80" MaxHeight="200"
+                                         VerticalScrollBarVisibility="Auto" Background="#FF161B22" Foreground="#FFE6EDF3"
+                                         BorderThickness="1" BorderBrush="#FF30363D" Padding="8" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
     </Grid>
 </UserControl>

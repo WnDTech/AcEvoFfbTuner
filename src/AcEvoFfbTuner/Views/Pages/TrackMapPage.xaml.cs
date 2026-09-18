@@ -851,7 +851,12 @@ public partial class TrackMapPage : UserControl
             return;
         }
 
-        if (SatelliteMapCtrl.Visibility != Visibility.Visible) return;
+        if (SatelliteMapCtrl.Visibility != Visibility.Visible)
+        {
+            if (DataContext is MainViewModel vmHidden)
+                vmHidden.StatusText = "Satellite map is hidden — show it to calibrate position";
+            return;
+        }
 
         var trackName = (DataContext as MainViewModel)?.DetectedTrackName;
         if (!string.IsNullOrWhiteSpace(trackName))
@@ -1022,7 +1027,29 @@ public partial class TrackMapPage : UserControl
     {
         try
         {
-            await _trackDataService.LoadTrackDataAsync(trackName);
+            // Live game GPS first (EVO reports real lat/lon for ANY track incl. mods),
+            // then gazetteer/Nominatim inside the service. Config + official length
+            // make the cache layout-aware and validate the OSM candidate.
+            double? lat = null, lon = null;
+            string? config = null;
+            double officialLengthM = 0;
+            if (DataContext is MainViewModel vm)
+            {
+                if (vm.TrackLatitude != 0 || vm.TrackLongitude != 0)
+                {
+                    lat = vm.TrackLatitude;
+                    lon = vm.TrackLongitude;
+                }
+                config = string.IsNullOrWhiteSpace(vm.DetectedTrackConfig) ? null : vm.DetectedTrackConfig;
+                officialLengthM = vm.OfficialTrackLengthM;
+            }
+            // Fall back to the page's last-known geo when the VM has none yet.
+            if (!lat.HasValue && (_lastKnownLat != 0 || _lastKnownLon != 0))
+            {
+                lat = _lastKnownLat;
+                lon = _lastKnownLon;
+            }
+            await _trackDataService.LoadTrackDataAsync(trackName, null, lat, lon, false, config, officialLengthM);
         }
         catch { }
     }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
@@ -5,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using AcEvoFfbTuner.Controls;
 using AcEvoFfbTuner.Core.Profiles;
 using AcEvoFfbTuner.ViewModels;
 
@@ -16,6 +18,8 @@ public partial class ProfilesPage : UserControl
     private string _filterGame = "";
     private string _filterSearch = "";
     private readonly Dictionary<string, bool> _groupCollapsedState = new();
+    private readonly Dictionary<string, SectionCard> _cardsByTag = new();
+    private readonly Dictionary<string, FrameworkElement> _panels = new();
     private static readonly string AppDataPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
     private static readonly string StateFilePath = Path.Combine(AppDataPath, "browser_state.json");
@@ -33,7 +37,75 @@ public partial class ProfilesPage : UserControl
     public ProfilesPage()
     {
         InitializeComponent();
+        Loaded += OnLoaded;
         DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        CacheCards();
+        BuildPanelMap();
+        ShowSection("Current");
+    }
+
+    private void CacheCards()
+    {
+        foreach (var card in FindSectionCards(this))
+        {
+            if (card.Tag is string tag && !string.IsNullOrEmpty(tag) && !_cardsByTag.ContainsKey(tag))
+            {
+                _cardsByTag[tag] = card;
+                card.Selected += OnCardSelected;
+            }
+        }
+    }
+
+    private void BuildPanelMap()
+    {
+        _panels["Current"] = DtlCurrent;
+        _panels["Detection"] = DtlDetection;
+        _panels["Actions"] = DtlActions;
+        _panels["Import"] = DtlImport;
+        _panels["Browser"] = DtlBrowser;
+        _panels["AbCompare"] = DtlAbCompare;
+    }
+
+    private void OnCardSelected(object sender, RoutedEventArgs e)
+    {
+        if (sender is SectionCard card && card.Tag is string tag)
+            ShowSection(tag);
+    }
+
+    private void ShowSection(string tag)
+    {
+        if (!_cardsByTag.TryGetValue(tag, out var card)) return;
+        if (!_panels.TryGetValue(tag, out var panel)) return;
+
+        foreach (var kv in _panels)
+            kv.Value.Visibility = kv.Key == tag ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (var kv in _cardsByTag)
+            kv.Value.IsSelected = kv.Key == tag;
+
+        DetailHeader.Text = card.Title;
+        var brush = card.SectionBrush ?? (Brush)FindResource("SectionOutput");
+        DetailHeader.Foreground = brush;
+        DetailHeaderAccent.Background = brush;
+    }
+
+    private static IEnumerable<SectionCard> FindSectionCards(DependencyObject parent)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(parent))
+        {
+            if (child is SectionCard sectionCard)
+                yield return sectionCard;
+
+            if (child is DependencyObject depChild)
+            {
+                foreach (var nested in FindSectionCards(depChild))
+                    yield return nested;
+            }
+        }
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -94,6 +166,8 @@ public partial class ProfilesPage : UserControl
             _filterGame = "Assetto Corsa";
         else if (ReferenceEquals(sender, GameFilterLeMansUltimate))
             _filterGame = "Le Mans Ultimate";
+        else if (ReferenceEquals(sender, GameFilterAcc))
+            _filterGame = "AssettoCorsaCompetizione";
 
         RebuildBrowser();
     }
