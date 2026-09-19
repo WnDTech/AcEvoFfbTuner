@@ -114,9 +114,40 @@ public sealed partial class MainViewModel
             IsClipping = processed.IsClipping;
             SpeedKmh = processed.SpeedKmh;
             PushOledTelemetry(processed.SpeedKmh, raw.Gear);
-            var g = raw.DisplayAccG?.Length > 0 && raw.DisplayAccG.Any(v => v != 0) ? raw.DisplayAccG : raw.AccG;
-            LatG = g?.Length > 0 ? g[0] : 0f;
-            LongG = g?.Length > 1 ? g[1] : 0f;
+            // Canonical G (units of g). Axis order AND units differ per game —
+            // index [1] is VERTICAL (gravity) in every layout, never longitudinal:
+            // - EVO/AC: AccG already in g, layout [lat(X), vert(Y), lon(Z)].
+            //   (G units proven by FfbCrashDetector: threshold 3G + enabled by
+            //   default would false-trigger constantly on m/s² data.)
+            // - ACC: AccG in m/s² (see TelemetryBrowser ExploreAccPhysicsFields
+            //   "m/s2" label), same [X, Y, Z] layout.
+            // - R3E: AccG is a zeroed placeholder; DisplayAccG = LocalAcceleration
+            //   in m/s² with layout [X, Z, Y] (AGENTS.md: +X=left, +Y=up, +Z=back).
+            // - LMU: AccG raw m/s², layout [x, y, z] (mirrors the tested
+            //   FfbLiveServer G-meter: gx=AccG[0], gz=AccG[2], /9.80665).
+            const float Ms2ToG = 1f / 9.80665f;
+            if (IsLeMansUltimate)
+            {
+                LatG = raw.AccG.Length > 0 ? raw.AccG[0] * Ms2ToG : 0f;
+                LongG = raw.AccG.Length > 2 ? raw.AccG[2] * Ms2ToG : 0f;
+            }
+            else if (IsRaceroom)
+            {
+                var d = raw.DisplayAccG;
+                LatG = d.Length > 0 ? d[0] * Ms2ToG : 0f;
+                LongG = d.Length > 1 ? d[1] * Ms2ToG : 0f;
+            }
+            else if (IsAssettoCorsaCompetizione)
+            {
+                LatG = raw.AccG.Length > 0 ? raw.AccG[0] * Ms2ToG : 0f;
+                LongG = raw.AccG.Length > 2 ? raw.AccG[2] * Ms2ToG : 0f;
+            }
+            else
+            {
+                // EVO + AC: already in g.
+                LatG = raw.AccG.Length > 0 ? raw.AccG[0] : 0f;
+                LongG = raw.AccG.Length > 2 ? raw.AccG[2] : 0f;
+            }
             ActiveLedCount = _deviceManager.ActiveLedCount;
 
             float highFreqHaptics = processed.VibrationForce;
@@ -128,6 +159,10 @@ public sealed partial class MainViewModel
 
             if (IsGameConnected && raw.FfbStrength > 0.01f && !ShowGameFfbWarning && _ffbWarningDismissed != true)
                 ShowGameFfbWarning = true;
+            // Normalized steer saturates at the game's real lock in every game
+            // (EVO/AC/ACC physics, R3E SteerInputRaw, LMU unfiltered steering),
+            // so % of lock is derived from this, not from degrees ÷ profile lock.
+            SteerNormalized = Math.Clamp(raw.SteerAngle, -1f, 1f);
             if (IsAcEvo)
             {
                 // EVO graphics page reports the actual steering wheel rotation in
@@ -700,6 +735,7 @@ public sealed partial class MainViewModel
             if (float.IsNaN(axis)) return;
             int lockDeg = SteeringLockDegrees;
             if (lockDeg <= 0) lockDeg = 900;
+            SteerNormalized = Math.Clamp(axis, -1f, 1f);
             SteerAngle = axis * (lockDeg / 2f);
         }
         catch { }

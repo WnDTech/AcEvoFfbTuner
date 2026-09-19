@@ -174,6 +174,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private float _steerAngle;
 
+    /// <summary>
+    /// Normalized steer -1..+1 straight from game telemetry. Saturates at the
+    /// game's ACTUAL lock, unlike SteerAngle (degrees) which is scaled by the
+    /// static profile lock. This is the source of truth for % of lock.
+    /// </summary>
+    [ObservableProperty]
+    private float _steerNormalized;
+
     [ObservableProperty]
     private float _latG;
 
@@ -248,6 +256,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private float _fyScale = 5000f;
+
+    [ObservableProperty]
+    private float _viscousDamping = 0.15f;
 
     [ObservableProperty]
     private float _speedDamping = 0.3f;
@@ -2226,6 +2237,27 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public string MaxForceLimitPercentText => $"{MaxForceLimit * 100:F0}%";
     public string OutputGainNmText => $"{OutputGain:F3} (peak {MaxForceLimit * WheelMaxTorqueNm:F2} Nm)";
     public string CrashSafetyClampPercentText => $"{CrashSafetyClamp * 100:F0}% ({CrashSafetyClamp * MaxForceLimit * WheelMaxTorqueNm:F2} Nm max)";
+
+    // ── Home cockpit instruments (real units, display helpers) ──────────────
+    // CurrentForceOutput is normalized -1..1 (DirectInput). Estimated wheel
+    // torque = |normalized| × wheel max torque. Clipping is already applied
+    // inside the pipeline, so no extra MaxForceLimit factor here.
+    public float ForceNm => Math.Abs(CurrentForceOutput) * Math.Max(WheelMaxTorqueNm, 0.1f);
+    public float ForcePercent => Math.Abs(CurrentForceOutput) * 100f;
+    public string ForceDirectionText => CurrentForceOutput > 0.02f ? "◀ LEFT"
+        : CurrentForceOutput < -0.02f ? "RIGHT ▶" : "· CENTER ·";
+    public float GTotal => MathF.Sqrt(LatG * LatG + LongG * LongG);
+    public float SteerAbsDegrees => Math.Abs(SteerAngle);
+    public string SteerDirectionText => SteerAngle > 2f ? "R" : SteerAngle < -2f ? "L" : "–";
+    public bool IsSteeringLeft => SteerAngle < -2f;
+    public bool IsSteeringRight => SteerAngle > 2f;
+    public float SteerLockHalf => (SteeringLockDegrees > 0 ? SteeringLockDegrees : 900) / 2f;
+    // % of TOTAL lock-to-lock travel currently in use: normalized telemetry
+    // saturates at ±1 at the game's real lock, so center reads 0% and full
+    // lock either way reads 50% (half of the full left-to-right travel).
+    public float SteerPercentOfLock => Math.Min(50f, Math.Abs(SteerNormalized) * 50f);
+    public string SteerLockText => $"{(SteeringLockDegrees > 0 ? SteeringLockDegrees : 900)}° lock";
+    public string WheelMaxTorqueText => $"{WheelMaxTorqueNm:F1} Nm max";
 
     public double ForceBarFillHeight => Math.Min(200, Math.Max(0, Math.Abs(CurrentForceOutput)) * 200);
     public double SpeedNeedleAngle => -90 + (Math.Min(360, Math.Max(0, SpeedKmh)) / 360.0) * 180;

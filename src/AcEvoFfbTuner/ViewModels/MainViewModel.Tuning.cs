@@ -50,6 +50,7 @@ public sealed partial class MainViewModel
     partial void OnFyScaleChanged(float value) => _pipeline.ChannelMixer.FyScale = value;
 
     // ── Damping ───────────────────────────────────────────────────────────
+    partial void OnViscousDampingChanged(float value) => _pipeline.Damping.ViscousCoefficient = value;
     partial void OnSpeedDampingChanged(float value) => _pipeline.Damping.SpeedDampingCoefficient = value;
     partial void OnFrictionLevelChanged(float value) => _pipeline.Damping.FrictionLevel = value;
     partial void OnInertiaWeightChanged(float value) => _pipeline.Damping.InertiaWeight = value;
@@ -204,11 +205,15 @@ public sealed partial class MainViewModel
     {
         if (_pipeline is R3eFfbPipeline r3e)
             r3e.CoreSmoothing = value;
+        else if (_pipeline is LmuFfbPipeline lmu)
+            lmu.CoreSmoothing = value;
     }
     partial void OnDetailSmoothingChanged(float value)
     {
         if (_pipeline is R3eFfbPipeline r3e)
             r3e.DetailSmoothing = value;
+        else if (_pipeline is LmuFfbPipeline lmu)
+            lmu.DetailSmoothing = value;
     }
     partial void OnBrakeBoostGainChanged(float value)
     {
@@ -243,6 +248,10 @@ public sealed partial class MainViewModel
     {
         OnPropertyChanged(nameof(MaxForceLimitNmText));
         OnPropertyChanged(nameof(OutputGainNmText));
+        OnPropertyChanged(nameof(ForceNm));
+        OnPropertyChanged(nameof(ForcePercent));
+        OnPropertyChanged(nameof(WheelMaxTorqueText));
+        OnPropertyChanged(nameof(MaxGaugeForce));
     }
 
     partial void OnOutputGainChanged(float value)
@@ -254,6 +263,33 @@ public sealed partial class MainViewModel
     partial void OnCurrentForceOutputChanged(float value)
     {
         OnPropertyChanged(nameof(ForceBarFillHeight));
+        OnPropertyChanged(nameof(ForceNm));
+        OnPropertyChanged(nameof(ForcePercent));
+        OnPropertyChanged(nameof(ForceDirectionText));
+    }
+
+    partial void OnLatGChanged(float value) => OnPropertyChanged(nameof(GTotal));
+
+    partial void OnLongGChanged(float value) => OnPropertyChanged(nameof(GTotal));
+
+    partial void OnSteerAngleChanged(float value)
+    {
+        OnPropertyChanged(nameof(SteerAbsDegrees));
+        OnPropertyChanged(nameof(SteerDirectionText));
+        OnPropertyChanged(nameof(IsSteeringLeft));
+        OnPropertyChanged(nameof(IsSteeringRight));
+    }
+
+    partial void OnSteerNormalizedChanged(float value)
+    {
+        OnPropertyChanged(nameof(SteerPercentOfLock));
+    }
+
+    partial void OnSteeringLockDegreesChanged(int value)
+    {
+        OnPropertyChanged(nameof(SteerLockHalf));
+        OnPropertyChanged(nameof(SteerPercentOfLock));
+        OnPropertyChanged(nameof(SteerLockText));
     }
 
     partial void OnSpeedKmhChanged(float value) => OnPropertyChanged(nameof(SpeedNeedleAngle));

@@ -706,9 +706,10 @@
                 <TextBlock Grid.Column="5" Text="{Binding PacketsPerSecond, StringFormat='{}{0} pkt/s'}"
                            FontSize="13" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="12,0" />
 
-                <!-- Force Output -->
-                <TextBlock Grid.Column="6" Text="{Binding CurrentForceOutput, StringFormat='{}{0:F3} Nm'}"
-                           FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" FontWeight="Medium" Margin="0,0,12,0" />
+                <!-- Force Output (estimated wheel torque) -->
+                <TextBlock Grid.Column="6" Text="{Binding ForceNm, StringFormat='{}{0:F1} Nm'}"
+                           FontSize="13" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" FontWeight="Medium" Margin="0,0,12,0"
+                           ToolTip="Estimated steering torque: normalized output × wheel max torque." />
 
                 <!-- REC Indicator -->
                 <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">

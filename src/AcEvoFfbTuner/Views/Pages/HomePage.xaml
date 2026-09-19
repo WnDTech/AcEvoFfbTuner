@@ -98,7 +98,6 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <!-- Top strip: speed + status -->
@@ -170,10 +169,6 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Divider -->
-                    <Border Grid.Row="1" Grid.RowSpan="2" VerticalAlignment="Top" HorizontalAlignment="Stretch"
-                            Height="1" Background="#FF21262D" Margin="0,0,0,12" />
-
                     <!-- Main 3-column instrument panel (equal widths) -->
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
@@ -191,75 +186,122 @@
                             </Style>
                         </Grid.Resources>
 
-                        <!-- LEFT: G-Force instrument (fills the box) -->
-                        <Border Grid.Column="0" Style="{StaticResource PanelBorder}" Margin="0,0,6,0">
+                        <!-- LEFT: G-Force (G-G diagram with trail) -->
+                        <Border Grid.Column="0" Style="{StaticResource PanelBorder}" Margin="0,0,6,0" MinHeight="252">
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <Viewbox Grid.Row="0" Stretch="Uniform" MaxWidth="160" Margin="0,0,0,8">
-                                    <Grid Width="100" Height="100">
-                                        <Line X1="50" Y1="4" X2="50" Y2="96" Stroke="#FF21262D" StrokeThickness="1" />
-                                        <Line X1="4" Y1="50" X2="96" Y2="50" Stroke="#FF21262D" StrokeThickness="1" />
-                                        <Ellipse Width="82" Height="82" Stroke="#FF21262D" StrokeThickness="1" />
-                                        <TextBlock Text="G" FontSize="12" Foreground="#FF484F58"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                        <Ellipse x:Name="GForceDot" Width="10" Height="10" Fill="#FF79C0FF"
-                                                 HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                        <Ellipse Width="14" Height="14" Stroke="#3379C0FF" StrokeThickness="2"
-                                                 HorizontalAlignment="Left" VerticalAlignment="Top"
-                                                 Margin="43,43,0,0" IsHitTestVisible="False" />
-                                    </Grid>
-                                </Viewbox>
-                                <StackPanel Grid.Row="1" HorizontalAlignment="Center" Orientation="Horizontal">
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
-                                        <TextBlock Text="LAT" FontSize="9" Foreground="#FF8B949E" Margin="0,0,4,0" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding LatG, StringFormat='{}{0:F2}'}" FontSize="12" Foreground="#FF79C0FF" VerticalAlignment="Center" />
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="G-FORCE" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E"
+                                               VerticalAlignment="Center"
+                                               ToolTip="Lateral vs longitudinal grip load. Trail shows the last ~1 second." />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding GTotal, StringFormat='{}{0:F2}'}" FontSize="16" FontWeight="Bold"
+                                                   Foreground="#FFE6EDF3" FontFamily="Consolas" VerticalAlignment="Center" />
+                                        <TextBlock Text="G" FontSize="11" Foreground="#FF8B949E" Margin="2,3,0,0" VerticalAlignment="Center" />
                                     </StackPanel>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="LNG" FontSize="9" Foreground="#FF8B949E" Margin="0,0,4,0" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding LongG, StringFormat='{}{0:F2}'}" FontSize="12" Foreground="#FF79C0FF" VerticalAlignment="Center" />
+                                </Grid>
+                                <Canvas Grid.Row="1" x:Name="GCanvas" Width="160" Height="160"
+                                        HorizontalAlignment="Center" Margin="0,0,0,8"
+                                        ToolTip="Dot = current load. Outer ring = full scale (auto 2G / 3G / 5G). Fading line = recent history.">
+                                    <Ellipse Canvas.Left="0" Canvas.Top="0" Width="160" Height="160"
+                                             Stroke="#FF21262D" StrokeThickness="1" Fill="#FF11161C" />
+                                    <Ellipse Canvas.Left="40" Canvas.Top="40" Width="80" Height="80"
+                                             Stroke="#FF2A3138" StrokeThickness="1" Fill="Transparent" />
+                                    <Line X1="80" Y1="8" X2="80" Y2="152" Stroke="#FF21262D" StrokeThickness="1" />
+                                    <Line X1="8" Y1="80" X2="152" Y2="80" Stroke="#FF21262D" StrokeThickness="1" />
+                                    <TextBlock x:Name="GInnerLabel" Canvas.Left="84" Canvas.Top="42" Text="1G" FontSize="9" Foreground="#FF484F58" />
+                                    <TextBlock x:Name="GOuterLabel" Canvas.Left="84" Canvas.Top="4" Text="2G" FontSize="9" Foreground="#FF484F58" />
+                                    <Polyline x:Name="GTrail" Stroke="#5579C0FF" StrokeThickness="2"
+                                              StrokeLineJoin="Round" Opacity="0.7" />
+                                    <Ellipse x:Name="GForceDot" Width="12" Height="12" Fill="#FF79C0FF"
+                                             Canvas.Left="74" Canvas.Top="74">
+                                        <Ellipse.Effect>
+                                            <DropShadowEffect ShadowDepth="0" BlurRadius="10" Color="#FF79C0FF" Opacity="0.8" />
+                                        </Ellipse.Effect>
+                                    </Ellipse>
+                                </Canvas>
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left">
+                                        <TextBlock Text="LAT" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding LatG, StringFormat='{}{0:+0.00;-0.00;0.00}G'}" FontSize="13" Foreground="#FF79C0FF"
+                                                   FontFamily="Consolas" VerticalAlignment="Center" />
                                     </StackPanel>
-                                </StackPanel>
+                                    <Ellipse Grid.Column="1" Width="4" Height="4" Fill="#FF30363D" Margin="6,0" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <TextBlock Text="LON" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding LongG, StringFormat='{}{0:+0.00;-0.00;0.00}G'}" FontSize="13" Foreground="#FF79C0FF"
+                                                   FontFamily="Consolas" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
                             </Grid>
                         </Border>
 
-                        <!-- CENTER: Force instrument (vertically centered) -->
-                        <Border Grid.Column="1" Style="{StaticResource PanelBorder}" Margin="3,0">
+                        <!-- CENTER: Output torque (real Nm, bidirectional) -->
+                        <Border Grid.Column="1" Style="{StaticResource PanelBorder}" Margin="3,0" MinHeight="252"
+                                ToolTip="Estimated steering torque at the wheel rim: output × wheel max torque.">
                             <Grid VerticalAlignment="Center">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Text="FORCE" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E"
-                                           HorizontalAlignment="Center" Margin="0,0,0,10" />
-                                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
-                                    <TextBlock Text="{Binding CurrentForceOutput, StringFormat='{}{0:F2}'}"
-                                               FontSize="44" FontWeight="Black" Foreground="#FFE6EDF3" />
-                                    <TextBlock Text="Nm" FontSize="16" Foreground="#FF8B949E" Margin="6,12,0,0" />
-                                </StackPanel>
-                                <Border Grid.Row="2" Background="#FF161B22" CornerRadius="3"
-                                        Height="20" Margin="0,0,0,10" BorderThickness="1" BorderBrush="#FF21262D">
-                                    <Border x:Name="ForceBarFill" Background="#F0883E" CornerRadius="3"
-                                            HorizontalAlignment="Left" Width="0" />
-                                </Border>
-                                <Grid Grid.Row="3">
+                                <Grid Grid.Row="0" Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="OUTPUT TORQUE" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{Binding ForceDirectionText}" FontSize="10" FontWeight="Bold"
+                                               Foreground="#FFF0883E" VerticalAlignment="Center" />
+                                </Grid>
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,2">
+                                    <TextBlock Text="{Binding ForceNm, StringFormat='{}{0:F1}'}"
+                                               FontSize="44" FontWeight="Black" Foreground="#FFE6EDF3" FontFamily="Consolas" />
+                                    <TextBlock Text="Nm" FontSize="16" Foreground="#FF8B949E" Margin="6,14,0,0" />
+                                </StackPanel>
+                                <TextBlock Grid.Row="2" HorizontalAlignment="Center" Margin="0,0,0,8" FontSize="11" Foreground="#FF8B949E">
+                                    <Run Text="{Binding ForcePercent, Mode=OneWay, StringFormat='{}{0:F0}% of '}" /><Run Text="{Binding WheelMaxTorqueText, Mode=OneWay}" />
+                                </TextBlock>
+                                <Border Grid.Row="3" Background="#FF161B22" CornerRadius="4" Height="22"
+                                        Margin="0,0,0,8" BorderThickness="1" BorderBrush="#FF21262D"
+                                        ToolTip="Center = zero. Bar grows left or right with pull direction. White tick = recent peak.">
+                                    <Canvas x:Name="ForceTrack" Height="20" ClipToBounds="True">
+                                        <Rectangle x:Name="ForceCenterTick" Width="2" Height="20" Fill="#FF484F58" />
+                                        <Border x:Name="ForceBarLeft" Height="14" CornerRadius="2" Background="#FFF0883E" Visibility="Collapsed" />
+                                        <Border x:Name="ForceBarRight" Height="14" CornerRadius="2" Background="#FFF0883E" Visibility="Collapsed" />
+                                        <Rectangle x:Name="ForcePeakLeft" Width="2" Height="18" Fill="#FFFFFFFF" Opacity="0.85" Visibility="Collapsed" />
+                                        <Rectangle x:Name="ForcePeakRight" Width="2" Height="18" Fill="#FFFFFFFF" Opacity="0.85" Visibility="Collapsed" />
+                                    </Canvas>
+                                </Border>
+                                <Grid Grid.Row="4">
+                                    <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="{Binding CurrentRawForce, StringFormat='raw {0:F2}'}"
-                                               FontSize="11" Foreground="#FF8B949E" HorizontalAlignment="Left" />
-                                    <Ellipse Grid.Column="1" Width="4" Height="4" Fill="#FF30363D" Margin="4,0" VerticalAlignment="Center" />
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <Ellipse Width="6" Height="6" Margin="0,0,4,0" VerticalAlignment="Center">
+                                               FontSize="10" Foreground="#FF484F58" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                               ToolTip="Raw game torque before shaping. Compare with output above to see how much shaping is applied." />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <Ellipse Width="7" Height="7" Margin="0,0,5,0" VerticalAlignment="Center">
                                             <Ellipse.Style>
                                                 <Style TargetType="Ellipse">
-                                                    <Setter Property="Fill" Value="#FF484F58" />
+                                                    <Setter Property="Fill" Value="#FF7EE787" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsClipping}" Value="True">
                                                             <Setter Property="Fill" Value="#FFFF7B72" />
@@ -268,15 +310,15 @@
                                                 </Style>
                                             </Ellipse.Style>
                                         </Ellipse>
-                                        <TextBlock FontSize="11" Foreground="#FF8B949E" VerticalAlignment="Center">
+                                        <TextBlock FontSize="11" FontWeight="Bold" VerticalAlignment="Center">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Text" Value="OK" />
+                                                    <Setter Property="Foreground" Value="#FF8B949E" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsClipping}" Value="True">
-                                                            <Setter Property="Text" Value="CLIP" />
+                                                            <Setter Property="Text" Value="CLIPPING" />
                                                             <Setter Property="Foreground" Value="#FFFF7B72" />
-                                                            <Setter Property="FontWeight" Value="Bold" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -287,147 +329,72 @@
                             </Grid>
                         </Border>
 
-                        <!-- RIGHT: Steering instrument -->
-                        <Border Grid.Column="2" Style="{StaticResource PanelBorder}" Margin="6,0,0,0">
-                            <StackPanel>
-                                <TextBlock Text="STEERING" FontSize="9" FontWeight="Bold" Foreground="#FF8B949E"
-                                           HorizontalAlignment="Center" Margin="0,0,0,10" />
-                                <Viewbox Stretch="Uniform" MaxWidth="100" MaxHeight="100" Margin="0,0,0,10">
+                        <!-- RIGHT: Steering (wheel + lock position) -->
+                        <Border Grid.Column="2" Style="{StaticResource PanelBorder}" Margin="6,0,0,0" MinHeight="252">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="STEERING" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E"
+                                           HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                <Grid Grid.Row="1" Width="96" Height="96" HorizontalAlignment="Center" Margin="0,0,0,4"
+                                      ToolTip="Live wheel position. Marker shows 12 o'clock.">
                                     <Image x:Name="DashboardWheelImage"
                                            Source="{Binding DashboardWheelImageSource}"
-                                           Width="80" Height="80" Stretch="Uniform"
+                                           Width="88" Height="88" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                            RenderOptions.BitmapScalingMode="HighQuality"
                                            RenderTransformOrigin="0.5,0.5">
                                         <Image.RenderTransform>
                                             <RotateTransform Angle="{Binding SteerAngle}" />
                                         </Image.RenderTransform>
                                     </Image>
-                                </Viewbox>
-                                <TextBlock Text="{Binding SteerAngle, StringFormat='{}{0:F1}°'}"
-                                           FontSize="20" FontWeight="Bold" Foreground="#FFE6EDF3"
-                                           HorizontalAlignment="Center" Margin="0,0,0,4" />
-                                <TextBlock Text="steering angle" FontSize="9" Foreground="#FF8B949E"
-                                           HorizontalAlignment="Center" Margin="0,0,0,6" />
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <Ellipse Width="6" Height="6" Fill="#F0883E" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                    <TextBlock FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsDeviceConnected}" Value="True">
-                                                        <Setter Property="Text" Value="{Binding SteeringLockDegrees, StringFormat='{}{0:F0}° lock'}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                            </StackPanel>
+                                    <TextBlock Text="▼" Foreground="#FFF0883E" FontSize="13" FontWeight="Black"
+                                               HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,-1,0,0"
+                                               IsHitTestVisible="False" />
+                                </Grid>
+                                <Grid Grid.Row="2" HorizontalAlignment="Center" Margin="0,0,0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="36" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="36" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Background="#FF21262D" CornerRadius="3" Padding="7,2"
+                                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0"
+                                            Visibility="{Binding IsSteeringLeft, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="L" FontSize="14" FontWeight="Black"
+                                                   Foreground="#FFF0883E" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding SteerAbsDegrees, StringFormat='{}{0:F0}'}" FontSize="26" FontWeight="Black"
+                                                   Foreground="#FFE6EDF3" FontFamily="Consolas" VerticalAlignment="Center" />
+                                        <TextBlock Text="°" FontSize="18" Foreground="#FF8B949E" Margin="1,2,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Background="#FF21262D" CornerRadius="3" Padding="7,2"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center" Margin="6,0,0,0"
+                                            Visibility="{Binding IsSteeringRight, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="R" FontSize="14" FontWeight="Black"
+                                                   Foreground="#FFF0883E" VerticalAlignment="Center" />
+                                    </Border>
+                                </Grid>
+                                <TextBlock Grid.Row="3" HorizontalAlignment="Center" FontSize="11" Foreground="#FF8B949E" Margin="0,0,0,6">
+                                    <Run Text="{Binding SteerPercentOfLock, Mode=OneWay, StringFormat='{}{0:F0}% of '}" /><Run Text="{Binding SteerLockText, Mode=OneWay}" />
+                                </TextBlock>
+                                <Border Grid.Row="4" Background="#FF161B22" CornerRadius="4" Height="12"
+                                        BorderThickness="1" BorderBrush="#FF21262D"
+                                        ToolTip="Wheel position across full lock: center = straight ahead.">
+                                    <Canvas x:Name="SteerTrack" Height="10" ClipToBounds="True">
+                                        <Rectangle x:Name="SteerCenterTick" Width="2" Height="10" Fill="#FF484F58" />
+                                        <Ellipse x:Name="SteerMarker" Width="10" Height="10" Fill="#FFF0883E" />
+                                    </Canvas>
+                                </Border>
+                            </Grid>
                         </Border>
 
                     </Grid>
-
-                    <!-- Bottom annunciator strip -->
-                    <Border Grid.Row="2" Background="#FF0D1117" CornerRadius="4"
-                            BorderThickness="1" BorderBrush="#FF21262D" Padding="14,8" Margin="0,12,0,0">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,16,0">
-                                <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Fill" Value="#FF484F58" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsGameConnected}" Value="True">
-                                                    <Setter Property="Fill" Value="#FF7EE787" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Ellipse.Style>
-                                </Ellipse>
-                                <TextBlock Text="{Binding GameDisplayName}" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,16,0">
-                                <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Fill" Value="#FF484F58" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsDeviceConnected}" Value="True">
-                                                    <Setter Property="Fill" Value="#FF79C0FF" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Ellipse.Style>
-                                </Ellipse>
-                                <TextBlock Text="{Binding DeviceName}" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,16,0">
-                                <Ellipse Width="6" Height="6" Fill="#F0883E" Margin="0,0,5,0" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding SelectedProfile.Name, FallbackValue='No Profile'}" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="0,0,16,0">
-                                <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Fill" Value="#FF484F58" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsHalHapticEngineActive}" Value="True">
-                                                    <Setter Property="Fill" Value="#FF7EE787" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Ellipse.Style>
-                                </Ellipse>
-                                <TextBlock Text="HAPT" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="5" Orientation="Horizontal" Margin="0,0,16,0">
-                                <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Fill" Value="#FF484F58" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsHalSdkConnected}" Value="True">
-                                                    <Setter Property="Fill" Value="#FF7EE787" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Ellipse.Style>
-                                </Ellipse>
-                                <TextBlock Text="SDK" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="6" Orientation="Horizontal">
-                                <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Fill" Value="#FF484F58" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsHalPeripheralSynced}" Value="True">
-                                                    <Setter Property="Fill" Value="#FF7EE787" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Ellipse.Style>
-                                </Ellipse>
-                                <TextBlock Text="PERIPH" FontSize="10" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
 
                 </Grid>
             </Border>
