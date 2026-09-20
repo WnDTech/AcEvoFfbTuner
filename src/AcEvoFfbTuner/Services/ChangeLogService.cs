@@ -50,6 +50,16 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.28.0-beta.6",
+            Date = new DateTime(2026, 9, 20),
+            Title = "Standstill friction spring sign fix — wheel no longer pulls away from center",
+            Fixes =
+            [
+                "Fixed the standstill static-friction spring pushing the wheel AWAY from center: the elastic force took the same sign as displacement (positive feedback) instead of opposing it — now a restoring spring as designed, verified against tester telemetry (88/88 frames same-sign before the fix)",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.28.0-beta.5",
             Date = new DateTime(2026, 9, 20),
             Title = "Send to Dev now attaches the auto-saved snapshot and profile",

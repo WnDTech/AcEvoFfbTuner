@@ -214,7 +214,10 @@ public sealed class FfbStaticFriction
             forceMagnitude = staticPeak * StaticKineticRatio + kineticForce * (1f - StaticKineticRatio);
         }
 
-        float force = CopySignSafe(forceMagnitude, _displacement);
+        // Restoring spring: oppose the elastic displacement, pulling the wheel
+        // back toward the grab point (center). Same-sign here would be positive
+        // feedback — pushing the wheel away from center.
+        float force = -CopySignSafe(forceMagnitude, _displacement);
 
         // ── Viscous damping ─────────────────────────────────────────────
         float dampingCoeff = raw.IsEngineRunning ? EngineOnDamping : EngineOffDamping;
