@@ -567,6 +567,7 @@
                 <pages:TrackMapPage x:Name="TrackMapPageCtrl" Visibility="Collapsed" />
                 <pages:LiveTrackMapPage x:Name="LiveTrackMapPageCtrl" Visibility="Collapsed" />
                 <pages:TelemetryPage x:Name="TelemetryPageCtrl" Visibility="Collapsed" />
+                <pages:PipelinePage x:Name="PipelinePageCtrl" Visibility="Collapsed" />
                 <pages:FFBCoachPage x:Name="FFBCoachPageCtrl" Visibility="Collapsed" />
                 <pages:DevicesPage x:Name="DevicesPageCtrl" Visibility="Collapsed" />
                 <pages:ProfilesPage x:Name="ProfilesPageCtrl" Visibility="Collapsed" />

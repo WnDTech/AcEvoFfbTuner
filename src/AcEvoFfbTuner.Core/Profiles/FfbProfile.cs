@@ -155,6 +155,10 @@ public sealed class FfbProfile
         pipeline.Damping.FrictionLevel = Damping.Friction;
         pipeline.Damping.InertiaWeight = Damping.Inertia;
         pipeline.Damping.MaxSpeedReference = Damping.MaxSpeedReference;
+        pipeline.Damping.CenterDampFloor = Damping.CenterDampFloor;
+        pipeline.Damping.StraightGain = Damping.StraightGain;
+        pipeline.Damping.StraightSpeedKmh = Damping.StraightSpeedKmh;
+        pipeline.Damping.StraightSteerNorm = Damping.StraightSteerNorm;
 
         pipeline.SlipEnhancer.SlipRatioGain = Slip.SlipRatioGain;
         pipeline.SlipEnhancer.SlipAngleGain = Slip.SlipAngleGain;
@@ -196,6 +200,31 @@ public sealed class FfbProfile
             lmu.CoreForceMultiplier = Slip.CoreForceMultiplier;
             lmu.GripScaleGain = Slip.GripScaleGain;
             lmu.TyreTempGain = Slip.TyreTempGain;
+            lmu.RearGripDetailGain = Slip.RearGripDetailGain;
+            lmu.AutoMinPeak = Slip.AutoMinPeak;
+            lmu.AutoTarget = Slip.AutoTarget;
+            lmu.DcBlockCutoffHz = Slip.DcBlockCutoffHz;
+            lmu.RearFyScale = Slip.RearFyScale;
+            lmu.RearSlipAngleThreshold = Slip.RearSlipAngleThreshold;
+            lmu.RearYawThreshold = Slip.RearYawThreshold;
+            lmu.RearMaxOutput = Slip.RearMaxOutput;
+            lmu.YawOnsetGain = Slip.YawOnsetGain;
+            lmu.YawOnsetThreshold = Slip.YawOnsetThreshold;
+            lmu.YawOnsetDecay = Slip.YawOnsetDecay;
+            lmu.YawOnsetMax = Slip.YawOnsetMax;
+            lmu.SuspRoadScale = Slip.SuspRoadScale;
+            lmu.UseMixerSuspRoad = Slip.UseMixerSuspRoad;
+            lmu.BrakeLoadBias = Slip.BrakeLoadBias;
+            lmu.SynthYawEnabled = Slip.SynthYawEnabled;
+            lmu.SynthAbsEnabled = Slip.SynthAbsEnabled;
+            lmu.SynthTcEnabled = Slip.SynthTcEnabled;
+            lmu.LockupSlipThreshold = Slip.LockupSlipThreshold;
+            lmu.SpinSlipThreshold = Slip.SpinSlipThreshold;
+            // Damping floor is global in the profile (EVO default 0). Old LMU
+            // profiles deserialize 0 — re-assert the LMU-safe 0.03 so existing
+            // users keep on-center authority; explicit non-zero values win.
+            if (Damping.CenterDampFloor <= 0.0001f)
+                lmu.Damping.CenterDampFloor = 0.03f;
         }
 
         // ACC-only: global force multiplier applied to the final output.
@@ -385,7 +414,11 @@ public sealed class FfbProfile
             SpeedDamping = pipeline.Damping.SpeedDampingCoefficient,
             Friction = pipeline.Damping.FrictionLevel,
             Inertia = pipeline.Damping.InertiaWeight,
-            MaxSpeedReference = pipeline.Damping.MaxSpeedReference
+            MaxSpeedReference = pipeline.Damping.MaxSpeedReference,
+            CenterDampFloor = pipeline.Damping.CenterDampFloor,
+            StraightGain = pipeline.Damping.StraightGain,
+            StraightSpeedKmh = pipeline.Damping.StraightSpeedKmh,
+            StraightSteerNorm = pipeline.Damping.StraightSteerNorm
         };
         // Game-specific knobs live on subclass pipelines only. When the active
         // pipeline doesn't carry a knob, preserve the profile's existing value
@@ -427,10 +460,30 @@ public sealed class FfbProfile
             EngineTorqueLfeMod = r3ePipe?.EngineTorqueLfeMod ?? prevSlip.EngineTorqueLfeMod,
             BrakePressureGain = r3ePipe?.BrakePressureGain ?? prevSlip.BrakePressureGain,
             TcFeelGain = r3ePipe?.TcFeelGain ?? prevSlip.TcFeelGain,
-            CoreSmoothing = r3ePipe?.CoreSmoothing ?? prevSlip.CoreSmoothing,
-            DetailSmoothing = r3ePipe?.DetailSmoothing ?? prevSlip.DetailSmoothing,
+            CoreSmoothing = r3ePipe?.CoreSmoothing ?? lmuPipe?.CoreSmoothing ?? prevSlip.CoreSmoothing,
+            DetailSmoothing = r3ePipe?.DetailSmoothing ?? lmuPipe?.DetailSmoothing ?? prevSlip.DetailSmoothing,
             GripScaleGain = lmuPipe?.GripScaleGain ?? prevSlip.GripScaleGain,
             TyreTempGain = lmuPipe?.TyreTempGain ?? prevSlip.TyreTempGain,
+            RearGripDetailGain = lmuPipe?.RearGripDetailGain ?? prevSlip.RearGripDetailGain,
+            AutoMinPeak = lmuPipe?.AutoMinPeak ?? prevSlip.AutoMinPeak,
+            AutoTarget = lmuPipe?.AutoTarget ?? prevSlip.AutoTarget,
+            DcBlockCutoffHz = lmuPipe?.DcBlockCutoffHz ?? prevSlip.DcBlockCutoffHz,
+            RearFyScale = lmuPipe?.RearFyScale ?? prevSlip.RearFyScale,
+            RearSlipAngleThreshold = lmuPipe?.RearSlipAngleThreshold ?? prevSlip.RearSlipAngleThreshold,
+            RearYawThreshold = lmuPipe?.RearYawThreshold ?? prevSlip.RearYawThreshold,
+            RearMaxOutput = lmuPipe?.RearMaxOutput ?? prevSlip.RearMaxOutput,
+            YawOnsetGain = lmuPipe?.YawOnsetGain ?? prevSlip.YawOnsetGain,
+            YawOnsetThreshold = lmuPipe?.YawOnsetThreshold ?? prevSlip.YawOnsetThreshold,
+            YawOnsetDecay = lmuPipe?.YawOnsetDecay ?? prevSlip.YawOnsetDecay,
+            YawOnsetMax = lmuPipe?.YawOnsetMax ?? prevSlip.YawOnsetMax,
+            SuspRoadScale = lmuPipe?.SuspRoadScale ?? prevSlip.SuspRoadScale,
+            UseMixerSuspRoad = lmuPipe != null ? lmuPipe.UseMixerSuspRoad : prevSlip.UseMixerSuspRoad,
+            BrakeLoadBias = lmuPipe?.BrakeLoadBias ?? prevSlip.BrakeLoadBias,
+            SynthYawEnabled = lmuPipe != null ? lmuPipe.SynthYawEnabled : prevSlip.SynthYawEnabled,
+            SynthAbsEnabled = lmuPipe != null ? lmuPipe.SynthAbsEnabled : prevSlip.SynthAbsEnabled,
+            SynthTcEnabled = lmuPipe != null ? lmuPipe.SynthTcEnabled : prevSlip.SynthTcEnabled,
+            LockupSlipThreshold = lmuPipe?.LockupSlipThreshold ?? prevSlip.LockupSlipThreshold,
+            SpinSlipThreshold = lmuPipe?.SpinSlipThreshold ?? prevSlip.SpinSlipThreshold,
             // ACC-only knob; preserved when another game's pipeline is active
             // (the VM value is additionally persisted via SaveProfileMetadata).
             ForceGain = accPipe?.ForceGain ?? prevSlip.ForceGain
@@ -1179,8 +1232,15 @@ public sealed class DampingConfig
     [JsonIgnore]
     public float LowSpeedThreshold { get; set; } = 20f;
 
+    /// <summary>Plan B5: absolute damping-authority floor at center (0 = legacy).</summary>
+    public float CenterDampFloor { get; set; } = 0f;
+    /// <summary>Plan D2: straight-line stability boost (0 = disabled).</summary>
+    public float StraightGain { get; set; } = 0f;
+    public float StraightSpeedKmh { get; set; } = 80f;
+    public float StraightSteerNorm { get; set; } = 0.02f;
+
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { ViscousDamping = S(ViscousDamping); SpeedDamping = S(SpeedDamping); Friction = S(Friction); Inertia = S(Inertia); MaxSpeedReference = S(MaxSpeedReference); }
+    public void SanitizeFloats() { ViscousDamping = S(ViscousDamping); SpeedDamping = S(SpeedDamping); Friction = S(Friction); Inertia = S(Inertia); MaxSpeedReference = S(MaxSpeedReference); CenterDampFloor = S(CenterDampFloor); StraightGain = S(StraightGain); StraightSpeedKmh = S(StraightSpeedKmh); StraightSteerNorm = S(StraightSteerNorm); }
 }
 
 public sealed class SlipConfig
@@ -1203,6 +1263,34 @@ public sealed class SlipConfig
     public float CoreForceMultiplier { get; set; } = 3.0f;
     public float GripScaleGain { get; set; } = 0.6f;
     public float TyreTempGain { get; set; } = 0.0f;
+    // Plan B1/C3: rear-grip detail gain (0 = off, preserves current feel).
+    public float RearGripDetailGain { get; set; } = 0f;
+    // Plan B2: column auto-norm floor/target.
+    public float AutoMinPeak { get; set; } = 1.0f;
+    public float AutoTarget { get; set; } = 1.0f;
+    // Plan B4: DC blocker cutoff Hz (5 = legacy 0.02 @250Hz).
+    public float DcBlockCutoffHz { get; set; } = 5f;
+    // Plan C3: rear-slip warning (all 0/off = inert).
+    public float RearFyScale { get; set; } = 0f;
+    public float RearSlipAngleThreshold { get; set; } = 0.07f;
+    public float RearYawThreshold { get; set; } = 2.0f;
+    public float RearMaxOutput { get; set; } = 0.20f;
+    // Plan C4: yaw-onset impulse (gain/threshold 0 = inert).
+    public float YawOnsetGain { get; set; } = 0f;
+    public float YawOnsetThreshold { get; set; } = 0f;
+    public float YawOnsetDecay { get; set; } = 8f;
+    public float YawOnsetMax { get; set; } = 0.12f;
+    // Plan C5: mixer susp-road scale/gate (1/true = current stacking).
+    public float SuspRoadScale { get; set; } = 1f;
+    public bool UseMixerSuspRoad { get; set; } = true;
+    // Plan C6: brake load bias (0 = legacy scalar only).
+    public float BrakeLoadBias { get; set; } = 0f;
+    // Plan C1: synthesis gates (yaw on; ABS/TC off until tuned).
+    public bool SynthYawEnabled { get; set; } = true;
+    public bool SynthAbsEnabled { get; set; } = false;
+    public bool SynthTcEnabled { get; set; } = false;
+    public float LockupSlipThreshold { get; set; } = -0.12f;
+    public float SpinSlipThreshold { get; set; } = -0.12f;
     public float ForceGain { get; set; } = 2.5f;
     public float TyreGripScale { get; set; } = 1.0f;
     public float FlatspotGain { get; set; } = 1.0f;
@@ -1214,7 +1302,7 @@ public sealed class SlipConfig
     public float DetailSmoothing { get; set; } = 0.0f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); GearSpikeThreshold = S(GearSpikeThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); GripScaleGain = S(GripScaleGain); TyreTempGain = S(TyreTempGain); ForceGain = S(ForceGain); TyreGripScale = S(TyreGripScale); FlatspotGain = S(FlatspotGain); SurfaceFeelGain = S(SurfaceFeelGain); EngineTorqueLfeMod = S(EngineTorqueLfeMod); BrakePressureGain = S(BrakePressureGain); TcFeelGain = S(TcFeelGain); CoreSmoothing = S(CoreSmoothing); DetailSmoothing = S(DetailSmoothing); }
+    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); GearSpikeThreshold = S(GearSpikeThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); GripScaleGain = S(GripScaleGain); TyreTempGain = S(TyreTempGain); ForceGain = S(ForceGain); TyreGripScale = S(TyreGripScale); FlatspotGain = S(FlatspotGain); SurfaceFeelGain = S(SurfaceFeelGain); EngineTorqueLfeMod = S(EngineTorqueLfeMod); BrakePressureGain = S(BrakePressureGain); TcFeelGain = S(TcFeelGain); CoreSmoothing = S(CoreSmoothing); DetailSmoothing = S(DetailSmoothing); RearGripDetailGain = S(RearGripDetailGain); AutoMinPeak = S(AutoMinPeak); AutoTarget = S(AutoTarget); DcBlockCutoffHz = S(DcBlockCutoffHz); RearFyScale = S(RearFyScale); RearSlipAngleThreshold = S(RearSlipAngleThreshold); RearYawThreshold = S(RearYawThreshold); RearMaxOutput = S(RearMaxOutput); YawOnsetGain = S(YawOnsetGain); YawOnsetThreshold = S(YawOnsetThreshold); YawOnsetDecay = S(YawOnsetDecay); YawOnsetMax = S(YawOnsetMax); SuspRoadScale = S(SuspRoadScale); BrakeLoadBias = S(BrakeLoadBias); LockupSlipThreshold = S(LockupSlipThreshold); SpinSlipThreshold = S(SpinSlipThreshold); }
 }
 
 public sealed class DynamicConfig

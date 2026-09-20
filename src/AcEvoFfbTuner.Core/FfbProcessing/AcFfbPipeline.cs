@@ -23,7 +23,7 @@ public sealed class AcFfbPipeline : FfbPipeline
             base.GearShiftFilterEnabled = value;
         }
     }
-    public float GearSpikeThreshold { get; set; } = 3000f;
+    public override float GearSpikeThreshold { get; set; } = 3000f;
     public float BrakeBoostGain { get; set; } = 0.4f;
     public float BrakeBoostThreshold { get; set; } = 0.1f;
 
@@ -84,6 +84,7 @@ public sealed class AcFfbPipeline : FfbPipeline
 
         float coreDamped = Damping.Apply(corePostLut, raw.SpeedKmh, raw.SteerAngle);
         float coreOutput = coreDamped * OutputGain;
+        float stageGainForce = coreOutput;
         coreOutput = _prevCoreOutput * 0.5f + coreOutput * 0.5f;
         _prevCoreOutput = coreOutput;
 
@@ -110,6 +111,7 @@ public sealed class AcFfbPipeline : FfbPipeline
             _startupFadeFrames++;
         }
 
+        float stagePreClip = finalOutput;
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
 
         // Soft-lock end-stop (no-op unless SoftLockEnabled).
@@ -154,5 +156,8 @@ public sealed class AcFfbPipeline : FfbPipeline
             AutoGainApplied = autoGain,
             IsClipping = isClipping,
             GearShiftMuteGain = 1f,
+            StageMixedForce = mixedForce,
+            StageGainForce = stageGainForce,
+            StagePreClipForce = stagePreClip
         };
     }}

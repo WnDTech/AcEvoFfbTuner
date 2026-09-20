@@ -56,10 +56,11 @@ public partial class SidebarControl : UserControl
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Collapsed);
             CollapseBtn.ToolTip = "Expand sidebar";
 
-            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn, NavHubBtn, NavTestDriveBtn, NavOverlaysBtn })
+            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavPipelineBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn, NavHubBtn, NavTestDriveBtn, NavOverlaysBtn })
                 SetTemplateLabelVisibility(btn, "ItemLabel", Visibility.Collapsed);
 
             SetTemplateLabelVisibility(NavLiveMapBtn, "WipBadge", Visibility.Collapsed);
+            SetTemplateLabelVisibility(NavPipelineBtn, "WipBadge", Visibility.Collapsed);
             SetTemplateLabelVisibility(NavMapBtn, "WipBadge", Visibility.Collapsed);
 
             if (CollapseBtn.Template.FindName("CollapseArrow", CollapseBtn) is System.Windows.Shapes.Path arrow)
@@ -74,10 +75,11 @@ public partial class SidebarControl : UserControl
             SetTemplateLabelVisibility(CollapseBtn, "CollapseLabel", Visibility.Visible);
             CollapseBtn.ToolTip = null;
 
-            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn, NavHubBtn, NavTestDriveBtn, NavOverlaysBtn })
+            foreach (var btn in new[] { NavHomeBtn, NavTuningBtn, NavEqBtn, NavMapBtn, NavLiveMapBtn, NavTelemetryBtn, NavPipelineBtn, NavCoachBtn, NavDevicesBtn, NavProfilesBtn, NavHubBtn, NavTestDriveBtn, NavOverlaysBtn })
                 SetTemplateLabelVisibility(btn, "ItemLabel", Visibility.Visible);
 
             SetTemplateLabelVisibility(NavLiveMapBtn, "WipBadge", Visibility.Visible);
+            SetTemplateLabelVisibility(NavPipelineBtn, "WipBadge", Visibility.Visible);
             SetTemplateLabelVisibility(NavMapBtn, "WipBadge", Visibility.Visible);
 
             if (CollapseBtn.Template.FindName("CollapseArrow", CollapseBtn) is System.Windows.Shapes.Path arrow)
@@ -99,6 +101,7 @@ public partial class SidebarControl : UserControl
         NavMapBtn.IsChecked = page == NavPage.TrackMap;
         NavLiveMapBtn.IsChecked = page == NavPage.LiveTrackMap;
         NavTelemetryBtn.IsChecked = page == NavPage.Telemetry;
+        NavPipelineBtn.IsChecked = page == NavPage.Pipeline;
         NavCoachBtn.IsChecked = page == NavPage.FfbCoach;
         NavDevicesBtn.IsChecked = page == NavPage.Devices;
         NavProfilesBtn.IsChecked = page == NavPage.Profiles;

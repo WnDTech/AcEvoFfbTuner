@@ -120,6 +120,20 @@ public class FfbPipeline
     public bool TcWheelEnabled { get; set; } = false;
     public float TcWheelGain { get; set; } = 0f;
 
+    /// <summary>
+    /// Low-speed noise-gate boost: gate = NoiseFloor * (1 + (1-speed/10) * boost).
+    /// Base default 2.0 preserves EVO behavior. LMU overrides to 0.5.
+    /// </summary>
+    public virtual float LowSpeedNoiseBoost { get; set; } = 2.0f;
+
+    /// <summary>
+    /// RPM spike gate for gear-shift mute. Consumed by the ApplyGearShiftFilter
+    /// overload (rpm, rpmThreshold). Base default float.MaxValue = disabled
+    /// (EVO unchanged). R3E/LMU/AC/ACC override the default to 3000.
+    /// Previously these per-game properties were stored but never read.
+    /// </summary>
+    public virtual float GearSpikeThreshold { get; set; } = float.MaxValue;
+
     private float _prevDetailOutput;
     private float _gyroSmooth;
     private float _tcWheelSmooth;
@@ -188,6 +202,7 @@ public class FfbPipeline
 
         // Output gain
         float coreOutput = coreDamped * OutputGain;
+        float stageGainForce = coreOutput;
 
         // Game-specific centering override (e.g. R3E V-shape center suppression)
         coreOutput = ApplyCenteringOverride(coreOutput, raw);
@@ -255,7 +270,8 @@ public class FfbPipeline
             SlipEnhancer.PeakSlipAngle *= WetWeather.CurrentPeakSlipAngleScale;
         float postSlip = SlipEnhancer.Apply(corePostLut, raw);
         SlipEnhancer.PeakSlipAngle = savedPeakSlipAngle;
-        detailForce += (postSlip - corePostLut);
+        float stageSlipDelta = postSlip - corePostLut;
+        detailForce += stageSlipDelta;
 
         // Dynamic effects contribution (independent of force magnitude)
         float dynamicContrib = DynamicEffects.Apply(0f, raw);
@@ -264,6 +280,7 @@ public class FfbPipeline
         // Tyre flex contribution (independent of force magnitude)
         float flexContrib = TyreFlex.Apply(0f, raw);
         detailForce += flexContrib;
+        float stageDynFlex = dynamicContrib + flexContrib;
 
         // Vibration signals (suspension-based road/curb, scrub, rear slip)
         // Wet weather: suppress curb feel (water layer absorbs curb impacts)
@@ -277,6 +294,7 @@ public class FfbPipeline
         detailForce += vibration;
 
         // ABS force modulation (directional — follows core force sign)
+        float stageSubMods = 0f;
         float absMod = VibrationMixer.AbsForceModulation;
         if (Math.Abs(absMod) > 0.001f)
         {
@@ -284,32 +302,48 @@ public class FfbPipeline
             if (Math.Abs(coreOutput) < 0.01f)
                 sign = Math.Abs(raw.SteerAngle) > SteerDirDeadzone ? -Math.Sign(raw.SteerAngle) : 1f;
             detailForce += absMod * sign;
+            stageSubMods += absMod * sign;
         }
 
         // Wet weather: suppress road vibration (water film damps surface texture)
         float roadMod = VibrationMixer.RoadForceModulation;
         if (Math.Abs(roadMod) > 0.001f)
+        {
             detailForce += roadMod * WetWeather.RoadVibScale;
+            stageSubMods += roadMod * WetWeather.RoadVibScale;
+        }
 
         // Wet weather: suppress scrub texture (water lubricates contact patch)
         float scrubMod = VibrationMixer.ScrubModulation;
         if (Math.Abs(scrubMod) > 0.001f)
+        {
             detailForce += scrubMod * WetWeather.ScrubScale;
+            stageSubMods += scrubMod * WetWeather.ScrubScale;
+        }
 
         // Rear slip warning (12-25Hz rumble when rear loses grip)
         float rearMod = VibrationMixer.RearSlipModulation;
         if (Math.Abs(rearMod) > 0.001f)
+        {
             detailForce += rearMod;
+            stageSubMods += rearMod;
+        }
 
         // Offtrack surface rumble (when all 4 wheels leave the racing surface)
         float offtrackMod = VibrationMixer.OfftrackModulation;
         if (Math.Abs(offtrackMod) > 0.001f)
+        {
             detailForce += offtrackMod;
+            stageSubMods += offtrackMod;
+        }
 
         // LFE (engine RPM / suspension-driven low-frequency effects)
         float lfe = LfeGenerator.Generate(raw);
         if (Math.Abs(lfe) > 0.001f)
+        {
             detailForce += lfe;
+            stageSubMods += lfe;
+        }
 
         // Apply EQ (biquad filters) to detail path ONLY
         detailForce = Equalizer.Process(detailForce);
@@ -337,15 +371,20 @@ public class FfbPipeline
         // Gyro stabilizer (detail-path opposing torque) and TC wheel feel.
         detailForce = ApplyGyroStabilizer(detailForce, raw);
         detailForce = ApplyTcWheelEffect(detailForce, raw);
+        // Rear-slip + yaw-onset hooks: base no-ops (EVO unchanged).
+        detailForce = ApplyRearSlipOverride(detailForce, raw, 1f / 333f);
+        detailForce = ApplyYawOnset(detailForce, raw, 1f / 333f);
 
         // ═══════════════════════════════════════════════════════════════════════
         // FINAL MIX — Core (zero-latency) + Detail (filtered)
         // ═══════════════════════════════════════════════════════════════════════
 
-        // Gear shift filter: EMA on core force only — detail effects pass through
+        // Gear shift filter: EMA on core force only — detail effects pass through.
+        // Passes EngineRpm + per-game threshold (EVO base default = disabled).
         float deltaTime = 1f / 60f;
-        float filteredCore = ApplyGearShiftFilter(coreOutput, deltaTime, raw.Gear);
+        float filteredCore = ApplyGearShiftFilter(coreOutput, deltaTime, raw.Gear, raw.EngineRpm, GearSpikeThreshold);
         float finalOutput = filteredCore + detailForce;
+        float stagePreClip = finalOutput;
 
         // Output clipper (soft clip at threshold)
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
@@ -356,8 +395,9 @@ public class FfbPipeline
 
         // Noise floor gate (amplified at low speed for physics jitter suppression)
         // Wet weather: raise noise floor (water film masks tiny surface details)
+        // Boost factor is per-game (EVO 2.0 legacy default; LMU overrides to 0.5).
         float speedNoiseScale = raw.SpeedKmh < 10.0f
-            ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * 2.0f
+            ? 1.0f + (1.0f - raw.SpeedKmh / 10.0f) * LowSpeedNoiseBoost
             : 1.0f;
         float effectiveNoiseFloor = NoiseFloor * speedNoiseScale * WetWeather.NoiseFloorScale;
         if (Math.Abs(finalOutput) < effectiveNoiseFloor)
@@ -393,7 +433,13 @@ public class FfbPipeline
             TyreCategory = TyreCompoundClassifier.Classify(raw.TyreCompoundFront),
             TyreCompoundFrontName = raw.TyreCompoundFront,
             TyreCompoundRearName = raw.TyreCompoundRear,
-            GearShiftMuteGain = GearShiftMuteGain
+            GearShiftMuteGain = GearShiftMuteGain,
+            StageMixedForce = mixedForce,
+            StageGainForce = stageGainForce,
+            StageSlipDelta = stageSlipDelta,
+            StageDynFlex = stageDynFlex,
+            StageSubMods = stageSubMods,
+            StagePreClipForce = stagePreClip
         };
     }
 
@@ -515,11 +561,47 @@ public class FfbPipeline
         return detailForce + _tcWheelSmooth;
     }
 
+    /// <summary>
+    /// Rear-slip warning override (detail path). Base is no-op.
+    /// LMU overrides with Fy-derivative + YawAccel + SlipRatio gate because
+    /// rear Mz is always zero there (column-torque synth) and SlipAngle is a
+    /// single bicycle value replicated x4. Zero-impact for EVO/R3E/AC/ACC.
+    /// </summary>
+    protected virtual float ApplyRearSlipOverride(float detailForce, FfbRawData raw, float deltaTime)
+    {
+        return detailForce;
+    }
+
+    /// <summary>
+    /// Yaw-onset impulse (detail path). Base is no-op.
+    /// LMU overrides with a thresholded YawAccel kick + exp decay + speed gate.
+    /// Threshold/gain default 0 = inert. Zero-impact for EVO/R3E/AC/ACC.
+    /// </summary>
+    protected virtual float ApplyYawOnset(float detailForce, FfbRawData raw, float deltaTime)
+    {
+        return detailForce;
+    }
+
     public float ApplyGearShiftFilter(float currentForce, float deltaTime, int currentGear)
+    {
+        return ApplyGearShiftFilter(currentForce, deltaTime, currentGear, 0, float.MaxValue);
+    }
+
+    /// <summary>
+    /// RPM-gated overload. Consumes the per-game GearSpikeThreshold properties
+    /// (R3E/LMU/AC/ACC), which were previously stored but never read.
+    /// When a gear change coincides with RPM above rpmThreshold, the mute
+    /// window is extended by one extra mute+fade cycle (limiter/shift shock).
+    /// Default threshold float.MaxValue = legacy behavior (no RPM gating).
+    /// Callers: base passes disabled; game pipelines pass their own threshold.
+    /// </summary>
+    public float ApplyGearShiftFilter(float currentForce, float deltaTime, int currentGear, int rpm, float rpmThreshold)
     {
         if (currentGear != _lastGear)
         {
             _shiftTimeTracker = _shiftMuteDuration + _fadeInDuration;
+            if (rpmThreshold < float.MaxValue && rpm > rpmThreshold)
+                _shiftTimeTracker += _shiftMuteDuration + _fadeInDuration;
             _lastGear = currentGear;
         }
 

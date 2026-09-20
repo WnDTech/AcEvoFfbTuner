@@ -76,6 +76,7 @@ public sealed partial class MainViewModel
         newLoop.StaticDataReceived += (trackName, config, lengthM, latitude, longitude) => Application.Current?.Dispatcher.Invoke(() =>
         {
             DetectedTrackName = trackName;
+            _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, config);
             if (!string.IsNullOrEmpty(trackName))
                 StatusText = $"Connected — Track: {trackName} ({config}) {lengthM:F0}m";
         });
@@ -83,6 +84,7 @@ public sealed partial class MainViewModel
         {
             DetectedCarModel = carModel;
             StatusText = $"Car detected: {carModel}";
+            _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
         });
         newLoop.TrackChanged += newTrackName => Application.Current?.Dispatcher.Invoke(() =>
         {
@@ -316,7 +318,8 @@ public sealed partial class MainViewModel
                     processed.ChannelMzFront, processed.ChannelFxFront, processed.ChannelFyFront,
                     processed.PostLutForce, processed.IsClipping,
                     raw.GasInput, raw.BrakeInput, raw, processed.WetnessFactor,
-                    lockDeg);
+                    lockDeg, processed.PeakHold, processed.ClipRate,
+                    processed);
 
                 mw.UpdateCalibrationWizard(raw.SpeedKmh, processed.MainForce, processed.IsClipping);
                 mw.UpdateSetupWizard(raw.SpeedKmh, processed.MainForce, raw.SteerAngle, processed.IsClipping, processed.ChannelMzFront, raw.BrakeInput, raw.GasInput);

@@ -20,6 +20,15 @@ public sealed class SnapshotCsvData
     public float TorqueNm { get; init; } = 5.5f;
     public int RowCount => CsvLines.Count;
     public string? SnapshotFilePath { get; init; }
+    /// <summary>Driving context embedded in the snapshot header (may be empty for old snapshots).</summary>
+    public string Game { get; init; } = "";
+    public string CarModel { get; init; } = "";
+    public string TrackName { get; init; } = "";
+    public string TrackConfig { get; init; } = "";
+    public string ProfileScope { get; init; } = "";
+    public string CarMatch { get; init; } = "";
+    public string TrackMatch { get; init; } = "";
+    public string GameMatch { get; init; } = "";
 
     public float? ExtractStatValue(string label)
     {
@@ -90,6 +99,31 @@ public static class SnapshotFileLoader
         if (profileMatch.Success)
             profileName = profileMatch.Groups[1].Value.Trim();
 
+        // Driving context header lines (added 2026-09; absent in older snapshots).
+        string game = ExtractHeader(text, @"^Game:\s*(.+)", System.Text.RegularExpressions.RegexOptions.Multiline);
+        string car = ExtractHeader(text, @"^Car:\s*(.+)", System.Text.RegularExpressions.RegexOptions.Multiline);
+        string trackLine = ExtractHeader(text, @"^Track:\s*(.+)", System.Text.RegularExpressions.RegexOptions.Multiline);
+        string track = trackLine, trackConfig = "";
+        int cfgIdx = trackLine.IndexOf("Config:", StringComparison.OrdinalIgnoreCase);
+        if (cfgIdx >= 0)
+        {
+            track = trackLine[..cfgIdx].Trim();
+            trackConfig = trackLine[(cfgIdx + "Config:".Length)..].Trim();
+        }
+        string scopeLine = ExtractHeader(text, @"^ProfileScope:\s*(.+)", System.Text.RegularExpressions.RegexOptions.Multiline);
+        string scope = scopeLine, carMatch = "", trackMatch = "", gameMatch = "";
+        foreach (var part in scopeLine.Split(new[] { "  " }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (part.StartsWith("CarMatch:", StringComparison.OrdinalIgnoreCase))
+                carMatch = part["CarMatch:".Length..].Trim();
+            else if (part.StartsWith("TrackMatch:", StringComparison.OrdinalIgnoreCase))
+                trackMatch = part["TrackMatch:".Length..].Trim();
+            else if (part.StartsWith("GameMatch:", StringComparison.OrdinalIgnoreCase))
+                gameMatch = part["GameMatch:".Length..].Trim();
+            else if (!part.Contains(':'))
+                scope = part.Trim();
+        }
+
         float torqueNm = 5.5f;
         var torqueMatch = System.Text.RegularExpressions.Regex.Match(text,
             @"WheelMaxTorque:\s*([\d.]+)");
@@ -131,8 +165,22 @@ public static class SnapshotFileLoader
             StatsText = statsSection,
             ProfileName = profileName,
             TorqueNm = torqueNm,
-            SnapshotFilePath = filePath
+            SnapshotFilePath = filePath,
+            Game = game,
+            CarModel = car,
+            TrackName = track,
+            TrackConfig = trackConfig,
+            ProfileScope = scope,
+            CarMatch = carMatch,
+            TrackMatch = trackMatch,
+            GameMatch = gameMatch
         };
+    }
+
+    private static string ExtractHeader(string text, string pattern, System.Text.RegularExpressions.RegexOptions options)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(text, pattern, options);
+        return m.Success ? m.Groups[1].Value.Trim() : "";
     }
 
     public static SnapshotCsvData? LoadLatestSnapshot()

@@ -66,6 +66,22 @@ public class TrackDetailedInfo
     public List<TrackPoint>? TrackLayout { get; set; }
     public TrackPitInfo? Pit { get; set; }
     public TrackPoint? StartFinish { get; set; }
+
+    /// <summary>
+    /// Rotation-free SF anchor: fractional distance (0..1) along TrackLayout where
+    /// the game's Npos=0 (start/finish) sits, solved by shape-correlating a driven
+    /// (recorded) lap against the OSM layout. -1 = unsolved.
+    /// </summary>
+    public double SfAnchorFraction { get; set; } = -1;
+
+    /// <summary>
+    /// True when the OSM layout order runs opposite to the game's driving direction.
+    /// Solved together with <see cref="SfAnchorFraction"/>.
+    /// </summary>
+    public bool SfAnchorReversed { get; set; }
+
+    /// <summary>How the SF anchor was determined: "heuristic", "wrap", "shape".</summary>
+    public string SfAnchorSource { get; set; } = "heuristic";
     public string? Surface { get; set; }
     public string? MaxSpeed { get; set; }
     public DateTime FetchedAt { get; set; }
@@ -93,8 +109,9 @@ public class TrackDetailedInfo
     /// v4: Switched to OSM node-ID adjacency for circuit ordering (replaces coordinate proximity)
     /// v3: Added foreign way filtering (kart tracks, moto, etc.)
     /// v10: Added TrackConfig (layout-aware cache keys) + OfficialLengthM validation
+    /// v11: Added SfAnchorFraction/SfAnchorReversed/SfAnchorSource (shape-solved SF anchor)
     /// </summary>
-    public const int CurrentCacheVersion = 10;
+    public const int CurrentCacheVersion = 11;
 }
 
 public static class TrackMapKeys

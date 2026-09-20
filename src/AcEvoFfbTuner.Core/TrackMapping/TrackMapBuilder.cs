@@ -23,6 +23,13 @@ public sealed class TrackMapBuilder
     private bool _lapStarted;
     private float _totalDistance;
     private float _prevNpos = -1f;
+    /// <summary>
+    /// True when the in-progress/completed recording was started automatically
+    /// (telemetry-first auto-record). Auto-started maps are persisted to disk on
+    /// completion so alignment and the map survive restarts. Manual recordings
+    /// are saved explicitly by the UI instead.
+    /// </summary>
+    public bool AutoStarted { get; private set; }
 
     public bool IsRecording { get { lock (_lock) return _recording; } }
     public bool HasCompleteMap { get { lock (_lock) return _hasCompleteMap; } private set { lock (_lock) _hasCompleteMap = value; } }
@@ -54,6 +61,7 @@ public sealed class TrackMapBuilder
             _currentMap = null;
             _totalDistance = 0f;
             _prevNpos = -1f;
+            AutoStarted = autoStarted;
         }
         Log(autoStarted ? "START RECORDING (auto)" : "START RECORDING");
     }
@@ -100,12 +108,21 @@ public sealed class TrackMapBuilder
         }
     }
 
-    public void Update(float carX, float carZ, float carY, float speedKmh, int currentLap, bool isOnTrack, float npos = 0f)
+    public void Update(float carX, float carZ, float carY, float speedKmh, int currentLap, bool isOnTrack, float npos = 0f, bool isInPitLane = false)
     {
         lock (_lock)
         {
             if (!_recording) return;
             if (speedKmh < MinSpeedKmh) return;
+
+            // Pitlane driving must not contaminate the racing-line map (pit exit
+            // runs parallel to the SF straight — including it warps the loop close).
+            // Npos tracking continues so an SF crossing at pit exit still closes cleanly.
+            if (isInPitLane)
+            {
+                _prevNpos = npos;
+                return;
+            }
 
             var point = new TrackWaypoint(carX, carZ, carY, npos);
 
@@ -129,8 +146,8 @@ public sealed class TrackMapBuilder
             // Guarded by waypoint/distance minimums; ignored when npos is unset (0).
             if (lapReady && _prevNpos >= 0f && npos > 0f && _prevNpos > 0.9f && npos < 0.1f)
             {
-                _prevNpos = npos;
                 Log($"LAP COMPLETE via NPOS WRAP: {_prevNpos:F3} -> {npos:F3} pts={_rawWaypoints.Count} totalDist={_totalDistance:F1}m");
+                _prevNpos = npos;
                 _recording = false;
                 ApplyDriftCorrectionAndClose();
                 FinalizeMap();
@@ -281,6 +298,7 @@ public sealed class TrackMapBuilder
             _currentMap = null;
             _totalDistance = 0f;
             _prevNpos = -1f;
+            AutoStarted = false;
         }
         Log("RESET");
     }

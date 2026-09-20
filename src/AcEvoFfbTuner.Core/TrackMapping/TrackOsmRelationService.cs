@@ -197,6 +197,29 @@ public sealed class TrackOsmRelationService : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Persist a shape-solved SF anchor into the cached relation data so the
+    /// Live dot alignment survives restarts without re-solving.
+    /// </summary>
+    public void StoreAnchor(string trackName, string? config, double fraction, bool reversed, string source)
+    {
+        if (string.IsNullOrWhiteSpace(trackName)) return;
+        try
+        {
+            var info = LoadCached(trackName, config);
+            if (info?.TrackLayout is not { Count: >= 10 }) return;
+            info.SfAnchorFraction = fraction;
+            info.SfAnchorReversed = reversed;
+            info.SfAnchorSource = source;
+            SaveCache(trackName, info, config);
+            Log($"Stored SF anchor for {trackName}: frac={fraction:F4} rev={reversed} src={source}");
+        }
+        catch (Exception ex)
+        {
+            Log($"StoreAnchor error for {trackName}: {ex.Message}");
+        }
+    }
+
     public void SaveCache(string trackName, TrackDetailedInfo info, string? config = null)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return;

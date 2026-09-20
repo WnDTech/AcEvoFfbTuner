@@ -159,6 +159,7 @@ public sealed partial class MainViewModel
                 _ => "No game"
             };
             _coachService.IsColumnForceGame = value is SupportedGame.Raceroom or SupportedGame.LeMansUltimate;
+            _coachService.SyncLiveContext(_coachService.CurrentGame, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
 
             if (value != SupportedGame.None && _profileManager.ActiveProfile != null)
                 _profileManager.ActiveProfile.ApplyToPipeline(_pipeline);
@@ -212,5 +213,6 @@ public sealed partial class MainViewModel
     {
         _lastAutoDetectedGame = game;
         OnPropertyChanged(nameof(GameDisplayName));
+        SyncCoachContext();
     }
 }

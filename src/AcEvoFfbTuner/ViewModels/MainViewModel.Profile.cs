@@ -97,7 +97,7 @@ public sealed partial class MainViewModel
         }
     }
 
-    private void AutoSaveDiagnosticProfile()
+    private string? AutoSaveDiagnosticProfile()
     {
         try
         {
@@ -110,8 +110,9 @@ public sealed partial class MainViewModel
             profile.TrackMatch = ProfileTrackMatch;
             SaveNonPipelineSettings(profile);
             _profileManager.SaveProfile(profile);
+            return Core.Profiles.ProfileManager.GetProfileFilePath(diagName);
         }
-        catch { }
+        catch { return null; }
     }
 
     private void SaveProfileMetadata(FfbProfile profile)
@@ -533,7 +534,10 @@ public sealed partial class MainViewModel
         MzScale = profile.MzScale;
         FxScale = profile.FxScale;
         FyScale = profile.FyScale;
+        ViscousDamping = profile.Damping.ViscousDamping;
         SpeedDamping = profile.Damping.SpeedDamping;
+        CenterDampFloor = profile.Damping.CenterDampFloor;
+        StraightGain = profile.Damping.StraightGain;
         FrictionLevel = profile.Damping.Friction;
         InertiaWeight = profile.Damping.Inertia;
         DampingSpeedReference = profile.Damping.MaxSpeedReference;
@@ -599,6 +603,15 @@ public sealed partial class MainViewModel
         ForceGain = profile.Slip.ForceGain;
         GripScaleGain = profile.Slip.GripScaleGain;
         TyreTempGain = profile.Slip.TyreTempGain;
+        RearFyScale = profile.Slip.RearFyScale;
+        RearGripDetailGain = profile.Slip.RearGripDetailGain;
+        YawOnsetGain = profile.Slip.YawOnsetGain;
+        YawOnsetThreshold = profile.Slip.YawOnsetThreshold;
+        BrakeLoadBias = profile.Slip.BrakeLoadBias;
+        SuspRoadScale = profile.Slip.SuspRoadScale;
+        UseMixerSuspRoad = profile.Slip.UseMixerSuspRoad;
+        SynthAbsEnabled = profile.Slip.SynthAbsEnabled;
+        SynthTcEnabled = profile.Slip.SynthTcEnabled;
         SteerVelocityReference = profile.Advanced.SteerVelocityReference;
         VelocityDeadzone = profile.Advanced.VelocityDeadzone;
         LowSpeedSmoothKmh = profile.Advanced.LowSpeedSmoothKmh;
@@ -772,7 +785,10 @@ public sealed partial class MainViewModel
         MzScale = _pipeline.ChannelMixer.MzScale;
         FxScale = _pipeline.ChannelMixer.FxScale;
         FyScale = _pipeline.ChannelMixer.FyScale;
+        ViscousDamping = _pipeline.Damping.ViscousCoefficient;
         SpeedDamping = _pipeline.Damping.SpeedDampingCoefficient;
+        CenterDampFloor = _pipeline.Damping.CenterDampFloor;
+        StraightGain = _pipeline.Damping.StraightGain;
         FrictionLevel = _pipeline.Damping.FrictionLevel;
         InertiaWeight = _pipeline.Damping.InertiaWeight;
         DampingSpeedReference = _pipeline.Damping.MaxSpeedReference;
@@ -857,6 +873,17 @@ public sealed partial class MainViewModel
             BrakeBoostThreshold = lmuSync.BrakeBoostThreshold;
             GripScaleGain = lmuSync.GripScaleGain;
             TyreTempGain = lmuSync.TyreTempGain;
+            RearFyScale = lmuSync.RearFyScale;
+            RearGripDetailGain = lmuSync.RearGripDetailGain;
+            YawOnsetGain = lmuSync.YawOnsetGain;
+            YawOnsetThreshold = lmuSync.YawOnsetThreshold;
+            BrakeLoadBias = lmuSync.BrakeLoadBias;
+            SuspRoadScale = lmuSync.SuspRoadScale;
+            UseMixerSuspRoad = lmuSync.UseMixerSuspRoad;
+            SynthAbsEnabled = lmuSync.SynthAbsEnabled;
+            SynthTcEnabled = lmuSync.SynthTcEnabled;
+            CoreSmoothing = lmuSync.CoreSmoothing;
+            DetailSmoothing = lmuSync.DetailSmoothing;
         }
         else if (_pipeline is AcFfbPipeline acSync)
         {
@@ -1014,10 +1041,13 @@ public sealed partial class MainViewModel
         _pipeline.OutputClipper.SoftClipThreshold = MaxForceLimit;
         _pipeline.OutputGain = OutputGain;
         _pipeline.MasterGain = 1000f / Math.Max(ForceSensitivity, 1f);
+        _pipeline.Damping.ViscousCoefficient = ViscousDamping;
         _pipeline.Damping.SpeedDampingCoefficient = SpeedDamping;
         _pipeline.Damping.FrictionLevel = FrictionLevel;
         _pipeline.Damping.InertiaWeight = InertiaWeight;
         _pipeline.Damping.MaxSpeedReference = DampingSpeedReference;
+        _pipeline.Damping.CenterDampFloor = CenterDampFloor;
+        _pipeline.Damping.StraightGain = StraightGain;
         _pipeline.SlipEnhancer.SlipRatioGain = SlipRatioGain;
         _pipeline.SlipEnhancer.SlipAngleGain = SlipAngleGain;
         _pipeline.SlipEnhancer.SlipAngleShapeGain = SlipAngleShapeGain;
@@ -1086,6 +1116,17 @@ public sealed partial class MainViewModel
             lmuLoad.BrakeBoostThreshold = BrakeBoostThreshold;
             lmuLoad.GripScaleGain = GripScaleGain;
             lmuLoad.TyreTempGain = TyreTempGain;
+            lmuLoad.RearFyScale = RearFyScale;
+            lmuLoad.RearGripDetailGain = RearGripDetailGain;
+            lmuLoad.YawOnsetGain = YawOnsetGain;
+            lmuLoad.YawOnsetThreshold = YawOnsetThreshold;
+            lmuLoad.BrakeLoadBias = BrakeLoadBias;
+            lmuLoad.SuspRoadScale = SuspRoadScale;
+            lmuLoad.UseMixerSuspRoad = UseMixerSuspRoad;
+            lmuLoad.SynthAbsEnabled = SynthAbsEnabled;
+            lmuLoad.SynthTcEnabled = SynthTcEnabled;
+            lmuLoad.CoreSmoothing = CoreSmoothing;
+            lmuLoad.DetailSmoothing = DetailSmoothing;
         }
         if (_pipeline is AcFfbPipeline acLoad)
         {

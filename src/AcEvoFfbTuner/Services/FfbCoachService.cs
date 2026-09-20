@@ -45,11 +45,30 @@ public sealed class LiveProfilerStats
     public int ClipCount { get; init; }
 }
 
+/// <summary>One applied profile change — the coach's apply history entry.</summary>
+public sealed class CoachAppliedChange
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public DateTime AppliedAt { get; init; } = DateTime.Now;
+    public string Parameter { get; init; } = "";
+    public float OldValue { get; init; }
+    public float NewValue { get; init; }
+    public string Reason { get; init; } = "";
+    public string Game { get; init; } = "";
+    public string Car { get; init; } = "";
+    public string Track { get; init; } = "";
+    public string ProfileName { get; init; } = "";
+    public string Label => $"{Parameter}: {OldValue:F2} → {NewValue:F2}";
+    public string Detail => $"{AppliedAt:HH:mm:ss} · {ProfileName}" +
+        (string.IsNullOrWhiteSpace(Car) ? "" : $" · {Car}") +
+        (string.IsNullOrWhiteSpace(Track) ? "" : $" @ {Track}");
+}
+
 public sealed class FfbCoachService
 {
     private readonly ProfileManager _profileManager;
     private readonly FfbPipeline _pipeline;
-    private readonly Stack<Action> _undoStack = new();
+    private readonly List<CoachAppliedChange> _history = new();
     private CoachResult? _lastResult;
     private SnapshotCsvData? _lastCsvData;
     private LiveProfilerStats? _lastLiveStats;
@@ -62,8 +81,61 @@ public sealed class FfbCoachService
     public string CurrentGame { get; set; } = "RaceRoom Racing Experience";
     public string CurrentWheel { get; set; } = "Moza R5 (5.5 Nm)";
     public bool IsColumnForceGame { get; set; } = true;
+    /// <summary>Live driving context — pushed from telemetry detection, or read from the snapshot header.</summary>
+    public string CurrentCar { get; set; } = "";
+    public string CurrentTrack { get; set; } = "";
+    public string CurrentTrackConfig { get; set; } = "";
 
-    /// <summary>Comprehensive parameter knowledge base — the single source of truth for the LLM.</summary>
+    private CoachGame ActiveCoachGame => CoachParameterCatalog.ParseGameName(CurrentGame);
+
+    /// <summary>Push live detection context (game + car + track) into the coach. Call before analysis.</summary>
+    public void SyncLiveContext(string game, string car, string track, string trackConfig = "")
+    {
+        if (!string.IsNullOrWhiteSpace(game)) CurrentGame = CoachParameterCatalog.CanonicalGameName(game);
+        if (!string.IsNullOrWhiteSpace(car)) CurrentCar = car;
+        if (!string.IsNullOrWhiteSpace(track)) CurrentTrack = track;
+        if (!string.IsNullOrWhiteSpace(trackConfig)) CurrentTrackConfig = trackConfig;
+        if (ActiveCoachGame is CoachGame.Raceroom or CoachGame.LeMansUltimate)
+            IsColumnForceGame = true;
+        else if (ActiveCoachGame is CoachGame.AcEvo or CoachGame.AssettoCorsa or CoachGame.AssettoCorsaCompetizione)
+            IsColumnForceGame = false;
+    }
+
+    private string GameContextString(string source)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Game: {CurrentGame}");
+        sb.AppendLine($"Wheel: {CurrentWheel}");
+        sb.AppendLine($"Source: {source}");
+        sb.AppendLine($"Car: {(string.IsNullOrWhiteSpace(CurrentCar) ? "unknown" : CurrentCar)}");
+        sb.AppendLine($"Track: {(string.IsNullOrWhiteSpace(CurrentTrack) ? "unknown" : CurrentTrack)}" +
+            (string.IsNullOrWhiteSpace(CurrentTrackConfig) ? "" : $" ({CurrentTrackConfig})"));
+        var profile = _profileManager.ActiveProfile;
+        if (profile != null)
+            sb.AppendLine($"Profile scope: {profile.Scope} (CarMatch: '{profile.CarMatch}', TrackMatch: '{profile.TrackMatch}', GameMatch: '{profile.GameMatch}'). " +
+                "The Game/Car/Track lines above are DETECTED FACTS — never question which game is running. " +
+                "Empty CarMatch/TrackMatch/GameMatch means a General profile that applies everywhere, NOT an unknown game.");
+        return sb.ToString().TrimEnd();
+    }
+
+    private void AdoptSnapshotContext(SnapshotCsvData csvData)
+    {
+        // Snapshot-embedded context wins (it describes where the data was driven);
+        // fall back to live detection when the snapshot predates context headers.
+        if (!string.IsNullOrWhiteSpace(csvData.Game)) CurrentGame = CoachParameterCatalog.CanonicalGameName(csvData.Game);
+        if (!string.IsNullOrWhiteSpace(csvData.CarModel)) CurrentCar = csvData.CarModel;
+        if (!string.IsNullOrWhiteSpace(csvData.TrackName)) CurrentTrack = csvData.TrackName;
+        if (!string.IsNullOrWhiteSpace(csvData.TrackConfig)) CurrentTrackConfig = csvData.TrackConfig;
+        IsColumnForceGame = ActiveCoachGame is CoachGame.Raceroom or CoachGame.LeMansUltimate;
+    }
+
+    /// <summary>
+    /// Static parameter reference. Ranges are the REAL tuning-UI slider limits
+    /// (FfbTuningPage.xaml). A per-game tunable/not-available table from
+    /// <see cref="CoachParameterCatalog"/> is appended dynamically in
+    /// <see cref="BuildSystemContext"/> — that table is authoritative when the
+    /// two disagree.
+    /// </summary>
     private static string KnowledgeBase => @"
 ## FFB Pipeline Architecture
 
@@ -82,150 +154,164 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
 
 1. **Force inversion**: Column-force games → MzFrontGain MUST be NEGATIVE (-0.3 to -0.5). Positive = wheel fights steering.
 2. **Dead channels**: All channel gains (mzFrontGain, fxFrontGain, fyFrontGain) = 0? Core FFB is disabled. User feels only vibrations.
-3. **Clipping root cause**: ClippingPct > 10%? Check ForceScale first (range 700-1500, low values cause clipping). Then OutputGain and CompressionPower.
-4. **CoreForceMultiplier**: Column-force games → expect ~3.0x. Physics-based games → ignore this parameter.
+3. **Clipping root cause**: ClippingPct > 10%? Check OutputGain first, then ForceScale (slider 0.1–5, LOWER values = stronger signal = more clipping). Then SoftClipThreshold.
+4. **CoreForceMultiplier**: Column-force games → expect ~3.0x. Physics-based games → this slider is hidden, do NOT suggest it.
 5. **Center suppression > 5°**: Creates deadzone. Wheel feels disconnected, no centering force.
-6. **Static friction masking FFB**: Gain > 1.5 + MaxElasticStretch > 0.03 = rubber-band feel.
-7. **All vibrations zero**: MasterGain = 0 and all vibration gains = 0? Detail path dead — no road texture, kerbs, or slip feel.
+6. **Static friction masking FFB**: Gain > 1.5 + MaxElasticStretch > 0.03 = rubber-band feel. (Per-wheel games only.)
+7. **All vibrations zero**: MasterGain = 0 and all vibration gains = 0? Detail path dead — no road texture, kerbs, or slip feel. (Vibrations section is hidden for ACC — skip this check there.)
 
-## Parameter Definitions
+## Parameter Definitions (Range = REAL UI slider min–max. NEVER suggest a value outside it.)
 
 ### Strength & Output
-| Parameter | Range | Typical | Effect |
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| OutputGain | 0–1.2 | 0.6-0.8 | Final multiplier on total output |
-| CompressionPower | 1–3 | 1.2-1.8 | Exponential curve on core force. >1 rounds off peaks |
-| ForceScale | ~700-1500 | 800-1000 | Normalization divisor. Higher = weaker signal |
-| SoftClipThreshold | 0–1 | 0.9-0.95 | Maximum output clamp |
-| CoreForceMultiplier | 1–5 | 3.0 | Column-force game boost. Not used in physics-based games |
+| OutputGain | 0–20 | 0.6-0.8 | Final multiplier on total output |
+| CompressionPower | NO SLIDER (profile-only) | 1.0 | Exponential curve on core force. Prefer OutputGain — user cannot drag this |
+| ForceScale | 0.1–5 (R3E/LMU slider only) | 1.0 | Inverse sensitivity for column-force games. LOWER = stronger. NOT 700-1500 |
+| SoftClipThreshold | 0.1–1 (UI: Max Force Limit) | 0.8 | Maximum output clamp |
+| CoreForceMultiplier | 0–10 (R3E/LMU slider only) | 3.0 | Column-force game boost. Hidden for physics games — do NOT suggest there |
 
 ### Centering & On-Center Feel
-| Parameter | Range | Typical | Effect |
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| CenterSuppressionDegrees | 0–10 | 1-3 | V-shape force reduction near center |
-| CenterSharpnessDegrees | 0–10 | 0-3 | Smoothstep ramp. 0 = disabled |
-| CenterBlendDegrees | 0–5 | 1-3 | Transition zone between center and full suppression |
-| CenterKneePower | 1–3 | 1-2 | Non-linear core shaping. >1 = progressive |
-| HysteresisThreshold | 0–0.05 | 0.01-0.02 | Deadband for noise rejection |
-| NoiseFloor | 0–0.02 | 0.003-0.01 | Minimum output gate |
-| MaxSlewRate | 0–1 | 0.3-0.85 | Per-frame rate limit on DETAIL path only |
-| HysteresisWatchdogFrames | 0-20 | 0-3 | Frames to wait before engaging hysteresis |
-| LowSpeedSmoothKmh | 0-60 | 10-20 | Speed below which low-speed smoothing applies |
+| CenterSuppressionDegrees | 0–30 | 1-3 | V-shape force reduction near center |
+| CenterSharpnessDegrees | 0–10 (R3E/LMU only) | 0-3 | Smoothstep ramp. 0 = disabled. Hidden for physics games |
+| CenterBlendDegrees | 0–10 | 1-3 | Transition zone between center and full suppression |
+| CenterKneePower | 0.5–3 | 1-2 | Non-linear core shaping. >1 = progressive |
+| HysteresisThreshold | NO SLIDER (profile-only) | 0.01-0.02 | Deadband for noise rejection. Suggest NoiseFloor instead |
+| NoiseFloor | 0–0.05 | 0.003-0.01 | Minimum output gate |
+| MaxSlewRate | 0.03–0.5 | 0.3-0.5 | Per-frame rate limit on DETAIL path only |
+| HysteresisWatchdogFrames | NO SLIDER (profile-only) | 0-3 | Frames to wait before engaging hysteresis |
+| LowSpeedSmoothKmh | 0-100 | 10-20 | Speed below which low-speed smoothing applies |
 
 ### Channel Mix (Which Forces Reach the Wheel)
-| Parameter | Range | Typical | Effect |
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| MzFrontGain | -1..1 | -0.5 to -0.3 | Self-aligning torque. NEGATIVE for column-force games |
-| FxFrontGain | -1..1 | 0.05-0.15 | Longitudinal force (traction/braking) |
-| FyFrontGain | -1..1 | 0.08-0.2 | Lateral force (cornering) |
-| MzRearGain | -1..1 | 0 | Rear Mz contribution |
+| MzFrontGain | -10..10 | -0.5 to -0.3 (R3E/LMU), 0.2-0.6 (EVO/AC/ACC) | Self-aligning torque. NEGATIVE for column-force games |
+| FxFrontGain | -10..10 | 0.05-0.15 | Longitudinal force (traction/braking) |
+| FyFrontGain | -10..10 | 0.08-0.2 | Lateral force (cornering) |
+| MzRearGain | -10..10 | 0 | Rear Mz contribution |
 | WheelLoadWeighting | 0-1 | 0-0.3 | How much wheel load affects channel mix |
-| MzScale | 50-500 | 100-300 | Scaling divisor for Mz channel |
-| FxScale | 500-5000 | 2000-4000 | Scaling divisor for Fx channel |
-| FyScale | 500-5000 | 1500-3000 | Scaling divisor for Fy channel |
+| MzScale | 1-500 | 30 | Scaling divisor for Mz channel. Higher = weaker Mz |
+| FxScale | 100-20000 | 4000 | Scaling divisor for Fx channel |
+| FyScale | 100-20000 | 5000 | Scaling divisor for Fy channel |
 
-### Damping
-| Parameter | Range | Typical | Effect |
+### Damping (UI section visible for EVO/AC/LMU only — do NOT suggest for R3E/ACC)
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| ViscousDamping | 0–0.3 | 0.03-0.15 | Speed-proportional resistance |
-| SpeedDamping | 0–1 | 0.1-0.4 | Additional damping that scales with car speed |
-| Friction | 0–0.3 | 0.01-0.08 | Coulomb friction (constant resistance) |
-| Inertia | 0–0.5 | 0.02-0.15 | Angular inertia simulation |
-| MaxSpeedReference | 50-300 | 150-250 | Speed at which speed damping reaches max |
+| ViscousDamping | 0–1 | 0.03-0.15 | Speed-proportional resistance |
+| SpeedDamping | 0–25 | 0.1-0.4 | Additional damping that scales with car speed |
+| Friction | 0–20 (UI: Friction Level) | 0.01-0.08 | Coulomb friction (constant resistance) |
+| Inertia | 0–20 (UI: Inertia Weight) | 0.02-0.15 | Angular inertia simulation |
+| MaxSpeedReference | 50-500 | 150-250 | Speed at which speed damping reaches max |
+| CenterDampFloor | 0–0.1 | 0 (EVO), 0.03 (LMU) | Absolute damping-authority floor at center. Fixes weave where proportional cap falls to zero |
+| StraightGain | 0–2 | 0 | Extra viscous+gyro damping above 80 km/h near center. Straight-line calm only |
 
 ### Slip Enhancement
-| Parameter | Range | Typical | Effect |
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| SlipRatioGain | 0–1 | 0.05-0.2 | Force enhancement from tire slip ratio |
-| SlipAngleGain | 0–0.5 | 0 (R3E) | Enhancement from slip angle. Unreliable in column-force games |
-| SlipAngleShapeGain | 0-1 | 0.2-0.6 | Shape-based slip angle response |
-| SlipThreshold | 0–0.5 | 0.1-0.25 | Slip detection threshold |
-| UseFrontOnly | bool | true | Only use front wheel slip data |
-| BrakeBoostGain | 0–1 | 0.2-0.5 | Force increase when braking (column-force games) |
-| BrakeBoostThreshold | 0–0.5 | 0.05-0.15 | Brake pedal threshold for boost |
-| GearChangeMuteEnabled | bool | true | Mute FFB during gear changes |
-| GearSpikeThreshold | 0-10000 | 3000 | RPM threshold for gear spike filtering |
+| SlipRatioGain | 0–5 | 0.05-0.2 | Force enhancement from tire slip ratio |
+| SlipAngleGain | 0–5 (physics games only) | 0 (R3E/LMU) | Enhancement from slip angle. Unreliable in column-force games — keep 0 there |
+| SlipAngleShapeGain | 0–5 (physics games only) | 0 | Shape-based slip angle response |
+| SlipThreshold | 0–1 | 0.1-0.25 | Slip detection threshold |
+| UseFrontOnly | toggle (no slider) | true | Only use front wheel slip data |
+| BrakeBoostGain | 0–1 (R3E/LMU only) | 0.2-0.5 | Force increase when braking (column-force games) |
+| BrakeBoostThreshold | 0–1 (R3E/LMU only) | 0.05-0.15 | Brake pedal threshold for boost |
+| GearChangeMuteEnabled | toggle (no slider) | true | Mute FFB during gear changes |
+| GearSpikeThreshold | NO SLIDER (numeric) | 3000 | RPM threshold for gear spike filtering. Shifts above this RPM extend the mute window |
+| RearFyScale | 0–2 (LMU only) | 0 | LMU rear-slip warning from rear Fy oscillation + yaw accel. Rear Mz is always zero in LMU telemetry |
+| RearGripDetailGain | 0–2 (LMU only) | 0 | LMU rear warning from rear grip-fraction drop. Front grip lightens core; rear only warns |
+| YawOnsetGain | 0–2 (LMU only) | 0 | LMU slide-onset kick strength from smoothed yaw accel |
+| YawOnsetThreshold | 0–10 (LMU only) | 0 (off), ~2 to arm | LMU yaw-accel rad/s² required to fire the onset kick |
+| YawOnsetDecay | NO SLIDER (LMU profile-only) | 8 | LMU onset-kick decay rate. Higher = shorter kick |
+| YawOnsetMax | NO SLIDER (LMU profile-only) | 0.12 | LMU onset-kick output cap |
+| SuspRoadScale | 0–2 (LMU only) | 1 | LMU mixer susp-delta road layer scale. 1 = stacked with reader envelopes |
+| UseMixerSuspRoad | toggle (LMU only) | true | LMU mixer road layer gate. False = reader envelopes only |
+| BrakeLoadBias | 0–1 (LMU only) | 0 | LMU front-load bias in brake boost. 0 = legacy scalar |
+| SynthYawEnabled | toggle (LMU only) | true | LMU yaw-accel synthesis from rotY. Measurement only; effects stay gain-gated |
+| SynthAbsEnabled | toggle (LMU only) | false (experimental) | LMU ABS-flag synthesis from front slip + brake |
+| SynthTcEnabled | toggle (LMU only) | false (experimental) | LMU TC-flag synthesis from rear slip + throttle |
 
-### Dynamic Effects
-| Parameter | Range | Typical | Effect |
+### Dynamic Effects (UI section: EVO/AC/R3E only)
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| LateralGGain | 0–1 | 0.05-0.3 | Cornering G-force feel |
-| LongitudinalGGain | 0–1 | 0.05-0.2 | Acceleration/braking G-force |
-| SuspensionGain | 0–1 | 0.05-0.15 | Road surface texture from suspension |
-| YawRateGain | 0–1 | 0.02-0.1 | Car rotation feel |
+| LateralGGain | 0–5 (UI: Cornering Force) | 0.05-0.3 | Cornering G-force feel |
+| LongitudinalGGain | 0–5 (UI: Accel/Braking Force) | 0.05-0.2 | Acceleration/braking G-force |
+| SuspensionGain | 0–5 (UI: Road Feel) | 0.05-0.15 | Road surface texture from suspension |
+| YawRateGain | 0–5 (UI: Car Rotation Force) | 0.02-0.1 | Car rotation feel |
 
-### Vibrations
-| Parameter | Range | Typical | Effect |
+### Vibrations (UI section hidden for ACC — do NOT suggest vibration gains for ACC)
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| MasterGain | 0–1 | 0.3-0.7 | Global vibration volume |
-| KerbGain | 0–3 | 1-2 | Curb/rumble strip intensity |
-| RoadGain | 0–2 | 0.3-1 | Road surface texture vibration |
-| SlipGain | 0–3 | 0.5-1.5 | Tire slip vibration |
-| AbsGain | 0–3 | 0.5-1.5 | ABS pulsing vibration |
+| MasterGain | 0–10 (UI: Vibration Master Gain) | 0.3-0.7 | Global vibration volume |
+| KerbGain | 0–10 (UI: Curb Gain) | 1-2 | Curb/rumble strip intensity |
+| RoadGain | 0–10 (UI: Road Gain) | 0.3-1 | Road surface texture vibration |
+| SlipGain | 0–10 (UI: Slip Gain) | 0.5-1.5 | Tire slip vibration |
+| AbsGain | 0–10 | 0.5-1.5 | ABS pulsing vibration |
 | AbsPulseAmplitude | 0-1 | 0.2-0.5 | ABS pulse strength |
-| SuspensionRoadGain | 0–3 | 0.5-2 | Suspension-based road feel |
-| ScrubGain | 0–2 | 0.2-0.8 | Tire scrub texture |
-| RearSlipGain | 0-2 | 0.2-0.6 | Rear wheel slip vibration |
+| SuspensionRoadGain | 0–10 | 0.5-2 | Suspension-based road feel |
+| ScrubGain | 0–1 | 0.2-0.8 | Tire scrub texture |
+| RearSlipGain | 0–1 | 0.2-0.6 | Rear wheel slip vibration |
 | OfftrackGain | 0-2 | 0.3-0.8 | Off-track surface feel |
-| OfftrackSeverityScale | 1-10 | 3-6 | How strongly offtrack feels |
-| CurbSeverityScale | 1-20 | 5-12 | Curb impact harshness scale |
-| ScrubForceScale | 0-0.01 | 0.0003-0.001 | Tire scrub force normalization |
-| RearSlipForceScale | 0-0.01 | 0.0003-0.001 | Rear slip force normalization |
+| OfftrackSeverityScale | 0-10 | 3-6 | How strongly offtrack feels |
+| CurbSeverityScale | NO SLIDER (profile-only) | 5-12 | Curb impact harshness scale |
+| ScrubForceScale | NO SLIDER (profile-only) | 0.0005 | Tire scrub force normalization |
+| RearSlipForceScale | NO SLIDER (profile-only) | 0.0005 | Rear slip force normalization |
 
-### Tyre Flex
-| Parameter | Range | Typical | Effect |
+### Tyre Flex (UI section: EVO/AC/R3E only)
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| FlexGain | 0–0.3 | 0.03-0.12 | Tyre flex feel amplitude |
-| CarcassStiffness | 0-5 | 0.5-2 | Tyre sidewall stiffness feel |
-| FlexSmoothing | 0-1 | 0.3-0.8 | Smoothing on tyre flex signal |
-| ContactPatchWeight | 0-1 | 0.3-0.7 | Contact patch deformation feel |
-| LoadFlexGain | 0-1 | 0.1-0.5 | Load-dependent flex gain |
+| FlexGain | 0–5 (UI: Tyre Flex Gain) | 0.03-0.12 | Tyre flex feel amplitude |
+| CarcassStiffness | 0.1-5 | 0.5-2 | Tyre sidewall stiffness feel |
+| FlexSmoothing | 0-0.95 | 0.3-0.8 | Smoothing on tyre flex signal |
+| ContactPatchWeight | 0-2 | 0.3-0.7 | Contact patch deformation feel |
+| LoadFlexGain | 0-5 | 0.1-0.5 | Load-dependent flex gain |
 
-### Static Friction (Parking Lot Feel)
-| Parameter | Range | Typical | Effect |
+### Static Friction — Parking Lot Feel (UI section: per-wheel games EVO/AC/ACC only)
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| Gain | 0–3 | 1-1.5 | Overall elastic feel strength |
-| MaxElasticStretch | 0–0.1 | 0.01-0.03 | Max stretch before breakaway |
-| SpringStiffness | 10-100 | 20-50 | Centering spring rate |
-| KineticFrictionBase | 0–0.5 | 0.1-0.25 | Sliding friction feel |
-| EngineOffDamping | 0-1 | 0.3-0.7 | Extra damping when car is off |
-| EngineOnDamping | 0-1 | 0.1-0.4 | Damping reduction when car is on |
-| EngineOffScale | 0-1 | 0.5-1 | Overall scale when car is off |
+| Gain (StaticFrictionGain) | 0–2 | 1-1.5 | Overall elastic feel strength |
+| MaxElasticStretch | 0.001–0.05 | 0.01-0.03 | Max stretch before breakaway |
+| SpringStiffness | 1-50 | 20-50 | Centering spring rate |
+| KineticFrictionBase | 0–1 | 0.1-0.25 | Sliding friction feel |
+| EngineOffDamping | 0-0.5 | 0.3-0.7 | Extra damping when car is off |
+| EngineOnDamping | 0-0.2 | 0.1-0.4 | Damping reduction when car is on |
+| EngineOffScale | 0-2 | 0.5-1 | Overall scale when car is off |
 | EngineOnScale | 0-1 | 0.1-0.5 | Overall scale when car is on |
-| ActiveDecay | 0-1 | 0.5-0.95 | How fast elastic force builds when turning |
-| ReturnDecay | 0-1 | 0.3-0.8 | How fast elastic force returns to center |
-| OutputSmoothAlpha | 0-1 | 0.3-0.7 | Smoothing on static friction output |
+| ActiveDecay | 0.5-1 | 0.5-0.95 | How fast elastic force builds when turning |
+| ReturnDecay | 0.1-0.99 | 0.3-0.8 | How fast elastic force returns to center |
+| OutputSmoothAlpha | 0.05-1 | 0.3-0.7 | Smoothing on static friction output |
 
-### Grip Guard
-| Parameter | Range | Typical | Effect |
+### Grip Guard (profile-only, no sliders)
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| Enabled | bool | true | Enable grip-dependent attenuation |
-| PeakSlipAngle | 0-0.5 | 0.08-0.15 | Slip angle at which grip peaks |
-| AttenuationStrength | 0-1 | 0.3-0.7 | How much force is reduced past peak grip |
-| MechanicalTrailGain | 0-1 | 0.05-0.3 | Simulated mechanical trail feel |
+| Enabled | toggle | true | Enable grip-dependent attenuation |
+| PeakSlipAngle | NO SLIDER | 0.08-0.15 | Slip angle at which grip peaks |
+| AttenuationStrength | NO SLIDER | 0.3-0.7 | How much force is reduced past peak grip |
+| MechanicalTrailGain | NO SLIDER | 0.05-0.3 | Simulated mechanical trail feel |
 
-### Crash Detection
-| Parameter | Range | Typical | Effect |
+### Crash Detection (UI section: EVO/AC/ACC only)
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| Enabled | bool | true | Enable crash force limiting |
+| Enabled | toggle | true | Enable crash force limiting |
 | ImpactGain | 0-1 | 0.3-0.7 | Crash force amplitude |
-| SafetyClamp | 0-1 | 0.3-0.7 | Maximum allowed crash force |
+| SafetyClamp | 0.1-1 | 0.3-0.7 | Maximum allowed crash force |
 | TriggerThresholdG | 1-10 | 3-6 | G-force threshold to trigger crash response |
 
 ### Tyre Condition
-| Parameter | Range | Typical | Effect |
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| Enabled | bool | true | Enable tyre wear/blowout effects |
+| Enabled | toggle | true | Enable tyre wear/blowout effects |
 | BlowoutVibrationGain | 0-1 | 0.2-0.6 | Vibration strength during blowout |
 | PressureLossGain | 0-1 | 0.1-0.4 | Feel of pressure loss |
 | DamageAsymmetryGain | 0-1 | 0.1-0.4 | Asymmetric pull from damage |
 
-### Wet Weather
-| Parameter | Range | Typical | Effect |
+### Wet Weather (per-wheel games EVO/AC/ACC only — no wet state in R3E/LMU telemetry)
+| Parameter | Slider Range | Typical | Effect |
 |-----------|-------|---------|--------|
-| Enabled | bool | false | Enable wet weather FFB adjustments |
+| Enabled | toggle | false | Enable wet weather FFB adjustments |
 | RoadVibSuppression | 0-1 | 0.5-0.9 | How much road vibration is reduced in rain |
-| PeakSlipAngleMultiplier | 0.5-3 | 1.2-2.0 | Slip angle increase on wet surface |
+| PeakSlipAngleMultiplier | 1-3 | 1.2-2.0 | Slip angle increase on wet surface |
 | DampingReduction | 0-1 | 0.2-0.5 | How much damping is reduced in rain |
 ";
 
@@ -252,6 +338,7 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
 - MzFrontGain should generally be POSITIVE (typically 0.2 to 0.6)
 - No CoreForceMultiplier or BrakeBoost — those are column-force only";
 
+        var coachGame = CoachParameterCatalog.ParseGameName(game);
         sb.AppendLine($"## Game & Wheel");
         sb.AppendLine($"Game: {game}");
         sb.AppendLine($"Wheel: {wheel}");
@@ -260,9 +347,41 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
         sb.AppendLine("### Game-Specific Rules");
         sb.AppendLine(gameNotes);
         sb.AppendLine();
+        sb.AppendLine("### Pipeline Path For This Game");
+        sb.AppendLine(CoachParameterCatalog.PipelinePathFor(coachGame));
+        sb.AppendLine();
+        sb.AppendLine("### Driving Context");
+        sb.AppendLine($"Car: {(string.IsNullOrWhiteSpace(CurrentCar) ? "unknown (ask the user which car)" : CurrentCar)}");
+        sb.AppendLine($"Track: {(string.IsNullOrWhiteSpace(CurrentTrack) ? "unknown (ask the user which track)" : CurrentTrack)}" +
+            (string.IsNullOrWhiteSpace(CurrentTrackConfig) ? "" : $" ({CurrentTrackConfig})"));
+        sb.AppendLine("Different cars/tracks need different feel: high-downforce cars and bumpy tracks " +
+            "want less harshness (lower vibration/road gains, more smoothing); low-grip cars and smooth " +
+            "tracks can take more detail. If car/track are unknown, say which assumption you are making.");
+        sb.AppendLine();
+        if (profile != null)
+        {
+            sb.AppendLine($"### Profile Scope");
+            sb.AppendLine($"Scope: {profile.Scope} | CarMatch: '{profile.CarMatch}' | TrackMatch: '{profile.TrackMatch}' | GameMatch: '{profile.GameMatch}'");
+            sb.AppendLine("The Game/Car/Track in Driving Context are DETECTED FACTS — never ask which game is running. " +
+                "Empty matches mean a General profile (applies everywhere), NOT an unknown game. " +
+                "If Scope is PerCar/PerTrack/PerCarAndTrack, changes only affect that car/track combo. " +
+                "If the user reports the issue happens everywhere, say so and suggest a General-scope change instead.");
+            sb.AppendLine();
+        }
 
         // Knowledge base
         sb.AppendLine(KnowledgeBase.Trim());
+        sb.AppendLine();
+        sb.AppendLine("## Authoritative Tunable Table (overrides any range above)");
+        sb.AppendLine(CoachParameterCatalog.BuildKnowledgeTable(coachGame));
+        sb.AppendLine();
+        sb.AppendLine("## Recommendation Rules (HARD — violating responses are discarded)");
+        sb.AppendLine("- `parameter` MUST be from the tunable list above for this game. Never suggest a NOT-available parameter.");
+        sb.AppendLine("- `suggestedValue` MUST be inside the slider min–max. The app clamps out-of-range values, so asking outside the range is pointless.");
+        sb.AppendLine("- `suggestedValue` MUST differ from `currentValue` by a meaningful step (>= 2% of the slider span). Micro-steps do nothing.");
+        sb.AppendLine("- For NO SLIDER (profile-only) parameters: only suggest when nothing with a slider can fix the issue, and say explicitly the user cannot drag a slider for it.");
+        sb.AppendLine("- Every recommendation needs a non-empty `reason` (WHY: which data/issues it fixes) and `impact` (what the driver will feel).");
+        sb.AppendLine("- After the fix, tell the user how to verify: take a new snapshot on the same car/track and compare clipping/avg/peak numbers.");
         sb.AppendLine();
 
         // Current profile
@@ -406,7 +525,12 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
     public async Task<CoachResult> AnalyzeSnapshotAsync(SnapshotCsvData csvData)
     {
         State = CoachSessionState.Analyzing;
-        DataSourceLabel = $"Snapshot: {csvData.ProfileName} ({csvData.RowCount} rows)";
+        AdoptSnapshotContext(csvData);
+        var ctxBits = new List<string>();
+        if (!string.IsNullOrWhiteSpace(CurrentCar)) ctxBits.Add(CurrentCar);
+        if (!string.IsNullOrWhiteSpace(CurrentTrack)) ctxBits.Add(CurrentTrack);
+        DataSourceLabel = $"Snapshot: {csvData.ProfileName} ({csvData.RowCount} rows)" +
+            (ctxBits.Count > 0 ? $" — {string.Join(" @ ", ctxBits)}" : "");
         CurrentProfileName = csvData.ProfileName;
         _lastCsvData = csvData;
         _lastLiveStats = null;
@@ -419,7 +543,11 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
     public async Task<CoachResult> AnalyzeLiveDataAsync(LiveProfilerStats stats, string profileName)
     {
         State = CoachSessionState.Analyzing;
-        DataSourceLabel = $"Live Data ({stats.FrameCount} frames)";
+        var ctxBits = new List<string>();
+        if (!string.IsNullOrWhiteSpace(CurrentCar)) ctxBits.Add(CurrentCar);
+        if (!string.IsNullOrWhiteSpace(CurrentTrack)) ctxBits.Add(CurrentTrack);
+        DataSourceLabel = $"Live Data ({stats.FrameCount} frames)" +
+            (ctxBits.Count > 0 ? $" — {string.Join(" @ ", ctxBits)}" : "");
         CurrentProfileName = profileName;
         _lastLiveStats = stats;
         _lastCsvData = null;
@@ -499,6 +627,7 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
 - MzFrontGain should generally be positive
 - No BrakeBoost or CoreForceMultiplier concept — those are R3E/LMU specific";
 
+        var coachGame = CoachParameterCatalog.ParseGameName(game);
         return $@"You are an expert sim racing FFB tuner integrated into the FFB Coach tool.
 
 You help the user tune their force feedback settings by answering questions and giving advice.
@@ -515,6 +644,23 @@ Do not generate off-topic content. This saves tokens and keeps the conversation 
 
 ## Game-Specific Rules
 {gameSpecific}
+
+## Pipeline Path For This Game
+{CoachParameterCatalog.PipelinePathFor(coachGame)}
+
+## Driving Context
+Car: {(string.IsNullOrWhiteSpace(CurrentCar) ? "unknown (ask the user which car)" : CurrentCar)}
+Track: {(string.IsNullOrWhiteSpace(CurrentTrack) ? "unknown (ask the user which track)" : CurrentTrack)}{(string.IsNullOrWhiteSpace(CurrentTrackConfig) ? "" : $" ({CurrentTrackConfig})")}
+Game/Car/Track above are DETECTED FACTS — never ask which game is running, and never treat empty profile matches as an unknown game.
+Profiles can be scoped per car/track (Scope/CarMatch/TrackMatch on the profile). If the issue is corner-specific, say which kind of corner; if it happens everywhere, say so. After any change, tell the user to verify with a new snapshot on the same car/track.
+
+{CoachParameterCatalog.BuildKnowledgeTable(coachGame)}
+
+## Recommendation Rules (HARD — violating responses are discarded)
+- `parameter` MUST be tunable for this game (see table). Never suggest a NOT-available parameter.
+- `suggestedValue` MUST be inside the slider min–max and differ from `currentValue` by >= 2% of the slider span.
+- For NO SLIDER (profile-only) parameters: only suggest when nothing with a slider can fix it, and say there is no slider.
+- Every recommendation needs `reason` (WHY it fixes the issue) and `impact` (what the driver will feel).
 
 ## CRITICAL: Response Format
 You MUST respond with valid JSON ONLY. No exceptions. Every response must be a JSON object with the following structure.
@@ -544,7 +690,8 @@ Put ALL conversational text in the ``reply`` field. Do NOT write any text outsid
 Rules:
 - ALL text goes inside ``reply``. No text outside the JSON.
 - Include ``recommendations`` when suggesting changes. Set to [] if unsure.
-- Include ``answers`` with clickable buttons for the user.
+- ``answers`` is for YOUR follow-up questions only (e.g. continue/finish or clarifying feel).
+  Do NOT emit apply/skip/apply_* buttons — the app adds one Apply button per recommendation automatically.
 - The ``parameter`` name must be exact (case-insensitive, spaces ignored).
 
 ## Exact Parameter Names
@@ -552,8 +699,8 @@ Use these EXACT names in the ""parameter"" field, ignoring spaces and case. Syst
 
 Core: OutputGain, CompressionPower, ForceScale, SoftClipThreshold, CoreForceMultiplier
 Mix: MzFrontGain, FxFrontGain, FyFrontGain, MzRearGain, WheelLoadWeighting, MzScale, FxScale, FyScale
-Damping: ViscousDamping, SpeedDamping, Friction, Inertia, MaxSpeedReference
-Slip: SlipRatioGain, SlipAngleGain, SlipAngleShapeGain, SlipThreshold, UseFrontOnly, BrakeBoostGain, BrakeBoostThreshold, GearSpikeThreshold
+Damping: ViscousDamping, SpeedDamping, Friction, Inertia, MaxSpeedReference, CenterDampFloor, StraightGain
+Slip: SlipRatioGain, SlipAngleGain, SlipAngleShapeGain, SlipThreshold, UseFrontOnly, BrakeBoostGain, BrakeBoostThreshold, GearSpikeThreshold, RearFyScale, RearGripDetailGain, YawOnsetGain, YawOnsetThreshold, YawOnsetDecay, YawOnsetMax, SuspRoadScale, UseMixerSuspRoad, BrakeLoadBias, SynthYawEnabled, SynthAbsEnabled, SynthTcEnabled
 Dynamic: LateralGGain, LongitudinalGGain, SuspensionGain, YawRateGain
 Vibrations: MasterGain, KerbGain, RoadGain, SlipGain, AbsGain, AbsPulseAmplitude, SuspensionRoadGain, ScrubGain, RearSlipGain, OfftrackGain, OfftrackSeverityScale, CurbSeverityScale, ScrubForceScale, RearSlipForceScale
 Advanced: MaxSlewRate, CenterSuppressionDegrees, CenterSharpnessDegrees, CenterKneePower, CenterBlendDegrees, HysteresisThreshold, NoiseFloor, HysteresisWatchdogFrames, LowSpeedSmoothKmh
@@ -620,22 +767,75 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             )
             return GenerateSourceSelectionResult();
 
-        if (answerId == "apply" && _lastResult?.PendingRecommendation != null)
+        // Apply flows — per-recommendation buttons (apply_0..N) or legacy apply (first).
+        // The applied rec is REMOVED from the pending list; the rest stay applicable,
+        // so longer chats keep working Apply buttons for every suggestion.
+        if ((answerId == "apply" || answerId.StartsWith("apply_")) && _lastResult?.Recommendations.Count > 0)
         {
-            var rec = _lastResult.PendingRecommendation;
+            int index = 0;
+            if (answerId.StartsWith("apply_") && !int.TryParse(answerId["apply_".Length..], out index))
+                index = 0;
+            if (index < 0 || index >= _lastResult.Recommendations.Count)
+            {
+                return new CoachResult
+                {
+                    State = CoachSessionState.Questioning,
+                    Messages = [new CoachMessage { Text = "That suggestion is no longer pending (already applied or skipped).", Icon = "ℹ️" }]
+                };
+            }
+            var rec = _lastResult.Recommendations[index];
             var result = ApplyRecommendation(rec);
-            _lastResult = null;
-            RefreshConversationProfile();
+            if (result.ProfileChanged)
+            {
+                _lastResult.Recommendations.RemoveAt(index);
+                _lastResult = _lastResult with
+                {
+                    PendingRecommendation = _lastResult.Recommendations.Count > 0
+                        ? _lastResult.Recommendations[Math.Min(index, _lastResult.Recommendations.Count - 1)]
+                        : null
+                };
+                RefreshConversationProfile();
+                // Chain remaining recs as follow-up buttons so the user can keep applying.
+                if (_lastResult.Recommendations.Count > 0)
+                {
+                    var followUps = BuildApplyButtons(_lastResult.Recommendations);
+                    followUps.Add(new CoachAnswer { Id = "finish", Label = "Done", Description = "See summary" });
+                    result.Messages.Add(new CoachMessage { Text = "More pending suggestions:", Answers = followUps });
+                }
+            }
             return result;
         }
 
-        if (answerId.StartsWith("apply_") && _lastResult?.PendingRecommendation != null)
+        // Skip the current (first) pending suggestion without an LLM round-trip.
+        if (answerId == "skip" && _lastResult?.Recommendations.Count > 0)
         {
-            var rec = _lastResult.PendingRecommendation;
-            var result = ApplyRecommendation(rec);
-            _lastResult = null;
-            RefreshConversationProfile();
-            return result;
+            var skipped = _lastResult.Recommendations[0];
+            _lastResult.Recommendations.RemoveAt(0);
+            _lastResult = _lastResult with
+            {
+                PendingRecommendation = _lastResult.Recommendations.Count > 0 ? _lastResult.Recommendations[0] : null
+            };
+            if (_lastResult.Recommendations.Count == 0)
+            {
+                return new CoachResult
+                {
+                    State = CoachSessionState.Questioning,
+                    Messages =
+                    [
+                        new CoachMessage { Text = $"Skipped {skipped.Parameter} — no more pending suggestions.", Icon = "⏭" },
+                        new CoachMessage
+                        {
+                            Text = "What next?",
+                            Answers =
+                            [
+                                new CoachAnswer { Id = "continue", Label = "Continue", Description = "More adjustments" },
+                                new CoachAnswer { Id = "finish", Label = "Finish", Description = "See summary" }
+                            ]
+                        }
+                    ]
+                };
+            }
+            return ShowRecommendationsFromLastResult($"Skipped {skipped.Parameter}. ");
         }
 
         if (answerId == "talk" && _lastResult?.Recommendations.Count > 0)
@@ -682,28 +882,53 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
 
             var recs = new List<FfbRecommendation>();
             FfbRecommendation? pendingRec = null;
+            var droppedNotes = new List<string>();
+            var profileNow = _profileManager.ActiveProfile;
 
             var recText = new StringBuilder();
+            int shown = 0;
             for (int ri = 0; ri < (aiResult.Recommendations?.Count ?? 0); ri++)
             {
                 var r = aiResult.Recommendations![ri];
-                var fr = new FfbRecommendation
+                FfbRecommendation fr;
+                if (profileNow != null)
                 {
-                    Type = RecommendationType.ProfileChange,
-                    Parameter = r.Parameter,
-                    Description = r.Reason,
-                    CurrentValue = r.CurrentValue,
-                    SuggestedValue = r.SuggestedValue,
-                    Impact = r.Impact
-                };
+                    var validated = ValidateRecommendation(
+                        r.Parameter, r.Reason, r.Reason,
+                        r.CurrentValue, r.SuggestedValue, r.Impact,
+                        profileNow, droppedNotes);
+                    if (validated == null) continue;
+                    fr = validated;
+                }
+                else
+                {
+                    fr = new FfbRecommendation
+                    {
+                        Type = RecommendationType.ProfileChange,
+                        Parameter = r.Parameter,
+                        Description = r.Reason,
+                        CurrentValue = r.CurrentValue,
+                        SuggestedValue = r.SuggestedValue,
+                        Impact = r.Impact
+                    };
+                }
                 recs.Add(fr);
                 pendingRec ??= fr;
 
-                if (ri == 0) recText.AppendLine("**Suggested adjustments:**\n");
-                recText.AppendLine($"**{ri + 1}. {r.Parameter}**");
-                recText.AppendLine($"   {r.CurrentValue:F3}  →  **{r.SuggestedValue:F3}**");
-                recText.AppendLine($"   {r.Impact}");
+                if (shown == 0) recText.AppendLine("**Suggested adjustments:**\n");
+                shown++;
+                recText.AppendLine($"**{shown}. {fr.Parameter}**");
+                recText.AppendLine($"   {fr.CurrentValue:F3}  →  **{fr.SuggestedValue:F3}**");
+                recText.AppendLine($"   {fr.Impact}");
                 recText.AppendLine();
+            }
+
+            if (droppedNotes.Count > 0)
+            {
+                if (recText.Length > 0) recText.AppendLine();
+                recText.AppendLine("Skipped (would do nothing here):");
+                foreach (var n in droppedNotes)
+                    recText.AppendLine($"- {n}");
             }
 
             if (recText.Length > 0)
@@ -715,26 +940,34 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                 });
             }
 
+            // Deterministic buttons: the app owns apply/skip (one Apply per rec),
+            // the AI only contributes its own follow-up answers. This guarantees an
+            // Apply button for EVERY profile change, even in long conversations.
             var answers = new List<CoachAnswer>();
+            if (recs.Count > 0)
+                answers.AddRange(BuildApplyButtons(recs));
             foreach (var a in aiResult.Answers)
             {
+                var id = a.Id ?? "";
+                if (id == "apply" || id == "skip" || id.StartsWith("apply_"))
+                    continue;
+                if (answers.Any(x => x.Id == id))
+                    continue;
                 answers.Add(new CoachAnswer
                 {
-                    Id = a.Id,
+                    Id = string.IsNullOrWhiteSpace(a.Id) ? $"q_{answers.Count}" : a.Id,
                     Label = a.Label,
                     Description = a.Description
                 });
             }
 
-            if (pendingRec != null && answers.All(a => a.Id != "apply" && a.Id != "skip"))
-            {
-                answers.Insert(0, new CoachAnswer { Id = "apply", Label = "Apply Change", Description = $"{pendingRec.Parameter}: {pendingRec.CurrentValue:F2} → {pendingRec.SuggestedValue:F2}" });
-                answers.Insert(1, new CoachAnswer { Id = "skip", Label = "Skip", Description = "Keep current" });
-            }
-
             if (answers.Count == 0)
             {
                 answers.Add(new CoachAnswer { Id = "continue", Label = "Continue", Description = "More adjustments" });
+                answers.Add(new CoachAnswer { Id = "finish", Label = "Finish", Description = "See summary" });
+            }
+            else if (answers.All(a => a.Id != "finish" && a.Id != "done"))
+            {
                 answers.Add(new CoachAnswer { Id = "finish", Label = "Finish", Description = "See summary" });
             }
 
@@ -771,7 +1004,28 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
         }
     }
 
-    private CoachResult ShowRecommendationsFromLastResult()
+    /// <summary>
+    /// One Apply button per pending recommendation — every profile change the coach
+    /// suggests must be one click away, in chat as well as in longer conversations.
+    /// </summary>
+    private static List<CoachAnswer> BuildApplyButtons(List<FfbRecommendation> recs)
+    {
+        var answers = new List<CoachAnswer>();
+        for (int i = 0; i < recs.Count; i++)
+        {
+            var r = recs[i];
+            answers.Add(new CoachAnswer
+            {
+                Id = $"apply_{i}",
+                Label = recs.Count == 1 ? "Apply Change" : $"Apply #{i + 1}: {r.Parameter}",
+                Description = $"{r.CurrentValue:F2} → {r.SuggestedValue:F2}"
+            });
+        }
+        answers.Add(new CoachAnswer { Id = "skip", Label = "Skip", Description = "Skip the first suggestion" });
+        return answers;
+    }
+
+    private CoachResult ShowRecommendationsFromLastResult(string prefix = "")
     {
         var recs = _lastResult?.Recommendations;
         if (recs == null || recs.Count == 0)
@@ -808,14 +1062,10 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             }
         };
 
-        var answers = new List<CoachAnswer>
-        {
-            new() { Id = "apply", Label = "Apply First Change", Description = $"{pendingRec.Parameter}: {pendingRec.CurrentValue:F2} → {pendingRec.SuggestedValue:F2}" },
-            new() { Id = "skip", Label = "Skip", Description = "Keep current" }
-        };
+        var answers = BuildApplyButtons(recs);
         messages.Add(new CoachMessage
         {
-            Text = "Which would you like to address first?",
+            Text = $"{prefix}Which would you like to apply? Each change applies immediately and is recorded in history (Undo available).",
             Answers = answers
         });
 
@@ -845,11 +1095,59 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                 ]
             };
 
+        // Defensive: re-check applicability + clamp at apply time (game may have
+        // switched since the recommendation was created).
+        var canonical = NormalizeParam(rec.Parameter);
+        if (CoachParameterCatalog.TryGet(canonical, out var info) && info != null)
+        {
+            if (!CoachParameterCatalog.IsApplicable(info, ActiveCoachGame))
+            {
+                return new CoachResult
+                {
+                    State = CoachSessionState.Questioning,
+                    Messages =
+                    [
+                        new CoachMessage
+                        {
+                            Text = $"Not applying {info.Name}: it has no effect for " +
+                                $"{CoachParameterCatalog.GameShortName(ActiveCoachGame)} " +
+                                $"(only: {string.Join("/", info.ApplicableGames.Select(CoachParameterCatalog.GameShortName))}).",
+                            Icon = "🚫"
+                        }
+                    ]
+                };
+            }
+            float clamped = CoachParameterCatalog.ClampToSlider(info, rec.SuggestedValue);
+            if (Math.Abs(clamped - rec.SuggestedValue) > 1e-6f)
+            {
+                rec = new FfbRecommendation
+                {
+                    Type = rec.Type,
+                    Parameter = rec.Parameter,
+                    Description = rec.Description,
+                    Reason = rec.Reason,
+                    CurrentValue = rec.CurrentValue,
+                    SuggestedValue = clamped,
+                    Impact = rec.Impact
+                };
+            }
+        }
+
         float oldValue = ReadProfileValue(profile, rec.Parameter);
         WriteProfileValue(profile, rec.Parameter, rec.SuggestedValue);
         profile.ApplyToPipeline(_pipeline);
         _profileManager.SaveProfile(profile);
-        _undoStack.Push(() => WriteProfileValue(profile, rec.Parameter, oldValue));
+        _history.Add(new CoachAppliedChange
+        {
+            Parameter = NormalizeParam(rec.Parameter),
+            OldValue = oldValue,
+            NewValue = rec.SuggestedValue,
+            Reason = rec.Reason ?? rec.Description ?? "",
+            Game = CurrentGame,
+            Car = CurrentCar,
+            Track = CurrentTrack,
+            ProfileName = profile.Name
+        });
         State = CoachSessionState.Applying;
 
         return new CoachResult
@@ -865,7 +1163,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                 },
                 new CoachMessage
                 {
-                    Text = $"*{rec.Impact}*\n\nGive it a test drive and let me know how it feels! Use **Undo** if it doesn't feel right.",
+                    Text = $"*{rec.Impact}*\n\nGive it a test drive and let me know how it feels! Use **Undo** if it doesn't feel right.\n\nTo verify with data: take a new snapshot on the same car/track{(string.IsNullOrWhiteSpace(CurrentCar) ? "" : $" ({CurrentCar} @ {CurrentTrack})")} and compare clipping/avg/peak numbers.",
                     Answers =
                     [
                         new CoachAnswer { Id = "continue", Label = "Continue Tuning" },
@@ -876,16 +1174,22 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
         };
     }
 
+    /// <summary>Full apply history, newest last. Survives across turns until Reset.</summary>
+    public IReadOnlyList<CoachAppliedChange> AppliedHistory => _history;
+
     public CoachResult UndoLastChange()
     {
-        if (_undoStack.TryPop(out var undo))
+        if (_history.Count > 0)
         {
-            undo();
+            var last = _history[^1];
+            _history.RemoveAt(_history.Count - 1);
             var profile = _profileManager.ActiveProfile;
             if (profile != null)
             {
+                WriteProfileValue(profile, last.Parameter, last.OldValue);
                 profile.ApplyToPipeline(_pipeline);
                 _profileManager.SaveProfile(profile);
+                RefreshConversationProfile();
             }
             return new CoachResult
             {
@@ -893,7 +1197,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                 ProfileChanged = true,
                 Messages =
                 [
-                    new CoachMessage { Text = "Last change reverted.", Icon = "↩" }
+                    new CoachMessage { Text = $"↩ Reverted {last.Parameter}: {last.NewValue:F3} → {last.OldValue:F3} ({_history.Count} change(s) still applied).", Icon = "↩" }
                 ]
             };
         }
@@ -904,6 +1208,66 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             Messages =
             [
                 new CoachMessage { Text = "No changes to undo." }
+            ]
+        };
+    }
+
+    /// <summary>
+    /// Revert one specific history entry. Refuses when the current value no longer
+    /// matches what the entry applied (a later change superseded it) — revert the
+    /// newer entry first instead.
+    /// </summary>
+    public CoachResult RevertChange(Guid id)
+    {
+        var entry = _history.FirstOrDefault(h => h.Id == id);
+        if (entry == null)
+        {
+            return new CoachResult
+            {
+                State = CoachSessionState.Questioning,
+                Messages = [new CoachMessage { Text = "That history entry is gone already.", Icon = "ℹ️" }]
+            };
+        }
+
+        var profile = _profileManager.ActiveProfile;
+        if (profile == null)
+        {
+            return new CoachResult
+            {
+                State = CoachSessionState.Questioning,
+                Messages = [new CoachMessage { Text = "No active profile to modify.", Icon = "⚠️" }]
+            };
+        }
+
+        float current = ReadProfileValue(profile, entry.Parameter);
+        if (Math.Abs(current - entry.NewValue) > 1e-6f)
+        {
+            return new CoachResult
+            {
+                State = CoachSessionState.Questioning,
+                Messages =
+                [
+                    new CoachMessage
+                    {
+                        Text = $"Can't revert {entry.Parameter} to {entry.OldValue:F3}: it is now {current:F3} (changed after this entry was applied). Revert the newer change first, or apply a manual value.",
+                        Icon = "⚠️"
+                    }
+                ]
+            };
+        }
+
+        _history.Remove(entry);
+        WriteProfileValue(profile, entry.Parameter, entry.OldValue);
+        profile.ApplyToPipeline(_pipeline);
+        _profileManager.SaveProfile(profile);
+        RefreshConversationProfile();
+        return new CoachResult
+        {
+            State = CoachSessionState.Questioning,
+            ProfileChanged = true,
+            Messages =
+            [
+                new CoachMessage { Text = $"↩ Reverted {entry.Parameter}: {entry.NewValue:F3} → {entry.OldValue:F3} ({_history.Count} change(s) still applied).", Icon = "↩" }
             ]
         };
     }
@@ -1014,48 +1378,13 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
     public void Reset()
     {
         State = CoachSessionState.Idle;
-        _undoStack.Clear();
+        _history.Clear();
         CurrentProfileName = "";
         DataSourceLabel = "";
         _lastResult = null;
         _lastCsvData = null;
         _lastLiveStats = null;
         _aiConversation = null;
-    }
-
-    private string BuildSystemPromptSlim(FfbProfile profile, SnapshotCsvData csvData)
-    {
-        var game = CurrentGame;
-        var wheel = CurrentWheel;
-        var isColumn = IsColumnForceGame;
-
-        var notes = isColumn
-            ? "R3E steering force maps to Mz with a sqrt center ramp (0-3 degrees). Fx/Fy synthesized, slip angle unreliable. CoreForceMultiplier default 3.0x."
-            : "Real physics Mz/Fx/Fy. Slip angle reliable. MzFrontGain positive. No CoreForceMultiplier or BrakeBoost.";
-
-        return $@"You are an expert sim racing FFB tuner for {game} on {wheel}.
-You analyze telemetry and chat with the user to help tune their FFB profile.
-
-## Game Notes
-{notes}
-
-## Parameter Quick Reference
-| Parameter | Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| OutputGain | 0-1.2 | 0.6-0.8 | Final output multiplier |
-| CompressionPower | 1-3 | 1.2-1.8 | Core force curve exponent |
-| MaxSlewRate | 0-1 | 0.3-0.85 | Detail path rate limit |
-| CenterSuppression | 0-10 | 1-3 | V-shape center deadzone |
-| HysteresisThreshold | 0-0.05 | 0.01-0.02 | Center deadband |
-| ViscousDamping | 0-0.3 | 0.03-0.15 | Speed-proportional damping |
-| MasterGain (vib) | 0-1 | 0.3-0.7 | Global vibration volume |
-| MzFrontGain | {(isColumn ? "-1..1" : "0..1")} | {(isColumn ? "-0.3 to -0.5" : "0.3 to 0.6")} | {(isColumn ? "NEGATIVE for column-force games" : "Positive for physics-based")} |
-
-## Dataset
-Profile: {csvData.ProfileName}
-Telemetry rows: {csvData.RowCount}
-Torque: {csvData.TorqueNm} Nm
- Wheelbase: {wheel}";
     }
 
     private static string BuildProfileFullJson(FfbProfile profile)
@@ -1068,8 +1397,8 @@ Torque: {csvData.TorqueNm} Nm
             profile.SoftClipThreshold,
             profile.SignCorrectionEnabled,
             ChannelMix = new { MzFront = profile.MzFront?.Gain, FxFront = profile.FxFront?.Gain, FyFront = profile.FyFront?.Gain, MzRear = profile.MzRear?.Gain, profile.WheelLoadWeighting, profile.MzScale, profile.FxScale, profile.FyScale },
-            Damping = new { profile.Damping?.ViscousDamping, profile.Damping?.SpeedDamping, profile.Damping?.Friction, profile.Damping?.Inertia, MaxSpeedReference = profile.Damping?.MaxSpeedReference },
-            Slip = new { profile.Slip?.SlipRatioGain, profile.Slip?.SlipAngleGain, profile.Slip?.SlipAngleShapeGain, profile.Slip?.SlipThreshold, profile.Slip?.UseFrontOnly, profile.Slip?.CoreForceMultiplier, profile.Slip?.BrakeBoostGain, profile.Slip?.BrakeBoostThreshold, profile.Slip?.GearChangeMuteEnabled, profile.Slip?.GearSpikeThreshold },
+            Damping = new { profile.Damping?.ViscousDamping, profile.Damping?.SpeedDamping, profile.Damping?.Friction, profile.Damping?.Inertia, MaxSpeedReference = profile.Damping?.MaxSpeedReference, profile.Damping?.CenterDampFloor, profile.Damping?.StraightGain },
+            Slip = new { profile.Slip?.SlipRatioGain, profile.Slip?.SlipAngleGain, profile.Slip?.SlipAngleShapeGain, profile.Slip?.SlipThreshold, profile.Slip?.UseFrontOnly, profile.Slip?.CoreForceMultiplier, profile.Slip?.BrakeBoostGain, profile.Slip?.BrakeBoostThreshold, profile.Slip?.GearChangeMuteEnabled, profile.Slip?.GearSpikeThreshold, profile.Slip?.RearFyScale, profile.Slip?.RearGripDetailGain, profile.Slip?.YawOnsetGain, profile.Slip?.YawOnsetThreshold, profile.Slip?.YawOnsetDecay, profile.Slip?.YawOnsetMax, profile.Slip?.SuspRoadScale, profile.Slip?.UseMixerSuspRoad, profile.Slip?.BrakeLoadBias, profile.Slip?.SynthYawEnabled, profile.Slip?.SynthAbsEnabled, profile.Slip?.SynthTcEnabled },
             Dynamic = new { profile.Dynamic?.LateralGGain, profile.Dynamic?.LongitudinalGGain, profile.Dynamic?.SuspensionGain, profile.Dynamic?.YawRateGain },
             Vibrations = new { profile.Vibrations?.KerbGain, profile.Vibrations?.RoadGain, profile.Vibrations?.SlipGain, profile.Vibrations?.AbsGain, profile.Vibrations?.AbsPulseAmplitude, profile.Vibrations?.SuspensionRoadGain, profile.Vibrations?.ScrubGain, profile.Vibrations?.RearSlipGain, profile.Vibrations?.OfftrackGain, profile.Vibrations?.OfftrackSeverityScale, profile.Vibrations?.CurbSeverityScale, profile.Vibrations?.ScrubForceScale, profile.Vibrations?.RearSlipForceScale, profile.Vibrations?.MasterGain },
             Advanced = new { profile.Advanced?.MaxSlewRate, profile.Advanced?.CenterSuppressionDegrees, profile.Advanced?.CenterSharpnessDegrees, profile.Advanced?.CenterKneePower, profile.Advanced?.CenterBlendDegrees, profile.Advanced?.HysteresisThreshold, profile.Advanced?.NoiseFloor, profile.Advanced?.HysteresisWatchdogFrames, profile.Advanced?.CoreForceMultiplier, profile.Advanced?.LowSpeedSmoothKmh },
@@ -1080,24 +1409,6 @@ Torque: {csvData.TorqueNm} Nm
             TyreCondition = new { profile.TyreCondition?.Enabled, BlowoutVibrationGain = profile.TyreCondition?.BlowoutVibrationGain, PressureLossGain = profile.TyreCondition?.PressureLossGain, DamageAsymmetryGain = profile.TyreCondition?.DamageAsymmetryGain },
             WetWeather = new { profile.WetWeather?.Enabled, profile.WetWeather?.RoadVibSuppression, profile.WetWeather?.PeakSlipAngleMultiplier, profile.WetWeather?.DampingReduction }
         }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-    }
-
-    private static string BuildInitialAnalysisPrompt(SnapshotCsvData csvData, FfbProfile profile, string gameContext)
-    {
-        return $@"## Game Context
-{gameContext}
-
-## Current Profile Values (full)
-```json
-{BuildProfileFullJson(profile)}
-```
-
-## Telemetry Statistics
-```
-{csvData.StatsText}
-```
-
-Analyze this data. Identify the most important FFB issues and provide specific recommendations. Be conversational and explain what the driver is likely feeling.";
     }
 
     private static List<string> RunDiagnostics(FfbProfile profile, bool isColumnForce)
@@ -1140,10 +1451,10 @@ Analyze this data. Identify the most important FFB issues and provide specific r
             issues.Add("CRITICAL: Dead channel mix — All channel gains (MzFront, FxFront, FyFront) are ZERO. "
                 + "The core centering force path is completely disabled.");
 
-        // UNIVERSAL: ForceScale out of range
-        if (profile.ForceScale < 100)
-            issues.Add("ISSUE: ForceScale extremely low — Current: " + profile.ForceScale.ToString("F0") +
-                ". Normal range is 700-1500. This causes massive clipping.");
+        // COLUMN-FORCE ONLY: ForceScale out of range (slider 0.1–5, default 1.0; lower = stronger)
+        if (isColumnForce && profile.ForceScale < 0.3f)
+            issues.Add("ISSUE: ForceScale extremely low — Current: " + profile.ForceScale.ToString("F2") +
+                ". Slider range is 0.1–5 (default 1.0); low values amplify the signal and cause massive clipping.");
 
         // COLUMN-FORCE ONLY: CoreForceMultiplier
         if (isColumnForce && profile.Advanced?.CoreForceMultiplier < 2.0f)
@@ -1182,7 +1493,7 @@ Analyze this data. Identify the most important FFB issues and provide specific r
                       "\n\nAfter addressing these, also analyze the telemetry for additional tuning recommendations."
                     : "Analyze this telemetry data and provide specific, actionable recommendations to improve FFB feel and performance.";
 
-                var aiResult = await _aiAnalyzer.AnalyzeAsync(csvData, profile, $"{CurrentGame}\n{CurrentWheel}", diagnostics);
+                var aiResult = await _aiAnalyzer.AnalyzeAsync(csvData, profile, GameContextString(DataSourceLabel), diagnostics);
                 _aiConversation = new List<ChatMessage>
                 {
                     new() { Role = "system", Content = context },
@@ -1348,7 +1659,7 @@ Analyze this data. Identify the most important FFB issues and provide specific r
             {
                 var context = BuildSystemContext(csvData, profile, isAnalysis: true);
                 var diagnostics = RunDiagnostics(profile, IsColumnForceGame);
-                var aiResult = await _aiAnalyzer.AnalyzeAsync(csvData, profile, $"Live {stats.FrameCount}f", diagnostics);
+                var aiResult = await _aiAnalyzer.AnalyzeAsync(csvData, profile, GameContextString($"Live {stats.FrameCount}f"), diagnostics);
                 _aiConversation = new List<ChatMessage>
                 {
                     new() { Role = "system", Content = context },
@@ -1387,11 +1698,86 @@ Analyze this data. Identify the most important FFB issues and provide specific r
         };
     }
 
+    /// <summary>
+    /// Validates one AI-proposed recommendation against the authoritative catalog:
+    /// known parameter, applicable to the current game, inside the real slider range,
+    /// and a meaningful step. Returns null when the suggestion must be dropped.
+    /// </summary>
+    private FfbRecommendation? ValidateRecommendation(
+        string parameter, string issueDescription, string reason,
+        float aiCurrent, float aiSuggested, string impact,
+        FfbProfile profile, List<string> droppedNotes)
+    {
+        var canonical = NormalizeParam(parameter);
+        if (!CoachParameterCatalog.TryGet(canonical, out var info) || info == null)
+        {
+            droppedNotes.Add($"Dropped '{parameter}': unknown parameter (no matching profile setting).");
+            return null;
+        }
+
+        var game = ActiveCoachGame;
+        if (!CoachParameterCatalog.IsApplicable(info, game))
+        {
+            droppedNotes.Add($"Dropped '{info.Name}': not available for " +
+                $"{CoachParameterCatalog.GameShortName(game)} " +
+                $"(only: {string.Join("/", info.ApplicableGames.Select(CoachParameterCatalog.GameShortName))}).");
+            return null;
+        }
+
+        float actualCurrent = ReadProfileValue(profile, canonical);
+        float suggested = aiSuggested;
+        bool clamped = false;
+        if (info.SliderMin.HasValue || info.SliderMax.HasValue)
+        {
+            float c = CoachParameterCatalog.ClampToSlider(info, suggested);
+            clamped = Math.Abs(c - suggested) > 1e-6f;
+            suggested = c;
+        }
+
+        bool meaningful;
+        if (info.SliderMin.HasValue && info.SliderMax.HasValue)
+        {
+            float span = info.SliderMax.Value - info.SliderMin.Value;
+            meaningful = Math.Abs(suggested - actualCurrent) >= Math.Max(span * 0.02f, 1e-6f);
+        }
+        else
+        {
+            meaningful = Math.Abs(suggested - actualCurrent) > 1e-6f;
+        }
+        if (!meaningful)
+        {
+            droppedNotes.Add($"Dropped '{info.Name}': suggested {suggested:F3} is not a meaningful " +
+                $"step from current {actualCurrent:F3} (min step is 2% of slider span).");
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+            reason = $"Addresses {issueDescription} (fixes: {info.Fixes}).";
+        if (string.IsNullOrWhiteSpace(impact))
+            impact = info.Effect;
+        if (info.SliderMin == null)
+            reason += " NOTE: no UI slider exists for this — it is profile-only.";
+        if (clamped)
+            reason += $" (AI asked {aiSuggested:F3}, clamped to slider limit {suggested:F3}).";
+
+        return new FfbRecommendation
+        {
+            Type = RecommendationType.ProfileChange,
+            Parameter = info.Name,
+            Description = issueDescription,
+            Reason = reason,
+            CurrentValue = actualCurrent,
+            SuggestedValue = suggested,
+            Impact = impact
+        };
+    }
+
     private CoachResult ConvertAiResult(AIAnalysisResult aiResult, SnapshotCsvData csvData, FfbProfile profile)
     {
         var recs = new List<FfbRecommendation>();
         var issues = new List<string>();
         var messages = new List<CoachMessage>();
+        var droppedNotes = new List<string>();
 
         messages.Add(new CoachMessage
         {
@@ -1406,22 +1792,27 @@ Analyze this data. Identify the most important FFB issues and provide specific r
             issues.Add(issue.Type);
             foreach (var rec in issue.Recommendations)
             {
-                recs.Add(new FfbRecommendation
-                {
-                    Type = RecommendationType.ProfileChange,
-                    Parameter = rec.Parameter,
-                    Description = issue.Description,
-                    Reason = rec.Reason,
-                    CurrentValue = rec.CurrentValue,
-                    SuggestedValue = rec.SuggestedValue,
-                    Impact = rec.Impact
-                });
+                var validated = ValidateRecommendation(
+                    rec.Parameter, issue.Description, rec.Reason,
+                    rec.CurrentValue, rec.SuggestedValue, rec.Impact,
+                    profile, droppedNotes);
+                if (validated != null)
+                    recs.Add(validated);
             }
 
             messages.Add(new CoachMessage
             {
                 Text = $"**{issue.Type.ToUpper()}** ({issue.Severity}): {issue.Description}",
                 Icon = issue.Severity == "high" ? "🔴" : issue.Severity == "medium" ? "🟡" : "🟢"
+            });
+        }
+
+        if (droppedNotes.Count > 0)
+        {
+            messages.Add(new CoachMessage
+            {
+                Text = "Skipped suggestions that would do nothing here:\n- " + string.Join("\n- ", droppedNotes),
+                Icon = "🚫"
             });
         }
 
@@ -1711,7 +2102,15 @@ Analyze this data. Identify the most important FFB issues and provide specific r
     private CoachResult BuildSummaryMessages()
     {
         State = CoachSessionState.Summary;
-        var count = _undoStack.Count;
+        var count = _history.Count;
+
+        var historyText = "";
+        if (count > 0)
+        {
+            var lines = _history.Select((h, i) => $"{i + 1}. {h.Parameter}: {h.OldValue:F3} → {h.NewValue:F3} ({h.AppliedAt:HH:mm:ss})");
+            historyText = "\n\n**Applied history:**\n" + string.Join("\n", lines) +
+                "\n\nUse Undo (last change) or Revert (any entry) in the history panel to roll back.";
+        }
 
         return new CoachResult
         {
@@ -1726,7 +2125,7 @@ Analyze this data. Identify the most important FFB issues and provide specific r
                 new CoachMessage
                 {
                     Text = count > 0
-                        ? $"✅ {count} change{(count > 1 ? "s" : "")} applied to your profile.\n\nTip: Take a new telemetry snapshot to verify the changes feel right on track. You can also undo any change from this session."
+                        ? $"✅ {count} change{(count > 1 ? "s" : "")} applied to your profile.{historyText}\n\nTip: Take a new telemetry snapshot to verify the changes feel right on track."
                         : "No changes were applied this session. Feel free to come back anytime for tuning advice!",
                     Answers =
                     [
@@ -1777,6 +2176,10 @@ Analyze this data. Identify the most important FFB issues and provide specific r
         { "friction", "Friction" },
         { "inertia", "Inertia" },
         { "maxspeedreference", "MaxSpeedReference" },
+        { "centerdampfloor", "CenterDampFloor" },
+        { "centerauthorityfloor", "CenterDampFloor" },
+        { "straightgain", "StraightGain" },
+        { "straightstability", "StraightGain" },
         { "slipratiogain", "SlipRatioGain" },
         { "slipanglegain", "SlipAngleGain" },
         { "slipangleshapegain", "SlipAngleShapeGain" },
@@ -1787,6 +2190,24 @@ Analyze this data. Identify the most important FFB issues and provide specific r
         { "gearquickspike", "GearSpikeThreshold" },
         { "gearquickspikethreshold", "GearSpikeThreshold" },
         { "gearspikethreshold", "GearSpikeThreshold" },
+        { "rearfyscale", "RearFyScale" },
+        { "rearslipwarning", "RearFyScale" },
+        { "reargripdetailgain", "RearGripDetailGain" },
+        { "reargripdrop", "RearGripDetailGain" },
+        { "yawonsetgain", "YawOnsetGain" },
+        { "onsetgain", "YawOnsetGain" },
+        { "yawonsetthreshold", "YawOnsetThreshold" },
+        { "onsetthreshold", "YawOnsetThreshold" },
+        { "yawonsetdecay", "YawOnsetDecay" },
+        { "yawonsetmax", "YawOnsetMax" },
+        { "susproadscale", "SuspRoadScale" },
+        { "usemixersusproad", "UseMixerSuspRoad" },
+        { "mixerroadlayer", "UseMixerSuspRoad" },
+        { "brakeloadbias", "BrakeLoadBias" },
+        { "brakeloadtransfer", "BrakeLoadBias" },
+        { "synthyawenabled", "SynthYawEnabled" },
+        { "synthabsenabled", "SynthAbsEnabled" },
+        { "synthtcenabled", "SynthTcEnabled" },
         { "lateralggain", "LateralGGain" },
         { "longitudinalggain", "LongitudinalGGain" },
         { "suspensiongain", "SuspensionGain" },
@@ -1879,6 +2300,8 @@ Analyze this data. Identify the most important FFB issues and provide specific r
             "Friction" => profile.Damping.Friction,
             "Inertia" => profile.Damping.Inertia,
             "MaxSpeedReference" => profile.Damping.MaxSpeedReference,
+            "CenterDampFloor" => profile.Damping.CenterDampFloor,
+            "StraightGain" => profile.Damping.StraightGain,
             "SlipRatioGain" => profile.Slip.SlipRatioGain,
             "SlipAngleGain" => profile.Slip.SlipAngleGain,
             "SlipAngleShapeGain" => profile.Slip.SlipAngleShapeGain,
@@ -1887,6 +2310,18 @@ Analyze this data. Identify the most important FFB issues and provide specific r
             "BrakeBoostGain" => profile.Slip.BrakeBoostGain,
             "BrakeBoostThreshold" => profile.Slip.BrakeBoostThreshold,
             "GearSpikeThreshold" => profile.Slip.GearSpikeThreshold,
+            "RearFyScale" => profile.Slip.RearFyScale,
+            "RearGripDetailGain" => profile.Slip.RearGripDetailGain,
+            "YawOnsetGain" => profile.Slip.YawOnsetGain,
+            "YawOnsetThreshold" => profile.Slip.YawOnsetThreshold,
+            "YawOnsetDecay" => profile.Slip.YawOnsetDecay,
+            "YawOnsetMax" => profile.Slip.YawOnsetMax,
+            "SuspRoadScale" => profile.Slip.SuspRoadScale,
+            "UseMixerSuspRoad" => profile.Slip.UseMixerSuspRoad ? 1 : 0,
+            "BrakeLoadBias" => profile.Slip.BrakeLoadBias,
+            "SynthYawEnabled" => profile.Slip.SynthYawEnabled ? 1 : 0,
+            "SynthAbsEnabled" => profile.Slip.SynthAbsEnabled ? 1 : 0,
+            "SynthTcEnabled" => profile.Slip.SynthTcEnabled ? 1 : 0,
             "LateralGGain" => profile.Dynamic.LateralGGain,
             "LongitudinalGGain" => profile.Dynamic.LongitudinalGGain,
             "SuspensionGain" => profile.Dynamic.SuspensionGain,
@@ -1974,6 +2409,8 @@ Analyze this data. Identify the most important FFB issues and provide specific r
             case "Friction": profile.Damping.Friction = value; break;
             case "Inertia": profile.Damping.Inertia = value; break;
             case "MaxSpeedReference": profile.Damping.MaxSpeedReference = value; break;
+            case "CenterDampFloor": profile.Damping.CenterDampFloor = value; break;
+            case "StraightGain": profile.Damping.StraightGain = value; break;
             case "SlipRatioGain": profile.Slip.SlipRatioGain = value; break;
             case "SlipAngleGain": profile.Slip.SlipAngleGain = value; break;
             case "SlipAngleShapeGain": profile.Slip.SlipAngleShapeGain = value; break;
@@ -1982,6 +2419,18 @@ Analyze this data. Identify the most important FFB issues and provide specific r
             case "BrakeBoostGain": profile.Slip.BrakeBoostGain = value; break;
             case "BrakeBoostThreshold": profile.Slip.BrakeBoostThreshold = value; break;
             case "GearSpikeThreshold": profile.Slip.GearSpikeThreshold = (int)value; break;
+            case "RearFyScale": profile.Slip.RearFyScale = value; break;
+            case "RearGripDetailGain": profile.Slip.RearGripDetailGain = value; break;
+            case "YawOnsetGain": profile.Slip.YawOnsetGain = value; break;
+            case "YawOnsetThreshold": profile.Slip.YawOnsetThreshold = value; break;
+            case "YawOnsetDecay": profile.Slip.YawOnsetDecay = value; break;
+            case "YawOnsetMax": profile.Slip.YawOnsetMax = value; break;
+            case "SuspRoadScale": profile.Slip.SuspRoadScale = value; break;
+            case "UseMixerSuspRoad": profile.Slip.UseMixerSuspRoad = value > 0.5f; break;
+            case "BrakeLoadBias": profile.Slip.BrakeLoadBias = value; break;
+            case "SynthYawEnabled": profile.Slip.SynthYawEnabled = value > 0.5f; break;
+            case "SynthAbsEnabled": profile.Slip.SynthAbsEnabled = value > 0.5f; break;
+            case "SynthTcEnabled": profile.Slip.SynthTcEnabled = value > 0.5f; break;
             case "LateralGGain": profile.Dynamic.LateralGGain = value; break;
             case "LongitudinalGGain": profile.Dynamic.LongitudinalGGain = value; break;
             case "SuspensionGain": profile.Dynamic.SuspensionGain = value; break;
@@ -2062,7 +2511,7 @@ Analyze this data. Identify the most important FFB issues and provide specific r
     }
 }
 
-public sealed class CoachResult
+public sealed record CoachResult
 {
     public CoachSessionState State { get; init; }
     public List<CoachMessage> Messages { get; init; } = [];

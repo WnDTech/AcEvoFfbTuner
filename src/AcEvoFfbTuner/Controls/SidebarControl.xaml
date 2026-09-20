@@ -238,6 +238,53 @@
                 </RadioButton.Style>
             </RadioButton>
 
+            <RadioButton x:Name="NavPipelineBtn" GroupName="SidebarNav" Content="Pipeline" Margin="4,1"
+                         Tag="{x:Static vm:NavPage.Pipeline}" Click="OnNavClick" Cursor="Hand"
+                         ToolTip="Pipeline — live FFB stage flow from game to wheel (work in progress)">
+                <RadioButton.Template>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal">
+                                    <Viewbox Width="24" Height="24" Margin="0,0,12,0">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Data="M4,6 H20 M4,12 H20 M4,18 H20 M7,4 V8 M13,10 V14 M18,16 V20"
+                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                                  StrokeThickness="1.5" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock x:Name="ItemLabel" Text="{TemplateBinding Content}" FontSize="20"
+                                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <Border x:Name="WipBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,-4,-6,0">
+                                    <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="#FFF0A030" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </RadioButton.Template>
+                <RadioButton.Style>
+                    <Style TargetType="RadioButton">
+                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="#FFF0883E" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </RadioButton.Style>
+            </RadioButton>
+
             <RadioButton x:Name="NavDevicesBtn" GroupName="SidebarNav" Content="Devices" Margin="4,1"
                          Tag="{x:Static vm:NavPage.Devices}" Click="OnNavClick" Cursor="Hand"
                          ToolTip="Devices — LED effects, haptic pad, button assignments">

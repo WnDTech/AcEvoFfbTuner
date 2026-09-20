@@ -26,6 +26,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
@@ -65,6 +66,11 @@
                 <StackPanel Grid.Column="9" Margin="8,0" VerticalAlignment="Center">
                     <TextBlock Text="Avg Force" FontSize="12" Foreground="#FF8B949E" />
                     <TextBlock x:Name="ProfAvg" Text="--" FontSize="16" Foreground="#FF9C27B0" />
+                </StackPanel>
+                <StackPanel Grid.Column="10" Margin="8,0" VerticalAlignment="Center">
+                    <TextBlock Text="Peak" FontSize="12" Foreground="#FF8B949E" />
+                    <TextBlock x:Name="ProfPeak" Text="--" FontSize="16" FontWeight="Bold" Foreground="#FF00E676" />
+                    <TextBlock x:Name="ProfHeadroomHint" Text="Headroom OK." FontSize="11" Foreground="#FF8B949E" TextWrapping="Wrap" MaxWidth="230" />
                 </StackPanel>
             </Grid>
         </Border>

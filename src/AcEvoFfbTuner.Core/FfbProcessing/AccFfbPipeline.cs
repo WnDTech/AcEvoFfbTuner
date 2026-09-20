@@ -19,7 +19,7 @@ public sealed class AccFfbPipeline : FfbPipeline
             base.GearShiftFilterEnabled = value;
         }
     }
-    public float GearSpikeThreshold { get; set; } = 3000f;
+    public override float GearSpikeThreshold { get; set; } = 3000f;
     public float BrakeBoostGain { get; set; } = 0.4f;
     public float BrakeBoostThreshold { get; set; } = 0.1f;
     public float ForceGain { get; set; } = 4.0f;

@@ -133,6 +133,55 @@ public sealed partial class MainViewModel
         if (_pipeline is LmuFfbPipeline lmu)
             lmu.TyreTempGain = value;
     }
+    // ── LMU plan B/C knobs ──────────────────────────────────────────────
+    partial void OnRearFyScaleChanged(float value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.RearFyScale = value;
+    }
+    partial void OnRearGripDetailGainChanged(float value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.RearGripDetailGain = value;
+    }
+    partial void OnYawOnsetGainChanged(float value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.YawOnsetGain = value;
+    }
+    partial void OnYawOnsetThresholdChanged(float value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.YawOnsetThreshold = value;
+    }
+    partial void OnBrakeLoadBiasChanged(float value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.BrakeLoadBias = value;
+    }
+    partial void OnSuspRoadScaleChanged(float value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.SuspRoadScale = value;
+    }
+    partial void OnUseMixerSuspRoadChanged(bool value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.UseMixerSuspRoad = value;
+    }
+    partial void OnSynthAbsEnabledChanged(bool value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.SynthAbsEnabled = value;
+    }
+    partial void OnSynthTcEnabledChanged(bool value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.SynthTcEnabled = value;
+    }
+    // ── Damping plan B5/D2 knobs (global) ───────────────────────────────
+    partial void OnCenterDampFloorChanged(float value) => _pipeline.Damping.CenterDampFloor = value;
+    partial void OnStraightGainChanged(float value) => _pipeline.Damping.StraightGain = value;
 
     // ── LFE ───────────────────────────────────────────────────────────────
     partial void OnLfeEnabledChanged(bool value) => _pipeline.LfeGenerator.Enabled = value;

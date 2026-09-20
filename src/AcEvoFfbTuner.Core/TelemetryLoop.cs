@@ -84,6 +84,12 @@ public sealed class TelemetryLoop : IDisposable
     private float _latencyAccumulator;
     private int _latencyFrameCount;
 
+    // Plan C1: LMU yaw-accel synthesis state (250Hz fixed dt, EMA-smoothed).
+    // No allocations; NaN/Inf guarded at use site.
+    private float _lmuPrevYawRate;
+    private float _lmuYawAccelSmooth;
+    private bool _lmuYawInit;
+
     private string _lastDetectedTrackName = "";
     private string _lastDetectedTrackConfig = "";
     private float _lastOfficialTrackLengthM;
@@ -543,6 +549,47 @@ public sealed class TelemetryLoop : IDisposable
                         raw.IsOnTrack = physics.SpeedKmh > 10f
                                      || (physics.WheelLoad[0] + physics.WheelLoad[1] > 100f
                                       && physics.WheelLoad[2] + physics.WheelLoad[3] > 100f);
+
+                        // Plan C1: synthesize yaw acceleration (smoothed rotY
+                        // derivative, 250Hz LMU rate). Consumers (rear-slip,
+                        // yaw-onset) are gain-gated; default gains keep legacy
+                        // feel except the mixer's noisier raw differentiation
+                        // is replaced by this smoothed value. NaN/Inf safe.
+                        float yawRate = raw.LocalAngularVel is { Length: > 1 }
+                            ? raw.LocalAngularVel[1] : 0f;
+                        if (!_lmuYawInit || float.IsNaN(yawRate) || float.IsInfinity(yawRate))
+                        {
+                            _lmuPrevYawRate = float.IsNaN(yawRate) || float.IsInfinity(yawRate) ? 0f : yawRate;
+                            _lmuYawAccelSmooth = 0f;
+                            _lmuYawInit = true;
+                        }
+                        else
+                        {
+                            float inst = (yawRate - _lmuPrevYawRate) * 250f;
+                            _lmuPrevYawRate = yawRate;
+                            if (float.IsNaN(inst) || float.IsInfinity(inst)) inst = 0f;
+                            inst = Math.Clamp(inst, -15f, 15f);
+                            _lmuYawAccelSmooth = _lmuYawAccelSmooth * 0.7f + inst * 0.3f;
+                        }
+                        if (_pipeline is FfbProcessing.LmuFfbPipeline lmuPipe && lmuPipe.SynthYawEnabled)
+                            raw.YawAccel = _lmuYawAccelSmooth;
+
+                        // Plan C1: ABS/TC flag synthesis from slip + pedals.
+                        // Default disabled (zero-impact); enable via LMU props
+                        // once snapshot thresholds are confirmed.
+                        if (_pipeline is FfbProcessing.LmuFfbPipeline lmuPipe2)
+                        {
+                            if (lmuPipe2.SynthAbsEnabled && raw.BrakeInput > 0.3f
+                                && raw.SlipRatio is { Length: >= 2 }
+                                && (raw.SlipRatio[0] < lmuPipe2.LockupSlipThreshold
+                                    || raw.SlipRatio[1] < lmuPipe2.LockupSlipThreshold))
+                                raw.AbsInAction = 1;
+                            if (lmuPipe2.SynthTcEnabled && raw.GasInput > 0.5f
+                                && raw.SlipRatio is { Length: >= 4 }
+                                && (raw.SlipRatio[2] < lmuPipe2.SpinSlipThreshold
+                                    || raw.SlipRatio[3] < lmuPipe2.SpinSlipThreshold))
+                                raw.TcinAction = 1;
+                        }
                     }
 
                     IntegratePosition(raw, physics);
@@ -846,7 +893,7 @@ public sealed class TelemetryLoop : IDisposable
 
         if (MapBuilder.IsRecording)
         {
-            MapBuilder.Update(raw.CarX, raw.CarZ, raw.CarY, raw.SpeedKmh, raw.CurrentLap, raw.IsOnTrack, raw.Npos);
+            MapBuilder.Update(raw.CarX, raw.CarZ, raw.CarY, raw.SpeedKmh, raw.CurrentLap, raw.IsOnTrack, raw.Npos, raw.IsInPitLane);
 
             if (MapBuilder.HasCompleteMap && MapBuilder.CurrentMap != null)
             {
@@ -868,6 +915,22 @@ public sealed class TelemetryLoop : IDisposable
                 }
                 map.ConfigName = _lastDetectedTrackConfig;
                 map.OfficialLengthM = _lastOfficialTrackLengthM;
+
+                // Auto-started recordings persist to disk so the map (and any
+                // alignment derived from it) survives restarts. Manual recordings
+                // are saved explicitly by the UI.
+                if (MapBuilder.AutoStarted)
+                {
+                    try
+                    {
+                        map.Save();
+                        TrackMapBuilder.Log($"AUTO-SAVED map: {map.TrackName} ({map.Waypoints.Count} pts)");
+                    }
+                    catch (Exception ex)
+                    {
+                        TrackMapBuilder.Log($"AUTO-SAVE failed: {ex.Message}");
+                    }
+                }
 
                 PositionDetector.SetMap(map);
                 ForceHeatmap.Initialize(map.Waypoints.Count);
@@ -1122,7 +1185,13 @@ public sealed class TelemetryLoop : IDisposable
                     float errZ = wp.Z - _posZ;
                     float error = MathF.Sqrt(errX * errX + errZ * errZ);
 
-                    if (error > 2f)
+                    // With real world coords, never drag the dot onto the track when
+                    // the car is in the pits or genuinely off-track (pitlane runs
+                    // parallel to the SF straight — snapping puts the dot at T1).
+                    // Dead-reckoning games (no world coords) keep the old pull behavior.
+                    bool suppressSnap = hasWorldCoords &&
+                        (raw.IsInPitLane || error > PositionDetector.OffTrackThresholdM);
+                    if (error > 2f && !suppressSnap)
                     {
                         float alpha = hasWorldCoords ? 0.05f : 0.02f;
                         _posX += errX * alpha;
@@ -1229,6 +1298,7 @@ public sealed class TelemetryLoop : IDisposable
             AccG = Arr3(physics.AccG),
             LocalAngularVel = Arr3(physics.LocalAngularVel),
             Gear = physics.Gear,
+            EngineRpm = physics.Rpms,
             RpmPercent = graphics.RpmPercent,
             IsRpmLimiterOn = graphics.IsRpmLimiterOn,
             IsPitLimiterOn = physics.PitLimiterOn != 0,

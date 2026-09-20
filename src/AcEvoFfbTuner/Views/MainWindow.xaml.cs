@@ -206,6 +206,7 @@ public partial class MainWindow : Window
         TrackMapPageCtrl.Visibility = vm.CurrentPage == NavPage.TrackMap ? Visibility.Visible : Visibility.Collapsed;
         LiveTrackMapPageCtrl.Visibility = vm.CurrentPage == NavPage.LiveTrackMap ? Visibility.Visible : Visibility.Collapsed;
         TelemetryPageCtrl.Visibility = vm.CurrentPage == NavPage.Telemetry ? Visibility.Visible : Visibility.Collapsed;
+        PipelinePageCtrl.Visibility = vm.CurrentPage == NavPage.Pipeline ? Visibility.Visible : Visibility.Collapsed;
         FFBCoachPageCtrl.Visibility = vm.CurrentPage == NavPage.FfbCoach ? Visibility.Visible : Visibility.Collapsed;
         DevicesPageCtrl.Visibility = vm.CurrentPage == NavPage.Devices ? Visibility.Visible : Visibility.Collapsed;
         ProfilesPageCtrl.Visibility = vm.CurrentPage == NavPage.Profiles ? Visibility.Visible : Visibility.Collapsed;
@@ -250,12 +251,14 @@ public partial class MainWindow : Window
         float compress, float postDampCore, float postGainCore, float dynEff,
         float mzFront, float fxFront, float fyFront, float lut, bool clipping,
         float gasInput, float brakeInput, FfbRawData? rawPhysics = null, float wetness = 0f,
-        int steeringLockDeg = 900)
+        int steeringLockDeg = 900, float peakHold = 0f, float clipRate = 0f,
+        FfbProcessedData? diagData = null)
     {
         TelemetryPageCtrl.UpdateProfiler(speed, steerAngle, forceOut, rawFF,
             compress, postDampCore, postGainCore, dynEff,
             mzFront, fxFront, fyFront, lut, clipping,
-            gasInput, brakeInput, rawPhysics, wetness, steeringLockDeg);
+            gasInput, brakeInput, rawPhysics, wetness, steeringLockDeg, peakHold, clipRate,
+            diagData);
     }
 
     public void UpdateTrackMapDisplay(float carX, float carZ, float heading, float speedKmh,

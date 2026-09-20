@@ -309,7 +309,8 @@
                                           Selectable="True">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="13" Foreground="#FF8B949E">
-                                <Run Text="Damp: " /><Run Text="{Binding SpeedDamping, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
+                                <Run Text="Visc: " /><Run Text="{Binding ViscousDamping, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
+                                <Run Text=" · " /><Run Text="Damp: " /><Run Text="{Binding SpeedDamping, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
                                 <Run Text=" · " /><Run Text="Fric: " /><Run Text="{Binding FrictionLevel, StringFormat='{}{0:F2}'}" Foreground="#FFE3B341" />
                                 <Run Text=" · " /><Run Text="Inertia: " /><Run Text="{Binding InertiaWeight, StringFormat='{}{0:F1}'}" Foreground="#FFE3B341" />
                             </TextBlock>
@@ -932,6 +933,83 @@
                                 Description="Subtle texture from cold (under 75°C) or overheated (over 105°C) tyres. 0 = off. Uses LMU's real surface temperature per wheel."
                                 DefaultValue="{Binding BuiltInDefaults.Lmu.TyreTempGain}"
                                 SectionColor="{StaticResource SectionTyreSlip}" />
+                            <TextBlock Text="Rear Slip Warning" Style="{StaticResource SubSectionHeader}"
+                                       Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}" />
+                            <controls:LabeledSlider Value="{Binding RearFyScale, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}"
+                                Label="Rear Slip Warning" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="Oversteer texture from live rear lateral-force oscillation + yaw acceleration + rear slip. 0 = off. Rear Mz is always zero in LMU telemetry so this uses Fy instead."
+                                DefaultValue="0"
+                                SectionColor="{StaticResource SectionTyreSlip}" />
+                            <controls:LabeledSlider Value="{Binding RearGripDetailGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}"
+                                Label="Rear Grip Drop" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="Adds rear warning intensity as load-weighted rear grip fraction falls. 0 = off. Front grip lightens the core; rear grip only warns."
+                                DefaultValue="0"
+                                SectionColor="{StaticResource SectionTyreSlip}" />
+                            <TextBlock Text="Slide Onset Kick" Style="{StaticResource SubSectionHeader}"
+                                       Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}" />
+                            <controls:LabeledSlider Value="{Binding YawOnsetGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}"
+                                Label="Onset Gain" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="Short steering kick at slide onset from smoothed yaw acceleration. 0 = off. Needs Yaw Threshold above 0 to fire."
+                                DefaultValue="0"
+                                SectionColor="{StaticResource SectionTyreSlip}" />
+                            <controls:LabeledSlider Value="{Binding YawOnsetThreshold, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
+                                Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}"
+                                Label="Onset Threshold" LabelWidth="175" StringFormat="{}{0:F1}"
+                                Description="Yaw acceleration (rad/s²) required to trigger the onset kick. 0 = never fires. Start around 2 and lower until the kick arrives just as the rear steps out."
+                                DefaultValue="0"
+                                SectionColor="{StaticResource SectionTyreSlip}" />
+                            <TextBlock Text="Braking &amp; Road" Style="{StaticResource SubSectionHeader}"
+                                       Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}" />
+                            <controls:LabeledSlider Value="{Binding BrakeLoadBias, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}"
+                                Label="Brake Load Transfer" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="Blends front-tyre-load bias into the braking weight-transfer boost. 0 = legacy scalar boost only."
+                                DefaultValue="0"
+                                SectionColor="{StaticResource SectionTyreSlip}" />
+                            <controls:LabeledSlider Value="{Binding SuspRoadScale, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}"
+                                Label="Susp Road Scale" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="Scales the suspension-delta road layer (the reader already adds its own kerb/road envelopes, so both stack). 1 = current stacking. Uncheck Mixer Road below for reader envelopes only."
+                                DefaultValue="1"
+                                SectionColor="{StaticResource SectionTyreSlip}" />
+                            <DockPanel Margin="0,6" Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}">
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                    <TextBlock Text="Mixer Road Layer" Width="160" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
+                                    <CheckBox IsChecked="{Binding UseMixerSuspRoad}" Margin="0,0,12,0" />
+                                </StackPanel>
+                                <TextBlock Text="Off = reader kerb/road envelopes only (no suspension-delta layer)." FontSize="13" Foreground="#FF8B949E" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            </DockPanel>
+                            <DockPanel Margin="0,6" Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}">
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                    <TextBlock Text="Synth ABS Flag" Width="160" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
+                                    <CheckBox IsChecked="{Binding SynthAbsEnabled}" Margin="0,0,12,0" />
+                                </StackPanel>
+                                <TextBlock Text="Experimental: synthesise ABS-active from front slip + brake (LMU exposes no ABS flag). Off = stock behavior." FontSize="13" Foreground="#FF8B949E" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            </DockPanel>
+                            <DockPanel Margin="0,6" Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}">
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                    <TextBlock Text="Synth TC Flag" Width="160" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
+                                    <CheckBox IsChecked="{Binding SynthTcEnabled}" Margin="0,0,12,0" />
+                                </StackPanel>
+                                <TextBlock Text="Experimental: synthesise TC-cut from rear slip + throttle (LMU exposes no TC flag). Off = TC wheel feel stays inert on LMU." FontSize="13" Foreground="#FF8B949E" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            </DockPanel>
+                            <TextBlock Text="Smoothing" Style="{StaticResource SubSectionHeader}"
+                                       Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}" />
+                            <controls:LabeledSlider Value="{Binding CoreSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.5" TickFrequency="0.01"
+                                Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}"
+                                Label="Core Smoothing" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="0 = raw centering force. 0.15 = light smoothing, retains steering feel. 0.5 = heavy, may feel sluggish. Tames grainy LMU column torque."
+                                DefaultValue="0"
+                                SectionColor="{StaticResource SectionTyreSlip}" />
+                            <controls:LabeledSlider Value="{Binding DetailSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.8" TickFrequency="0.01"
+                                Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}"
+                                Label="Detail Smoothing" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="0 = raw vibrations. 0.3 = moderate (smoothes jitter, keeps rumble strips). 0.8 = heavy, kills texture."
+                                DefaultValue="0"
+                                SectionColor="{StaticResource SectionTyreSlip}" />
                         </StackPanel>
 
                         <!-- WHEEL LIMITS & AIDS -->
@@ -1040,6 +1118,11 @@
                         <!-- DAMPING & FRICTION -->
                         <StackPanel x:Name="DtlDampingFriction" Visibility="Collapsed">
                             <TextBlock Text="Speed-sensitive steering resistance. Active for: AC EVO, Assetto Corsa, Le Mans Ultimate. Not used by RaceRoom or ACC (handled internally)." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+                            <controls:LabeledSlider Value="{Binding ViscousDamping, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.005"
+                                Label="Viscous Damping" StringFormat="{}{0:F3}"
+                                Description="Always-on steering column resistance — the primary defense against oscillation and grainy feel. Raise to smooth rough FFB (0.15 default, 0.25-0.40 calms a nervous wheel)."
+                                DefaultValue="{Binding BuiltInDefaults.Damping.ViscousDamping}"
+                                SectionColor="{StaticResource SectionDamping}" />
                             <controls:LabeledSlider Value="{Binding SpeedDamping, Mode=TwoWay}" Minimum="0" Maximum="25" TickFrequency="0.001"
                                 Label="Speed Damping" StringFormat="{}{0:F3}"
                                 Description="Viscous damping — adds resistance that increases with car speed. Higher = heavier steering at speed. Scaled by Damping Speed Ref."
@@ -1062,6 +1145,16 @@
                                         Label="Damping Speed Ref (km/h)" StringFormat="{}{0:F0}"
                                         Description="Speed where speed-based damping reaches full strength. Lower = damping kicks in sooner."
                                         DefaultValue="{Binding BuiltInDefaults.Damping.MaxSpeedReference}"
+                                        SectionColor="{StaticResource SectionDamping}" />
+                                    <controls:LabeledSlider Value="{Binding CenterDampFloor, Mode=TwoWay}" Minimum="0" Maximum="0.1" TickFrequency="0.005"
+                                        Label="Center Authority Floor" StringFormat="{}{0:F3}"
+                                        Description="Absolute floor for damping authority at center, where the proportional cap (|force| x 0.25) falls to zero. 0 = legacy behavior. LMU defaults to 0.03 for on-center stability."
+                                        DefaultValue="0"
+                                        SectionColor="{StaticResource SectionDamping}" />
+                                    <controls:LabeledSlider Value="{Binding StraightGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                        Label="Straight Stability" StringFormat="{}{0:F2}"
+                                        Description="Extra viscous + gyro damping above 80 km/h near center. 0 = off. Raises straight-line stability without touching corner feel."
+                                        DefaultValue="0"
                                         SectionColor="{StaticResource SectionDamping}" />
                                 </StackPanel>
                             </Expander>

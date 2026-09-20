@@ -39,20 +39,27 @@ public sealed class FfbSlipEnhancer
         float avgSlipAngle = 0f;
         int count = 0;
 
+        int ratioCount = 0, angleCount = 0;
         for (int i = startIdx; i < endIdx; i++)
         {
             if (Math.Abs(raw.SlipRatio[i]) > SlipThreshold)
+            {
                 avgSlipRatio += raw.SlipRatio[i];
+                ratioCount++;
+            }
             if (Math.Abs(raw.SlipAngle[i]) > SlipThreshold)
+            {
                 avgSlipAngle += raw.SlipAngle[i];
-            count++;
+                angleCount++;
+            }
         }
 
-        if (count > 0)
-        {
-            avgSlipRatio /= count;
-            avgSlipAngle /= count;
-        }
+        // Average only over wheels above threshold. Dividing by all wheels
+        // (including quiet ones) diluted the signal 2-4x and made lightening
+        // feel on/off instead of progressive.
+        if (ratioCount > 0) avgSlipRatio /= ratioCount;
+        if (angleCount > 0) avgSlipAngle /= angleCount;
+        count = Math.Max(ratioCount, angleCount);
 
         // ── Legacy linear slip enhancement (SlipRatioGain + SlipAngleGain) ──
         float slipForce = (avgSlipRatio * SlipRatioGain + avgSlipAngle * SlipAngleGain);

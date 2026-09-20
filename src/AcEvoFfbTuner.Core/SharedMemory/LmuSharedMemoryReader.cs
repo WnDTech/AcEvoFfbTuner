@@ -20,6 +20,21 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
         private string _expectedVehicleName = "";
         private long _lastReResolveTicks;
 
+    // ── LMU world-position / lap-distance state (drives the track-map car dot) ──
+    // Telemetry mPos (TI_POS) is world position in meters; scoring mLapDist is
+    // meters around track from the SF line. Lap length self-calibrates per track.
+    private float _lmuCarX, _lmuCarY, _lmuCarZ;
+    private bool _lmuPosValid;
+    private float _lmuNpos;
+    private double _lmuLapLength;
+    private double _prevLapDist = -1;
+    private string _lmuPosTrack = "";
+    private float _lmuHeading;
+    private bool _lmuHeadingInit;
+    private int _lmuScoringBase = -1;
+    private int _lmuPlayerScoringSlot = -1;
+    private bool _lmuInPits;
+
 
     public bool IsConnected => _mmf != null;
 
@@ -88,6 +103,20 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
     private const int TI_DELTA_TIME = 4;
     private const int TI_ELAPSED_TIME = 12;
     private const int TI_POS = 160;
+    // mOri: 3x3 orientation matrix rows (9 doubles) right after mLocalAccel.
+    // Cross-checked: TI_LOCAL_ACCEL(208) + 24 = 232, + 72 = TI_LOCAL_ROT(304). ✓
+    private const int TI_ORI = 232;
+    // VehicleScoringInfoV01 (stride 584, Pack=4 — verified against CrewChief
+    // rF2Data.cs which reproduces our known-good name@36/isPlayer@196/control@197):
+    // mID(0) + mDriverName[32](4) + mVehicleName[64](36) + mTotalLaps(100) +
+    // mSector(102) + mFinishStatus(103) => mLapDist double @104 ("current distance around track").
+    private const int SC_VS_STRIDE = 584;
+    private const int SC_NAME_OFF = 36;
+    private const int SC_IS_PLAYER_OFF = 196;
+    private const int SC_LAP_DIST_OFF = 104;
+    // mInPits byte @198 (mInPits; 0 = on track, non-zero = pitlane).
+    // Cross-checked: isPlayer@196 ✓ + control@197 ✓ => 198/199 = mInPits/mPlace. ✓
+    private const int SC_IN_PITS_OFF = 198;
     private const int TI_LOCAL_VEL = 184;
     private const int TI_LOCAL_ACCEL = 208;
     private const int TI_LOCAL_ROT = 304;
@@ -219,6 +248,12 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
         _prevAccInitialized = false;
         _vibInitialized = false;
         _lastImpactSeenET = -1;
+        _lmuPosValid = false;
+        _lmuHeadingInit = false;
+        _lmuNpos = 0;
+        _prevLapDist = -1;
+        _lmuScoringBase = -1;
+        _lmuPlayerScoringSlot = -1;
         Log("Disconnected");
         GameDisconnected?.Invoke();
     }
@@ -368,6 +403,11 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
             RearTireCompoundName = string.IsNullOrEmpty(rearCompound) || rearCompound.Length < 2 ? null : rearCompound;
             string vehicleName = LmuFieldReader.ReadStr(_rawBuffer, t + TI_VEHICLE_NAME, 64);
             VehicleName = string.IsNullOrEmpty(vehicleName) || vehicleName.Length < 3 ? null : vehicleName;
+
+            // ── World position (mPos @ TI_POS, 3 doubles, meters, y-up) ──
+            // This is what the track-map car dot, auto-record and Npos all consume.
+            // Previously never read: CarX/CarZ stayed 0 and no LMU map could form.
+            UpdateLmuPosition(_rawBuffer, t, readLen, vehicleName, vx, vy, vz, speedMs);
 
             // ── Wheel data (mWheel[4] at TelemInfoV01 start + 848, each 260 bytes) ──
             // Read wheel data from the player's telemetry slot (each car has its own
@@ -617,6 +657,7 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
                 TyreWear = [tireWears[0], tireWears[1], tireWears[2], tireWears[3]],
                 SuspensionTravel = [suspDef[0], suspDef[1], suspDef[2], suspDef[3]],
                 FinalFf = totalForce,
+                Heading = _lmuHeading,
                 SlipRatio = slipRatio,
                 SlipAngle = [slipA, slipA, slipA, slipA],
                 Mz = [totalForce, totalForce, 0f, 0f],
@@ -647,6 +688,151 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
             Log($"TryReadPhysics exception: {ex.GetType().Name}: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>
+    /// Update world position + lap fraction from telemetry mPos and scoring mLapDist.
+    /// Hot path (250 Hz): no logging, no full-buffer scans — the player scoring slot
+    /// is cached and validated by name, re-resolved by cheap 104-entry scan on mismatch.
+    /// </summary>
+    private void UpdateLmuPosition(byte[] buf, int t, int len, string vehicleName,
+        double vx, double vy, double vz, double speedMs)
+    {
+        if (t + TI_POS + 24 <= len)
+        {
+            double px = LmuFieldReader.ReadF64(buf, t + TI_POS);
+            double py = LmuFieldReader.ReadF64(buf, t + TI_POS + 8);
+            double pz = LmuFieldReader.ReadF64(buf, t + TI_POS + 16);
+            if (IsFinite(px) && IsFinite(py) && IsFinite(pz)
+                && Math.Abs(px) < 50000 && Math.Abs(py) < 50000 && Math.Abs(pz) < 50000)
+            {
+                _lmuCarX = (float)px;
+                _lmuCarY = (float)py;
+                _lmuCarZ = (float)pz;
+                _lmuPosValid = true;
+            }
+        }
+
+        // Heading from world-frame velocity (mOri rows × local vel), smoothed.
+        // atan2(x, z): 0 = facing +Z, clockwise-positive — same convention as R3E yaw.
+        if (_lmuPosValid && speedMs > 3 && t + TI_ORI + 72 <= len)
+        {
+            double lvx = vx, lvy = vy, lvz = vz;
+            double w0 = 0, w2 = 0;
+            bool oriOk = true;
+            for (int r = 0; r < 3; r++)
+            {
+                double rx = LmuFieldReader.ReadF64(buf, t + TI_ORI + r * 24);
+                double ry = LmuFieldReader.ReadF64(buf, t + TI_ORI + r * 24 + 8);
+                double rz = LmuFieldReader.ReadF64(buf, t + TI_ORI + r * 24 + 16);
+                if (!IsFinite(rx) || !IsFinite(ry) || !IsFinite(rz)) { oriOk = false; break; }
+                double w = rx * lvx + ry * lvy + rz * lvz;
+                if (r == 0) w0 = w;
+                else if (r == 2) w2 = w;
+            }
+            if (oriOk)
+            {
+                float h = (float)Math.Atan2(w0, w2);
+                if (!_lmuHeadingInit) { _lmuHeading = h; _lmuHeadingInit = true; }
+                else
+                {
+                    float d = h - _lmuHeading;
+                    while (d > MathF.PI) d -= MathF.PI * 2;
+                    while (d < -MathF.PI) d += MathF.PI * 2;
+                    _lmuHeading += d * 0.3f;
+                }
+            }
+        }
+
+        // Lap fraction from the player's scoring-entry mLapDist (meters from SF).
+        // Lap length self-calibrates: grows monotonically, locks on SF wrap.
+        int slot = ResolvePlayerScoringSlot(buf, len, vehicleName);
+        _lmuInPits = false;
+        if (slot >= 0 && _lmuScoringBase > 0)
+        {
+            int pitEntry = _lmuScoringBase + slot * SC_VS_STRIDE;
+            if (pitEntry + SC_IN_PITS_OFF + 1 <= len)
+                _lmuInPits = buf[pitEntry + SC_IN_PITS_OFF] != 0;
+        }
+        if (slot >= 0 && _lmuScoringBase > 0)
+        {
+            int entry = _lmuScoringBase + slot * SC_VS_STRIDE;
+            if (entry + SC_LAP_DIST_OFF + 8 <= len)
+            {
+                double lapDist = LmuFieldReader.ReadF64(buf, entry + SC_LAP_DIST_OFF);
+                if (IsFinite(lapDist) && lapDist >= 0 && lapDist < 60000)
+                {
+                    if (_prevLapDist >= 0 && lapDist < _prevLapDist - 500)
+                    {
+                        // SF wrap: previous distance was (approximately) the lap length.
+                        if (_prevLapDist > 500) _lmuLapLength = _prevLapDist;
+                    }
+                    else if (lapDist > _lmuLapLength)
+                    {
+                        _lmuLapLength = lapDist;
+                    }
+                    _prevLapDist = lapDist;
+                    _lmuNpos = _lmuLapLength > 500 ? Math.Clamp((float)(lapDist / _lmuLapLength), 0f, 1f) : 0f;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Find/validate the player's scoring entry index (hot-path safe: 104-entry scan,
+    /// no logging, no full-buffer search unless the base is unknown or stale).
+    /// </summary>
+    private int ResolvePlayerScoringSlot(byte[] buf, int len, string vehicleName)
+    {
+        if (_lmuScoringBase <= 0)
+        {
+            _lmuScoringBase = FindScoringSectionBase(buf, len);
+            _lmuPlayerScoringSlot = -1;
+            if (_lmuScoringBase <= 0) return -1;
+        }
+
+        // Validate cached slot by name.
+        if (_lmuPlayerScoringSlot >= 0)
+        {
+            int entry = _lmuScoringBase + _lmuPlayerScoringSlot * SC_VS_STRIDE;
+            if (entry + SC_IS_PLAYER_OFF + 1 <= len && buf[entry + SC_IS_PLAYER_OFF] == 1)
+                return _lmuPlayerScoringSlot;
+            string nm = LmuFieldReader.ReadStr(buf, entry + SC_NAME_OFF, 64);
+            if (!string.IsNullOrEmpty(nm) && !string.IsNullOrEmpty(vehicleName)
+                && (nm == vehicleName || vehicleName.StartsWith(nm) || nm.StartsWith(vehicleName)))
+                return _lmuPlayerScoringSlot;
+        }
+
+        // Cheap re-resolve: isP==1 flag scan (player slot order can differ from telemetry).
+        for (int i = 0; i < 104; i++)
+        {
+            int entry = _lmuScoringBase + i * SC_VS_STRIDE;
+            if (entry + SC_IS_PLAYER_OFF + 1 > len) break;
+            if (buf[entry + SC_IS_PLAYER_OFF] == 1)
+            {
+                _lmuPlayerScoringSlot = i;
+                return i;
+            }
+        }
+
+        // Fallback: name match against the telemetry vehicle.
+        if (!string.IsNullOrEmpty(vehicleName))
+        {
+            for (int i = 0; i < 104; i++)
+            {
+                int entry = _lmuScoringBase + i * SC_VS_STRIDE;
+                if (entry + SC_NAME_OFF + 64 > len) break;
+                string nm = LmuFieldReader.ReadStr(buf, entry + SC_NAME_OFF, 64);
+                if (nm == vehicleName || vehicleName.StartsWith(nm) || nm.StartsWith(vehicleName))
+                {
+                    _lmuPlayerScoringSlot = i;
+                    return i;
+                }
+                if (string.IsNullOrEmpty(nm)) break;
+            }
+        }
+
+        return _lmuPlayerScoringSlot;
     }
 
     private bool FindTelemSection(byte[] buf, int len)
@@ -1042,13 +1228,21 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
             double rpm = LmuFieldReader.ReadF64(_rawBuffer, t + TI_ENGINE_RPM);
             var carName = LmuFieldReader.ReadStr(_rawBuffer, t + TI_VEHICLE_NAME, 64);
             int lapNumber = LmuFieldReader.ReadI32(_rawBuffer, t + TI_LAP_NUMBER);
+            // Player world position (filled by UpdateLmuPosition during the physics
+            // read). Index 0 = player — this is what TelemetryLoop.GetCarX/Y/Z reads.
+            var carCoords = new StructVector3[60];
+            if (_lmuPosValid)
+                carCoords[0] = new StructVector3 { X = _lmuCarX, Y = _lmuCarY, Z = _lmuCarZ };
             graphics = new SPageFileGraphicEvo
             {
-                SteerDegrees = 900, CarModel = new byte[33], CarCoordinates = new StructVector3[60],
+                SteerDegrees = 900, CarModel = new byte[33], CarCoordinates = carCoords,
                 Status = AcEvoStatus.AcLive, RpmPercent = (float)(rpm / 8000),
                 Flag = AcEvoFlagType.AcNoFlag, IsEngineRunning = true,
                 EngineType = AcEvoEngineType.AcevoInternalCombustion,
-                CarLocation = AcEvoCarLocation.AcevoTrack, UseSingleCompound = false,
+                CarLocation = _lmuInPits ? AcEvoCarLocation.AcevoPitlane : AcEvoCarLocation.AcevoTrack,
+                UseSingleCompound = false,
+                Npos = _lmuNpos,
+                IsInPitLane = _lmuInPits,
             };
             if (!string.IsNullOrEmpty(carName))
             {
@@ -1071,11 +1265,24 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader
             string track = "";
             if (_telemInfoOffset > 0)
                 track = LmuFieldReader.ReadStr(_rawBuffer, _telemInfoOffset + TI_TRACK_NAME, 64);
+            // New track: reset lap-length calibration and scoring-slot cache so the
+            // car dot, Npos and learned length re-learn cleanly for the new venue.
+            if (track != _lmuPosTrack)
+            {
+                _lmuPosTrack = track;
+                _lmuLapLength = 0;
+                _prevLapDist = -1;
+                _lmuNpos = 0;
+                _lmuPlayerScoringSlot = -1;
+            }
             staticData = new SPageFileStaticEvo
             {
                 SmVersion = "LMU\0"u8.ToArray(),
                 Track = CopyStr(track, 33),
                 TrackConfiguration = new byte[33],
+                // Self-calibrated lap length (meters) once a SF wrap is observed.
+                // Feeds OSM candidate validation + length display like other games.
+                TrackLengthM = _lmuLapLength > 500 ? (float)_lmuLapLength : 0f,
             };
             return true;
         }

@@ -877,9 +877,11 @@ public sealed partial class MainViewModel
         try
         {
             WriteDiagLog("STEP", "Auto-saving profile...");
-            AutoSaveDiagnosticProfile();
+            string? diagProfilePath = AutoSaveDiagnosticProfile();
+            WriteDiagLog("STEP", $"Diag profile saved: {diagProfilePath ?? "(none)"}");
             WriteDiagLog("STEP", "Auto-saving snapshot...");
             string? snapPath = (mainWin as Views.MainWindow)?.AutoSaveSnapshot();
+            WriteDiagLog("STEP", $"Snapshot saved: {snapPath ?? "(none)"}");
             if (snapPath == null)
             {
                 WriteDiagLog("WARN", "No telemetry frames captured; snapshot omitted from pack");
@@ -911,7 +913,7 @@ public sealed partial class MainViewModel
                     wheelSetupSummary = _logitechHidpp.DiagnosticSummary;
             }
             catch { }
-            var (success, message, reportId) = await DiagnosticPackService.SendAsync(dialog.Feedback, progress, wheelSetupSummary, taskCode);
+            var (success, message, reportId) = await DiagnosticPackService.SendAsync(dialog.Feedback, progress, wheelSetupSummary, taskCode, snapPath, diagProfilePath);
             StatusText = message;
             WriteDiagLog("RESULT", $"Success={success}, Message={message}, taskCode={taskCode ?? "none"}");
 

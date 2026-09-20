@@ -53,6 +53,23 @@ public sealed class FfbDamping
     public float LowSpeedDampingBoost { get; set; } = 1.0f;
     public float LowSpeedThreshold { get; set; } = 20f;
 
+    /// <summary>
+    /// Absolute floor for the damping authority cap. The proportional cap
+    /// (|force|*0.25) goes to zero at center where oscillation starts, so an
+    /// absolute floor restores stability on-center. Default 0 = legacy
+    /// behavior (EVO unchanged). LMU sets 0.03 in its constructor.
+    /// </summary>
+    public float CenterDampFloor { get; set; } = 0f;
+
+    /// <summary>
+    /// Straight-line stability boost. When speed exceeds StraightSpeedKmh and
+    /// |steer| is below StraightSteerNorm, viscous+gyro damping scale by
+    /// (1+StraightGain). Default 0 = disabled (zero-impact for all games).
+    /// </summary>
+    public float StraightGain { get; set; } = 0f;
+    public float StraightSpeedKmh { get; set; } = 80f;
+    public float StraightSteerNorm { get; set; } = 0.02f;
+
     private float _previousSteerAngle;
     private float _steerVelocity;
     private float _previousSteerVelocity;
@@ -63,14 +80,28 @@ public sealed class FfbDamping
     public float Apply(float force, float speedKmh, float steerAngle)
     {
         long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        float dt = _previousTimestamp > 0 ? (now - _previousTimestamp) / 1000f : 0.003f;
+        float wallDt = _previousTimestamp > 0 ? (now - _previousTimestamp) / 1000f : 0.003f;
+        wallDt = Math.Clamp(wallDt, 0.001f, 0.05f);
+        float out_ = Apply(force, speedKmh, steerAngle, wallDt);
+        _previousTimestamp = now;
+        return out_;
+    }
+
+    /// <summary>
+    /// Deterministic-dt overload for pipelines with a known physics rate
+    /// (e.g. LMU 1/250). Wall-clock overload above is preserved for EVO/R3E.
+    /// </summary>
+    public float Apply(float force, float speedKmh, float steerAngle, float dt)
+    {
         dt = Math.Clamp(dt, 0.001f, 0.05f);
 
-        // Calculate actual steering velocity (radians/second)
+        // Calculate actual steering velocity (radians/second).
+        // NOTE: deterministic overload does NOT touch _previousTimestamp;
+        // the wall-clock overload owns it. This keeps LMU (fixed dt) and
+        // EVO (wall dt) from corrupting each other's timing.
         float rawSteerVel = (steerAngle - _previousSteerAngle) / dt;
         _steerVelocity = _steerVelocity * 0.6f + rawSteerVel * 0.4f;
         _previousSteerAngle = steerAngle;
-        _previousTimestamp = now;
 
         // Calculate steering acceleration (radians/second²)
         float steerAccel = 0f;
@@ -117,8 +148,20 @@ public sealed class FfbDamping
         float normalizedAccel = Math.Clamp(steerAccel / SteerAccelReference, -1f, 1f);
         float inertiaForce = -InertiaWeight * normalizedAccel * speedFactor;
 
+        // Straight-line boost (opt-in): extra viscous+gyro authority at speed
+        // near center. Default StraightGain=0 = legacy behavior.
+        if (StraightGain > 0.001f && speedKmh >= StraightSpeedKmh
+            && Math.Abs(steerAngle) <= StraightSteerNorm)
+        {
+            float boost = 1f + StraightGain;
+            pureViscousForce *= boost;
+            gyroscopicForce *= boost;
+        }
+
         float targetDamping = pureViscousForce + frictionForce + gyroscopicForce + inertiaForce;
-        float maxDamp = absForce * 0.25f;
+        // Absolute floor restores on-center authority where |force|*0.25 → 0.
+        // Default CenterDampFloor=0 preserves legacy behavior; LMU opts into 0.03.
+        float maxDamp = Math.Max(absForce * 0.25f, CenterDampFloor);
         _prevDampingForce = _prevDampingForce + (targetDamping - _prevDampingForce) * 0.4f;
         _prevDampingForce = Math.Clamp(_prevDampingForce, -maxDamp, maxDamp);
 

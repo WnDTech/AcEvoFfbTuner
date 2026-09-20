@@ -44,6 +44,7 @@ public sealed class FfbRawData
     public int SteerDegrees { get; set; }
     public int PacketId { get; set; }
     public int Gear { get; set; }
+    public int EngineRpm { get; set; }
     public float RpmPercent { get; set; }
     public bool IsRpmLimiterOn { get; set; }
     public bool IsPitLimiterOn { get; set; }
@@ -108,6 +109,16 @@ public sealed class FfbProcessedData
     public float PostDynamicForce { get; set; }
     public float AutoGainApplied { get; set; }
     public bool IsClipping { get; set; }
+    /// <summary>
+    /// Plan D1: decaying peak-hold of |MainForce| for headroom UI.
+    /// Additive field; default 0 when the pipeline does not track it (EVO/R3E).
+    /// </summary>
+    public float PeakHold { get; set; }
+    /// <summary>
+    /// Plan D1: clip-event rate over the last window (0..1). Suggestion only;
+    /// no pipeline auto-changes gains from it.
+    /// </summary>
+    public float ClipRate { get; set; }
     public float SpeedKmh { get; set; }
     public float SteerAngle { get; set; }
     public int PacketId { get; set; }
@@ -138,4 +149,36 @@ public sealed class FfbProcessedData
     public TyreCompoundCategory TyreCategory { get; set; }
     public string TyreCompoundFrontName { get; set; } = "";
     public string TyreCompoundRearName { get; set; } = "";
+
+    // ── Stage taps for the WIP Pipeline visualizer (canonical 15 stages) ──
+    // Additive telemetry only: every pipeline fills the taps that exist in its
+    // chain and leaves the rest at 0. Zero means "stage absent in this game",
+    // never "no signal" — the page's per-game badge says which is which.
+    /// <summary>02 Mix: channel-mixer output before MasterGain/auto-gain scaling.</summary>
+    public float StageMixedForce { get; set; }
+    /// <summary>06 Gain: post-OutputGain, before centering/shaping overrides.</summary>
+    public float StageGainForce { get; set; }
+    /// <summary>08 Slip: slip-path contribution added to detail.</summary>
+    public float StageSlipDelta { get; set; }
+    /// <summary>09 DynFlex: dynamics + flex contribution added to detail
+    /// (LMU reports its tyre-temp term here).</summary>
+    public float StageDynFlex { get; set; }
+    /// <summary>11 SubMods: ABS + road + scrub + rear + offtrack + LFE
+    /// (+ R3E pre-EQ synth textures) contribution added to detail.</summary>
+    public float StageSubMods { get; set; }
+    /// <summary>13 PreClip: filtered core + detail sum before clipper/soft-lock/noise gate.</summary>
+    public float StagePreClipForce { get; set; }
+
+    // ── Diagnostic per-effect detail breakdown (R3E debug, snapshot CSV) ──
+    public float DiagSlipVib { get; set; }
+    public float DiagVibMixer { get; set; }
+    public float DiagDynEffects { get; set; }
+    public float DiagTyreFlex { get; set; }
+    public float DiagSlipEnhancer { get; set; }
+    public float DiagLfe { get; set; }
+    public float DiagAbsMod { get; set; }
+    public float DiagRoadMod { get; set; }
+    public float DiagFrontRatio { get; set; }
+    public float DiagRearRatio { get; set; }
+    public float DiagEngageThr { get; set; }
 }

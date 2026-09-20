@@ -42,6 +42,14 @@ public partial class LiveTrackMapPage : UserControl
     private float _prevNpos = -1f;
     private bool _sfAutoCalibrated;
 
+    // Shape-solved SF anchor (rotation-free): fractional OSM distance + direction,
+    // solved once per track by correlating the recorded lap against the OSM layout.
+    // Priority: shape anchor > wrap calibration > parse heuristic.
+    private bool _osmReversed;
+    private string _anchorSource = "heuristic";
+    private string? _anchorSolvedTrack;
+    private TrackMap? _anchorAttemptMap;
+
     // Cache for the nearest-OSM-point fallback (avoid a full layout scan every tick)
     private int _lastNearestIdx = -1;
     private double _lastNearestLat, _lastNearestLon;
@@ -98,8 +106,21 @@ public partial class LiveTrackMapPage : UserControl
             _mapCentered = false;
             _prevNpos = -1f;
             _sfAutoCalibrated = false;
+            _osmReversed = false;
+            _anchorSource = "heuristic";
+            _anchorSolvedTrack = null;
+            _anchorAttemptMap = null;
             _lastNearestIdx = -1;
             _ = LoadOsmDataAsync(trackName, trackLatitude, trackLongitude);
+        }
+
+        // Shape-solve the SF anchor once per track when both the OSM layout and a
+        // recorded (Npos-tagged) lap are available. Rotation-free: needs no GPS.
+        if (_currentOsmData?.TrackLayout is { Count: > 50 } && _anchorSolvedTrack != _lastLoadedTrack
+            && _currentTrackMap != null && _currentTrackMap != _anchorAttemptMap)
+        {
+            _anchorAttemptMap = _currentTrackMap;
+            TrySolveAnchor();
         }
 
         // Geo-reference from game telemetry — ONLY when values changed.
@@ -148,7 +169,10 @@ public partial class LiveTrackMapPage : UserControl
             && ((npos < 0.1f && _prevNpos > 0.9f) || (npos > 0.9f && _prevNpos < 0.1f));
         _prevNpos = npos;
 
-        if (nposCrossedLine && _currentOsmData?.TrackLayout is { Count: > 2 } layout
+        // Wrap calibration is the fallback; a shape-solved anchor always wins
+        // (it needs no GameToGps rotation, which is uncalibrated for GPS-less games).
+        if (nposCrossedLine && _anchorSource != "shape"
+            && _currentOsmData?.TrackLayout is { Count: > 2 } layout
             && _satelliteService != null && _satelliteService.HasGeoData
             && carX != 0f && carZ != 0f)
         {
@@ -167,6 +191,7 @@ public partial class LiveTrackMapPage : UserControl
                 _osmSfCumDist = InterpolateCumDistAtGps(gpsLat, gpsLon, layout, _osmCumDist);
 
                 _sfAutoCalibrated = true;
+                if (_anchorSource != "shape") _anchorSource = "wrap";
                 _currentOsmData.StartFinish = new TrackPoint(layout[sfIdx].Latitude, layout[sfIdx].Longitude);
                 MapCtrl.SetGpsTrackOutline(layout, _currentOsmData.Corners, _currentOsmData.SectorBoundaries);
                 if (_currentOsmData.Pit != null) MapCtrl.AddPitMarkers(_currentOsmData.Pit);
@@ -211,7 +236,8 @@ public partial class LiveTrackMapPage : UserControl
         {
             PositionValue.Text = $"{carLat:F5}, {carLon:F5}";
             var cal = _sfAutoCalibrated ? " AUTO" : "";
-            ProgressValue.Text = $"npos={npos:F4} sfIdx={_osmStartFinishIndex}{cal}";
+            var rev = _osmReversed ? " REV" : "";
+            ProgressValue.Text = $"npos={npos:F4} sfIdx={_osmStartFinishIndex}{cal} {_anchorSource}{rev}";
             MapCtrl.UpdateCarGpsPosition(carLon, carLat, carHeading);
         }
         else
@@ -327,6 +353,59 @@ public partial class LiveTrackMapPage : UserControl
     private static void StaticLog(string msg)
     {
         System.Diagnostics.Debug.WriteLine($"[LiveTrackMap] {msg}");
+    }
+
+    /// <summary>
+    /// When the OSM loop order opposes the driving direction, segment headings
+    /// point backwards — rotate by π so the car arrow faces travel direction.
+    /// </summary>
+    private double FlipHeadingForDirection(double h)
+    {
+        if (!_osmReversed) return h;
+        h += Math.PI;
+        if (h > Math.PI) h -= 2 * Math.PI;
+        return h;
+    }
+
+    /// <summary>
+    /// Solve the SF anchor + direction by shape-correlating the recorded lap
+    /// against the OSM layout (rotation-free, needs no GPS reference), apply it,
+    /// and persist it to the relation cache. Runs once per track map.
+    /// </summary>
+    private void TrySolveAnchor()
+    {
+        try
+        {
+            var layout = _currentOsmData?.TrackLayout;
+            var gameMap = _currentTrackMap;
+            if (layout == null || gameMap == null) return;
+            var result = OsmAnchorSolver.Solve(gameMap, layout);
+            if (result == null || _osmTotalDist <= 0) return;
+
+            _anchorSolvedTrack = _lastLoadedTrack;
+            _osmReversed = result.Reversed;
+            _anchorSource = "shape";
+            _osmSfCumDist = result.SfFraction * _osmTotalDist;
+
+            // Nearest index for display + SF marker consistency.
+            int n = layout.Count;
+            int sfIdx = (int)Math.Round(result.SfFraction * n) % n;
+            _osmStartFinishIndex = sfIdx;
+            _sfAutoCalibrated = true;
+
+            string? config = (DataContext as MainViewModel)?.DetectedTrackConfig;
+            if (string.IsNullOrWhiteSpace(config)) config = null;
+            _trackDataService.StoreAnchor(_lastLoadedTrack ?? "", config,
+                result.SfFraction, result.Reversed, "shape");
+            if (_currentOsmData != null)
+            {
+                _currentOsmData.SfAnchorFraction = result.SfFraction;
+                _currentOsmData.SfAnchorReversed = result.Reversed;
+                _currentOsmData.SfAnchorSource = "shape";
+            }
+            OsmStatusText.Text += $" anchor=shape rev={result.Reversed} conf={result.Confidence:F2}";
+        }
+        catch { }
     }
 
     private static double GetHeadingAtOsmIndex(int idx, List<TrackPoint> layout)
@@ -522,9 +601,13 @@ public partial class LiveTrackMapPage : UserControl
         npos = npos - (float)Math.Floor(npos);
         if (npos < 0) npos += 1f;
 
-        // Offset by the fractional SF distance so Npos=0 maps to the exact start/finish
-        double target = _osmSfCumDist + npos * _osmTotalDist;
-        if (target >= _osmTotalDist) target -= _osmTotalDist;
+        // Offset by the fractional SF distance so Npos=0 maps to the exact start/finish.
+        // When the OSM loop order opposes the driving direction, traverse backwards.
+        double target = _osmReversed
+            ? _osmSfCumDist - npos * _osmTotalDist
+            : _osmSfCumDist + npos * _osmTotalDist;
+        target %= _osmTotalDist;
+        if (target < 0) target += _osmTotalDist;
 
         int idx = 0;
         for (int i = 1; i < _osmCumDist.Length; i++)
@@ -541,7 +624,7 @@ public partial class LiveTrackMapPage : UserControl
             double lat = pts[n - 1].Latitude + (pts[0].Latitude - pts[n - 1].Latitude) * t;
             double lon = pts[n - 1].Longitude + (pts[0].Longitude - pts[n - 1].Longitude) * t;
             double h = Math.Atan2(pts[0].Longitude - pts[n - 1].Longitude, pts[0].Latitude - pts[n - 1].Latitude);
-            return (lat, lon, h);
+            return (lat, lon, FlipHeadingForDirection(h));
         }
 
         int prev = idx - 1;
@@ -552,7 +635,7 @@ public partial class LiveTrackMapPage : UserControl
         double lon2 = pts[prev].Longitude + (pts[idx].Longitude - pts[prev].Longitude) * t2;
         double h2 = Math.Atan2(pts[idx].Longitude - pts[prev].Longitude, pts[idx].Latitude - pts[prev].Latitude);
 
-        return (lat2, lon2, h2);
+        return (lat2, lon2, FlipHeadingForDirection(h2));
     }
 
     private async Task LoadOsmDataAsync(string trackName, float liveLat = 0f, float liveLon = 0f)
@@ -639,6 +722,18 @@ public partial class LiveTrackMapPage : UserControl
                 }
                 // Initialize the fractional SF distance from the integer index
                 _osmSfCumDist = _osmCumDist[_osmStartFinishIndex];
+
+                // Prefer a persisted shape-solved anchor (rotation-free, no GPS needed).
+                if (data.SfAnchorFraction >= 0 && data.SfAnchorFraction < 1)
+                {
+                    _anchorSolvedTrack = data.TrackName;
+                    _osmReversed = data.SfAnchorReversed;
+                    _anchorSource = string.IsNullOrWhiteSpace(data.SfAnchorSource) ? "shape" : data.SfAnchorSource;
+                    _osmSfCumDist = data.SfAnchorFraction * _osmTotalDist;
+                    int sfIdx = (int)Math.Round(data.SfAnchorFraction * n) % n;
+                    _osmStartFinishIndex = sfIdx;
+                    _sfAutoCalibrated = true;
+                }
 
                 // Log track data load details for diagnosis
                 try

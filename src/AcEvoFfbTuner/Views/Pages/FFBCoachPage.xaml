@@ -139,6 +139,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ===== HEADER ===== -->
@@ -295,8 +296,44 @@
             </StackPanel>
         </Border>
 
+        <!-- ===== APPLIED HISTORY ===== -->
+        <Border Grid.Row="3" Background="#FF151B23" BorderThickness="0,1,0,0" BorderBrush="#FF30363D"
+                Padding="16,10" Visibility="{Binding CoachHasAppliedHistory, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <DockPanel Margin="0,0,0,8">
+                    <TextBlock Text="APPLIED HISTORY" FontSize="12" FontWeight="Bold"
+                                Foreground="#FF4CAF50" VerticalAlignment="Center" />
+                    <Button Content="↩ Undo Last" Command="{Binding CoachUndoCommand}" HorizontalAlignment="Right"
+                                 Style="{StaticResource CoachActionBtn}" Padding="10,4" FontSize="12" />
+                </DockPanel>
+                <ItemsControl ItemsSource="{Binding CoachAppliedHistory}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,8" Margin="0,0,0,6"
+                                    BorderThickness="1" BorderBrush="#224CAF50">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center" MaxWidth="600">
+                                        <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="SemiBold"
+                                                    Foreground="#FFE6EDF3" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Detail}" FontSize="12"
+                                                    Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Content="Revert"
+                                            Command="{Binding DataContext.CoachRevertChangeCommand,
+                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource CoachActionBtn}" Padding="12,4" FontSize="12"
+                                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
         <!-- ===== INPUT BAR ===== -->
-        <Border Grid.Row="3" x:Name="InputBar"
+        <Border Grid.Row="4" x:Name="InputBar"
                 Background="#FF151B23" BorderThickness="0,1,0,0" BorderBrush="#FF30363D"
                 Padding="16,10" Visibility="Collapsed">
             <Grid>

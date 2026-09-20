@@ -183,6 +183,14 @@ public sealed class TieredTrackDataProvider : IDisposable
     }
 
     /// <summary>
+    /// Persist a shape-solved SF anchor into the cached relation data.
+    /// </summary>
+    public void StoreAnchor(string trackName, string? config, double fraction, bool reversed, string source)
+    {
+        _relationService.StoreAnchor(trackName, config, fraction, reversed, source);
+    }
+
+    /// <summary>
     /// Delete all cached track data files for the given track (layout-aware key + legacy).
     /// </summary>
     public void DeleteCache(string trackName, string? config = null)

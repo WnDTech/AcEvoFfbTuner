@@ -248,7 +248,7 @@ public sealed class ProfileManager
         }
     }
 
-    private static string GetProfileFilePath(string name)
+    public static string GetProfileFilePath(string name)
     {
         var safeName = string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
         return Path.Combine(ProfilesDirectory, $"{safeName}.json");

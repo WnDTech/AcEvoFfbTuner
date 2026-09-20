@@ -362,6 +362,41 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private float _tyreTempGain = 0.0f;
 
+    // ── LMU plan B/C knobs (defaults match pipeline + profile; 0/off = legacy feel) ──
+    [ObservableProperty]
+    private float _rearFyScale = 0f;
+
+    [ObservableProperty]
+    private float _rearGripDetailGain = 0f;
+
+    [ObservableProperty]
+    private float _yawOnsetGain = 0f;
+
+    [ObservableProperty]
+    private float _yawOnsetThreshold = 0f;
+
+    [ObservableProperty]
+    private float _brakeLoadBias = 0f;
+
+    [ObservableProperty]
+    private float _suspRoadScale = 1f;
+
+    [ObservableProperty]
+    private bool _useMixerSuspRoad = true;
+
+    [ObservableProperty]
+    private bool _synthAbsEnabled = false;
+
+    [ObservableProperty]
+    private bool _synthTcEnabled = false;
+
+    // ── Damping plan B5/D2 knobs (global; 0 = legacy behavior) ──
+    [ObservableProperty]
+    private float _centerDampFloor = 0f;
+
+    [ObservableProperty]
+    private float _straightGain = 0f;
+
     [ObservableProperty]
     private float _offtrackGain = 0.5f;
 
@@ -1409,6 +1444,34 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _coachHasPendingRecs;
 
+    /// <summary>Every change the coach applied this session — Undo/Revert from here.</summary>
+    public ObservableCollection<CoachAppliedChange> CoachAppliedHistory { get; } = [];
+
+    [ObservableProperty]
+    private bool _coachHasAppliedHistory;
+
+    private void RefreshCoachHistory()
+    {
+        CoachAppliedHistory.Clear();
+        foreach (var h in _coachService.AppliedHistory)
+            CoachAppliedHistory.Add(h);
+        CoachHasAppliedHistory = CoachAppliedHistory.Count > 0;
+    }
+
+    [RelayCommand]
+    private void CoachRevertChange(CoachAppliedChange? entry)
+    {
+        if (entry == null) return;
+        var result = _coachService.RevertChange(entry.Id);
+        foreach (var msg in result.Messages)
+            CoachMessages.Add(msg);
+        if (result.ProfileChanged)
+            RefreshProfileValues();
+        RefreshCoachHistory();
+        if (_coachService.IsAiEnabled)
+            PlayCoachAlert();
+    }
+
     [RelayCommand]
     private Task CoachApplyRec(CoachPendingRec rec)
     {
@@ -1423,6 +1486,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (_coachService.IsAiEnabled)
                 PlayCoachAlert();
             RefreshProfileValues();
+            RefreshCoachHistory();
         }
         return Task.CompletedTask;
     }
@@ -1445,6 +1509,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (_coachService.IsAiEnabled)
             PlayCoachAlert();
         RefreshProfileValues();
+        RefreshCoachHistory();
         return Task.CompletedTask;
     }
 
@@ -1457,6 +1522,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (_coachService.IsAiEnabled)
             PlayCoachAlert();
         RefreshProfileValues();
+        RefreshCoachHistory();
     }
 
     private void RefreshProfileValues()
@@ -1661,6 +1727,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 DetectedTrackName = trackName;
                 DetectedTrackConfig = config;
                 OfficialTrackLengthM = lengthM;
+                _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
 
                 var calibration = SatelliteMapService.LoadCalibration(trackName);
                 if (calibration != null)
@@ -1726,6 +1793,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             DetectedCarModel = carModel;
             StatusText = $"Car detected: {carModel}";
+            _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
 
             if (!_appSettings.AutoSwitchProfiles || _appSettings.ProfileLocked) return;
 
@@ -1747,6 +1815,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         });
         _telemetryLoop.TrackChanged += newTrackName => Application.Current?.Dispatcher.Invoke(() =>
         {
+            DetectedTrackName = newTrackName;
+            _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
             _mapClearedByUser = false;
             _lastAutoLoadedTrack = null;
             IsTrackMapAvailable = false;
@@ -3053,11 +3123,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             $"PeakFx: {s.PeakFx:F4}\n" +
             $"PeakFy: {s.PeakFy:F4}"));
 
+        _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
         var csvData = new SnapshotCsvData
         {
             ProfileName = SelectedProfile?.Name ?? "Live",
             TorqueNm = 5.5f,
-            StatsText = statsText
+            StatsText = statsText,
+            Game = GameDisplayName,
+            CarModel = DetectedCarModel,
+            TrackName = DetectedTrackName,
+            TrackConfig = DetectedTrackConfig
         };
 
         CoachSessionState = CoachSessionState.Analyzing;
@@ -3075,6 +3150,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private async Task CoachLoadSnapshotFile(string filePath)
     {
+        SyncCoachContext();
         CoachLoadingText = "Analyzing snapshot...";
         CoachIsBusy = true;
         try
@@ -3109,6 +3185,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task CoachUseLatestSnapshot()
     {
+        SyncCoachContext();
         CoachLoadingText = "Analyzing snapshot...";
         CoachIsBusy = true;
         try
@@ -3177,6 +3254,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             };
 
             CoachSessionState = CoachSessionState.Analyzing;
+            _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
             var result = await _coachService.AnalyzeLiveDataAsync(stats, SelectedProfile?.Name ?? "Live");
             CoachSessionState = result.State;
             CoachDataSourceLabel = _coachService.DataSourceLabel;
@@ -3203,6 +3281,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         CoachMessages.Clear();
         CoachPendingRecs.Clear();
         CoachHasPendingRecs = false;
+        RefreshCoachHistory();
         CoachSessionState = CoachSessionState.Idle;
         CoachDataSourceLabel = "";
         CoachCurrentProfileName = "";
@@ -3218,6 +3297,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task CoachSendText()
     {
+        SyncCoachContext();
         var text = CoachInput?.Trim();
         if (string.IsNullOrWhiteSpace(text)) return;
         CoachInput = "";
@@ -3241,7 +3321,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             foreach (var msg in result.Messages)
                 CoachMessages.Add(msg);
             if (result.ProfileChanged)
+            {
                 RefreshProfileValues();
+                RefreshCoachHistory();
+            }
         }
     }
 
@@ -3258,7 +3341,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             foreach (var msg in result.Messages)
                 CoachMessages.Add(msg);
             if (result.ProfileChanged)
+            {
                 RefreshProfileValues();
+                RefreshCoachHistory();
+            }
             foreach (var rec in result.Recommendations ?? [])
                 AddPendingRec(rec);
             if (_coachService.IsAiEnabled)
@@ -3438,9 +3524,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CurrentAiModelSummary));
     }
 
+    /// <summary>
+    /// Push the current detection state (game + car + track) into the coach.
+    /// Call at every coach entry so the AI never reasons with a stale game.
+    /// Snapshot-embedded context still wins inside AnalyzeSnapshotAsync.
+    /// </summary>
+    private void SyncCoachContext()
+        => _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
+
     [RelayCommand]
     private async Task CoachAnswer(string answerId)
     {
+        SyncCoachContext();
         if (answerId == "source_latest")
         {
             await CoachUseLatestSnapshot();
@@ -3483,7 +3578,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             foreach (var msg in result.Messages)
                 CoachMessages.Add(msg);
             if (result.ProfileChanged)
+            {
                 RefreshProfileValues();
+                RefreshCoachHistory();
+            }
             foreach (var rec in result.Recommendations ?? [])
                 AddPendingRec(rec);
             if (_coachService.IsAiEnabled)

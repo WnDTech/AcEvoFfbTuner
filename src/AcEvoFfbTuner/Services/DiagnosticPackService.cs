@@ -83,7 +83,7 @@ public sealed class DiagnosticPackService
         }
     }
 
-    public static async Task<(bool Success, string Message, string? ReportId)> SendAsync(string feedback, IProgress<string>? progress = null, string? wheelSetupSummary = null, string? taskCode = null)
+    public static async Task<(bool Success, string Message, string? ReportId)> SendAsync(string feedback, IProgress<string>? progress = null, string? wheelSetupSummary = null, string? taskCode = null, string? snapshotPath = null, string? diagProfilePath = null)
     {
         var reportId = NewReportId();
         try
@@ -125,7 +125,7 @@ public sealed class DiagnosticPackService
             progress?.Report("Posting to Discord...");
             try
             {
-                var (threadId, channelId, starterMessageId) = await PostToDiscordAsync(feedback, zipSizeMb, videoLink, reportId, taskCode);
+                var (threadId, channelId, starterMessageId) = await PostToDiscordAsync(feedback, zipSizeMb, videoLink, reportId, taskCode, snapshotPath, diagProfilePath);
                 try { File.Delete(zipPath); } catch { }
                 progress?.Report("Sent successfully!");
                 return (true, $"Diagnostic pack sent ({zipSizeMb:F1} MB) — Report ID: {reportId}", reportId);
@@ -149,7 +149,7 @@ public sealed class DiagnosticPackService
         }
     }
 
-    private static async Task<(string ThreadId, string ChannelId, string StarterMessageId)> PostToDiscordAsync(string feedback, double zipSizeMb, string? videoLink, string reportId, string? taskCode = null)
+    private static async Task<(string ThreadId, string ChannelId, string StarterMessageId)> PostToDiscordAsync(string feedback, double zipSizeMb, string? videoLink, string reportId, string? taskCode = null, string? snapshotPath = null, string? diagProfilePath = null)
     {
         var truncatedFeedback = feedback.Length > 1500 ? feedback[..1500] + "..." : feedback;
 
@@ -184,10 +184,19 @@ public sealed class DiagnosticPackService
             }
         };
 
-        var logsZipPath = Path.Combine(Path.GetTempPath(), $"AcEvoFfbTuner_Logs_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+        var logsZipPath = Path.Combine(Path.GetTempPath(), $"AcEvoFfbTuner_Diag_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
         const long maxAttachmentBytes = 7L * 1024 * 1024;
         try
         {
+            // Prefer the just-saved files from this send; fall back to the
+            // newest files from today so task-code sends without explicit
+            // paths still include tuning data.
+            if (string.IsNullOrWhiteSpace(diagProfilePath) || !File.Exists(diagProfilePath))
+                diagProfilePath = FindNewestDiagProfile();
+            if (string.IsNullOrWhiteSpace(snapshotPath) || !File.Exists(snapshotPath))
+                snapshotPath = FindNewestSnapshot();
+            string? replayPath = FindPairedReplayHtml(snapshotPath);
+
             long totalBytes = 0;
             using (var fs = new FileStream(logsZipPath, FileMode.Create))
             using (var zip = new ZipArchive(fs, ZipArchiveMode.Create))
@@ -224,6 +233,12 @@ public sealed class DiagnosticPackService
                         }
                         catch { }
                     }
+                    // The auto-saved diag profile + snapshot for this send.
+                    // These are the FFB tuning evidence — they must travel
+                    // with the pack, not stay on the user's machine.
+                    AddSingleFileToZip(zip, diagProfilePath, $"Profiles/{Path.GetFileName(diagProfilePath)}", ref totalBytes, maxAttachmentBytes);
+                    AddSingleFileToZip(zip, snapshotPath, $"snapshots/{Path.GetFileName(snapshotPath)}", ref totalBytes, maxAttachmentBytes);
+                    AddSingleFileToZip(zip, replayPath, $"snapshots/{Path.GetFileName(replayPath)}", ref totalBytes, maxAttachmentBytes);
                     // Native-crash minidump (written by the crash filter in App.xaml.cs).
                     // Budget-guarded: it is the most valuable evidence, but the
                     // attachment must stay under the Discord limit.
@@ -269,7 +284,7 @@ public sealed class DiagnosticPackService
             {
                 var fileContent = new ByteArrayContent(fileBytes);
                 fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
-                form.Add(fileContent, "files[0]", $"AcEvoFfbTuner_Logs_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+                form.Add(fileContent, "files[0]", $"AcEvoFfbTuner_Diag_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
             }
 
             var response = await _discordHttp.PostAsync(DiscordWebhookUrl, form);
@@ -291,6 +306,70 @@ public sealed class DiagnosticPackService
         {
             try { if (File.Exists(logsZipPath)) File.Delete(logsZipPath); } catch { }
         }
+    }
+
+    private static void AddSingleFileToZip(ZipArchive zip, string? sourcePath, string entryName, ref long totalBytes, long maxAttachmentBytes)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath) || string.IsNullOrWhiteSpace(entryName)) return;
+        try
+        {
+            if (!File.Exists(sourcePath)) return;
+            var length = new FileInfo(sourcePath).Length;
+            if (totalBytes + length > maxAttachmentBytes) return;
+            var entry = zip.CreateEntry(entryName, CompressionLevel.Optimal);
+            using var source = File.OpenRead(sourcePath);
+            using var dest = entry.Open();
+            source.CopyTo(dest);
+            totalBytes += length;
+        }
+        catch { }
+    }
+
+    private static string? FindNewestDiagProfile()
+    {
+        try
+        {
+            var dir = Path.Combine(BaseDir, "Profiles");
+            if (!Directory.Exists(dir)) return null;
+            var today = DateTime.Today;
+            return Directory.GetFiles(dir, "*_diag_*.json")
+                .Where(f => File.GetLastWriteTime(f).Date == today)
+                .OrderByDescending(f => new FileInfo(f).LastWriteTime)
+                .FirstOrDefault();
+        }
+        catch { return null; }
+    }
+
+    private static string? FindNewestSnapshot()
+    {
+        try
+        {
+            var dir = Path.Combine(BaseDir, "snapshots");
+            if (!Directory.Exists(dir)) return null;
+            var today = DateTime.Today;
+            return Directory.GetFiles(dir, "snapshot_*.txt")
+                .Where(f => File.GetLastWriteTime(f).Date == today)
+                .OrderByDescending(f => new FileInfo(f).LastWriteTime)
+                .FirstOrDefault();
+        }
+        catch { return null; }
+    }
+
+    private static string? FindPairedReplayHtml(string? snapshotPath)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(snapshotPath)) return null;
+            var dir = Path.GetDirectoryName(snapshotPath);
+            var name = Path.GetFileName(snapshotPath);
+            if (string.IsNullOrWhiteSpace(dir) || string.IsNullOrWhiteSpace(name)) return null;
+            if (!name.StartsWith("snapshot_", StringComparison.OrdinalIgnoreCase)) return null;
+            var replayName = "replay_" + name.Substring("snapshot_".Length);
+            replayName = Path.ChangeExtension(replayName, ".html");
+            var replayPath = Path.Combine(dir, replayName);
+            return File.Exists(replayPath) ? replayPath : null;
+        }
+        catch { return null; }
     }
 
     private static string NewReportId()

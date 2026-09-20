@@ -46,7 +46,7 @@ public sealed class R3eFfbPipeline : FfbPipeline
             base.GearShiftFilterEnabled = value;
         }
     }
-    public float GearSpikeThreshold { get; set; } = 3000f;
+    public override float GearSpikeThreshold { get; set; } = 3000f;
     public float BrakeBoostGain { get; set; } = 0.15f;
     public float BrakeBoostThreshold { get; set; } = 0.1f;
 
@@ -171,6 +171,7 @@ public sealed class R3eFfbPipeline : FfbPipeline
 
         // Output gain
         float coreOutput = corePostCenter * OutputGain;
+        float stageGainForce = coreOutput;
 
         // Core force multiplier: user-controlled main force gain.
         // Exposed as "Center Strength (x)" slider in the UI.
@@ -230,32 +231,53 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // DETAIL PATH — Texture effects only
         // ═════════════════════════════════════════════════════════════════
 
-        float deltaTime = 1f / 60f;
+        float deltaTime;
+        {
+            // Real tick interval from game simulation ticks. The pipeline runs
+            // once per new game tick (~400 Hz for R3E) — NOT at 60 Hz. The old
+            // hardcoded 1/60 step made every synth oscillator run ~6x sharp
+            // and alias against the output rate (the "slowing motor" whine
+            // that tracked speed, verified 2026-09-20 via the Slip slider).
+            deltaTime = 1f / R3eTickHz;
+            if (_prevSynthTickId >= 0)
+            {
+                int tickDelta = raw.PacketId - _prevSynthTickId;
+                if (tickDelta > 0 && tickDelta <= 40)
+                    deltaTime = tickDelta / R3eTickHz;
+            }
+            _prevSynthTickId = raw.PacketId;
+        }
         float detailForce = 0f;
 
         // Vibration mixer (road, curb, slip, ABS, scrub, rear slip, offtrack)
         float vibration = VibrationMixer.Mix(raw);
-        // Scale vibration by tyre grip: less texture when grip is low
-        // (sliding tyres produce less crisp vibration feel)
         vibration *= gripScale;
         detailForce += vibration;
+        float diagVibMixer = vibration;
 
         // Slip enhancer: force enhancement from tyre slip ratio/angle.
         // Provides the "tyre about to lose grip" warning — force builds as
         // slip approaches the threshold, then drops warning of lost grip.
         // Pass coreOutput so the Pacejka shape path works (Math.Sign(coreOutput))
         // and the clamp scales with actual steering force instead of ±0.1.
-        detailForce += SlipEnhancer.Apply(coreOutput, raw);
+        // DELTA (not absolute): SlipEnhancer.Apply returns force + smoothing,
+        // so subtract coreOutput — matching EVO (postSlip - corePostLut) and
+        // LMU (Apply(coreForce) - coreForce). Adding the absolute return value
+        // double-counts the core force into the detail path (verified 2026-09-20
+        // snapshot: detail avg 0.08 vs core avg 0.05 on a 150 km/h straight).
+        float r3eSlipAdd = SlipEnhancer.Apply(coreOutput, raw) - coreOutput;
+        detailForce += r3eSlipAdd;
+        float diagSlipEnh = r3eSlipAdd;
 
-        // Dynamic effects: lateral/longitudinal G, suspension, yaw rate.
-        // Adds cornering feel, brake dive, road texture from suspension.
-        detailForce += DynamicEffects.Apply(0f, raw);
+        float r3eDynAdd = DynamicEffects.Apply(0f, raw);
+        detailForce += r3eDynAdd;
 
-        // Tyre flex feel: carcass stiffness, contact patch deformation.
-        // Adds subtle texture from tyre sidewall and tread flex.
-        detailForce += TyreFlex.Apply(0f, raw);
+        float r3eFlexAdd = TyreFlex.Apply(0f, raw);
+        detailForce += r3eFlexAdd;
+        float stageDynFlex = r3eDynAdd + r3eFlexAdd;
 
         // ABS force modulation
+        float stageSubMods = 0f;
         float absMod = VibrationMixer.AbsForceModulation;
         if (Math.Abs(absMod) > 0.001f)
         {
@@ -264,22 +286,32 @@ public sealed class R3eFfbPipeline : FfbPipeline
                 sign = Math.Abs(raw.SteerAngle) > 0.004f
                     ? -Math.Sign(raw.SteerAngle) : 1f;
             detailForce += absMod * sign;
+            stageSubMods += absMod * sign;
         }
 
         // Road force modulation
         float roadMod = VibrationMixer.RoadForceModulation;
         if (Math.Abs(roadMod) > 0.001f)
+        {
             detailForce += roadMod;
+            stageSubMods += roadMod;
+        }
 
         // Rear slip warning
         float rearMod = VibrationMixer.RearSlipModulation;
         if (Math.Abs(rearMod) > 0.001f)
+        {
             detailForce += rearMod;
+            stageSubMods += rearMod;
+        }
 
         // Offtrack rumble
         float offtrackMod = VibrationMixer.OfftrackModulation;
         if (Math.Abs(offtrackMod) > 0.001f)
+        {
             detailForce += offtrackMod;
+            stageSubMods += offtrackMod;
+        }
 
         // LFE (engine RPM / suspension) modulated by engine torque
         float lfe = LfeGenerator.Generate(raw);
@@ -292,31 +324,44 @@ public sealed class R3eFfbPipeline : FfbPipeline
                 torqueFactor = 1f - EngineTorqueLfeMod + torqueNorm * EngineTorqueLfeMod;
             }
             detailForce += lfe * torqueFactor;
+            stageSubMods += lfe * torqueFactor;
         }
 
         // Flatspot vibration: per-wheel sharp pulse at rotation rate.
         // R3E TireFlatspot: boolean trigger (0=none, 1=flatspotted).
         float flatspotVib = SynthesizeFlatspotVibration(raw, deltaTime);
         if (Math.Abs(flatspotVib) > 0.001f)
+        {
             detailForce += flatspotVib;
+            stageSubMods += flatspotVib;
+        }
 
         // Surface feel: rumble texture based on surface material type.
         // R3E TireOnMtrl: 0=none, 1=tarmac, 2=grass, 3=dirt, 4=gravel, 5=rumble, 6=concrete.
-        float surfaceVib = SynthesizeSurfaceVibration(raw, gripScale);
+        float surfaceVib = SynthesizeSurfaceVibration(raw, gripScale, deltaTime);
         if (Math.Abs(surfaceVib) > 0.001f)
+        {
             detailForce += surfaceVib;
+            stageSubMods += surfaceVib;
+        }
 
         // Brake pressure feel: texture proportional to brake force per wheel.
         // R3E BrakePressure: per-wheel in kN. Adds subtle vibration as brakes bite.
         float brakeVib = SynthesizeBrakePressureVibration(raw, gripScale);
         if (Math.Abs(brakeVib) > 0.001f)
+        {
             detailForce += brakeVib;
+            stageSubMods += brakeVib;
+        }
 
         // Traction control feel: subtle pulse when TC cuts power.
         // R3E TractionControlPercent: 0-100% cut level.
         float tcVib = SynthesizeTcIntervention(raw, deltaTime);
         if (Math.Abs(tcVib) > 0.001f)
+        {
             detailForce += tcVib;
+            stageSubMods += tcVib;
+        }
 
         // EQ (biquad filters on detail path only)
         detailForce = Equalizer.Process(detailForce);
@@ -329,16 +374,19 @@ public sealed class R3eFfbPipeline : FfbPipeline
 
         // Direction-based suppression: prevent detail from reversing core
         // at small steer angles where core force is naturally weak.
-        // Additionally, when the driver is actively steering with a clear
-        // direction (|SteerAngle| > 0.04), cap detail that pushes OPPOSITE
-        // the steer (the away-from-center direction — centering force here
-        // matches the steer sign) to a small fraction of MasterGain — even
-        // if the core force has dropped out (SteeringForce near zero),
-        // cornering detail can't drag the wheel off center.
-        if (coreOutput > 0f && detailForce < 0f)
-            detailForce = Math.Max(detailForce, -coreOutput * 0.5f);
-        else if (coreOutput < 0f && detailForce > 0f)
-            detailForce = Math.Min(detailForce, -coreOutput * 0.5f);
+        // Deadband: when |core| is tiny (straight line, core ~0.01-0.02) the
+        // clamp half-wave-rectifies bipolar road texture into a pulsing pull
+        // that follows steer noise — verified 2026-09-20 snapshot: 50-frame
+        // straight at 145-155 km/h, detail avg 0.08 vs core avg 0.05, ForceOut
+        // flipping 21 times (≈4 Hz rocking, ±1 Nm). Below 0.03 the texture
+        // passes bipolar; in corners (core 0.2-0.9) protection still applies.
+        if (Math.Abs(coreOutput) > 0.03f)
+        {
+            if (coreOutput > 0f && detailForce < 0f)
+                detailForce = Math.Max(detailForce, -coreOutput * 0.5f);
+            else if (coreOutput < 0f && detailForce > 0f)
+                detailForce = Math.Min(detailForce, -coreOutput * 0.5f);
+        }
 
         float absSteerForSuppress = Math.Abs(raw.SteerAngle);
         if (absSteerForSuppress > 0.04f)
@@ -364,7 +412,16 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // bipolar zero-mean oscillation, and the suppression clamp would
         // half-wave-rectify it into a directional pulsing pull whenever the
         // away-from-center half-cycle coincided with active steering.
-        detailForce += SynthesizeSlipVibration(raw);
+        // R3E slip synth DISABLED: R3E's own FFB (SteeringForcePercentage)
+        // already communicates tyre slip through self-aligning torque changes
+        // (wheel goes light at grip limit). Synthesising a speed-proportional
+        // sine oscillation on top produces an artificial "motor slowing" wobble
+        // that no real car has — and R3E's SlipRatio = (tireSpeed-carSpeed)/carSpeed
+        // is noisy at low speed, causing false trigger. The SlipEnhancer above
+        // (grip-limit force shaping) is the correct signal for R3E slip feel.
+        // float slipVibOut = SynthesizeSlipVibration(raw, deltaTime);
+        // detailForce += slipVibOut;
+        float slipVibOut = 0f;
 
         // Detail EMA smoothing: alpha is inverted so slider = 0 is none, higher = smoother.
         // alpha = 1 - DetailSmoothing: at 0 → alpha=1 (raw), at 0.6 → alpha=0.4, at 0.9 → alpha=0.1
@@ -392,8 +449,9 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // FINAL MIX
         // ═════════════════════════════════════════════════════════════════
 
-        float filteredCore = ApplyGearShiftFilter(coreOutput, deltaTime, raw.Gear);
+        float filteredCore = ApplyGearShiftFilter(coreOutput, deltaTime, raw.Gear, raw.EngineRpm, GearSpikeThreshold);
         float finalOutput = filteredCore + detailForce;
+        float stagePreClip = finalOutput;
 
         // Soft clip
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
@@ -422,9 +480,22 @@ public sealed class R3eFfbPipeline : FfbPipeline
             PacketId = raw.PacketId,
             IsClipping = isClipping,
             GearShiftMuteGain = GearShiftMuteGain,
+            StageGainForce = stageGainForce,
+            StageSlipDelta = r3eSlipAdd,
+            StageDynFlex = stageDynFlex,
+            StageSubMods = stageSubMods,
+            StagePreClipForce = stagePreClip,
             ChannelMzFront = raw.Mz[0] + raw.Mz[1],
             ChannelFxFront = raw.Fx[0] + raw.Fx[1],
-            ChannelFyFront = raw.Fy[0] + raw.Fy[1]
+            ChannelFyFront = raw.Fy[0] + raw.Fy[1],
+            DiagSlipVib = slipVibOut,
+            DiagVibMixer = diagVibMixer,
+            DiagDynEffects = r3eDynAdd,
+            DiagTyreFlex = r3eFlexAdd,
+            DiagSlipEnhancer = diagSlipEnh,
+            DiagLfe = lfe,
+            DiagAbsMod = absMod,
+            DiagRoadMod = roadMod
         };
     }
 
@@ -488,80 +559,99 @@ public sealed class R3eFfbPipeline : FfbPipeline
 
     private float _rumblePhase;
     private float _slipPhase;
+    private bool _frontSlipEngaged;
+    private bool _rearSlipEngaged;
+    private float _frontSlipSmooth;
+    private float _rearSlipSmooth;
 
     /// <summary>
-    /// Synthesise enhanced slip vibration from per-wheel SlipRatio data.
-    /// Uses speed-proportional oscillation (higher speed = faster slip rattle),
-    /// load modulation (heavier wheels produce more texture),
-    /// and separates front vs rear (controlled by slipGain / rearSlipGain sliders).
-    ///
-    /// Bipolar oscillation (sine) avoids the DC bias that unipolar (sine*0.5+0.5)
-    /// introduced — real slip vibration oscillates symmetrically around zero.
-    /// Phase resets when slip drops below threshold so the texture restarts
-    /// cleanly on re-engagement instead of beginning at an arbitrary waveform position.
+    /// R3E game simulation tick rate (1 tick = 1/400 s). Synth phase
+    /// accumulators advance by measured tick delta, never a hardcoded step.
     /// </summary>
-    private float SynthesizeSlipVibration(FfbRawData raw)
+    private const float R3eTickHz = 400f;
+    private int _prevSynthTickId = -1;
+
+    /// <summary>
+    /// Slip vibration from per-axle SlipRatio (real wheel spin/lockup) only.
+    /// β (chassis sideslip) is excluded — it flickers on bumpy roads at
+    /// 10-30 km/h even without real tyre slip, causing false-engage
+    /// oscillation that dominated the profiler chart (verified 2026-09-20).
+    /// Amplitude scales with speed: no vibration without wheel rotation.
+    /// </summary>
+    private float SynthesizeSlipVibration(FfbRawData raw, float deltaTime)
     {
-        if (raw.SlipRatio == null || raw.SpeedKmh < 1f) return 0f;
+        // Hard gate: slip vibration is a high-speed tyre deformation
+        // phenomenon. Below 30 km/h, R3E's SlipRatio = (tireSpeed - carSpeed)
+        // / carSpeed is inherently noisy (0.2 m/s tire fluctuation at 8 m/s
+        // = 0.025 ratio) and no threshold scaling can reliably separate
+        // noise from real slip. Zero unconditionally below the floor.
+        if (raw.SlipRatio == null || raw.SpeedKmh < 30f) return 0f;
 
-        float totalFrontLoad = 0f, totalRearLoad = 0f;
-        float frontSlip = 0f, rearSlip = 0f;
-
+        float totalLoad = 0f;
         for (int i = 0; i < 4; i++)
-        {
-            float absRatio = Math.Abs(raw.SlipRatio[i]);
-            float absAngle = Math.Abs(raw.SlipAngle?[i] ?? 0f);
-            float combined = absRatio + absAngle * 0.5f;
+            totalLoad += raw.WheelLoad?[i] ?? 1f;
 
-            if (i < 2)
-            {
-                frontSlip += combined;
-                totalFrontLoad += raw.WheelLoad?[i] ?? 1f;
-            }
-            else
-            {
-                rearSlip += combined;
-                totalRearLoad += raw.WheelLoad?[i] ?? 1f;
-            }
-        }
+        float frontRatio = (Math.Abs(raw.SlipRatio[0]) + Math.Abs(raw.SlipRatio[1])) * 0.5f;
+        float rearRatio = (Math.Abs(raw.SlipRatio[2]) + Math.Abs(raw.SlipRatio[3])) * 0.5f;
 
-        frontSlip = Math.Clamp(frontSlip, 0f, 1f);
-        rearSlip = Math.Clamp(rearSlip, 0f, 1f);
+        float engageThr = Math.Max(SlipEnhancer.SlipThreshold * 0.6f, 0.06f);
+        float releaseThr = engageThr * 0.55f;
 
-        bool slipActive = frontSlip > 0.05f || rearSlip > 0.05f;
-        if (!slipActive)
-        {
-            _slipPhase = 0f;
-            return 0f;
-        }
+        _frontSlipEngaged = UpdateSlipGate(_frontSlipEngaged, frontRatio, engageThr, releaseThr);
+        _rearSlipEngaged = UpdateSlipGate(_rearSlipEngaged, rearRatio, engageThr, releaseThr);
 
-        // Speed-proportional oscillation frequency (bipolar sine wave)
+        _frontSlipSmooth = TrackSlipEnvelope(_frontSlipSmooth, _frontSlipEngaged ? frontRatio : 0f);
+        _rearSlipSmooth = TrackSlipEnvelope(_rearSlipSmooth, _rearSlipEngaged ? rearRatio : 0f);
+
+        if (_frontSlipSmooth < 0.001f && _rearSlipSmooth < 0.001f) return 0f;
+
+        // Speed-proportional amplitude: ramp from 0.7 at 30 km/h to 1.0
+        // at 60 km/h. At the hard-gate floor (30 km/h) the synth is at
+        // 70% — full strength once genuine slip is common at speed.
+        float speedAmp = Math.Clamp(0.7f + (raw.SpeedKmh - 30f) / 100f, 0.7f, 1f);
+
+        // Speed-proportional texture frequency with the REAL tick interval.
         float speedHz = Math.Clamp(raw.SpeedKmh * 0.3f, 5f, 80f);
-        _slipPhase += speedHz * (1f / 60f) * MathF.PI * 2f;
+        _slipPhase += speedHz * deltaTime * MathF.PI * 2f;
         if (_slipPhase > MathF.PI * 200f) _slipPhase -= MathF.PI * 200f;
 
-        float wave = MathF.Sin(_slipPhase);
+        // Fundamental + 2nd partial: stick-slip texture, not a pure motor sine.
+        float wave = (MathF.Sin(_slipPhase) + 0.35f * MathF.Sin(_slipPhase * 2f + 1.3f)) / 1.35f;
 
         // Load modulation
-        float loadFactor = Math.Clamp((totalFrontLoad + totalRearLoad) / 20000f, 0.3f, 1.5f);
+        float loadFactor = Math.Clamp(totalLoad / 20000f, 0.3f, 1.5f);
 
         // Front slip vibration (controlled by slipGain slider)
         float frontVib = 0f;
-        if (frontSlip > 0.05f)
+        if (_frontSlipSmooth > releaseThr)
         {
-            float frontAmplitude = (frontSlip - 0.05f) * VibrationMixer.SlipGain * 2f * loadFactor;
+            float frontAmplitude = (_frontSlipSmooth - releaseThr) * VibrationMixer.SlipGain * 2f * loadFactor * speedAmp;
             frontVib = wave * Math.Min(frontAmplitude, 0.15f);
         }
 
         // Rear slip vibration (controlled by rearSlipGain slider)
         float rearVib = 0f;
-        if (rearSlip > 0.05f)
+        if (_rearSlipSmooth > releaseThr)
         {
-            float rearAmplitude = (rearSlip - 0.05f) * VibrationMixer.RearSlipGain * 2f * loadFactor;
+            float rearAmplitude = (_rearSlipSmooth - releaseThr) * VibrationMixer.RearSlipGain * 2f * loadFactor * speedAmp;
             rearVib = wave * Math.Min(rearAmplitude, 0.10f);
         }
 
         return frontVib + rearVib;
+    }
+
+    private static bool UpdateSlipGate(bool engaged, float ratio, float engageThr, float releaseThr)
+    {
+        if (engaged) return ratio >= releaseThr;
+        return ratio >= engageThr;
+    }
+
+    private static float TrackSlipEnvelope(float current, float target)
+    {
+        // Fast attack (~15 ms), slow release (~60 ms tail at ~350 Hz call
+        // rate) so brief threshold crossings fade instead of clicking off.
+        float rate = target > current ? 0.5f : 0.06f;
+        return current * (1f - rate) + target * rate;
     }
 
     /// <summary>
@@ -571,7 +661,7 @@ public sealed class R3eFfbPipeline : FfbPipeline
     /// gated by curbGain and curbSeverityScale sliders. Other surfaces use
     /// flat amplitude.
     /// </summary>
-    private float SynthesizeSurfaceVibration(FfbRawData raw, float gripScale)
+    private float SynthesizeSurfaceVibration(FfbRawData raw, float gripScale, float deltaTime)
     {
         if (raw.TireOnMtrl == null) return 0f;
 
@@ -589,7 +679,7 @@ public sealed class R3eFfbPipeline : FfbPipeline
         if (onRumble)
         {
             float speedHz = Math.Clamp(raw.SpeedKmh * 0.5f, 10f, 100f);
-            _rumblePhase += speedHz * (1f / 60f) * MathF.PI * 2f;
+            _rumblePhase += speedHz * deltaTime * MathF.PI * 2f;
             if (_rumblePhase > MathF.PI * 200f) _rumblePhase -= MathF.PI * 200f;
 
             float wave1 = MathF.Sin(_rumblePhase);
@@ -674,6 +764,13 @@ public sealed class R3eFfbPipeline : FfbPipeline
         _prevSmoothedDetail = 0f;
         _prevDetailOutput = 0f;
         _dcBlockSmooth = 0f;
+        _slipPhase = 0f;
+        _rumblePhase = 0f;
+        _frontSlipEngaged = false;
+        _rearSlipEngaged = false;
+        _frontSlipSmooth = 0f;
+        _rearSlipSmooth = 0f;
+        _prevSynthTickId = -1;
     }
 }
 

@@ -8,6 +8,7 @@ public enum NavPage
     TrackMap,
     LiveTrackMap,
     Telemetry,
+    Pipeline,
     FfbCoach,
     Devices,
     Profiles,

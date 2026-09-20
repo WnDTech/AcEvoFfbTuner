@@ -50,6 +50,21 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.28.0-beta.5",
+            Date = new DateTime(2026, 9, 20),
+            Title = "Send to Dev now attaches the auto-saved snapshot and profile",
+            Improvements =
+            [
+                "Home cockpit instruments rework: real Nm torque readout, auto-ranging G-G diagram, lock-aware steering display",
+                "Rolls up current working-tree updates across the LMU/R3E/ACC pipelines, FFB Coach service, telemetry loop, and track mapping (in progress — tester feedback welcome)",
+            ],
+            Fixes =
+            [
+                "Send to Dev diagnostic packs now attach the auto-saved FFB snapshot (snapshots/snapshot_*.txt), its animated replay (replay_*.html), and the auto-saved diag profile (Profiles/*_diag_*.json), budget-guarded under the Discord attachment limit — previously only logs were uploaded, so FFB tuning evidence never reached the dev",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.28.0-beta.4",
             Date = new DateTime(2026, 9, 18),
             Title = "Wheel Limits & Aids, A/B profile compare, MOZA motor + pedal haptics, layout-aware track maps",
