@@ -6,29 +6,90 @@
              Foreground="#FFE6EDF3"
              FontFamily="Segoe UI"
              UseLayoutRounding="True">
+    <!-- Layout: serpentine swimlanes (one lane per pipeline section, stacked
+         vertically, left→right flow inside each lane). Nodes are FIXED 190px,
+         connectors are FIXED 24px — they never stretch or squash. Each lane
+         scrolls horizontally on narrow windows instead of crushing its cards.
+         This follows the standard layered-DAG / audio-signal-chain convention:
+         fixed node size + fixed edge size + explicit fork/join bars. -->
     <UserControl.Resources>
-        <Style x:Key="Card" TargetType="Border">
+        <Style x:Key="FlowCard" TargetType="Border">
             <Setter Property="Background" Value="#FF161B22" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="10,8" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="#FF30363D" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="MinWidth" Value="110" />
+            <Setter Property="Width" Value="190" />
+            <Setter Property="MinWidth" Value="190" />
+            <Setter Property="VerticalAlignment" Value="Top" />
         </Style>
-        <Style x:Key="Arrow" TargetType="TextBlock">
+        <Style x:Key="OutCard" TargetType="Border">
+            <Setter Property="Background" Value="#FF161B22" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#FF30363D" />
+            <Setter Property="MinWidth" Value="190" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+        <Style x:Key="FlowArrow" TargetType="TextBlock">
             <Setter Property="Text" Value="→" />
-            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontSize" Value="16" />
             <Setter Property="Foreground" Value="#FF484F58" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,0,0,16" />
+            <Setter Property="Width" Value="24" />
         </Style>
-        <Style x:Key="BranchLabel" TargetType="TextBlock">
+        <Style x:Key="LaneBox" TargetType="Border">
+            <Setter Property="Background" Value="#FF12161D" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#FF30363D" />
+        </Style>
+        <Style x:Key="LaneTitle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="8,10,0,4" />
+        </Style>
+        <Style x:Key="CardNum" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#FF3D444D" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="CardName" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#FFE6EDF3" />
             <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="CardVal" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="Foreground" Value="#FFE6EDF3" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+        </Style>
+        <Style x:Key="CardSub" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="Foreground" Value="#FF607D8B" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="ForkJoin" TargetType="Border">
+            <Setter Property="Background" Value="#FF21262D" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+        <Style x:Key="ForkJoinText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="#FF8B949E" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
         </Style>
     </UserControl.Resources>
 
@@ -88,13 +149,13 @@
             </Grid>
         </Border>
 
-        <!-- ═══ MAIN FLOW ═══ -->
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,4,8,0">
+        <!-- ═══ MAIN FLOW (vertical page scroll; each lane scrolls horizontally) ═══ -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8,4,8,0">
             <StackPanel>
 
                 <!-- LEGEND -->
-                <TextBlock FontSize="11" Foreground="#FF607D8B" Margin="8,0,0,6" TextWrapping="Wrap">
-                    <Run Text="Click any stage to expand. " FontWeight="Bold" />
+                <TextBlock FontSize="11" Foreground="#FF607D8B" Margin="8,0,0,2" TextWrapping="Wrap">
+                    <Run Text="Flow runs left → right inside each lane, top → bottom across lanes. Click any stage to expand. " FontWeight="Bold" />
                     <Run Foreground="#FF00E676" Text="Green = active " />
                     <Run Foreground="#FF8B949E" Text="| " />
                     <Run Text="dim = bypassed for this game " />
@@ -103,255 +164,261 @@
                     <Run Foreground="#FFFF1744" Text="Red segment = hot." />
                 </TextBlock>
 
-                <!-- ═══ ROW 1: INPUT → MIX → NORM → LUT (linear head) ═══ -->
-                <TextBlock Text="SIGNAL CHAIN" FontSize="11" FontWeight="Bold" Foreground="#FF8B949E" Margin="8,0,0,4" />
-                <UniformGrid x:Name="HeadRow" Rows="1" Margin="0,0,0,2">
-                    <Border x:Name="Card01" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="01" Margin="0,0,4,0">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,4">
-                                <TextBlock Text="01" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                <TextBlock Text="INPUT" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Grid>
-                            <controls:LedVuMeter x:Name="Meter01" HorizontalAlignment="Center" />
-                            <TextBlock x:Name="Val01" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                            <TextBlock Text="Raw Mz/Fx/Fy" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
+                <!-- ═══ LANE 1: SIGNAL CHAIN ═══ -->
+                <TextBlock Text="1 · SIGNAL CHAIN — input conditioning" Style="{StaticResource LaneTitle}" Foreground="#FF8B949E" />
+                <Border Style="{StaticResource LaneBox}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+                            <Border x:Name="Card01" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="01">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="01" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="INPUT" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter01" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val01" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="Raw Mz/Fx/Fy" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource FlowArrow}" />
+                            <Border x:Name="Card02" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="02">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="02" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="MIX" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter02" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val02" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="Blend to centre" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource FlowArrow}" />
+                            <Border x:Name="Card03" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="03">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="03" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="NORM" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter03" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val03" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="Gain ÷ scale" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource FlowArrow}" />
+                            <Border x:Name="Card04" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="04">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="04" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="LUT" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter04" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val04" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="33-pt curve" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
-                    </Border>
-                    <TextBlock Text="→" Style="{StaticResource Arrow}" />
-                    <Border x:Name="Card02" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="02" Margin="0,0,4,0">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,4">
-                                <TextBlock Text="02" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                <TextBlock Text="MIX" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Grid>
-                            <controls:LedVuMeter x:Name="Meter02" HorizontalAlignment="Center" />
-                            <TextBlock x:Name="Val02" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                            <TextBlock Text="Blend to centre" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
-                    <TextBlock Text="→" Style="{StaticResource Arrow}" />
-                    <Border x:Name="Card03" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="03" Margin="0,0,4,0">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,4">
-                                <TextBlock Text="03" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                <TextBlock Text="NORM" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Grid>
-                            <controls:LedVuMeter x:Name="Meter03" HorizontalAlignment="Center" />
-                            <TextBlock x:Name="Val03" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                            <TextBlock Text="Gain ÷ scale" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
-                    <TextBlock Text="→" Style="{StaticResource Arrow}" />
-                    <Border x:Name="Card04" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="04" Margin="0,0,0,0">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,4">
-                                <TextBlock Text="04" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                <TextBlock Text="LUT" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Grid>
-                            <controls:LedVuMeter x:Name="Meter04" HorizontalAlignment="Center" />
-                            <TextBlock x:Name="Val04" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                            <TextBlock Text="33-pt curve" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
-                </UniformGrid>
-
-                <!-- SPLIT INDICATOR -->
-                <Border Background="#FF21262D" CornerRadius="6" Padding="8,4" Margin="0,4,0,4" HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="SPLIT ──  same tick feeds BOTH branches  ── MERGE" FontSize="11" Foreground="#FF8B949E" />
-                    </StackPanel>
+                    </ScrollViewer>
                 </Border>
 
-                <!-- ═══ ROW 2: TWO PARALLEL BRANCHES ═══ -->
-                <Grid Margin="0,0,0,2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
+                <!-- FORK -->
+                <Border Style="{StaticResource ForkJoin}">
+                    <TextBlock Style="{StaticResource ForkJoinText}" Text="▼  FORK — the same tick feeds BOTH lanes below in parallel" />
+                </Border>
 
-                    <!-- CORE branch label -->
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="CORE PATH — zero-latency centering" Style="{StaticResource BranchLabel}" Foreground="#FF7EE787" />
-                    <TextBlock Grid.Row="0" Grid.Column="2" Text="DETAIL PATH — filtered texture + effects" Style="{StaticResource BranchLabel}" Foreground="#FF79C0FF" />
-
-                    <!-- CORE: 05 → 06 → 07 -->
-                    <UniformGrid Grid.Row="1" Grid.Column="0" Rows="1" Margin="0,0,4,0">
-                        <Border x:Name="Card05" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="05" Margin="0,0,4,0">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,4">
-                                    <TextBlock Text="05" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                    <TextBlock Text="DAMP" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <controls:LedVuMeter x:Name="Meter05" HorizontalAlignment="Center" />
-                                <TextBlock x:Name="Val05" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                                <TextBlock Text="Viscous + friction" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                        <TextBlock Text="→" Style="{StaticResource Arrow}" />
-                        <Border x:Name="Card06" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="06" Margin="0,0,4,0">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,4">
-                                    <TextBlock Text="06" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                    <TextBlock Text="GAIN" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <controls:LedVuMeter x:Name="Meter06" HorizontalAlignment="Center" />
-                                <TextBlock x:Name="Val06" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                                <TextBlock Text="OutputGain" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                        <TextBlock Text="→" Style="{StaticResource Arrow}" />
-                        <Border x:Name="Card07" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="07" Margin="0,0,0,0">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,4">
-                                    <TextBlock Text="07" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                    <TextBlock Text="CORE" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <controls:LedVuMeter x:Name="Meter07" HorizontalAlignment="Center" />
-                                <TextBlock x:Name="Val07" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                                <TextBlock Text="Self-align torque" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                    </UniformGrid>
-
-                    <!-- Divider -->
-                    <Border Grid.Row="1" Grid.Column="1" Width="1" Background="#FF30363D" Margin="4,12,4,12" />
-
-                    <!-- DETAIL: 08 → 09 → 10 → 11 → 12 -->
-                    <UniformGrid Grid.Row="1" Grid.Column="2" Rows="1" Margin="4,0,0,0">
-                        <Border x:Name="Card08" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="08" Margin="0,0,3,0">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,4">
-                                    <TextBlock Text="08" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                    <TextBlock Text="SLIP" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <controls:LedVuMeter x:Name="Meter08" HorizontalAlignment="Center" />
-                                <TextBlock x:Name="Val08" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                                <TextBlock Text="Slip enhancer" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                        <TextBlock Text="→" Style="{StaticResource Arrow}" />
-                        <Border x:Name="Card09" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="09" Margin="0,0,3,0">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,4">
-                                    <TextBlock Text="09" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                    <TextBlock Text="DYN" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <controls:LedVuMeter x:Name="Meter09" HorizontalAlignment="Center" />
-                                <TextBlock x:Name="Val09" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                                <TextBlock Text="G + flex" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                        <TextBlock Text="→" Style="{StaticResource Arrow}" />
-                        <Border x:Name="Card10" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="10" Margin="0,0,3,0">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,4">
-                                    <TextBlock Text="10" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                    <TextBlock Text="VIB" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <controls:LedVuMeter x:Name="Meter10" HorizontalAlignment="Center" />
-                                <TextBlock x:Name="Val10" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                                <TextBlock Text="Curb/slip/road" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                        <TextBlock Text="→" Style="{StaticResource Arrow}" />
-                        <Border x:Name="Card11" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="11" Margin="0,0,3,0">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,4">
-                                    <TextBlock Text="11" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                    <TextBlock Text="MODS" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <controls:LedVuMeter x:Name="Meter11" HorizontalAlignment="Center" />
-                                <TextBlock x:Name="Val11" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                                <TextBlock Text="ABS/road/LFE" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                        <TextBlock Text="→" Style="{StaticResource Arrow}" />
-                        <Border x:Name="Card12" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="12" Margin="0,0,0,0">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,4">
-                                    <TextBlock Text="12" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                    <TextBlock Text="DETAIL" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <controls:LedVuMeter x:Name="Meter12" HorizontalAlignment="Center" />
-                                <TextBlock x:Name="Val12" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                                <TextBlock Text="EQ + slew" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                    </UniformGrid>
-                </Grid>
-
-                <!-- ═══ ROW 3: MERGE → PRE → CLIP → WHEEL (linear tail) ═══ -->
-                <TextBlock Text="MERGE" FontSize="11" FontWeight="Bold" Foreground="#FF8B949E" Margin="8,4,0,4" HorizontalAlignment="Center" />
-                <UniformGrid x:Name="TailRow" Rows="1" Margin="0,0,0,2">
-                    <Border x:Name="Card13" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="13" Margin="0,0,4,0">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,4">
-                                <TextBlock Text="13" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                <TextBlock Text="PRE" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Grid>
-                            <controls:LedVuMeter x:Name="Meter13" HorizontalAlignment="Center" />
-                            <TextBlock x:Name="Val13" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                            <TextBlock Text="Core + detail" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
+                <!-- ═══ LANE 2: BRANCH A — CORE ═══ -->
+                <TextBlock Text="2A · BRANCH A — CORE PATH · zero-latency centering" Style="{StaticResource LaneTitle}" Foreground="#FF7EE787" />
+                <Border Style="{StaticResource LaneBox}" BorderBrush="#FF1F3D2B">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+                            <Border x:Name="Card05" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="05">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="05" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="DAMP" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter05" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val05" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="Viscous + friction" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource FlowArrow}" />
+                            <Border x:Name="Card06" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="06">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="06" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="GAIN" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter06" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val06" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="OutputGain" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource FlowArrow}" />
+                            <Border x:Name="Card07" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="07">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="07" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="CORE" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter07" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val07" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="Self-align torque" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
-                    </Border>
-                    <TextBlock Text="→" Style="{StaticResource Arrow}" />
-                    <Border x:Name="Card14" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="14" Margin="0,0,4,0">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,4">
-                                <TextBlock Text="14" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                <TextBlock Text="CLIP" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Grid>
-                            <controls:LedVuMeter x:Name="Meter14" HorizontalAlignment="Center" />
-                            <TextBlock x:Name="Val14" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                            <TextBlock Text="Soft-clip + gate" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
+                    </ScrollViewer>
+                </Border>
+
+                <!-- ═══ LANE 3: BRANCH B — DETAIL ═══ -->
+                <TextBlock Text="2B · BRANCH B — DETAIL PATH · filtered texture + effects" Style="{StaticResource LaneTitle}" Foreground="#FF79C0FF" />
+                <Border Style="{StaticResource LaneBox}" BorderBrush="#FF1E3A52">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+                            <Border x:Name="Card08" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="08">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="08" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="SLIP" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter08" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val08" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="Slip enhancer" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource FlowArrow}" />
+                            <Border x:Name="Card09" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="09">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="09" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="DYN" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter09" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val09" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="G + flex" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource FlowArrow}" />
+                            <Border x:Name="Card10" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="10">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="10" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="VIB" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter10" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val10" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="Curb/slip/road" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource FlowArrow}" />
+                            <Border x:Name="Card11" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="11">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="11" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="MODS" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter11" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val11" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="ABS/road/LFE" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource FlowArrow}" />
+                            <Border x:Name="Card12" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="12">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="12" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="DETAIL" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter12" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val12" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="EQ + slew" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
-                    </Border>
-                    <TextBlock Text="→" Style="{StaticResource Arrow}" />
-                    <Border x:Name="Card15" Style="{StaticResource Card}" MouseLeftButtonDown="OnStageClick" Tag="15" Margin="0,0,0,0" BorderBrush="#FFF0883E">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,4">
-                                <TextBlock Text="15" FontSize="11" FontWeight="Bold" Foreground="#FF30363D" VerticalAlignment="Center" />
-                                <TextBlock Text="WHEEL" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Grid>
-                            <controls:LedVuMeter x:Name="Meter15" HorizontalAlignment="Center" />
-                            <TextBlock x:Name="Val15" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
-                            <TextBlock x:Name="SubWheel" Text="DirectInput" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
+                    </ScrollViewer>
+                </Border>
+
+                <!-- JOIN -->
+                <Border Style="{StaticResource ForkJoin}">
+                    <TextBlock Style="{StaticResource ForkJoinText}" Text="▲  JOIN — filtered core + detail summed below" />
+                </Border>
+
+                <!-- ═══ LANE 4: OUTPUT ═══ -->
+                <TextBlock Text="3 · OUTPUT — merge + limit + wheel" Style="{StaticResource LaneTitle}" Foreground="#FFF0883E" />
+                <Border Style="{StaticResource LaneBox}" BorderBrush="#FF4A3520">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+                            <Border x:Name="Card13" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="13">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="13" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="PRE" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter13" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val13" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="Core + detail" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource FlowArrow}" />
+                            <Border x:Name="Card14" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="14">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="14" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="CLIP" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter14" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val14" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock Text="Soft-clip + gate" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource FlowArrow}" />
+                            <Border x:Name="Card15" Style="{StaticResource FlowCard}" MouseLeftButtonDown="OnStageClick" Tag="15" BorderBrush="#FFF0883E">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="15" Style="{StaticResource CardNum}" />
+                                        <TextBlock Text="WHEEL" Style="{StaticResource CardName}" />
+                                    </Grid>
+                                    <controls:LedVuMeter x:Name="Meter15" Compact="True" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="Val15" Text="0.000" Style="{StaticResource CardVal}" />
+                                    <TextBlock x:Name="SubWheel" Text="DirectInput" Style="{StaticResource CardSub}" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
-                    </Border>
-                </UniformGrid>
+                    </ScrollViewer>
+                </Border>
 
                 <!-- ═══ PARALLEL OUTPUTS ═══ -->
-                <TextBlock Text="SAME TICK — PARALLEL OUTPUTS" FontSize="11" FontWeight="Bold" Foreground="#FFF0883E" Margin="8,8,0,4" />
-                <UniformGrid Rows="1" Margin="0,0,0,6">
-                    <Border x:Name="SideHf8" Style="{StaticResource Card}" Margin="0,0,4,0">
+                <TextBlock Text="SAME TICK — PARALLEL OUTPUTS" FontSize="11" FontWeight="Bold" Foreground="#FFF0883E" Margin="8,12,0,4" />
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border x:Name="SideHf8" Grid.Column="0" Style="{StaticResource OutCard}" Margin="0,0,4,0">
                         <StackPanel HorizontalAlignment="Center">
                             <TextBlock Text="HF8 PAD" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" />
-                            <controls:LedVuMeter x:Name="MeterHf8" HorizontalAlignment="Center" />
+                            <controls:LedVuMeter x:Name="MeterHf8" Compact="True" HorizontalAlignment="Center" Margin="0,4,0,0" />
                             <TextBlock x:Name="ValHf8" Text="0.000" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
                             <TextBlock x:Name="SubHf8" Text="8-motor haptic" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Border>
-                    <Border x:Name="SidePedal" Style="{StaticResource Card}" Margin="0,0,4,0">
+                    <Border x:Name="SidePedal" Grid.Column="1" Style="{StaticResource OutCard}" Margin="4,0,4,0">
                         <StackPanel HorizontalAlignment="Center">
                             <TextBlock Text="PEDALS" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" />
-                            <controls:LedVuMeter x:Name="MeterPedal" HorizontalAlignment="Center" />
+                            <controls:LedVuMeter x:Name="MeterPedal" Compact="True" HorizontalAlignment="Center" Margin="0,4,0,0" />
                             <TextBlock x:Name="ValPedal" Text="0%" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
                             <TextBlock x:Name="SubPedal" Text="Brake + Gas" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Border>
-                    <Border x:Name="SideLed" Style="{StaticResource Card}" Margin="0,0,0,0">
+                    <Border x:Name="SideLed" Grid.Column="2" Style="{StaticResource OutCard}" Margin="4,0,0,0">
                         <StackPanel HorizontalAlignment="Center">
                             <TextBlock Text="WHEEL LEDs" FontSize="11" FontWeight="Bold" Foreground="#FFE6EDF3" HorizontalAlignment="Center" />
-                            <controls:LedVuMeter x:Name="MeterLed" HorizontalAlignment="Center" />
+                            <controls:LedVuMeter x:Name="MeterLed" Compact="True" HorizontalAlignment="Center" Margin="0,4,0,0" />
                             <TextBlock x:Name="ValLed" Text="0%" FontSize="11" FontFamily="Consolas" Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,2,0,0" />
                             <TextBlock x:Name="SubLed" Text="RPM" FontSize="9" Foreground="#FF607D8B" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Border>
-                </UniformGrid>
+                </Grid>
 
                 <!-- GAME NOTES -->
                 <Border Background="#FF161B22" CornerRadius="6" Padding="14,8" Margin="0,0,0,8">

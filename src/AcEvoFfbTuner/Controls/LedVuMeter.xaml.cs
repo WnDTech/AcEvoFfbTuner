@@ -16,6 +16,23 @@ public partial class LedVuMeter : UserControl
     private readonly Border[] _segments = new Border[SegmentCount];
     private float _peak;
     private bool _isActive = true;
+    private bool _compact;
+
+    /// <summary>
+    /// Compact rendering for fixed-width flow cards: 11px segments (~154px total)
+    /// instead of 16px (~225px). Default false preserves the full-size meter.
+    /// </summary>
+    public bool Compact
+    {
+        get => _compact;
+        set
+        {
+            if (_compact == value) return;
+            _compact = value;
+            BuildSegments();
+            Render(_lastLevel);
+        }
+    }
 
     private static readonly Color GreenOn = Color.FromRgb(0x00, 0xE6, 0x76);
     private static readonly Color YellowOn = Color.FromRgb(0xFF, 0xD6, 0x00);
@@ -38,10 +55,10 @@ public partial class LedVuMeter : UserControl
         {
             var b = new Border
             {
-                Width = 16,
-                Height = 22,
+                Width = _compact ? 11 : 16,
+                Height = _compact ? 18 : 22,
                 CornerRadius = new CornerRadius(2),
-                Margin = new Thickness(0, 0, 3, 0),
+                Margin = new Thickness(0, 0, _compact ? 2 : 3, 0),
                 Background = new SolidColorBrush(OffColor(i)),
                 BorderThickness = new Thickness(1),
                 BorderBrush = new SolidColorBrush(Color.FromRgb(0x00, 0x00, 0x00))
