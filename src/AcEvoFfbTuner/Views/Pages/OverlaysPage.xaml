@@ -159,6 +159,21 @@
                                                       Background="#FF0D1117" Foreground="#FFE6EDF3"
                                                       BorderBrush="#FF484F58" FontSize="13" />
                                         </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="6">
+                                                <Image x:Name="QrDashboard" Width="110" Height="110"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       ToolTip="{Binding Text, ElementName=UrlDashboard}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="Scan with your phone" FontSize="12" FontWeight="SemiBold" Foreground="#FFE6EDF3" />
+                                                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,0">Choose a network IP in Source above (not localhost) so your phone can reach the app. localhost only works on this PC.</TextBlock>
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
                                 </Border>
                                 <TextBlock FontSize="12" Foreground="#FF607D8B" Margin="0,0,0,4">
@@ -207,6 +222,21 @@
                                                       LostFocus="OnOverlaySourceLostFocus"
                                                       Background="#FF0D1117" Foreground="#FFE6EDF3"
                                                       BorderBrush="#FF484F58" FontSize="13" />
+                                        </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="6">
+                                                <Image x:Name="QrOverlay" Width="110" Height="110"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       ToolTip="{Binding Text, ElementName=UrlOverlay}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="Scan with your phone" FontSize="12" FontWeight="SemiBold" Foreground="#FFE6EDF3" />
+                                                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,0">Choose a network IP in Source above (not localhost) so your phone can reach the app. localhost only works on this PC.</TextBlock>
+                                            </StackPanel>
                                         </Grid>
                                     </StackPanel>
                                 </Border>
@@ -281,6 +311,21 @@
                                                       Background="#FF0D1117" Foreground="#FFE6EDF3"
                                                       BorderBrush="#FF484F58" FontSize="13" />
                                         </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="6">
+                                                <Image x:Name="QrBuilder" Width="110" Height="110"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       ToolTip="{Binding Text, ElementName=UrlBuilder}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="Scan with your phone" FontSize="12" FontWeight="SemiBold" Foreground="#FFE6EDF3" />
+                                                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,0">Choose a network IP in Source above (not localhost) so your phone can reach the app. localhost only works on this PC.</TextBlock>
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
                                 </Border>
                                 <TextBlock FontSize="12" Foreground="#FF607D8B">
@@ -326,6 +371,21 @@
                                                       LostFocus="OnClippingSourceLostFocus"
                                                       Background="#FF0D1117" Foreground="#FFE6EDF3"
                                                       BorderBrush="#FF484F58" FontSize="13" />
+                                        </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="6">
+                                                <Image x:Name="QrClipping" Width="110" Height="110"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       ToolTip="{Binding Text, ElementName=UrlClipping}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="Scan with your phone" FontSize="12" FontWeight="SemiBold" Foreground="#FFE6EDF3" />
+                                                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,0">Choose a network IP in Source above (not localhost) so your phone can reach the app. localhost only works on this PC.</TextBlock>
+                                            </StackPanel>
                                         </Grid>
                                     </StackPanel>
                                 </Border>

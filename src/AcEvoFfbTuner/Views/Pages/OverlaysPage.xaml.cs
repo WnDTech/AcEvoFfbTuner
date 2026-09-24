@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using AcEvoFfbTuner.Controls;
 using AcEvoFfbTuner.Core;
+using AcEvoFfbTuner.Services;
 
 namespace AcEvoFfbTuner.Views.Pages;
 
@@ -45,9 +46,9 @@ public sealed partial class OverlaysPage : UserControl
             combo.SelectedIndex = sel;
         }
         _loaded = true;
-        UpdateUrl(UrlDashboard, SourceDashboard, "/?theme=dark");
-        UpdateUrl(UrlOverlay, SourceOverlay, "/overlay");
-        UpdateUrl(UrlClipping, SourceClipping, "/?theme=clipping");
+        UpdateUrl(UrlDashboard, SourceDashboard, QrDashboard, "/?theme=dark");
+        UpdateUrl(UrlOverlay, SourceOverlay, QrOverlay, "/overlay");
+        UpdateUrl(UrlClipping, SourceClipping, QrClipping, "/?theme=clipping");
         UpdateBuilderUrl();
 
         UpdateNetworkStatus();
@@ -151,47 +152,48 @@ public sealed partial class OverlaysPage : UserControl
         return !string.IsNullOrEmpty(text) ? text : "localhost";
     }
 
-    private static void UpdateUrl(TextBox urlBox, ComboBox combo, string path)
+    private static void UpdateUrl(TextBox urlBox, ComboBox combo, Image qrImage, string path)
     {
         var source = GetSource(combo);
         var baseUrl = source == "localhost" ? "http://localhost:8321" : $"http://{source}:8321";
         urlBox.Text = $"{baseUrl}{path}";
+        qrImage.Source = QrCodeService.GenerateQrCode(urlBox.Text);
     }
 
     private void OnDashboardSourceChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_loaded) return;
-        UpdateUrl(UrlDashboard, SourceDashboard, "/?theme=dark");
+        UpdateUrl(UrlDashboard, SourceDashboard, QrDashboard, "/?theme=dark");
     }
 
     private void OnDashboardSourceLostFocus(object sender, RoutedEventArgs e)
     {
         if (!_loaded) return;
-        UpdateUrl(UrlDashboard, SourceDashboard, "/?theme=dark");
+        UpdateUrl(UrlDashboard, SourceDashboard, QrDashboard, "/?theme=dark");
     }
 
     private void OnOverlaySourceChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_loaded) return;
-        UpdateUrl(UrlOverlay, SourceOverlay, "/overlay");
+        UpdateUrl(UrlOverlay, SourceOverlay, QrOverlay, "/overlay");
     }
 
     private void OnOverlaySourceLostFocus(object sender, RoutedEventArgs e)
     {
         if (!_loaded) return;
-        UpdateUrl(UrlOverlay, SourceOverlay, "/overlay");
+        UpdateUrl(UrlOverlay, SourceOverlay, QrOverlay, "/overlay");
     }
 
     private void OnClippingSourceChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_loaded) return;
-        UpdateUrl(UrlClipping, SourceClipping, "/?theme=clipping");
+        UpdateUrl(UrlClipping, SourceClipping, QrClipping, "/?theme=clipping");
     }
 
     private void OnClippingSourceLostFocus(object sender, RoutedEventArgs e)
     {
         if (!_loaded) return;
-        UpdateUrl(UrlClipping, SourceClipping, "/?theme=clipping");
+        UpdateUrl(UrlClipping, SourceClipping, QrClipping, "/?theme=clipping");
     }
 
     private static readonly string[] BuilderModNames =
@@ -206,7 +208,7 @@ public sealed partial class OverlaysPage : UserControl
         var path = selected.Count == 0
             ? "/overlay?mods=none"
             : "/overlay?mods=" + string.Join(",", selected);
-        UpdateUrl(UrlBuilder, SourceBuilder, path);
+        UpdateUrl(UrlBuilder, SourceBuilder, QrBuilder, path);
     }
 
     private void OnBuilderChanged(object sender, RoutedEventArgs e)

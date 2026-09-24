@@ -42,6 +42,7 @@
     <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
     <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
     <PackageReference Include="NAudio" Version="2.3.0" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
     <PackageReference Include="ScottPlot.WPF" Version="5.0.*" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.7" />
     <PackageReference Include="System.IO.Ports" Version="10.0.10" />
