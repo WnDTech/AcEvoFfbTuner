@@ -11,6 +11,10 @@ namespace AcEvoFfbTuner.Core.TrackMapping;
 public sealed class TieredTrackDataProvider : IDisposable
 {
     private readonly TrackOsmRelationService _relationService;
+    private readonly OpenRacetrackDbService _ortdb = new();
+
+    /// <summary>OSM layouts farther than this from the game's lap length are probably another variant.</summary>
+    private const double PreferOrtdbBeyond = 0.05;
 
     /// <summary>Maximum number of retries when the Overpass API fails.</summary>
     private const int MaxRetries = 3;
@@ -43,6 +47,8 @@ public sealed class TieredTrackDataProvider : IDisposable
     /// centerLat/centerLon should be live game GPS when available (EVO reports it);
     /// the service falls back to gazetteer then Nominatim geocoding.
     /// officialLengthM (game-reported) cross-checks the OSM candidate when &gt; 0.
+    /// liveOfficialLength is re-read at each decision: a fetch can take a minute when
+    /// mirrors time out, and the game's lap length often arrives after the fetch started.
     /// </summary>
     public async Task<TrackDetailedInfo?> FetchTrackDataAsync(
         string trackName,
@@ -50,9 +56,16 @@ public sealed class TieredTrackDataProvider : IDisposable
         double? centerLat = null,
         double? centerLon = null,
         string? config = null,
-        double officialLengthM = 0)
+        double officialLengthM = 0,
+        Func<double>? liveOfficialLength = null)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return null;
+        double Official()
+        {
+            double live = 0;
+            try { live = liveOfficialLength?.Invoke() ?? 0; } catch { }
+            return live > 500 ? live : officialLengthM;
+        }
 
         // Look up GPS from TrackDatabase if not provided (service also tries Nominatim)
         if (!centerLat.HasValue || !centerLon.HasValue
@@ -66,7 +79,9 @@ public sealed class TieredTrackDataProvider : IDisposable
             }
         }
 
-        // Try fetching with retry logic
+        // Tier 1: OSM circuit relation (has corner names + pit lane), with retry logic.
+        TrackDetailedInfo? osm = null;
+        TrackDetailedInfo? rejected = null; // wrong layout, but its corner names may sit on the right one
         for (int attempt = 1; attempt <= MaxRetries; attempt++)
         {
             TrackDetailedInfo? data;
@@ -76,12 +91,12 @@ public sealed class TieredTrackDataProvider : IDisposable
             }
             catch (OverpassRateLimitedException)
             {
-                StaticLog($"Rate limited by all Overpass mirrors for {trackName} — not retrying");
-                _relationService.StatusLog?.Invoke("Overpass rate-limited — try again in about a minute");
-                return null;
+                StaticLog($"Rate limited by all Overpass mirrors for {trackName} — trying Open Racetrack DB");
+                _relationService.StatusLog?.Invoke("Overpass rate-limited — trying Open Racetrack DB");
+                break;
             }
 
-            if (data != null && ValidateTrackData(data, trackName, officialLengthM))
+            if (data != null && ValidateTrackData(data, trackName, Official()))
             {
                 data.DataSource = TrackDataSource.OsmRelation;
                 data.ConfidenceScore = 0.8f;
@@ -89,14 +104,18 @@ public sealed class TieredTrackDataProvider : IDisposable
                 if (attempt > 1)
                     StaticLog($"Track data for {trackName} fetched on attempt {attempt}");
 
-                return data;
+                osm = data;
+                break;
             }
 
             if (data != null)
             {
-                // Data was returned but failed validation — don't retry
-                StaticLog($"Track data for {trackName} failed validation, not retrying");
-                return null;
+                // Parsed but rejected (wrong layout / contamination). The relation service
+                // already cached it — drop that, or the next session would load it unchecked.
+                StaticLog($"Track data for {trackName} failed validation — discarding cache, trying Open Racetrack DB");
+                _relationService.DeleteRelationCache(trackName, config);
+                rejected = data;
+                break;
             }
 
             // No data returned — retry with increasing delay
@@ -109,8 +128,99 @@ public sealed class TieredTrackDataProvider : IDisposable
             }
         }
 
-        StaticLog($"All {MaxRetries} attempts failed for {trackName}");
-        return null;
+        if (osm != null)
+        {
+            // Within the 15 % gate but > 5 % off the game's lap: likely a different variant of
+            // the venue (e.g. GP relation for an Endurance/Outer layout). A closely matching
+            // named ORTDB layout is the better outline; otherwise keep OSM.
+            double official = Official();
+            bool lengthKnown = official > 500 && osm.TrackLengthM > 0;
+            if (lengthKnown && Math.Abs(osm.TrackLengthM - official) / official > PreferOrtdbBeyond)
+            {
+                var alt = await FetchOrtdbAsync(trackName, config, centerLat, centerLon, official);
+                if (alt != null) return alt;
+                var loop = await FetchNetworkLoopAsync(trackName, config, centerLat, centerLon, official, waypoints, osm);
+                if (loop != null) return loop;
+            }
+            return osm;
+        }
+
+        // Tier 2: Open Racetrack DB named layouts — variants OSM relations lack, tracks
+        // with no usable relation, and Overpass outages.
+        var ortdb = await FetchOrtdbAsync(trackName, config, centerLat, centerLon, Official());
+        if (ortdb != null) return ortdb;
+
+        // Tier 3: a loop assembled from the venue's raceway ways — variants nobody published.
+        return await FetchNetworkLoopAsync(trackName, config, centerLat, centerLon, Official(), waypoints, rejected);
+    }
+
+    /// <summary>
+    /// Tier 3 (<see cref="TrackNetworkLoops"/>): needs the game's lap length to pick a loop. A
+    /// recorded lap of this track (<paramref name="waypoints"/>) confirms the pick by shape; only
+    /// confirmed picks are cached, so an unconfirmed one is chosen again once a lap exists.
+    /// </summary>
+    private async Task<TrackDetailedInfo?> FetchNetworkLoopAsync(string trackName, string? config,
+        double? lat, double? lon, double officialLengthM, IList<TrackWaypoint>? waypoints, TrackDetailedInfo? venueData)
+    {
+        if (officialLengthM <= 500 || lat is not double la || lon is not double lo || (la == 0 && lo == 0))
+            return null;
+        // Every point of a loop of length L lies within L/2 of every other; the margin covers a
+        // gazetteer centre that sits beside the track rather than on it.
+        var ways = await _relationService.FetchRacewayNetworkAsync(trackName, la, lo, officialLengthM / 2 + 1500);
+        if (ways == null || ways.Count == 0) return null;
+
+        var variant = TrackNetworkLoops.VariantTokens(trackName, TrackDatabase.GetEntry(trackName));
+        var loops = TrackNetworkLoops.FindLoops(ways, officialLengthM, variant);
+        TrackOsmRelationService.AppendLog($"[Network] {trackName}: {loops.Count} loop(s) within ±{TrackNetworkLoops.LengthTolerance:P0} of {officialLengthM:F0} m"
+            + (variant.Count > 0 ? $" (variant: {string.Join(" ", variant)})" : "")
+            + string.Concat(loops.Select(l => $"\n    {l.LengthM:F0} m score={l.Score:F3} [{string.Join(", ", l.WayNames)}]")));
+        if (loops.Count == 0) return null;
+
+        var pick = loops[0];
+        bool confirmed = false;
+        if (waypoints is { Count: >= 50 })
+        {
+            var lap = waypoints.Select(w => new GeoPathSample(w.X, w.Z, w.Npos)).ToList();
+            var byShape = TrackNetworkLoops.PickByShape(loops, lap, out _, out var diag);
+            TrackOsmRelationService.AppendLog($"[Network] {trackName}: shape check {diag}");
+            if (byShape != null) { pick = byShape; confirmed = true; }
+        }
+
+        var info = new TrackDetailedInfo
+        {
+            TrackName = trackName,
+            TrackLayout = pick.Layout,
+            TrackLengthM = pick.LengthM,
+            DataSource = TrackDataSource.OsmNetwork,
+            ConfidenceScore = confirmed ? 0.75f : 0.5f,
+        };
+        // Names and markers of the venue's (wrong-layout) relation that lie on this loop.
+        if (venueData != null)
+        {
+            info.Corners = venueData.Corners
+                .Where(c => TrackNetworkLoops.IsNear(new TrackPoint(c.Latitude, c.Longitude), pick.Layout, 40))
+                .ToList();
+            if (venueData.StartFinish != null && TrackNetworkLoops.IsNear(venueData.StartFinish, pick.Layout, 40))
+                info.StartFinish = venueData.StartFinish;
+            if (venueData.Pit is { } pit
+                && TrackNetworkLoops.IsNear(new TrackPoint(pit.EntryLatitude, pit.EntryLongitude), pick.Layout, 60)
+                && TrackNetworkLoops.IsNear(new TrackPoint(pit.ExitLatitude, pit.ExitLongitude), pick.Layout, 60))
+                info.Pit = pit;
+        }
+        TrackOsmRelationService.AppendLog($"[Network] {trackName}: using {pick.LengthM:F0} m loop " +
+            $"[{string.Join(", ", pick.WayNames)}] {(confirmed ? "— shape-confirmed, cached" : "— unconfirmed (no recorded lap yet), not cached")}");
+        if (confirmed) _relationService.SaveCache(trackName, info, config);
+        return info;
+    }
+
+    private async Task<TrackDetailedInfo?> FetchOrtdbAsync(string trackName, string? config,
+        double? lat, double? lon, double officialLengthM)
+    {
+        var data = await _ortdb.FetchAsync(trackName, config, lat, lon, officialLengthM,
+            msg => { TrackOsmRelationService.AppendLog(msg); _relationService.StatusLog?.Invoke(msg); });
+        if (data == null) return null;
+        _relationService.SaveCache(trackName, data, config);
+        return data;
     }
 
     /// <summary>
@@ -218,11 +328,14 @@ public sealed class TieredTrackDataProvider : IDisposable
                 }
             }
 
-            // Also delete any old bounding-box caches for this track
+            // Also delete any old bounding-box caches for this track. Geo-fits
+            // ({track}_{game}_geofit.json) are world→GPS transforms that stay valid
+            // across layout refreshes — keep them.
             if (Directory.Exists(cacheDir))
             {
                 foreach (var f in Directory.GetFiles(cacheDir, $"{TrackMapKeys.Sanitize(trackName)}*.json"))
                 {
+                    if (f.EndsWith("_geofit.json", StringComparison.OrdinalIgnoreCase)) continue;
                     try { File.Delete(f); StaticLog($"Deleted cache: {Path.GetFileName(f)}"); } catch { }
                 }
             }
@@ -236,5 +349,6 @@ public sealed class TieredTrackDataProvider : IDisposable
     public void Dispose()
     {
         _relationService.Dispose();
+        _ortdb.Dispose();
     }
 }

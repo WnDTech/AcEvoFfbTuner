@@ -4,7 +4,7 @@ using AcEvoFfbTuner.Core.SharedMemory.Structs;
 
 namespace AcEvoFfbTuner.Core.SharedMemory;
 
-public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
+public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositionSource
 {
     private const string SharedMemoryName = @"$R3E";
 
@@ -14,6 +14,28 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
     private int _lastTicks = -1;
 
     private R3eShared _lastData;
+
+    // ── All-car positions (Live Map) ──
+    // Raw bytes of the last physics read; per-driver fields are read raw because the
+    // driver-entry layout is unverified: the official SDK has no per-entry header, the
+    // TelemetryBrowser hex dump showed a 4-byte one. The right layout is the one that
+    // puts some driver entry on top of the player's own CarCgLocation.
+    private byte[]? _lastRaw;
+    private int _driverHeader = -1; // -1 = unresolved
+    private int _driverHeaderCheck;
+    // r3e_driver_data offsets with NO header (R3eDriverData, Pack=1): driver_info is
+    // 128 bytes (name[64] + 16 ints/floats), slot_id = 64 + 7 * 4.
+    private const int DD_NAME = 0;
+    private const int DD_CAR_NUMBER = 64;
+    private const int DD_CLASS_ID = 68;   // driver_info: name[64], car_number@64, class_id@68
+    private const int DD_SLOT_ID = 92;
+    private const int DD_FINISH_STATUS = 128;
+    private const int DD_PLACE = 132;
+    private const int DD_LAP_FRACTION = 144;
+    private const int DD_POS = 148;        // vec3 f32: X, Y, Z
+    private const int DD_TRACK_SECTOR = 160;
+    private const int DD_IN_PITLANE = 224;
+    private const int DD_PENALTIES = 232;  // r3e_cut_track_penalties: 5 floats (drive-through … slow-down)
 
     private float[] _prevTireSpeed = new float[4];
     private double[] _prevSuspensionDeflection = new double[4];
@@ -134,6 +156,7 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
             int size = Marshal.SizeOf<R3eShared>();
             byte[] buffer = new byte[size];
             _view.ReadArray(0, buffer, 0, size);
+            _lastRaw = buffer;
 
             System.Diagnostics.Debug.WriteLine($"[R3E] Read {size} bytes from shared memory");
 
@@ -670,6 +693,81 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader
         float maxAsymmetry = Math.Max(frontAsymmetry, rearAsymmetry);
 
         return Math.Min(maxAsymmetry * 0.1f + 0.02f, 1f);
+    }
+
+    /// <summary>
+    /// Every car from all_drivers_data_1 (indexed with the header's AllDriversOffset /
+    /// DriverDataSize). Same telemetry thread as TryReadPhysics, so _lastRaw is this
+    /// tick's buffer.
+    /// </summary>
+    public void ReadCarPositions(List<CarPosition> cars)
+    {
+        cars.Clear();
+        var buf = _lastRaw;
+        if (buf == null) return;
+        ref var d = ref _lastData;
+        int baseOff = d.AllDriversOffset, size = d.DriverDataSize, n = d.NumCars;
+        if (baseOff <= 0 || size < DD_IN_PITLANE + 8 || n <= 0 || n > 128) return;
+
+        // Resolve (and re-check every ~5 s) which entry layout matches the player.
+        if (_driverHeader < 0 || _driverHeaderCheck++ % 50 == 0)
+        {
+            var p = d.CarCgLocation;
+            if (p.X != 0 || p.Z != 0)
+            {
+                int resolved = PlayerEntryMatches(buf, baseOff, size, n, 4, p) ? 4
+                             : PlayerEntryMatches(buf, baseOff, size, n, 0, p) ? 0 : -1;
+                if (resolved != _driverHeader)
+                    CarPositionLog.Write($"R3E driver layout: header={resolved} (allDriversOffset={baseOff} driverDataSize={size} numCars={n})" +
+                                         (resolved < 0 ? " — no entry matches the player position; opponents hidden" : ""));
+                _driverHeader = resolved;
+            }
+        }
+        if (_driverHeader < 0) return;
+
+        int h = _driverHeader;
+        int playerSlot = d.VehicleInfo.SlotId;
+        var sy = d.Flags.SectorYellow;
+        for (int i = 0; i < n; i++)
+        {
+            int e = baseOff + i * size + h;
+            if (e + DD_PENALTIES + 20 > buf.Length) break;
+            float x = BitConverter.ToSingle(buf, e + DD_POS);
+            float z = BitConverter.ToSingle(buf, e + DD_POS + 8);
+            if (!float.IsFinite(x) || !float.IsFinite(z) || (x == 0 && z == 0)) continue;
+            float frac = BitConverter.ToSingle(buf, e + DD_LAP_FRACTION);
+            int slot = BitConverter.ToInt32(buf, e + DD_SLOT_ID);
+            int nameLen = 0;
+            while (nameLen < 64 && buf[e + DD_NAME + nameLen] != 0) nameLen++;
+            int sector = BitConverter.ToInt32(buf, e + DD_TRACK_SECTOR);
+            bool yellowSector = sector switch { 1 => sy.Sector1 == 1, 2 => sy.Sector2 == 1, 3 => sy.Sector3 == 1, _ => false };
+            bool penalty = false;
+            for (int k = 0; k < 5 && !penalty; k++) penalty = BitConverter.ToSingle(buf, e + DD_PENALTIES + k * 4) > 0f;
+            int carNumber = BitConverter.ToInt32(buf, e + DD_CAR_NUMBER);
+            cars.Add(new CarPosition(
+                slot, x, z,
+                Npos: frac > 0f && frac < 1f ? frac : 0f,
+                IsPlayer: slot == playerSlot,
+                InPits: BitConverter.ToInt32(buf, e + DD_IN_PITLANE) > 0,
+                Place: BitConverter.ToInt32(buf, e + DD_PLACE),
+                Name: System.Text.Encoding.UTF8.GetString(buf, e + DD_NAME, nameLen),
+                CarClass: R3eClassNames.Get(BitConverter.ToInt32(buf, e + DD_CLASS_ID)),
+                Number: carNumber > 0 ? carNumber.ToString() : "",
+                Flag: CarFlags.FromR3e(BitConverter.ToInt32(buf, e + DD_FINISH_STATUS), yellowSector, penalty)));
+        }
+    }
+
+    private static bool PlayerEntryMatches(byte[] buf, int baseOff, int size, int n, int header, R3eVector3f player)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            int e = baseOff + i * size + header + DD_POS;
+            if (e + 12 > buf.Length) break;
+            float dx = BitConverter.ToSingle(buf, e) - player.X;
+            float dz = BitConverter.ToSingle(buf, e + 8) - player.Z;
+            if (dx * dx + dz * dz < 25f) return true;
+        }
+        return false;
     }
 
     private static byte[] CopyUtf8ToFixed(byte[] src, int dstLen)

@@ -18,6 +18,13 @@ using LineString = NetTopologySuite.Geometries.LineString;
 
 namespace AcEvoFfbTuner.Controls;
 
+/// <summary>
+/// An opponent disc on the Live Map: fill = class colour (ARGB), label = position drawn
+/// inside the disc (may be empty), ring = the car's flag, dimmed in the pits, larger when selected.
+/// </summary>
+public readonly record struct MapCarMarker(double Latitude, double Longitude, string Label, bool InPits,
+    uint FillArgb, bool Selected = false, AcEvoFfbTuner.Core.SharedMemory.CarFlag Flag = default);
+
 public partial class MapsuiMapControl : UserControl
 {
     private SatelliteMapService? _mapService;
@@ -28,6 +35,7 @@ public partial class MapsuiMapControl : UserControl
     private MemoryLayer _trackLayer;
     private MemoryLayer _gpsOutlineLayer;
     private MemoryLayer _carLayer;
+    private MemoryLayer _opponentLayer;
     private MemoryLayer _cornerLayer;
     private MemoryLayer _diagLayer;
 
@@ -64,6 +72,10 @@ public partial class MapsuiMapControl : UserControl
 
         _diagLayer = new MemoryLayer("Diagnostics") { Features = [] };
         _map.Layers.Add(_diagLayer);
+
+        // Opponents below the player's car so the player dot always draws on top.
+        _opponentLayer = new MemoryLayer("Opponents") { Features = [] };
+        _map.Layers.Add(_opponentLayer);
 
         _carLayer = new MemoryLayer("Car") { Features = [] };
         _map.Layers.Add(_carLayer);
@@ -165,6 +177,13 @@ public partial class MapsuiMapControl : UserControl
     public void SetGpsTrackOutline(List<TrackPoint> gpsPoints, List<TrackCornerInfo> corners,
         double[]? sectorBoundaries)
     {
+        // The outline is the reset point for the overlay markers (callers re-add pit and
+        // start/finish afterwards). Appending here piled up duplicate DropShadow TextBlocks
+        // on every redraw — each geo-fit update and each SF auto-calibration lap — and
+        // the overlay rebuild/reposition cost grew for the whole session.
+        _overlayLabels.Clear();
+        _overlaySymbols.Clear();
+
         var features = new List<IFeature>();
 
         // Draw the track outline from GPS points directly
@@ -431,6 +450,7 @@ public partial class MapsuiMapControl : UserControl
     {
         if (_overlayLabels.Count == 0 && _overlaySymbols.Count == 0) return;
 
+        bool cornersShown = _cornerLabelsEnabled && _map.Navigator.Viewport.Resolution <= CornerLabelMaxResolution;
         int idx = 0;
         foreach (var m in _overlayLabels)
         {
@@ -440,7 +460,7 @@ public partial class MapsuiMapControl : UserControl
             var tb = MarkerOverlay.Children[idx] as TextBlock;
             if (tb == null) { idx++; continue; }
 
-            if (screen.X < -200 || screen.X > ActualWidth + 200 ||
+            if (!cornersShown || screen.X < -200 || screen.X > ActualWidth + 200 ||
                 screen.Y < -200 || screen.Y > ActualHeight + 200)
             { tb.Visibility = Visibility.Collapsed; idx++; continue; }
 
@@ -474,7 +494,9 @@ public partial class MapsuiMapControl : UserControl
     {
         if (pit == null) return;
 
-        var existing = _gpsOutlineLayer.Features.ToList();
+        // Replace (not stack) the pit line and its entry/exit symbols.
+        var existing = _gpsOutlineLayer.Features.Where(f => !Equals(f["Kind"], "pit")).ToList();
+        _overlaySymbols.RemoveAll(s => s.text is "▼" or "▲");
 
         // Pit lane line (dashed yellow, keep on outline layer)
         if (pit.Layout != null && pit.Layout.Count > 0)
@@ -487,6 +509,7 @@ public partial class MapsuiMapControl : UserControl
             }
             var lineString = new LineString(coords.ToArray());
             var lineFeature = new GeometryFeature { Geometry = lineString };
+            lineFeature["Kind"] = "pit";
             lineFeature.Styles.Add(new VectorStyle
             {
                 Line = new Pen
@@ -511,6 +534,7 @@ public partial class MapsuiMapControl : UserControl
     public void AddStartFinishMarker(TrackPoint? sf)
     {
         if (sf == null) return;
+        _overlaySymbols.RemoveAll(s => s.text == "\U0001F3C1"); // one start/finish flag, moved not stacked
         _overlaySymbols.Add((sf.Latitude, sf.Longitude, "\U0001F3C1", 0, 0));
         BuildOverlay();
     }
@@ -521,6 +545,49 @@ public partial class MapsuiMapControl : UserControl
         _map.Navigator.CenterOn(merc.X, merc.Y);
         _map.Navigator.ZoomTo(zoom);
     }
+
+    /// <summary>Pan to a GPS point keeping the current zoom (follow-car, field-list click).</summary>
+    public void PanToGps(double latitude, double longitude)
+    {
+        var merc = ToMercator(longitude, latitude);
+        _map.Navigator.CenterOn(merc.X, merc.Y);
+    }
+
+    /// <summary>
+    /// Zoom so the whole layout fits with a margin. Needs a laid-out control: while the page
+    /// is hidden (0 px) the viewport is undefined, so this returns false and the caller retries
+    /// once the map is visible — a fit attempted while hidden is what left the map unzoomed.
+    /// </summary>
+    public bool FitToGps(IReadOnlyList<TrackPoint> points, double marginFraction = 0.08)
+    {
+        // Mapsui's own viewport must be sized too — it updates after the WPF control's layout.
+        var vp = _map.Navigator.Viewport;
+        if (points.Count < 2 || ActualWidth < 50 || ActualHeight < 50 || vp.Width < 50 || vp.Height < 50) return false;
+        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
+        foreach (var p in points)
+        {
+            var m = ToMercator(p.Longitude, p.Latitude);
+            if (m.X < minX) minX = m.X;
+            if (m.X > maxX) maxX = m.X;
+            if (m.Y < minY) minY = m.Y;
+            if (m.Y > maxY) maxY = m.Y;
+        }
+        double padX = (maxX - minX) * marginFraction + 50, padY = (maxY - minY) * marginFraction + 50;
+        _map.Navigator.ZoomToBox(new MRect(minX - padX, minY - padY, maxX + padX, maxY + padY));
+        return true;
+    }
+
+    private bool _cornerLabelsEnabled = true;
+    /// <summary>
+    /// Corner-number labels on/off. Even when on they hide while zoomed far out (coarser than
+    /// <see cref="CornerLabelMaxResolution"/> m/px): at overview scale 30+ numbers only clutter.
+    /// </summary>
+    public bool ShowCornerLabels
+    {
+        get => _cornerLabelsEnabled;
+        set { _cornerLabelsEnabled = value; UpdateOverlayPositions(); }
+    }
+    private const double CornerLabelMaxResolution = 10.0;
 
     private void AutoFitTrack()
     {
@@ -556,9 +623,136 @@ public partial class MapsuiMapControl : UserControl
         RenderCarDot(lon, lat, heading);
     }
 
-    public void UpdateCarGpsPosition(double longitude, double latitude, double heading)
+    /// <summary>
+    /// Place the car dot at a GPS position. <paramref name="compassHeading"/> is radians
+    /// clockwise from north (0 = N, π/2 = E). RenderCarDot uses the game-heading
+    /// convention of UpdateCarPosition (0 = game +Z = map south under GameToGps), so
+    /// convert: direction (sin h, −cos h) == (sin c, cos c) ⇔ h = π − c.
+    /// </summary>
+    public void UpdateCarGpsPosition(double longitude, double latitude, double compassHeading)
     {
-        RenderCarDot(longitude, latitude, heading);
+        RenderCarDot(longitude, latitude, Math.PI - compassHeading);
+    }
+
+    // Car/opponent styles are cached and shared: the discs are re-created 10–30 times a
+    // second, and fresh Style/Pen/Brush objects per disc per frame were pure allocation
+    // churn (and defeat Mapsui's style-keyed render caches).
+    private readonly Dictionary<(uint argb, bool pits, bool selected), SymbolStyle> _discStyles = new();
+    private readonly Dictionary<(AcEvoFfbTuner.Core.SharedMemory.CarFlag flag, bool selected, bool top), SymbolStyle> _ringStyles = new();
+    private static readonly LabelStyle DiscLabelDark = MakeDiscLabel(Color.FromRgba(0x0D, 0x11, 0x17, 0xFF), 15);
+    private static readonly LabelStyle DiscLabelLight = MakeDiscLabel(Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF), 15);
+    // 3-digit positions (fields over 99 cars) step down so they stay inside the disc.
+    private static readonly LabelStyle DiscLabelDarkSmall = MakeDiscLabel(Color.FromRgba(0x0D, 0x11, 0x17, 0xFF), 11);
+    private static readonly LabelStyle DiscLabelLightSmall = MakeDiscLabel(Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF), 11);
+
+    // Disc geometry (SymbolScale × 32 px): 1–2 digit positions at 15 pt fill most of the disc.
+    private const double DiscScale = 0.85;
+    private const double DiscScaleSelected = 1.0;
+    private const double RingGrow = 0.22;
+    private readonly Dictionary<uint, SymbolStyle> _carDotStyles = new();
+    private readonly Dictionary<uint, SymbolStyle> _carHaloStyles = new();
+    private static readonly VectorStyle CarHeadingStyle = new()
+    {
+        Line = new Pen { Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0xF0), Width = 3 }
+    };
+
+    /// <summary>Fill colour (ARGB) of the player's own car — the page passes the theme accent.</summary>
+    public uint PlayerColorArgb { get; set; } = 0xFF50C878;
+
+    private static LabelStyle MakeDiscLabel(Color fore, double size) => new()
+    {
+        LabelColumn = "Label",
+        ForeColor = fore,
+        BackColor = null,
+        Font = new Font { Size = size, Bold = true },
+        Offset = new Offset { X = 0, Y = 0 },
+    };
+
+    /// <summary>
+    /// Flag ring drawn just outside the disc (a thin dark separator keeps it readable on any
+    /// class colour — a blue ring on a blue LMP2 disc). Checkered = black ring + white dashes on top.
+    /// </summary>
+    private SymbolStyle RingStyle(AcEvoFfbTuner.Core.SharedMemory.CarFlag flag, bool selected, bool top = false)
+    {
+        var key = (flag, selected, top);
+        if (_ringStyles.TryGetValue(key, out var s)) return s;
+        Color color = flag switch
+        {
+            AcEvoFfbTuner.Core.SharedMemory.CarFlag.Yellow => Color.FromRgba(0xFF, 0xD3, 0x3D, 0xFF),
+            AcEvoFfbTuner.Core.SharedMemory.CarFlag.Blue => Color.FromRgba(0x2F, 0x81, 0xF7, 0xFF),
+            AcEvoFfbTuner.Core.SharedMemory.CarFlag.Penalty => Color.FromRgba(0x00, 0x00, 0x00, 0xFF),
+            AcEvoFfbTuner.Core.SharedMemory.CarFlag.Checkered => top ? Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF) : Color.FromRgba(0x00, 0x00, 0x00, 0xFF),
+            AcEvoFfbTuner.Core.SharedMemory.CarFlag.Retired => Color.FromRgba(0x6E, 0x76, 0x81, 0xFF),
+            _ => Color.FromRgba(0xFF, 0xFF, 0xFF, 0xF0),
+        };
+        bool flagged = flag != AcEvoFfbTuner.Core.SharedMemory.CarFlag.None;
+        s = new SymbolStyle
+        {
+            SymbolType = SymbolType.Ellipse,
+            SymbolScale = (selected ? DiscScaleSelected : DiscScale) + RingGrow,
+            Fill = new Brush { Color = Color.FromRgba(0x0D, 0x11, 0x17, top ? 0x00 : 0xD0) },
+            Outline = new Pen
+            {
+                Color = color,
+                Width = flagged ? 3.5 : 2.5,
+                PenStyle = top ? PenStyle.Dash : PenStyle.Solid,
+            }
+        };
+        _ringStyles[key] = s;
+        return s;
+    }
+
+    private static Color ToMapsui(uint argb, byte? alpha = null) =>
+        Color.FromRgba((int)((argb >> 16) & 0xFF), (int)((argb >> 8) & 0xFF), (int)(argb & 0xFF),
+            alpha ?? (int)(argb >> 24));
+
+    /// <summary>True when black text reads better than white on this fill (perceived luminance).</summary>
+    public static bool IsLightFill(uint argb)
+    {
+        double r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
+        return 0.299 * r + 0.587 * g + 0.114 * b > 160;
+    }
+
+    private SymbolStyle DiscStyle(uint argb, bool pits, bool selected)
+    {
+        var key = (argb, pits, selected);
+        if (_discStyles.TryGetValue(key, out var s)) return s;
+        s = new SymbolStyle
+        {
+            SymbolType = SymbolType.Ellipse,
+            SymbolScale = selected ? DiscScaleSelected : DiscScale,
+            Fill = new Brush { Color = ToMapsui(argb, pits ? (byte)0x70 : (byte)0xFF) },
+            Outline = new Pen { Color = Color.FromRgba(0x0D, 0x11, 0x17, 0xE0), Width = 1.5 }
+        };
+        _discStyles[key] = s;
+        return s;
+    }
+
+    /// <summary>Replace the opponent discs (class-coloured, position number inside, dimmed in the pits).</summary>
+    public void UpdateOpponents(IReadOnlyList<MapCarMarker> cars)
+    {
+        var features = new List<IFeature>(cars.Count);
+        foreach (var c in cars)
+        {
+            var merc = ToMercator(c.Longitude, c.Latitude);
+            var f = new PointFeature(merc.X, merc.Y);
+            f.Styles.Add(RingStyle(c.Flag, c.Selected));
+            if (c.Flag == AcEvoFfbTuner.Core.SharedMemory.CarFlag.Checkered)
+                f.Styles.Add(RingStyle(c.Flag, c.Selected, top: true));
+            f.Styles.Add(DiscStyle(c.FillArgb, c.InPits || c.Flag == AcEvoFfbTuner.Core.SharedMemory.CarFlag.Retired, c.Selected));
+            if (!string.IsNullOrEmpty(c.Label))
+            {
+                f["Label"] = c.Label;
+                bool dark = IsLightFill(c.FillArgb) && !c.InPits;
+                f.Styles.Add(c.Label.Length > 2
+                    ? (dark ? DiscLabelDarkSmall : DiscLabelLightSmall)
+                    : (dark ? DiscLabelDark : DiscLabelLight));
+            }
+            features.Add(f);
+        }
+        _opponentLayer.Features = features;
+        _opponentLayer.FeaturesWereModified();
+        MapCtrl.Refresh();
     }
 
     private void RenderCarDot(double longitude, double latitude, double heading)
@@ -569,15 +763,30 @@ public partial class MapsuiMapControl : UserControl
         double headingLen = vp.Resolution * 28;
         double rad = heading;
 
-        // Create fresh car dot feature
+        // Create fresh car dot feature (cached styles in the player colour). A soft halo marks
+        // "you": the theme accent can equal a class colour (Obsidian purple = LMP3, Crimson red =
+        // Hypercar), so colour alone must not identify the player's car.
         var carPt = new PointFeature(merc.X, merc.Y);
-        carPt.Styles.Add(new SymbolStyle
+        if (!_carDotStyles.TryGetValue(PlayerColorArgb, out var dot))
         {
-            SymbolType = SymbolType.Ellipse,
-            SymbolScale = 1.0,
-            Fill = new Brush { Color = Color.FromRgba(0x00, 0xFF, 0x00, 0xFF) },
-            Outline = new Pen { Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF), Width = 2 }
-        });
+            dot = new SymbolStyle
+            {
+                SymbolType = SymbolType.Ellipse,
+                SymbolScale = 1.0,
+                Fill = new Brush { Color = ToMapsui(PlayerColorArgb) },
+                Outline = new Pen { Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF), Width = 3 }
+            };
+            _carDotStyles[PlayerColorArgb] = dot;
+            _carHaloStyles[PlayerColorArgb] = new SymbolStyle
+            {
+                SymbolType = SymbolType.Ellipse,
+                SymbolScale = 1.9,
+                Fill = new Brush { Color = ToMapsui(PlayerColorArgb, 0x45) },
+                Outline = new Pen { Color = ToMapsui(PlayerColorArgb, 0xB0), Width = 1.5 }
+            };
+        }
+        carPt.Styles.Add(_carHaloStyles[PlayerColorArgb]);
+        carPt.Styles.Add(dot);
 
         // Create fresh heading line
         var headX = merc.X + Math.Sin(rad) * headingLen;
@@ -590,14 +799,7 @@ public partial class MapsuiMapControl : UserControl
                 new Coordinate(headX, headY)
             })
         };
-        headingLine.Styles.Add(new VectorStyle
-        {
-            Line = new Pen
-            {
-                Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0xE0),
-                Width = 3
-            }
-        });
+        headingLine.Styles.Add(CarHeadingStyle);
 
         _carLayer.Features = [carPt, headingLine];
         _carLayer.FeaturesWereModified();

@@ -1,0 +1,2 @@
+Real Open Racetrack DB files (https://github.com/markthebault/open-racetrack-db, commit 03dac92c77d7b7dbc4e892650557c23068ac3ec9),
+unmodified, used as parser/selector test fixtures. Data: ODbL 1.0 — Map data (c) OpenStreetMap contributors.

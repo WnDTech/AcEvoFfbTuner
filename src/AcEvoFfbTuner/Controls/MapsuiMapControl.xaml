@@ -8,6 +8,13 @@
     <Grid>
         <mapsui:MapControl x:Name="MapCtrl" />
         <Canvas x:Name="MarkerOverlay" IsHitTestVisible="False" Background="Transparent" />
+        <!-- Data/imagery credits required by the ODbL (OpenStreetMap, Open Racetrack DB)
+             and the Esri World Imagery terms. -->
+        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="#99000000"
+                Padding="5,1" IsHitTestVisible="False">
+            <TextBlock x:Name="AttributionText" FontSize="10" Foreground="#FFCCCCCC"
+                       Text="Imagery © Esri, Maxar, Earthstar Geographics · Map data © OpenStreetMap contributors (ODbL)" />
+        </Border>
         <Border x:Name="LoadingOverlay" Background="#CC1a1a2e" Visibility="Collapsed"
                 CornerRadius="4" HorizontalAlignment="Center" VerticalAlignment="Center"
                 Padding="16,8">

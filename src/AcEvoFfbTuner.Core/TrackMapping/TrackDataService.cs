@@ -33,12 +33,37 @@ public class TrackDataService : IDisposable
     /// config is the layout name (EVO TrackConfiguration / R3E LayoutName) and
     /// officialLengthM the game-reported length for OSM candidate validation.
     /// </summary>
-    public async Task LoadTrackDataAsync(string trackName,
+    public Task LoadTrackDataAsync(string trackName,
         IList<TrackWaypoint>? waypoints = null,
         double? centerLat = null, double? centerLon = null,
         bool forceRefresh = false,
         string? config = null,
-        double officialLengthM = 0)
+        double officialLengthM = 0,
+        Func<double>? liveOfficialLength = null)
+    {
+        var key = TrackMapKeys.BuildKey(trackName, config);
+        lock (_inflightLock)
+        {
+            // A second request for the same track while one is running (Refresh pressed during
+            // a slow mirror, page re-entry) joins it instead of racing it. The duplicate used to
+            // hit the per-track rate limiter, fall back without a lap length and show the wrong
+            // layout first (Le Mans Bugatti for Circuit de la Sarthe, 2026-10-20).
+            if (_inflight is { IsCompleted: false } && _inflightKey == key)
+                return _inflight;
+            _inflightKey = key;
+            _inflight = LoadCoreAsync(trackName, waypoints, centerLat, centerLon, forceRefresh, config,
+                officialLengthM, liveOfficialLength);
+            return _inflight;
+        }
+    }
+
+    private readonly object _inflightLock = new();
+    private Task? _inflight;
+    private string? _inflightKey;
+
+    private async Task LoadCoreAsync(string trackName, IList<TrackWaypoint>? waypoints,
+        double? centerLat, double? centerLon, bool forceRefresh, string? config,
+        double officialLengthM, Func<double>? liveOfficialLength)
     {
         _currentTrackName = trackName;
 
@@ -56,7 +81,8 @@ public class TrackDataService : IDisposable
         }
 
         // Fetch from tiered provider
-        var data = await _provider.FetchTrackDataAsync(trackName, waypoints, centerLat, centerLon, config, officialLengthM);
+        var data = await _provider.FetchTrackDataAsync(trackName, waypoints, centerLat, centerLon, config, officialLengthM,
+            liveOfficialLength);
         if (data != null)
         {
             _currentTrackData = data;
@@ -73,11 +99,13 @@ public class TrackDataService : IDisposable
     /// <summary>
     /// Force a refresh from the best available source, bypassing cache.
     /// </summary>
-    public async Task ForceRefreshAsync(string trackName,
+    public Task ForceRefreshAsync(string trackName,
         double? centerLat = null, double? centerLon = null,
-        string? config = null, double officialLengthM = 0)
+        string? config = null, double officialLengthM = 0,
+        Func<double>? liveOfficialLength = null)
     {
-        await LoadTrackDataAsync(trackName, null, centerLat, centerLon, forceRefresh: true, config: config, officialLengthM: officialLengthM);
+        return LoadTrackDataAsync(trackName, null, centerLat, centerLon, forceRefresh: true, config: config,
+            officialLengthM: officialLengthM, liveOfficialLength: liveOfficialLength);
     }
 
     /// <summary>

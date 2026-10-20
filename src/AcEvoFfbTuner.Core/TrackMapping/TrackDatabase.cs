@@ -50,7 +50,9 @@ public enum TrackDataSource
     Unknown = 0,
     OsmRelation,      // Tier 1: OSM route relation query (curated, ordered circuit data)
     OsmBoundingBox,   // Tier 3: Bounding-box way search (current implementation, fallback)
-    Recorded          // Tier 4: Self-recorded from driving history
+    Recorded,         // Tier 4: Self-recorded from driving history
+    OpenRacetrackDb,  // Named-layout traces from Open Racetrack DB (ODbL) — variants OSM relations lack
+    OsmNetwork        // Loop assembled from the venue's OSM raceway ways (TrackNetworkLoops) — variants nobody published
 }
 
 public class TrackDetailedInfo
@@ -132,9 +134,26 @@ public static class TrackMapKeys
         string.Join("_", key.Split(Path.GetInvalidFileNameChars()));
 }
 
+/// <summary>
+/// Venue gazetteer (name → coordinates), three tiers searched in order:
+///  1. Data/tracks.json — curated, game-oriented names and aliases;
+///  2. Data/tracks_wikidata.json — Wikidata snapshot, ~1,200 motorsport tracks (CC0);
+///  3. Open Racetrack DB venue index — 763 venues with aliases (ODbL).
+/// Exact (normalised) matches in any tier beat partial matches; partial matches go
+/// tier by tier, longest key first, on word boundaries (see <see cref="TrackNameMatcher"/>).
+/// </summary>
 public static class TrackDatabase
 {
-    private static Dictionary<string, TrackDatabaseEntry> _lookup = new(StringComparer.OrdinalIgnoreCase);
+    private sealed class Gazetteer
+    {
+        public readonly Dictionary<string, TrackDatabaseEntry> RawExact = new(StringComparer.OrdinalIgnoreCase);
+        public readonly Dictionary<string, TrackDatabaseEntry> NormExact = new(StringComparer.Ordinal);
+        public readonly List<(string key, TrackDatabaseEntry value)> Curated = new();
+        public readonly List<(string key, TrackDatabaseEntry value)> Wikidata = new();
+        public readonly List<(string key, TrackDatabaseEntry value)> Ortdb = new();
+    }
+
+    private static Gazetteer _gaz = new();
     private static bool _loaded;
 
     private static readonly (string name, float lat, float lon)[] FallbackTracks =
@@ -176,30 +195,51 @@ public static class TrackDatabase
         ("road america", 43.8022f, -87.9892f),
     };
 
+    private static readonly object _loadLock = new();
+
+    /// <summary>
+    /// Thread-safe one-time load. The gazetteer is read from the UI thread and from
+    /// background OSM fetch/parse tasks; the old version set _loaded before filling the
+    /// dictionary, so a concurrent first caller saw an empty gazetteer (lost aliases →
+    /// relation skipped). Build into a fresh dictionary, publish it, then set _loaded.
+    /// </summary>
     public static void EnsureLoaded()
     {
-        if (_loaded) return;
-        _loaded = true;
+        if (Volatile.Read(ref _loaded)) return;
+        lock (_loadLock)
+        {
+            if (_loaded) return;
+            var built = BuildGazetteer();
+            _gaz = built;
+            Volatile.Write(ref _loaded, true);
+        }
+    }
 
-        var entries = new List<TrackDatabaseEntry>();
-
+    private static List<TrackDatabaseEntry> LoadEmbeddedEntries(string resourceName)
+    {
         try
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            using var stream = assembly.GetManifestResourceStream(
-                "AcEvoFfbTuner.Core.Data.tracks.json");
-            if (stream != null)
-            {
-                using var reader = new StreamReader(stream);
-                var json = reader.ReadToEnd();
-                var db = JsonSerializer.Deserialize<TrackDatabaseFile>(json);
-                if (db?.Tracks != null)
-                    entries.AddRange(db.Tracks);
-            }
+            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+            if (stream == null) return new();
+            using var reader = new StreamReader(stream);
+            // The JSON files use lowercase keys ("tracks", "name", "aliases"); without
+            // case-insensitive binding nothing deserialized and only the 36-entry
+            // fallback list below was ever used (no Le Mans, Sebring, Bahrain...).
+            var db = JsonSerializer.Deserialize<TrackDatabaseFile>(reader.ReadToEnd(),
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return db?.Tracks?.ToList() ?? new();
         }
         catch
         {
+            return new();
         }
+    }
+
+    private static Gazetteer BuildGazetteer()
+    {
+        var gaz = new Gazetteer();
+
+        var entries = LoadEmbeddedEntries("AcEvoFfbTuner.Core.Data.tracks.json");
 
         // Fallback: if JSON failed, use hardcoded data
         if (entries.Count == 0)
@@ -216,63 +256,104 @@ public static class TrackDatabase
             }
         }
 
-        // Build lookup: add all canonical names + aliases
-        _lookup.Clear();
         foreach (var entry in entries)
-        {
-            AddEntry(entry.Name, entry);
-            foreach (var alias in entry.Aliases)
-                AddEntry(alias, entry);
-        }
+            AddTier(gaz, gaz.Curated, entry, minKeyLength: 3, rawExact: true);
 
-        void AddEntry(string key, TrackDatabaseEntry entry)
+        foreach (var entry in LoadEmbeddedEntries("AcEvoFfbTuner.Core.Data.tracks_wikidata.json"))
+            AddTier(gaz, gaz.Wikidata, entry, minKeyLength: 5, rawExact: false);
+
+        foreach (var venue in OpenRacetrackDbIndex.Venues)
         {
-            if (!string.IsNullOrWhiteSpace(key) && !_lookup.ContainsKey(key))
-                _lookup[key.Trim()] = entry;
+            if (venue.Latitude is not double lat || venue.Longitude is not double lon) continue;
+            AddTier(gaz, gaz.Ortdb, new TrackDatabaseEntry
+            {
+                Name = venue.Name,
+                Aliases = venue.Aliases,
+                Latitude = (float)lat,
+                Longitude = (float)lon,
+            }, minKeyLength: 5, rawExact: false);
+        }
+        return gaz;
+    }
+
+    private static void AddTier(Gazetteer gaz, List<(string key, TrackDatabaseEntry value)> tier,
+        TrackDatabaseEntry entry, int minKeyLength, bool rawExact)
+    {
+        entry.Aliases ??= Array.Empty<string>();
+        foreach (var name in entry.Aliases.Prepend(entry.Name))
+        {
+            if (string.IsNullOrWhiteSpace(name)) continue;
+            if (rawExact) gaz.RawExact.TryAdd(name.Trim(), entry);
+            var key = TrackNameMatcher.Normalize(name, splitDigits: true);
+            if (key.Length == 0) continue;
+            // Exact equality is safe at any length ("AVUS"); only partial matching needs the minimum.
+            gaz.NormExact.TryAdd(key, entry); // first tier to claim a name keeps it
+            if (key.Length < minKeyLength) continue;
+            tier.Add((key, entry));
         }
     }
 
     public static (float lat, float lon)? LookupTrackLocation(string trackName)
     {
-        EnsureLoaded();
-
-        if (string.IsNullOrWhiteSpace(trackName))
-            return null;
-
-        // Try exact match
-        if (_lookup.TryGetValue(trackName.Trim(), out var entry))
-            return (entry.Latitude, entry.Longitude);
-
-        // Try substring match against all stored names
-        var norm = trackName.Trim().ToLowerInvariant();
-        foreach (var kvp in _lookup)
-        {
-            if (norm.Contains(kvp.Key.ToLowerInvariant()) ||
-                kvp.Key.ToLowerInvariant().Contains(norm))
-                return (kvp.Value.Latitude, kvp.Value.Longitude);
-        }
-
-        return null;
+        var entry = GetEntry(trackName);
+        return entry != null ? (entry.Latitude, entry.Longitude) : null;
     }
 
+    /// <summary>
+    /// Exact name/alias match first (raw, then normalised across all tiers), then partial
+    /// word-boundary matches tier by tier. Games append layout variants to the name
+    /// ("Circuit de la Sarthe Mulsanne"), so the partial pass matters; the LONGEST
+    /// matching key wins so a short key ("spa", "ims", "vir") can't beat a specific one.
+    /// </summary>
     public static TrackDatabaseEntry? GetEntry(string trackName)
     {
         EnsureLoaded();
+        var gaz = _gaz;
 
         if (string.IsNullOrWhiteSpace(trackName))
             return null;
 
-        if (_lookup.TryGetValue(trackName.Trim(), out var entry))
+        if (gaz.RawExact.TryGetValue(trackName.Trim(), out var entry))
             return entry;
 
-        var norm = trackName.Trim().ToLowerInvariant();
-        foreach (var kvp in _lookup)
-        {
-            if (norm.Contains(kvp.Key.ToLowerInvariant()) ||
-                kvp.Key.ToLowerInvariant().Contains(norm))
-                return kvp.Value;
-        }
+        var norm = TrackNameMatcher.Normalize(trackName, splitDigits: true);
+        if (gaz.NormExact.TryGetValue(norm, out entry))
+            return entry;
 
+        return TrackNameMatcher.BestMatch(norm, gaz.Curated, minKeyLength: 3, minQueryLengthForReverse: 4)
+            ?? TrackNameMatcher.BestMatch(norm, gaz.Wikidata, minKeyLength: 5, minQueryLengthForReverse: 6)
+            ?? TrackNameMatcher.BestMatch(norm, gaz.Ortdb, minKeyLength: 5, minQueryLengthForReverse: 6)
+            ?? DistinctiveWordMatch(norm, gaz);
+    }
+
+    /// <summary>
+    /// Last resort: one distinctive word of the game's name that names exactly one venue.
+    /// "Lusail Short Circuit" contains no whole key of "Lusail International Circuit", nor
+    /// "Estoril Circuit" of "Circuito do Estoril". A word naming venues more than 5 km apart is
+    /// ambiguous and skipped (see <see cref="TrackNameMatcher.DistinctiveWords"/>).
+    /// </summary>
+    private static TrackDatabaseEntry? DistinctiveWordMatch(string norm, Gazetteer gaz)
+    {
+        foreach (var word in TrackNameMatcher.DistinctiveWords(norm))
+        {
+            TrackDatabaseEntry? hit = null;
+            bool ambiguous = false;
+            foreach (var tier in new[] { gaz.Curated, gaz.Wikidata, gaz.Ortdb })
+            {
+                foreach (var (key, entry) in tier)
+                {
+                    if (!TrackNameMatcher.ContainsWords(key, word)) continue;
+                    if (hit == null) hit = entry;
+                    else if (TrackNameMatcher.DistanceM(hit.Latitude, hit.Longitude, entry.Latitude, entry.Longitude) > 5000)
+                    {
+                        ambiguous = true;
+                        break;
+                    }
+                }
+                if (ambiguous) break;
+            }
+            if (hit != null && !ambiguous) return hit;
+        }
         return null;
     }
 }

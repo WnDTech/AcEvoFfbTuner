@@ -2,112 +2,257 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls"
-             Background="#FF0F1117"
-             Foreground="#FFE6EDF3"
+             Background="{DynamicResource BgDark}"
+             Foreground="{DynamicResource TextBrush}"
              FontFamily="Segoe UI"
              UseLayoutRounding="True">
-    <Grid Margin="8">
+    <UserControl.Resources>
+        <Style x:Key="MapToolToggle" TargetType="ToggleButton" BasedOn="{StaticResource {x:Type ToggleButton}}">
+            <Setter Property="Padding" Value="11,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="6,0,0,0" />
+        </Style>
+        <Style x:Key="MapToolButton" TargetType="Button" BasedOn="{StaticResource OutlinedButton}">
+            <Setter Property="Padding" Value="11,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="6,0,0,0" />
+        </Style>
+        <Style x:Key="StatLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+        </Style>
+        <Style x:Key="StatValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="StatTile" TargetType="Border">
+            <Setter Property="Padding" Value="12,0,8,0" />
+            <Setter Property="BorderThickness" Value="1,0,0,0" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="16,12,16,12">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Row 0: Track info bar -->
-        <Border Grid.Row="0" Background="#FF1C2128" CornerRadius="6" Padding="8,4" Margin="0,0,0,4">
+        <!-- ═══ Header: track, alignment status, map tools, live stats ═══ -->
+        <Border Grid.Row="0" Background="{DynamicResource BgCard}" BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1" CornerRadius="8" Padding="16,12" Margin="0,0,0,10">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Margin="6,0,12,0" VerticalAlignment="Center">
-                    <TextBlock Text="TRACK" FontSize="11" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="TrackName" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock x:Name="TrackTitle" Text="Waiting for a session" FontSize="20" FontWeight="Bold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="TrackSubtitle" Text="Start driving to load the circuit" FontSize="12"
+                               Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
-                <StackPanel Grid.Column="1" Margin="6,0,12,0" VerticalAlignment="Center">
-                    <TextBlock Text="SPEED" FontSize="11" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="SpeedValue" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FF00E676" FontFamily="Consolas" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border x:Name="LockPill" CornerRadius="11" Padding="10,3" Margin="0,0,4,0" Cursor="Hand"
+                            Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                            MouseLeftButtonUp="OnLockPillClick"
+                            ToolTip="Click for alignment diagnostics">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="LockDot" Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
+                                     Fill="{DynamicResource TextDimBrush}" />
+                            <TextBlock x:Name="LockText" Text="Waiting" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <ToggleButton x:Name="SatelliteToggle" Content="Satellite" IsChecked="True" Style="{StaticResource MapToolToggle}"
+                                  Checked="OnSatelliteToggled" Unchecked="OnSatelliteToggled"
+                                  ToolTip="Satellite imagery under the track" />
+                    <ToggleButton x:Name="CornersToggle" Content="Corners" IsChecked="True" Style="{StaticResource MapToolToggle}"
+                                  Checked="OnCornersToggled" Unchecked="OnCornersToggled"
+                                  ToolTip="Corner numbers (shown when zoomed in)" />
+                    <ToggleButton x:Name="FieldToggle" Content="Field" IsChecked="True" Style="{StaticResource MapToolToggle}"
+                                  Checked="OnFieldToggled" Unchecked="OnFieldToggled"
+                                  ToolTip="Standings panel" />
+                    <ToggleButton x:Name="FollowToggle" Content="Follow" Style="{StaticResource MapToolToggle}"
+                                  ToolTip="Keep your car centred" />
+                    <Button x:Name="FitBtn" Content="Fit track" Style="{StaticResource MapToolButton}" Click="OnFitClick"
+                            ToolTip="Zoom to the whole circuit" />
+                    <Button x:Name="RefreshDataBtn" Content="⟳" Style="{StaticResource MapToolButton}" Click="OnRefreshData"
+                            ToolTip="Re-download the track layout" />
                 </StackPanel>
-                <StackPanel Grid.Column="2" Margin="6,0,12,0" VerticalAlignment="Center">
-                    <TextBlock Text="SECTOR" FontSize="11" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="SectorValue" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" FontFamily="Consolas" />
-                </StackPanel>
-                <StackPanel Grid.Column="3" Margin="6,0,12,0" VerticalAlignment="Center">
-                    <TextBlock Text="CORNER" FontSize="11" Foreground="#FF8B949E" />
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="CornerNumber" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" />
-                        <TextBlock x:Name="CornerName" Text="" FontSize="13" Foreground="#FF79C0FF" Margin="6,0,0,0" VerticalAlignment="Center" />
+
+                <UniformGrid Grid.Row="1" Grid.ColumnSpan="2" Rows="1" Margin="0,12,0,0">
+                    <StackPanel Margin="0,0,8,0">
+                        <TextBlock Text="SPEED" Style="{StaticResource StatLabel}" />
+                        <TextBlock x:Name="SpeedValue" Text="--" Style="{StaticResource StatValue}" />
                     </StackPanel>
-                </StackPanel>
-                <StackPanel Grid.Column="4" Margin="6,0,12,0" VerticalAlignment="Center">
-                    <TextBlock Text="LAP" FontSize="11" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="LapValue" Text="--" FontSize="14" Foreground="#FFE6EDF3" FontFamily="Consolas" />
-                </StackPanel>
-                <StackPanel Grid.Column="5" Margin="6,0,12,0" VerticalAlignment="Center">
-                    <TextBlock Text="POSITION" FontSize="11" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="PositionValue" Text="--" FontSize="12" Foreground="#FF79C0FF" FontFamily="Consolas" />
-                </StackPanel>
-                <StackPanel Grid.Column="6" Margin="6,0,12,0" VerticalAlignment="Center">
-                    <TextBlock Text="PIT" FontSize="11" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="PitStatus" Text="-" FontSize="14" Foreground="#FF8B949E" FontFamily="Consolas" />
-                </StackPanel>
-
-                <StackPanel Grid.Column="8" Orientation="Horizontal" VerticalAlignment="Center">
-                    <ToggleButton x:Name="SatelliteToggle" Content="Satellite" Padding="10,4" FontSize="13"
-                                  IsChecked="True" Checked="OnSatelliteToggled" Unchecked="OnSatelliteToggled"
-                                  Background="#FF2E7D32" Foreground="#FFE6EDF3" BorderThickness="0" Margin="4,0" />
-                </StackPanel>
+                    <Border Style="{StaticResource StatTile}">
+                        <StackPanel>
+                            <TextBlock Text="LAP" Style="{StaticResource StatLabel}" />
+                            <TextBlock x:Name="LapValue" Text="--" Style="{StaticResource StatValue}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource StatTile}">
+                        <StackPanel>
+                            <TextBlock Text="SECTOR" Style="{StaticResource StatLabel}" />
+                            <TextBlock x:Name="SectorValue" Text="--" Style="{StaticResource StatValue}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource StatTile}">
+                        <StackPanel>
+                            <TextBlock Text="CORNER" Style="{StaticResource StatLabel}" />
+                            <TextBlock x:Name="CornerValue" Text="--" Style="{StaticResource StatValue}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource StatTile}">
+                        <StackPanel>
+                            <TextBlock Text="POSITION" Style="{StaticResource StatLabel}" />
+                            <TextBlock x:Name="RacePositionValue" Text="--" Style="{StaticResource StatValue}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource StatTile}">
+                        <StackPanel>
+                            <TextBlock Text="CLASS" Style="{StaticResource StatLabel}" />
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse x:Name="ClassDot" Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center"
+                                         Visibility="Collapsed" />
+                                <TextBlock x:Name="ClassValue" Text="--" Style="{StaticResource StatValue}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
             </Grid>
         </Border>
 
-        <!-- Row 1: OSM status bar -->
-        <Border Grid.Row="1" Background="#FF161B22" CornerRadius="4" Padding="6,3" Margin="0,0,0,4"
-                Height="24">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" x:Name="OsmStatusText" Text="Initializing..." FontSize="11" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" x:Name="OsmDataCount" Text="" FontSize="11" Foreground="#FF8B949E" VerticalAlignment="Center" />
-            </Grid>
-        </Border>
+        <!-- ═══ Map + field ═══ -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-        <!-- Row 2: Map area -->
-        <Grid Grid.Row="2">
-            <controls:MapsuiMapControl x:Name="MapCtrl" />
+            <Border Background="{DynamicResource BgCard}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="8" ClipToBounds="True">
+                <Grid>
+                    <controls:MapsuiMapControl x:Name="MapCtrl" />
+
+                    <!-- Class legend -->
+                    <Border x:Name="LegendCard" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10"
+                            Padding="10,6" CornerRadius="6" Background="#D0101418" Visibility="Collapsed"
+                            IsHitTestVisible="False">
+                        <ItemsControl x:Name="LegendList">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" MaxWidth="520" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2,14,2">
+                                        <Ellipse Width="11" Height="11" Fill="{Binding DotFill}" Stroke="{Binding DotStroke}"
+                                                 StrokeThickness="{Binding DotStrokeThickness}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Count}" FontSize="12" Foreground="#FF8B949E"
+                                                   VerticalAlignment="Center" Margin="5,0,0,0" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+
+                    <!-- Loading / empty state -->
+                    <Border x:Name="LoadingOverlay" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Padding="22,14" CornerRadius="8" Background="{DynamicResource BgPanel}"
+                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" IsHitTestVisible="False">
+                        <StackPanel>
+                            <TextBlock x:Name="LoadingTitle" Text="Waiting for a session" FontSize="15" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock x:Name="LoadingDetail" Text="The circuit appears here once the game reports a track."
+                                       FontSize="12" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap"
+                                       MaxWidth="380" TextAlignment="Center" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Field (standings) -->
+            <Border x:Name="FieldPanel" Grid.Column="1" Width="250" Margin="10,0,0,0"
+                    Background="{DynamicResource BgCard}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="0,10,0,6">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" Margin="14,0,14,8">
+                        <TextBlock Text="FIELD" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                        <TextBlock x:Name="FieldCount" HorizontalAlignment="Right" FontSize="12"
+                                   Foreground="{DynamicResource TextDimBrush}" />
+                    </Grid>
+                    <TextBlock x:Name="FieldEmpty" DockPanel.Dock="Top" Margin="14,4,14,0" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextDimBrush}"
+                               Text="No other cars reported yet. LMU and RaceRoom list the full field; AC EVO shares positions only." />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="FieldList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border x:Name="Row" Padding="10,4,12,4" Cursor="Hand" Background="Transparent"
+                                            MouseLeftButtonUp="OnFieldRowClick" Tag="{Binding}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="4" />
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Rectangle Fill="{Binding ClassBrush}" RadiusX="2" RadiusY="2" Height="18" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Place}" FontSize="12" FontWeight="Bold"
+                                                       HorizontalAlignment="Right" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock FontSize="10" Foreground="{DynamicResource TextDimBrush}" TextTrimming="CharacterEllipsis">
+                                                    <Run Text="{Binding Number, Mode=OneWay}" FontWeight="SemiBold" />
+                                                    <Run Text="{Binding ClassLabel, Mode=OneWay}" />
+                                                </TextBlock>
+                                            </StackPanel>
+                                            <Border Grid.Column="3" CornerRadius="3" Padding="4,0" Margin="6,0,0,0"
+                                                    VerticalAlignment="Center" Background="{DynamicResource BgInput}"
+                                                    Visibility="{Binding TagVisibility}">
+                                                <TextBlock Text="{Binding Tag}" FontSize="9" FontWeight="Bold"
+                                                           Foreground="{Binding TagBrush}" />
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsPlayer}" Value="True">
+                                            <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentDimBg}" />
+                                        </DataTrigger>
+                                        <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Row" Property="Background" Value="{DynamicResource HoverOverlayBrush}" />
+                                        </Trigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
         </Grid>
 
-        <!-- Row 3: Bottom status bar -->
-        <Border Grid.Row="3" Background="#FF1C2128" CornerRadius="6" Padding="8,4" Margin="0,4,0,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" x:Name="ProgressValue" Text="" FontSize="12" Foreground="#FF00BCD4" FontFamily="Consolas" Margin="0,0,16,0" VerticalAlignment="Center" />
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="SRC:" FontSize="12" Foreground="#FF8B949E" Margin="0,0,4,0" />
-                    <TextBlock x:Name="DataSourceLabel" Text="--" FontSize="12" Foreground="#FFFFD600" FontWeight="Bold" Margin="0,0,12,0" />
-                    <TextBlock Text="Data:" FontSize="12" Foreground="#FF8B949E" Margin="0,0,4,0" />
-                    <TextBlock x:Name="OsmDetail" Text="idle" FontSize="12" Foreground="#FF79C0FF" />
-                </StackPanel>
-                <TextBlock Grid.Column="2" x:Name="StatusDetail" Text="Ready" FontSize="12" Foreground="#FF8B949E" HorizontalAlignment="Left" Margin="12,0,0,0" VerticalAlignment="Center" />
-                <Button Grid.Column="3" x:Name="RefreshDataBtn" Content="⟳ Refresh Data" Padding="8,3" FontSize="11"
-                        Background="#FF3A3F4B" Foreground="#FFE6EDF3" BorderThickness="0" Margin="4,0,0,0"
-                        Click="OnRefreshData" />
-            </Grid>
+        <!-- ═══ Diagnostics (click the status pill) ═══ -->
+        <Border x:Name="DiagPanel" Grid.Row="2" Visibility="Collapsed" Margin="0,10,0,0"
+                Background="{DynamicResource BgPanel}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                CornerRadius="6" Padding="10,6">
+            <TextBlock x:Name="DiagText" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextDimBrush}"
+                       TextWrapping="Wrap" />
         </Border>
     </Grid>
 </UserControl>

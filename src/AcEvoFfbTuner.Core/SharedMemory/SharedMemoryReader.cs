@@ -4,8 +4,18 @@ using AcEvoFfbTuner.Core.SharedMemory.Structs;
 
 namespace AcEvoFfbTuner.Core.SharedMemory;
 
-public sealed class SharedMemoryReader : ISharedMemoryReader
+public sealed class SharedMemoryReader : ISharedMemoryReader, ICarPositionSource
 {
+    // ── Multi-car: car_coordinates[60] is NOT player-first (official PDF). The player's
+    // slot is where car_ids[60][2] equals player_car_id_a/b. car_ids is the LAST field of
+    // SPageFileGraphicEvo — past the 3876 bytes our drifted Marshal struct covers — so it
+    // is located once by content and its offset cached (a struct constant). ──
+    private int _activeCars;
+    private int _playerSlot;            // player's original car_coordinates index (0 = solo / unknown)
+    private int _carIdsBase = -1;       // absolute offset of car_ids in the graphics page
+    private int _carIdsMisses;
+    private byte[] _idScratch = Array.Empty<byte>();
+    private string _slotLogKey = "";
     private const string PhysicsMapName = @"Local\acevo_pmf_physics";
     private const string GraphicsMapName = @"Local\acevo_pmf_graphics";
     private const string StaticMapName = @"Local\acevo_pmf_static";
@@ -289,6 +299,126 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
         catch { }
     }
 
+    /// <summary>
+    /// Multi-car only: find the player's car_coordinates slot via car_ids and swap it
+    /// into index 0, so every consumer's "CarCoordinates[0] = player" holds. Solo
+    /// sessions (active_cars ≤ 1) keep slot 0 untouched — today's verified behavior.
+    /// </summary>
+    private void ResolvePlayerSlot(SPageFileGraphicEvo g, int coordsBase)
+    {
+        _playerSlot = 0;
+        if (_activeCars <= 1 || _graphicsView == null || g.CarCoordinates == null) return;
+        if (g.PlayerCarIdA == 0 && g.PlayerCarIdB == 0) return;
+
+        try
+        {
+            long cap = _graphicsView.Capacity;
+            if (_carIdsBase < 0)
+            {
+                if (_locateCooldown > 0) { _locateCooldown--; return; }
+                _locateCooldown = 100; // relocation scan at most every ~100 graphics frames
+                int searchStart = coordsBase + 60 * 12 + 16;
+                int len = (int)Math.Min(cap - searchStart, 4096);
+                if (len < 960) return;
+                if (_idScratch.Length < len) _idScratch = new byte[len];
+                _graphicsView.ReadArray(searchStart, _idScratch, 0, len);
+                int rel = LocateCarIds(_idScratch, len, g.PlayerCarIdA, g.PlayerCarIdB, _activeCars);
+                if (rel < 0) { LogSlot("car_ids not located — keeping slot 0", -1); return; }
+                _carIdsBase = searchStart + rel;
+            }
+            if (_carIdsBase + 960 > cap) { _carIdsBase = -1; return; }
+            if (_idScratch.Length < 960) _idScratch = new byte[960];
+            _graphicsView.ReadArray(_carIdsBase, _idScratch, 0, 960);
+
+            int slot = -1;
+            for (int k = 0; k < 60; k++)
+            {
+                if (BitConverter.ToUInt64(_idScratch, k * 16) == g.PlayerCarIdA &&
+                    BitConverter.ToUInt64(_idScratch, k * 16 + 8) == g.PlayerCarIdB)
+                {
+                    slot = k;
+                    break;
+                }
+            }
+            if (slot < 0)
+            {
+                // Table no longer holds the player (layout changed?) — re-locate after a while.
+                if (++_carIdsMisses > 30) { _carIdsBase = -1; _carIdsMisses = 0; }
+                return;
+            }
+            _carIdsMisses = 0;
+            _playerSlot = slot;
+            if (slot > 0)
+            {
+                var c = g.CarCoordinates;
+                (c[0], c[slot]) = (c[slot], c[0]);
+            }
+            LogSlot("ok", slot);
+        }
+        catch
+        {
+            _playerSlot = 0;
+        }
+    }
+
+    private int _locateCooldown;
+
+    /// <summary>
+    /// Locate car_ids[60][2] in <paramref name="buf"/>: an entry equals the player's ID
+    /// pair, entries [0, active) are non-zero and [active, 60) are zero (that boundary
+    /// pins the table start uniquely). Returns its offset in buf, or -1.
+    /// </summary>
+    internal static int LocateCarIds(byte[] buf, int len, ulong idA, ulong idB, int active)
+    {
+        for (int o = 0; o + 16 <= len; o += 4)
+        {
+            if (BitConverter.ToUInt64(buf, o) != idA || BitConverter.ToUInt64(buf, o + 8) != idB) continue;
+            for (int k = 0; k < 60; k++)
+            {
+                int start = o - k * 16;
+                if (start < 0 || start + 960 > len) continue;
+                bool ok = true;
+                for (int i = 0; i < 60 && ok; i++)
+                {
+                    bool used = BitConverter.ToUInt64(buf, start + i * 16) != 0
+                             || BitConverter.ToUInt64(buf, start + i * 16 + 8) != 0;
+                    ok = i < active ? used : !used;
+                }
+                if (ok) return start;
+            }
+        }
+        return -1;
+    }
+
+    private void LogSlot(string state, int slot)
+    {
+        string key = $"{state}|{slot}|{_carIdsBase}";
+        if (key == _slotLogKey) return;
+        _slotLogKey = key;
+        CarPositionLog.Write($"EVO player slot: {state} slot={slot} carIdsBase={_carIdsBase} activeCars={_activeCars}");
+    }
+
+    /// <summary>
+    /// Every car in car_coordinates (index 0 = player after ResolvePlayerSlot). EVO
+    /// publishes no per-car lap position, so opponents carry Npos = 0 and are placed
+    /// on the Live Map through the geo-fit only. Ids are the original slot indices.
+    /// </summary>
+    public void ReadCarPositions(List<CarPosition> cars)
+    {
+        cars.Clear();
+        var coords = _lastGoodGraphics.CarCoordinates;
+        if (coords == null) return;
+        int n = Math.Min(Math.Max(_activeCars, 1), coords.Length);
+        for (int i = 0; i < n; i++)
+        {
+            var c = coords[i];
+            if (c.X == 0f && c.Z == 0f) continue;
+            int slot = i == 0 ? _playerSlot : (i == _playerSlot ? 0 : i);
+            cars.Add(new CarPosition(slot, c.X, c.Z, i == 0 ? _lastGoodGraphics.Npos : 0f,
+                IsPlayer: i == 0, InPits: false, Place: 0, Name: ""));
+        }
+    }
+
     public bool TryReadGraphics(out SPageFileGraphicEvo graphics)
     {
         graphics = default;
@@ -380,6 +510,12 @@ public sealed class SharedMemoryReader : ISharedMemoryReader
                     if (float.IsNaN(cx) || float.IsInfinity(cx)) break;
                     graphics.CarCoordinates[i] = new StructVector3 { X = cx, Y = cy, Z = cz };
                 }
+
+                // gap_ahead + gap_behind (2 floats) follow the array, then uint8 active_cars
+                // (verified in graphics_hex_dump: 3124 + 720 + 8 = 3852 held 1 in a solo session).
+                int activeOff = coordsBase + 60 * 12 + 8;
+                _activeCars = activeOff < buffer.Length ? buffer[activeOff] : 0;
+                ResolvePlayerSlot(graphics, coordsBase);
             }
 
             _lastGraphicsPacketId = graphics.PacketId;

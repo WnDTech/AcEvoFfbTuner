@@ -39,6 +39,12 @@
     <!-- Offline track seed pack: pre-fetched *_relation.json files (generated at
          release time, see Data/Seeds/README.md). Empty = fetch live via Overpass. -->
     <EmbeddedResource Include="Data\Seeds\*_relation.json" />
+    <!-- Wikidata motorsport-track gazetteer snapshot (CC0), second lookup tier. -->
+    <EmbeddedResource Include="Data\tracks_wikidata.json" LogicalName="AcEvoFfbTuner.Core.Data.tracks_wikidata.json" />
+    <!-- Open Racetrack DB venue index (ODbL, unmodified; layouts fetched on demand). -->
+    <EmbeddedResource Include="Data\OpenRacetrackDb\index.json" LogicalName="AcEvoFfbTuner.Core.Data.OpenRacetrackDb.index.json" />
+    <!-- ODbL attribution/notice ships next to the binaries. -->
+    <None Include="Data\OpenRacetrackDb\NOTICE.md" Link="ThirdPartyData\OpenRacetrackDb-NOTICE.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

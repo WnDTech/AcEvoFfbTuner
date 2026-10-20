@@ -148,6 +148,27 @@ public sealed class TrackMap
         }
     }
 
+    /// <summary>
+    /// True when this map is one closed, full lap: the loop closes within 50 m and the
+    /// length is within ±15 % of the official length (the live value when known, else
+    /// the one stored at record time). Older recorders saved partial laps (pit exit →
+    /// SF, or closed by a garage-reset teleport); those fail and get re-recorded.
+    /// </summary>
+    public bool IsCompleteLap(float liveOfficialLengthM, out string reason)
+    {
+        if (Waypoints.Count < 100) { reason = $"only {Waypoints.Count} points"; return false; }
+        float gap = Waypoints[^1].DistanceTo2D(Waypoints[0]);
+        if (gap > 50f) { reason = $"lap not closed (gap {gap:F0} m)"; return false; }
+        float official = liveOfficialLengthM > 500f ? liveOfficialLengthM : OfficialLengthM;
+        if (official > 500f && (TrackLengthM < official * 0.85f || TrackLengthM > official * 1.15f))
+        {
+            reason = $"length {TrackLengthM:F0} m vs official {official:F0} m";
+            return false;
+        }
+        reason = "ok";
+        return true;
+    }
+
     public void Analyze()
     {
         InvalidateCache();

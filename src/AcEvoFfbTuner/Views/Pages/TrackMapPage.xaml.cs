@@ -205,6 +205,11 @@ public partial class TrackMapPage : UserControl
         if (!string.IsNullOrEmpty(currentTrack) && currentTrack != _lastLoadedTrackName && !currentTrack.StartsWith("track_"))
         {
             _lastLoadedTrackName = currentTrack;
+            // LoadTrackDataAsync falls back to the last-known geo when the VM has none; on a
+            // track change that is the previous venue's, so only this frame's live value counts.
+            _lastKnownLat = trackLatitude;
+            _lastKnownLon = trackLongitude;
+            _lastKnownRotation = trackRotation;
             _ = LoadTrackDataAsync(currentTrack);
         }
 

@@ -4,7 +4,7 @@ using AcEvoFfbTuner.Core.SharedMemory.Structs;
 
 namespace AcEvoFfbTuner.Core.SharedMemory;
 
-public sealed class AccSharedMemoryReader : ISharedMemoryReader
+public sealed class AccSharedMemoryReader : ISharedMemoryReader, ICarPositionSource
 {
     private const string PhysicsMapName = @"Local\acpmf_physics";
     private const string GraphicsMapName = @"Local\acpmf_graphics";
@@ -25,6 +25,7 @@ public sealed class AccSharedMemoryReader : ISharedMemoryReader
     private bool _gameConnectedFired;
 
     private SPageFilePhysicsEvo _lastPhysics;
+    private AccGraphics _lastGraphics;
 
     public bool IsConnected => _physicsMmf != null;
 
@@ -178,6 +179,7 @@ public sealed class AccSharedMemoryReader : ISharedMemoryReader
                 if (acc.PacketId == _lastGraphicsPacketId)
                     return false;
                 _lastGraphicsPacketId = acc.PacketId;
+                _lastGraphics = acc;
 
                 graphics = MapGraphics(acc);
                 return true;
@@ -187,6 +189,19 @@ public sealed class AccSharedMemoryReader : ISharedMemoryReader
         catch { return false; }
     }
 
+    // Static page: Kunos layout shared with AC1 up to trackConfiguration, strings are wchar_t
+    // (UTF-16). Offsets = Marshal.OffsetOf<SPageFileStaticAC> (pinned by AccStaticLayoutTests).
+    // The old raw-byte reads (track @101, config @340, maxRpm @268) landed inside carModel,
+    // playerSurname and playerName, and ASCII decoding stops at UTF-16's first zero byte, so
+    // ACC never reported a usable track name — the Live Map could not find any ACC venue.
+    internal const int StaticSmVersionOffset = 0;      // wchar smVersion[15]
+    internal const int StaticAcVersionOffset = 30;     // wchar acVersion[15]
+    internal const int StaticTrackOffset = 134;        // wchar track[33]
+    internal const int StaticMaxRpmOffset = 412;       // int maxRpm
+    internal const int StaticTrackSplineOffset = 520;  // float trackSPlineLength — documented unused in ACC; kept when sane
+    internal const int StaticTrackConfigOffset = 524;  // wchar trackConfiguration[33] — same
+    private const int StaticReadBytes = StaticTrackConfigOffset + 33 * 2;
+
     public bool TryReadStatic(out SPageFileStaticEvo staticData)
     {
         staticData = default;
@@ -195,20 +210,21 @@ public sealed class AccSharedMemoryReader : ISharedMemoryReader
         try
         {
             int cap = (int)_staticView.Capacity;
-            byte[] buffer = new byte[Math.Min(512, cap)];
+            byte[] buffer = new byte[Math.Min(StaticReadBytes, cap)];
             _staticView.ReadArray(0, buffer, 0, buffer.Length);
 
+            float spline = buffer.Length >= StaticTrackSplineOffset + 4 ? BitConverter.ToSingle(buffer, StaticTrackSplineOffset) : 0f;
             staticData = new SPageFileStaticEvo
             {
-                SmVersion = ReadFixedString(buffer, 0, 15),
-                AcEvoVersion = ReadFixedString(buffer, 15, 15),
+                SmVersion = ReadWideString(buffer, StaticSmVersionOffset, 15),
+                AcEvoVersion = ReadWideString(buffer, StaticAcVersionOffset, 15),
                 NumberOfSessions = BitConverter.ToInt32(buffer, 60),
-                Track = ReadFixedString(buffer, 101, 33),
-                TrackConfiguration = ReadFixedString(buffer, 340, 33),
-                TrackLengthM = 0f,
+                Track = ReadWideString(buffer, StaticTrackOffset, 33),
+                TrackConfiguration = ReadWideString(buffer, StaticTrackConfigOffset, 33),
+                TrackLengthM = spline > 500f && spline < 30000f ? spline : 0f,
             };
 
-            int maxRpm = BitConverter.ToInt32(buffer, 268);
+            int maxRpm = ReadInt(buffer, StaticMaxRpmOffset);
             if (maxRpm > 0)
                 _lastPhysics.CurrentMaxRpm = maxRpm;
 
@@ -348,7 +364,7 @@ public sealed class AccSharedMemoryReader : ISharedMemoryReader
                         : acc.IsInPitLane != 0 ? AcEvoCarLocation.AcevoPitlane
                         : AcEvoCarLocation.AcevoTrack,
             EngineType = AcEvoEngineType.AcevoInternalCombustion,
-            CarCoordinates = new StructVector3[60],
+            CarCoordinates = PlayerFirstCoordinates(acc),
             CarModel = new byte[33],
             DriverName = new byte[33],
             DriverSurname = new byte[33],
@@ -388,6 +404,50 @@ public sealed class AccSharedMemoryReader : ISharedMemoryReader
             },
             AssistsState = new SmevoAssistsState(),
         };
+    }
+
+    /// <summary>
+    /// carCoordinates with the player at index 0 (every consumer's convention; TelemetryLoop's
+    /// GetCarX/Z read slot 0). ACC's slot i belongs to carID[i], so the player sits wherever
+    /// carID == playerCarID. These were never copied before: ACC recorded no track map, so the
+    /// Live Map could neither fit nor place the car.
+    /// </summary>
+    internal static StructVector3[] PlayerFirstCoordinates(AccGraphics acc)
+    {
+        var coords = new StructVector3[60];
+        if (acc.CarCoordinates == null || acc.CarIDs == null) return coords;
+        int n = Math.Clamp(acc.ActiveCars, 0, Math.Min(acc.CarCoordinates.Length, acc.CarIDs.Length));
+        int player = n > 0 ? Array.IndexOf(acc.CarIDs, acc.PlayerCarID, 0, n) : -1;
+        if (player < 0 && n == 1) player = 0; // solo session: the only car is the player's
+        if (player < 0) return coords;
+        static StructVector3 V(AccCoordinates c) => new() { X = c.X, Y = c.Y, Z = c.Z };
+        coords[0] = V(acc.CarCoordinates[player]);
+        int k = 1;
+        for (int i = 0; i < n && k < coords.Length; i++)
+            if (i != player) coords[k++] = V(acc.CarCoordinates[i]);
+        return coords;
+    }
+
+    /// <summary>
+    /// Every car in carCoordinates; ids are ACC car ids. ACC publishes no per-car lap position,
+    /// class or name in shared memory, so opponents carry Npos = 0 and are placed through the
+    /// Live Map's geo-fit only (like AC EVO).
+    /// </summary>
+    public void ReadCarPositions(List<CarPosition> cars)
+    {
+        cars.Clear();
+        var acc = _lastGraphics;
+        if (acc.CarCoordinates == null || acc.CarIDs == null) return;
+        int n = Math.Clamp(acc.ActiveCars, 0, Math.Min(acc.CarCoordinates.Length, acc.CarIDs.Length));
+        for (int i = 0; i < n; i++)
+        {
+            var c = acc.CarCoordinates[i];
+            if (c.X == 0f && c.Z == 0f) continue;
+            bool me = acc.CarIDs[i] == acc.PlayerCarID || n == 1;
+            cars.Add(new CarPosition(acc.CarIDs[i], c.X, c.Z, me ? acc.NormalizedCarPosition : 0f,
+                IsPlayer: me, InPits: me && (acc.IsInPit != 0 || acc.IsInPitLane != 0),
+                Place: me ? acc.Position : 0, Name: ""));
+        }
     }
 
     private void BuildForcesFromTelemetry(ref SPageFilePhysicsEvo physics)
@@ -486,11 +546,20 @@ public sealed class AccSharedMemoryReader : ISharedMemoryReader
         return BitConverter.ToInt32(buf, offset);
     }
 
-    private static byte[] ReadFixedString(byte[] buf, int offset, int maxLen)
+    /// <summary>
+    /// A wchar_t[<paramref name="chars"/>] field as the byte[33] C-string the shared static
+    /// struct carries (UTF-8, zero-terminated) — TelemetryLoop decodes those up to the first 0.
+    /// </summary>
+    internal static byte[] ReadWideString(byte[] buf, int offset, int chars)
     {
-        byte[] dst = new byte[maxLen];
-        if (offset + maxLen <= buf.Length)
-            Array.Copy(buf, offset, dst, 0, maxLen);
+        byte[] dst = new byte[33];
+        int bytes = Math.Min(chars * 2, buf.Length - offset);
+        if (bytes <= 0) return dst;
+        var s = System.Text.Encoding.Unicode.GetString(buf, offset, bytes);
+        int nul = s.IndexOf('\0');
+        if (nul >= 0) s = s[..nul];
+        var utf8 = System.Text.Encoding.UTF8.GetBytes(s.Trim());
+        Array.Copy(utf8, dst, Math.Min(utf8.Length, dst.Length - 1));
         return dst;
     }
 

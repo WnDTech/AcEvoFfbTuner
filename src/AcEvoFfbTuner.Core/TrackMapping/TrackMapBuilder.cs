@@ -11,6 +11,11 @@ public sealed class TrackMapBuilder
     private const float SimplifyTolerance = 1.5f;
     private const float MinTrackLength = 500f;
     private const float MinSpeedKmh = 10f;
+    // Update runs at physics rate (sub-meter steps); a jump this large is a warp.
+    private const float TeleportDistance = 50f;
+    // A finished lap must close within this gap and match the official length ±15 %.
+    private const float MaxCloseGap = 50f;
+    private const float LengthTolerance = 0.15f;
 
     private static readonly string LogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -23,6 +28,16 @@ public sealed class TrackMapBuilder
     private bool _lapStarted;
     private float _totalDistance;
     private float _prevNpos = -1f;
+    private float _startNpos = -1f;   // Npos at the first point (-1 = no usable Npos)
+    private int _wrapIndex = -1;      // first waypoint after the SF crossing (-1 = not yet)
+    private float _closestToStart = float.MaxValue; // proximity close: nearest approach so far
+
+    /// <summary>
+    /// Official track length (m) from the game's static data, set by TelemetryLoop
+    /// before each Update. 0 = unknown (length gate skipped).
+    /// </summary>
+    public float ExpectedLengthM { get; set; }
+
     /// <summary>
     /// True when the in-progress/completed recording was started automatically
     /// (telemetry-first auto-record). Auto-started maps are persisted to disk on
@@ -39,8 +54,12 @@ public sealed class TrackMapBuilder
     private bool _hasCompleteMap;
     private TrackMap? _currentMap;
 
+    /// <summary>Unit tests turn this off so they don't write into the user's real trackmap_debug.log.</summary>
+    internal static bool LogEnabled = true;
+
     internal static void Log(string msg)
     {
+        if (!LogEnabled) return;
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
@@ -61,6 +80,8 @@ public sealed class TrackMapBuilder
             _currentMap = null;
             _totalDistance = 0f;
             _prevNpos = -1f;
+            _startNpos = -1f;
+            _wrapIndex = -1;
             AutoStarted = autoStarted;
         }
         Log(autoStarted ? "START RECORDING (auto)" : "START RECORDING");
@@ -132,45 +153,67 @@ public sealed class TrackMapBuilder
                 _rawWaypoints.Add(point);
                 _lapStarted = true;
                 _prevNpos = npos;
-                Log($"FIRST POINT: ({carX:F1}, {carZ:F1}) speed={speedKmh:F1} lap={currentLap} onTrack={isOnTrack}");
+                _startNpos = IsValidNpos(npos) ? npos : -1f;
+                _wrapIndex = -1;
+                _closestToStart = float.MaxValue;
+                Log($"FIRST POINT: ({carX:F1}, {carZ:F1}) speed={speedKmh:F1} lap={currentLap} onTrack={isOnTrack} npos={npos:F4}");
                 return;
             }
 
             float dist = point.DistanceTo2D(_rawWaypoints[^1]);
+
+            // Garage reset / pit-box warp / session restart: the path is no longer
+            // continuous. Closing on proximity after a warp produced partial "laps".
+            if (dist > TeleportDistance)
+            {
+                Log($"TELEPORT {dist:F0} m at {_rawWaypoints.Count} pts — restarting lap");
+                RestartLap();
+                return;
+            }
             if (dist < MinSampleDistance) return;
 
             bool lapReady = _rawWaypoints.Count > MinLapWaypoints && _totalDistance > MinTrackLength;
 
-            // Npos wrap (game start/finish crossing: ~0.99 -> ~0.01) closes the lap
-            // even when recording started mid-lap away from the SF line.
-            // Guarded by waypoint/distance minimums; ignored when npos is unset (0).
-            if (lapReady && _prevNpos >= 0f && npos > 0f && _prevNpos > 0.9f && npos < 0.1f)
+            if (_startNpos > 0f && IsValidNpos(npos))
             {
-                Log($"LAP COMPLETE via NPOS WRAP: {_prevNpos:F3} -> {npos:F3} pts={_rawWaypoints.Count} totalDist={_totalDistance:F1}m");
-                _prevNpos = npos;
-                _recording = false;
-                ApplyDriftCorrectionAndClose();
-                FinalizeMap();
-                Log($"  After finalize: {_rawWaypoints.Count} raw, {_currentMap?.Waypoints.Count ?? 0} simplified, length={_currentMap?.TrackLengthM ?? 0:F1}m");
-                return;
-            }
-            _prevNpos = npos;
-
-            if (_startPoint != null && lapReady)
-            {
-                float distToStart = point.DistanceTo2D(_startPoint);
-                if (distToStart < LapCompleteDistance)
+                // Npos mode: the SF crossing (~0.99 -> ~0.01) no longer ends the lap — that
+                // cut every pit-exit recording short. The lap closes when Npos returns to
+                // its starting value after the crossing: one full lap from ANY start point.
+                if (_wrapIndex < 0 && _prevNpos > 0.9f && npos < 0.1f)
                 {
-                    Log($"LAP COMPLETE detected: distToStart={distToStart:F1}m pts={_rawWaypoints.Count} totalDist={_totalDistance:F1}m");
-                    Log($"  Start: ({_startPoint.X:F1}, {_startPoint.Z:F1})");
-                    Log($"  Now:   ({carX:F1}, {carZ:F1})");
-
-                    _recording = false;
-                    ApplyDriftCorrectionAndClose();
-                    FinalizeMap();
-
-                    Log($"  After finalize: {_rawWaypoints.Count} raw, {_currentMap?.Waypoints.Count ?? 0} simplified, length={_currentMap?.TrackLengthM ?? 0:F1}m");
+                    _wrapIndex = _rawWaypoints.Count;
+                    Log($"SF CROSSING at {_wrapIndex} pts ({_prevNpos:F3} -> {npos:F3}) totalDist={_totalDistance:F1}m");
+                }
+                else if (_wrapIndex >= 0 && npos >= _startNpos && lapReady)
+                {
+                    _prevNpos = npos;
+                    Log($"LAP COMPLETE via NPOS: back at {npos:F4} (start {_startNpos:F4}) pts={_rawWaypoints.Count} totalDist={_totalDistance:F1}m");
+                    CloseLap();
                     return;
+                }
+                _prevNpos = npos;
+            }
+            else
+            {
+                // No usable Npos: close on returning to the first point — at the closest
+                // approach (keep sampling while inside the radius and still approaching),
+                // so the closing gap is the lateral offset, not the 50 m entry radius.
+                _prevNpos = npos;
+                if (_startPoint != null && lapReady)
+                {
+                    float distToStart = point.DistanceTo2D(_startPoint);
+                    if (distToStart < LapCompleteDistance)
+                    {
+                        if (distToStart > _closestToStart)
+                        {
+                            Log($"LAP COMPLETE detected: closest approach {_closestToStart:F1}m pts={_rawWaypoints.Count} totalDist={_totalDistance:F1}m");
+                            Log($"  Start: ({_startPoint.X:F1}, {_startPoint.Z:F1})");
+                            Log($"  Now:   ({carX:F1}, {carZ:F1})");
+                            CloseLap();
+                            return;
+                        }
+                        _closestToStart = distToStart;
+                    }
                 }
             }
 
@@ -183,6 +226,57 @@ public sealed class TrackMapBuilder
                 Log($"  [{_rawWaypoints.Count} pts] pos=({carX:F1},{carZ:F1}) totalDist={_totalDistance:F1}m distToStart={d2s:F1}m speed={speedKmh:F1} lap={currentLap}");
             }
         }
+    }
+
+    private static bool IsValidNpos(float npos) => npos > 0f && npos < 1f;
+
+    /// <summary>Discard the in-progress lap but keep recording (waits for a fresh first point).</summary>
+    private void RestartLap()
+    {
+        _rawWaypoints.Clear();
+        _startPoint = null;
+        _lapStarted = false;
+        _totalDistance = 0f;
+        _startNpos = -1f;
+        _wrapIndex = -1;
+    }
+
+    /// <summary>
+    /// Gate, close and finalize the lap. A lap that does not close, or whose length is
+    /// far from the official length, is rejected and recording restarts — partial
+    /// maps used to be finalized and auto-saved over better ones.
+    /// </summary>
+    private void CloseLap()
+    {
+        float gap = _rawWaypoints[^1].DistanceTo2D(_rawWaypoints[0]);
+        float length = _totalDistance + gap;
+        float expected = ExpectedLengthM;
+        bool lengthOk = expected <= 500f
+            || (length >= expected * (1f - LengthTolerance) && length <= expected * (1f + LengthTolerance));
+        if (gap > MaxCloseGap || !lengthOk)
+        {
+            Log($"LAP REJECTED: closeGap={gap:F1}m length={length:F0}m expected={expected:F0}m — restarting lap");
+            RestartLap();
+            return;
+        }
+
+        _recording = false;
+        ApplyDriftCorrectionAndClose();
+
+        // Start the map at the SF line (waypoint 0 = Npos ~0) so default sectors and
+        // lap-relative consumers line up with the game's own lap.
+        if (_wrapIndex > 0 && _wrapIndex < _rawWaypoints.Count)
+        {
+            var rotated = new List<TrackWaypoint>(_rawWaypoints.Count);
+            rotated.AddRange(_rawWaypoints.GetRange(_wrapIndex, _rawWaypoints.Count - _wrapIndex));
+            rotated.AddRange(_rawWaypoints.GetRange(0, _wrapIndex));
+            _rawWaypoints.Clear();
+            _rawWaypoints.AddRange(rotated);
+            Log($"  Rotated to SF: waypoint 0 = former #{_wrapIndex}");
+        }
+
+        FinalizeMap();
+        Log($"  After finalize: {_rawWaypoints.Count} raw, {_currentMap?.Waypoints.Count ?? 0} simplified, length={_currentMap?.TrackLengthM ?? 0:F1}m");
     }
 
     private void ApplyDriftCorrectionAndClose()
@@ -298,6 +392,8 @@ public sealed class TrackMapBuilder
             _currentMap = null;
             _totalDistance = 0f;
             _prevNpos = -1f;
+            _startNpos = -1f;
+            _wrapIndex = -1;
             AutoStarted = false;
         }
         Log("RESET");
@@ -315,6 +411,8 @@ public sealed class TrackMapBuilder
             _currentMap = map;
             _totalDistance = map.TrackLengthM;
             _prevNpos = -1f;
+            _startNpos = -1f;
+            _wrapIndex = -1;
         }
         Log($"IMPORTED MAP: {map.Waypoints.Count} pts, {map.TrackLengthM:F0}m");
     }

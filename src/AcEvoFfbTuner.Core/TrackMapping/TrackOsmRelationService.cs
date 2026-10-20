@@ -33,12 +33,17 @@ public sealed class TrackOsmRelationService : IDisposable
     private readonly Dictionary<string, DateTime> _lastFetchByTrack = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _rateLock = new();
 
-    /// <summary>Overpass API endpoints — tried in order, fail over on 429/504/timeout.</summary>
+    /// <summary>
+    /// Overpass API endpoints — tried in order, fail over on 429/5xx/timeout. Three
+    /// INDEPENDENT servers: overpass.kumi.systems was dropped because it is a DNS
+    /// alias of overpass.private.coffee (same host, verified 2026-10-20), so it never
+    /// added redundancy. VK Maps documents no request limit (OSM wiki, Overpass API).
+    /// </summary>
     private static readonly string[] OverpassUrls =
     [
         "https://overpass-api.de/api/interpreter",
-        "https://overpass.kumi.systems/api/interpreter",
         "https://overpass.private.coffee/api/interpreter",
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     ];
 
     /// <summary>Nominatim geocoder — last-resort GPS resolver when the gazetteer
@@ -54,7 +59,9 @@ public sealed class TrackOsmRelationService : IDisposable
         _http = new HttpClient();
         _http.DefaultRequestHeaders.Add("User-Agent", "AcEvoFfbTuner/1.0 (relation-fetcher)");
         _http.DefaultRequestHeaders.Add("Accept", "application/json");
-        _http.Timeout = TimeSpan.FromSeconds(45);
+        // Queries carry [timeout:25]; 30 s client-side keeps a dead mirror from
+        // stalling the failover chain for 45 s each.
+        _http.Timeout = TimeSpan.FromSeconds(30);
         Directory.CreateDirectory(CacheDir);
     }
 
@@ -144,8 +151,10 @@ public sealed class TrackOsmRelationService : IDisposable
                 return null;
             }
 
-            data.DataSource = TrackDataSource.OsmRelation;
-            Log($"Relation cache loaded: {trackName} ({data.Corners.Count} corners, {data.TrackLayout.Count} pts)");
+            // Keep a recorded source (e.g. OpenRacetrackDb fallback layouts share this cache);
+            // only legacy entries without one are relation data.
+            if (data.DataSource == TrackDataSource.Unknown) data.DataSource = TrackDataSource.OsmRelation;
+            Log($"Relation cache loaded: {trackName} ({data.DataSource}, {data.Corners.Count} corners, {data.TrackLayout.Count} pts)");
             return data;
         }
         catch (Exception ex)
@@ -220,6 +229,78 @@ public sealed class TrackOsmRelationService : IDisposable
         }
     }
 
+    /// <summary>Delay before each further mirror is tried in parallel (most queries answer in 1–5 s).</summary>
+    private static readonly TimeSpan HedgeDelay = TimeSpan.FromSeconds(8);
+
+    private readonly record struct MirrorResult(string? Json, Exception? Error);
+
+    /// <summary>One mirror attempt. Returns the body on 2xx, or the error; silent when cancelled because another mirror won.</summary>
+    private async Task<MirrorResult> TryMirrorAsync(string url, string query, string trackName, TimeSpan delay, CancellationToken ct)
+    {
+        try
+        {
+            if (delay > TimeSpan.Zero) await Task.Delay(delay, ct);
+            using var content = new FormUrlEncodedContent(
+                new[] { new KeyValuePair<string, string>("data", query) });
+            content.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded");
+
+            using var response = await _http.PostAsync(url, content, ct);
+            int status = (int)response.StatusCode;
+            Log($"HTTP {status} from {url} for {trackName}");
+            if (!response.IsSuccessStatusCode)
+            {
+                // 429 = rate limited; 5xx = that server is down/overloaded; either way another
+                // mirror may still answer.
+                return new MirrorResult(null, status == 429
+                    ? new OverpassRateLimitedException($"Overpass 429 from {url}")
+                    : new HttpRequestException($"Overpass {status} from {url}"));
+            }
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            Log($"Relation response: {json.Length} bytes for {trackName} via {url}");
+            if (string.IsNullOrEmpty(json) || json.Length < 100)
+                return new MirrorResult(null, new HttpRequestException($"Empty/too-small response from {url}"));
+            return new MirrorResult(json, null);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return new MirrorResult(null, null); // another mirror answered first
+        }
+        catch (TaskCanceledException)
+        {
+            Log($"Timeout for {trackName} via {url} (30s)");
+            return new MirrorResult(null, new TimeoutException($"Overpass timeout via {url}"));
+        }
+        catch (HttpRequestException ex)
+        {
+            Log($"Connection error via {url}: {ex.Message}");
+            return new MirrorResult(null, ex);
+        }
+    }
+
+    /// <summary>Delete only this track's relation cache file (layout-aware key) — not geo-fits or other files.</summary>
+    public void DeleteRelationCache(string trackName, string? config = null)
+    {
+        if (string.IsNullOrWhiteSpace(trackName)) return;
+        try
+        {
+            var path = GetCachePath(trackName, config);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+                Log($"Deleted rejected relation cache: {Path.GetFileName(path)}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"DeleteRelationCache error for {trackName}: {ex.Message}");
+        }
+    }
+
+    /// <summary>Append a line to trackdata_relation.log (used by the other track-data tiers).</summary>
+    internal static void AppendLog(string msg) => StaticLog(msg);
+
     public void SaveCache(string trackName, TrackDetailedInfo info, string? config = null)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return;
@@ -229,7 +310,7 @@ public sealed class TrackOsmRelationService : IDisposable
             info.TrackName = trackName;
             if (!string.IsNullOrWhiteSpace(config)) info.TrackConfig = config;
             info.FetchedAt = DateTime.UtcNow;
-            info.DataSource = TrackDataSource.OsmRelation;
+            if (info.DataSource == TrackDataSource.Unknown) info.DataSource = TrackDataSource.OsmRelation;
             info.CacheVersion = TrackDetailedInfo.CurrentCacheVersion;
             var json = JsonSerializer.Serialize(info);
             File.WriteAllText(path, json);
@@ -254,8 +335,18 @@ public sealed class TrackOsmRelationService : IDisposable
         if (string.IsNullOrWhiteSpace(trackName)) return null;
 
         // GPS priority: (1) explicit live game GPS, (2) gazetteer, (3) Nominatim geocode.
-        if (!centerLat.HasValue || !centerLon.HasValue
-            || (centerLat.Value == 0 && centerLon.Value == 0))
+        bool hasCenter = centerLat.HasValue && centerLon.HasValue
+            && !(centerLat.Value == 0 && centerLon.Value == 0);
+        if (hasCenter && TrackDatabase.LookupTrackLocation(trackName) is { } named
+            && TrackNameMatcher.DistanceM(centerLat!.Value, centerLon!.Value, named.lat, named.lon) > 50_000)
+        {
+            // A caller's centre far from where the gazetteer puts this name is usually a stale
+            // geo-reference from the previous track (Bahrain searched at Le Mans, 2026-10-20).
+            Log($"WARNING: centre ({centerLat:F3}, {centerLon:F3}) for {trackName} is " +
+                $"{TrackNameMatcher.DistanceM(centerLat.Value, centerLon.Value, named.lat, named.lon) / 1000:F0} km " +
+                $"from its gazetteer entry ({named.lat:F3}, {named.lon:F3})");
+        }
+        if (!hasCenter)
         {
             var loc = TrackDatabase.LookupTrackLocation(trackName);
             if (loc.HasValue)
@@ -307,69 +398,100 @@ public sealed class TrackOsmRelationService : IDisposable
         var query = BuildRelationQuery(trackName, minLat, minLon, maxLat, maxLon);
         Log($"Relation fetch: {trackName} at ({centerLat:F3}, {centerLon:F3})");
 
-        // Try each Overpass mirror in order; fail over on 429/504/timeout/connection error.
-        Exception? lastError = null;
-        foreach (var url in OverpassUrls)
+        var (json, rateLimited, lastError) = await PostHedgedAsync(query, trackName);
+
+        if (json != null)
         {
-            try
+            var result = ParseRelationResponse(json, trackName);
+            if (result != null)
             {
-                using var content = new FormUrlEncodedContent(
-                    new[] { new KeyValuePair<string, string>("data", query) });
-                content.Headers.ContentType =
-                    new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded");
-
-                var response = await _http.PostAsync(url, content);
-                Log($"HTTP {(int)response.StatusCode} from {url} for {trackName}");
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    if ((int)response.StatusCode == 429 || (int)response.StatusCode == 504)
-                    {
-                        lastError = new OverpassRateLimitedException($"Overpass {(int)response.StatusCode} from {url}");
-                        continue; // try next mirror
-                    }
-                    Log($"Overpass returned {(int)response.StatusCode} for {trackName}");
-                    return null;
-                }
-
-                var json = await response.Content.ReadAsStringAsync();
-                Log($"Relation response: {json.Length} bytes for {trackName}");
-
-                if (string.IsNullOrEmpty(json) || json.Length < 100)
-                {
-                    Log($"Empty/too-small response for {trackName}");
-                    return null;
-                }
-
-                var result = ParseRelationResponse(json, trackName);
-                if (result != null)
-                {
-                    Log($"Relation parsed: {result.Corners.Count} corners, {result.TrackLayout?.Count ?? 0} pts for {trackName}");
-                    if (!string.IsNullOrWhiteSpace(config)) result.TrackConfig = config;
-                    SaveCache(trackName, result, config);
-                }
-                else
-                {
-                    Log($"Failed to parse relation response for {trackName}");
-                }
-                return result;
+                Log($"Relation parsed: {result.Corners.Count} corners, {result.TrackLayout?.Count ?? 0} pts for {trackName}");
+                if (!string.IsNullOrWhiteSpace(config)) result.TrackConfig = config;
+                SaveCache(trackName, result, config);
             }
-            catch (TaskCanceledException)
+            else
             {
-                Log($"Timeout for {trackName} via {url} (45s), trying next mirror");
-                lastError = new TimeoutException($"Overpass timeout via {url}");
+                Log($"Failed to parse relation response for {trackName}");
             }
-            catch (HttpRequestException ex)
-            {
-                Log($"Connection error via {url}: {ex.Message}, trying next mirror");
-                lastError = ex;
-            }
+            return result;
         }
 
-        if (lastError is OverpassRateLimitedException)
-            throw lastError;
+        if (rateLimited)
+            throw new OverpassRateLimitedException($"Overpass rate-limited for {trackName}: {lastError?.Message}");
         Log($"All Overpass mirrors failed for {trackName}: {lastError?.Message}");
         return null;
+    }
+
+    /// <summary>
+    /// Hedged mirror requests: mirror k starts k × HedgeDelay after the first unless an earlier
+    /// one already answered; the first usable body wins and the rest are cancelled. Sequential
+    /// failover let each dead server burn its full timeout first — two 30 s timeouts left the
+    /// Live Map empty for a minute on 2026-10-20. One request per mirror.
+    /// </summary>
+    private async Task<(string? json, bool rateLimited, Exception? lastError)> PostHedgedAsync(string query, string trackName)
+    {
+        using var cts = new CancellationTokenSource();
+        var pending = new List<Task<MirrorResult>>();
+        for (int i = 0; i < OverpassUrls.Length; i++)
+            pending.Add(TryMirrorAsync(OverpassUrls[i], query, trackName, HedgeDelay * i, cts.Token));
+
+        string? json = null;
+        Exception? lastError = null;
+        bool rateLimited = false;
+        while (pending.Count > 0)
+        {
+            var done = await Task.WhenAny(pending);
+            pending.Remove(done);
+            var r = await done;
+            if (r.Json != null) { json = r.Json; break; }
+            if (r.Error is OverpassRateLimitedException) rateLimited = true;
+            if (r.Error != null) lastError = r.Error;
+        }
+        cts.Cancel();
+        return (json, rateLimited, lastError);
+    }
+
+    /// <summary>
+    /// Every highway=raceway way within <paramref name="radiusM"/> of the venue, with node ids,
+    /// for <see cref="TrackNetworkLoops"/>. Unlike the relation query this includes ways no
+    /// relation lists — Bahrain's "Outer Circuit" links belong to no relation. Null on failure.
+    /// </summary>
+    public async Task<List<TrackNetworkLoops.Way>?> FetchRacewayNetworkAsync(string trackName,
+        double centerLat, double centerLon, double radiusM)
+    {
+        if (string.IsNullOrWhiteSpace(trackName)) return null;
+        var rateKey = "network|" + trackName;
+        lock (_rateLock)
+        {
+            if (_lastFetchByTrack.TryGetValue(rateKey, out var last)
+                && (DateTime.UtcNow - last).TotalSeconds < 60)
+            {
+                Log($"Rate-limited: skipping raceway network fetch for {trackName}");
+                return null;
+            }
+            _lastFetchByTrack[rateKey] = DateTime.UtcNow;
+        }
+
+        var query = FormattableString.Invariant(
+            $"[out:json][timeout:25];\nway[\"highway\"=\"raceway\"](around:{radiusM:F0},{centerLat:F6},{centerLon:F6});\nout body geom;");
+        Log($"Raceway network fetch: {trackName} within {radiusM:F0} m of ({centerLat:F3}, {centerLon:F3})");
+        var (json, _, lastError) = await PostHedgedAsync(query, trackName);
+        if (json == null)
+        {
+            Log($"Raceway network fetch failed for {trackName}: {lastError?.Message}");
+            return null;
+        }
+        try
+        {
+            var ways = TrackNetworkLoops.ParseWays(json);
+            Log($"Raceway network: {ways.Count} ways for {trackName}");
+            return ways;
+        }
+        catch (JsonException ex)
+        {
+            Log($"Raceway network parse error for {trackName}: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>
@@ -475,7 +597,7 @@ public sealed class TrackOsmRelationService : IDisposable
     /// 3. Pick the highest-scoring relation
     /// 4. Build TrackDetailedInfo from its ordered member ways
     /// </summary>
-    private static TrackDetailedInfo? ParseRelationResponse(string json, string trackName)
+    internal static TrackDetailedInfo? ParseRelationResponse(string json, string trackName)
     {
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
@@ -520,6 +642,15 @@ public sealed class TrackOsmRelationService : IDisposable
         // Step 2: For each relation, count raceway-member ways and extract info
         var trackNameLower = trackName.ToLowerInvariant();
         var trackTokens = TokenizeTrackNameRelation(trackNameLower);
+        // The game's name can share no token with OSM's: LMU "Circuit de la Sarthe
+        // Mulsanne" vs OSM "Circuit des 24 Heures du Mans". The gazetteer's canonical
+        // name + aliases ("le mans", "circuit des 24 heures du mans") bridge that.
+        var gazetteer = TrackDatabase.GetEntry(trackName);
+        if (gazetteer != null)
+        {
+            foreach (var alt in gazetteer.Aliases.Append(gazetteer.Name))
+                trackTokens.UnionWith(TokenizeTrackNameRelation(alt.ToLowerInvariant()));
+        }
         var scoredRelations = new List<ScoredRelation>();
 
         foreach (var (relId, relData) in relations)
@@ -673,6 +804,13 @@ public sealed class TrackOsmRelationService : IDisposable
         var circuitWayIds = new HashSet<long>();
         var pitWayIds = new HashSet<long>();
 
+        // A relation explicitly tagged as a circuit defines the lap by MEMBERSHIP: road
+        // courses run partly on public roads tagged as ordinary highways (Le Mans: 7.4 km
+        // highway=raceway + 7.4 km primary/tertiary). Raceway-only walks broke the loop.
+        var bestType = TryGetTag(bestRelData.Tags, "type") ?? "";
+        var bestRoute = TryGetTag(bestRelData.Tags, "route") ?? "";
+        bool membershipDefinesLap = bestType == "circuit" || bestRoute == "circuit" || bestRoute == "raceway";
+
         if (bestRelData.Members != null)
         {
             foreach (var member in bestRelData.Members)
@@ -692,8 +830,9 @@ public sealed class TrackOsmRelationService : IDisposable
                     var wayTags = TryGetObject(wayEl, "tags");
                     var highway = TryGetTag(wayTags, "highway");
 
-                    // Only include raceway ways in the circuit
-                    if (highway != "raceway") continue;
+                    // Raceway ways always; other road ways only when the relation's
+                    // membership defines the lap (see membershipDefinesLap).
+                    if (highway != "raceway" && !(membershipDefinesLap && !string.IsNullOrEmpty(highway))) continue;
 
                     // Skip foreign ways that don't belong to the main circuit
                     var wayName = TryGetTag(wayTags, "name");
@@ -1346,7 +1485,7 @@ public sealed class TrackOsmRelationService : IDisposable
     /// Check if an OSM way name indicates it belongs to a different facility
     /// (karting, rally, moto, etc.) and should be excluded from the circuit.
     /// </summary>
-    private static bool IsForeignWay(string wayName)
+    internal static bool IsForeignWay(string wayName)
     {
         var nameLower = wayName.ToLowerInvariant();
         return nameLower.Contains("kart") ||
@@ -1768,11 +1907,15 @@ public sealed class TrackOsmRelationService : IDisposable
 
     #region JSON Helpers
 
+    /// <summary>Unit tests turn file logging off so they don't write into the user's real log.</summary>
+    internal static bool FileLogEnabled = true;
+
     private static void StaticLog(string msg)
     {
         var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
         var line = $"[{timestamp}] [Relation] {msg}";
         System.Diagnostics.Debug.WriteLine(line);
+        if (!FileLogEnabled) return;
         try { File.AppendAllText(LogPath, line + Environment.NewLine); } catch { }
     }
 

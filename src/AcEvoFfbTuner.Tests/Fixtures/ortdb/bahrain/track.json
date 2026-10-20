@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "id": "bh-bahrain-international-circuit-4818385",
+  "name": "Bahrain International Circuit",
+  "aliases": [
+    "Grand Prix Circuit"
+  ],
+  "country": {
+    "code": "BH",
+    "name": "Bahrain",
+    "slug": "bahrain"
+  },
+  "location": [
+    50.51519124540058,
+    26.031999637388726
+  ],
+  "sourceIds": [
+    "osm-snapshot",
+    "osm-network-4818385"
+  ],
+  "defaultLayoutId": "bahrain-international-circuit",
+  "layouts": [
+    {
+      "id": "main",
+      "name": "Connected course candidate",
+      "file": "layouts/main.geojson",
+      "description": "Draft OSM course selection. Named-layout and direction confirmation is still required."
+    },
+    {
+      "id": "bahrain-international-circuit",
+      "name": "Bahrain International Circuit",
+      "referenceId": "Bahrain/Bahrain International Circuit",
+      "file": "layouts/bahrain-international-circuit.geojson",
+      "description": "Draft route hypothesis: the source cycle is the unique closest nominal-distance match within conservative timing and distance checks. Approximate OSM trace length 5419.6 m. Difference from the supplied layout distance 7.6 m. Course configuration still requires visual review."
+    },
+    {
+      "id": "bahrain-international-circuit-inner",
+      "name": "Bahrain International Circuit Inner",
+      "referenceId": "Bahrain/Bahrain International Circuit Inner",
+      "file": "layouts/bahrain-international-circuit-inner.geojson",
+      "description": "Draft route hypothesis: the source cycle is the unique closest nominal-distance match within conservative timing and distance checks. Approximate OSM trace length 2566 m. Difference from the supplied layout distance 2.0 m. Course configuration still requires visual review."
+    },
+    {
+      "id": "bahrain-paddock-circuit",
+      "name": "Bahrain Paddock Circuit",
+      "referenceId": "Bahrain/Bahrain Paddock Circuit",
+      "file": "layouts/bahrain-paddock-circuit.geojson",
+      "description": "Draft route hypothesis: the source cycle is the unique closest nominal-distance match within conservative timing and distance checks. Approximate OSM trace length 3836 m. Difference from the supplied layout distance 22.0 m. Course configuration still requires visual review."
+    }
+  ],
+  "sources": [
+    {
+      "id": "osm-snapshot",
+      "type": "osm",
+      "title": "OpenStreetMap course and venue identity",
+      "url": "https://www.openstreetmap.org/way/4818385",
+      "license": "ODbL-1.0",
+      "retrievedAt": "2026-09-30T21:20:42.315Z",
+      "evidenceNote": "Venue identity and trace coordinates come from the pinned OSM extract. The source identity identifies the facility; course configuration is provisional. No privately sourced coordinates enter the public database."
+    },
+    {
+      "id": "venue-reference-1",
+      "type": "reference",
+      "title": "Venue operator identity reference",
+      "url": "https://www.bahraingp.com/",
+      "license": "reference-only",
+      "retrievedAt": "2026-09-30T21:33:23.000Z",
+      "evidenceNote": "The operator reference supports venue identity. It does not verify this source-cycle selection and supplies no public coordinates."
+    },
+    {
+      "id": "osm-network-4818385",
+      "type": "osm",
+      "title": "OpenStreetMap connected course network",
+      "url": "https://www.openstreetmap.org/way/4818385",
+      "license": "ODbL-1.0",
+      "retrievedAt": "2026-09-30T21:20:42.315Z",
+      "evidenceNote": "Exact source-node geometry from the pinned country extract. Configuration is a draft match using a private timing position and nominal layout distance."
+    }
+  ]
+}
