@@ -63,7 +63,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: deskto
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
 ; vJoy driver (Inno Setup based): silent install, elevated. The driver needs a
 ; reboot before the virtual device appears — Windows handles the prompt.
-Filename: "{tmp}\vJoySetup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"; StatusMsg: "Installing vJoy virtual joystick driver (for Assetto Corsa)..."; Flags: runas waituntilterminated; Components: vjoy
+Filename: "{tmp}\vJoySetup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"; StatusMsg: "Installing vJoy virtual joystick driver (for Assetto Corsa)..."; Verb: "runas"; Flags: shellexec waituntilterminated skipifdoesntexist; Components: vjoy
 
 [Code]
 function PrepareToInstall(var NeedsRestart: Boolean): String;
