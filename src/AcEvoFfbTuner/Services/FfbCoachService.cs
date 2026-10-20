@@ -1457,8 +1457,8 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                 ". Slider range is 0.1–5 (default 1.0); low values amplify the signal and cause massive clipping.");
 
         // COLUMN-FORCE ONLY: CoreForceMultiplier
-        if (isColumnForce && profile.Advanced?.CoreForceMultiplier < 2.0f)
-            issues.Add("ISSUE: CoreForceMultiplier too low — Current: " + (profile.Advanced?.CoreForceMultiplier ?? 0).ToString("F1") +
+        if (isColumnForce && profile.Slip?.CoreForceMultiplier < 2.0f)
+            issues.Add("ISSUE: CoreForceMultiplier too low — Current: " + (profile.Slip?.CoreForceMultiplier ?? 0).ToString("F1") +
                 ". Column-force games typically need ~3.0x. The core centering force feels weak.");
 
         // UNIVERSAL: CenterSuppression too high
@@ -2277,7 +2277,9 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             "ForceScale" => profile.ForceScale,
             "SoftClipThreshold" => profile.SoftClipThreshold,
             "SignCorrectionEnabled" => profile.SignCorrectionEnabled ? 1 : 0,
-            "CoreForceMultiplier" => profile.Advanced.CoreForceMultiplier,
+            // Slip copy is the live one: LMU/R3E apply it, and the view-model
+            // load path applies it for every game. Advanced is a mirror.
+            "CoreForceMultiplier" => profile.Slip.CoreForceMultiplier,
             "MaxSlewRate" => profile.Advanced.MaxSlewRate,
             "HysteresisThreshold" => profile.Advanced.HysteresisThreshold,
             "CenterSuppressionDegrees" => profile.Advanced.CenterSuppressionDegrees,
@@ -2386,7 +2388,9 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             case "ForceScale": profile.ForceScale = value; break;
             case "SoftClipThreshold": profile.SoftClipThreshold = value; break;
             case "SignCorrectionEnabled": profile.SignCorrectionEnabled = value > 0.5f; break;
-            case "CoreForceMultiplier": profile.Advanced.CoreForceMultiplier = value; break;
+            // Write both copies (the save path mirrors them). Writing only
+            // Advanced left LMU/R3E suggestions with no effect.
+            case "CoreForceMultiplier": profile.Slip.CoreForceMultiplier = value; profile.Advanced.CoreForceMultiplier = value; break;
             case "MaxSlewRate": profile.Advanced.MaxSlewRate = value; break;
             case "HysteresisThreshold": profile.Advanced.HysteresisThreshold = value; break;
             case "CenterSuppressionDegrees": profile.Advanced.CenterSuppressionDegrees = value; break;

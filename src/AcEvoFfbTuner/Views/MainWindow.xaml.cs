@@ -272,7 +272,8 @@ public partial class MainWindow : Window
         bool showDiagnostics = false,
         float trackLatitude = 0f,
         float trackLongitude = 0f,
-        float trackRotation = 0f)
+        float trackRotation = 0f,
+        IReadOnlyList<AcEvoFfbTuner.Core.SharedMemory.CarPosition>? cars = null)
     {
         TrackMapPageCtrl.UpdateTrackMapDisplay(carX, carZ, heading, speedKmh,
             isOnTrack, trackProgress, distanceFromCenter,
@@ -289,7 +290,7 @@ public partial class MainWindow : Window
                 isOnTrack, hasMap, npos, lvm.DetectedTrackName,
                 trackLatitude, trackLongitude, trackRotation,
                 lvm.CurrentSectorNumber, lvm.CompletedLapCount,
-                showHeatmap ? forceHeatmap : null, currentMap);
+                showHeatmap ? forceHeatmap : null, currentMap, cars);
         }
     }
 
@@ -540,12 +541,10 @@ public partial class MainWindow : Window
     private void OnGamePillClick(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel vm) return;
-        if (vm.GameAutoMode)
-        {
-            vm.GameAutoMode = false;
-            vm._gameDetectorManualOverride = true;
-            return;
-        }
+        // Every click both leaves auto mode AND advances the selection, so the
+        // first click visibly does something (previously it only flipped the
+        // mode, looking dead — which hid manual game choice incl. AC setup).
+        vm.GameAutoMode = false;
         vm._gameDetectorManualOverride = true;
         vm.SelectedGame = vm.SelectedGame switch
         {

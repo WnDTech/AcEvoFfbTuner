@@ -51,6 +51,7 @@ public partial class DevicesPage : UserControl
         _panels["Haptic"] = HapticPanel;
         _panels["Buttons"] = ButtonsPanel;
         _panels["Pedals"] = PedalPanel;
+        _panels["GameConfig"] = GameConfigPanel;
     }
 
     private void OnCardSelected(object sender, RoutedEventArgs e)
@@ -77,6 +78,14 @@ public partial class DevicesPage : UserControl
 
         if (tag == "Led")
             UpdateLedPreview();
+
+        // Entering Game Config re-checks the vJoy driver + bridge state, so an
+        // install done outside this view (setup component, manual download,
+        // reboot) is reflected immediately.
+        if (tag == "GameConfig" && DataContext is MainViewModel vm)
+        {
+            try { vm.RefreshGameConfigState(); } catch { }
+        }
     }
 
     private static IEnumerable<SectionCard> FindSectionCards(DependencyObject parent)

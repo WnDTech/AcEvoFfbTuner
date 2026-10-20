@@ -86,11 +86,31 @@ public sealed class AppSettings
     /// <summary>OLED screen layout: 0 = Gear + Speed, 1 = Speed only.</summary>
     public int OledScreen { get; set; }
 
-    /// <summary>Experimental: drive TrueForce wheels (RS50/G PRO/G923) through
-    /// DirectInput force instead of the HID TrueForce stream — the stream never
+    /// <summary>Experimental: drive TrueForce wheels (RS50/G PRO/G923) through    /// DirectInput force instead of the HID TrueForce stream — the stream never
     /// engages, so no contention with the game's stream, and DI effects carry
     /// the force. Applies at the next connect.</summary>
     public bool LogitechDiForceMode { get; set; }
+
+    /// <summary>AC1 vJoy input bridge: when true and Assetto Corsa is the
+    /// active game, physical wheel/pedals/buttons are mirrored every frame to
+    /// the vJoy virtual device (default device 1) that AC1 binds, while the
+    /// app keeps exclusive on the physical wheel for our FFB. Requires the
+    /// vJoy driver + an enabled device 1 (X/Y/Z/Rx + buttons). Defaults ON:
+    /// without the driver it fails closed to the shared fallback (game owns
+    /// the wheel with native FFB) with a status hint.</summary>
+    public bool AcVJoyBridgeEnabled { get; set; } = true;
+
+    /// <summary>vJoy virtual device id used by the AC1 bridge (vJoyConf).</summary>
+    public uint AcVJoyDeviceId { get; set; } = 1;
+
+    /// <summary>AC1 bridge button map: index = vJoy slot (0-based), value =
+    /// physical wheel button index, -1 = unmapped. Empty/short = identity for
+    /// the missing slots.</summary>
+    public List<int> AcVJoyButtonMap { get; set; } = new();
+
+    /// <summary>AC1 task bindings: controls.ini section → vJoy slot
+    /// (1-based). Written by the one-click binding into the game's file.</summary>
+    public Dictionary<string, int> AcVJoyTaskButtons { get; set; } = new();
 
     /// <summary>True once a Logitech wheel has connected on this machine — the
     /// Logitech settings cards stay visible afterwards (with status text) so

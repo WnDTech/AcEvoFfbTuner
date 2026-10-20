@@ -158,6 +158,12 @@ public sealed partial class MainViewModel
         profile.StaticFriction.ActiveDecay = StaticFrictionActiveDecay;
         profile.StaticFriction.ReturnDecay = StaticFrictionReturnDecay;
         profile.StaticFriction.OutputSmoothAlpha = StaticFrictionOutputSmoothAlpha;
+        profile.StaticFriction.BreakoutGain = StaticFrictionBreakoutGain;
+        profile.StaticFriction.BreakoutFrequencyHz = StaticFrictionBreakoutFrequencyHz;
+        profile.StaticFriction.ScrubGain = StaticFrictionScrubGain;
+        profile.StaticFriction.LoadAsymmetryGain = StaticFrictionLoadAsymmetryGain;
+        profile.StaticFriction.PressureSensitivity = StaticFrictionPressureSensitivity;
+        profile.StaticFriction.SurfaceResponseEnabled = StaticFrictionSurfaceResponseEnabled;
     }
 
     [RelayCommand]
@@ -610,6 +616,9 @@ public sealed partial class MainViewModel
         BrakeLoadBias = profile.Slip.BrakeLoadBias;
         SuspRoadScale = profile.Slip.SuspRoadScale;
         UseMixerSuspRoad = profile.Slip.UseMixerSuspRoad;
+        UseNativeTorqueSign = profile.Slip.UseNativeTorqueSign;
+        SelfSteerGain = profile.Slip.SelfSteerGain;
+        RoadTextureGain = profile.Slip.RoadTextureGain;
         SynthAbsEnabled = profile.Slip.SynthAbsEnabled;
         SynthTcEnabled = profile.Slip.SynthTcEnabled;
         SteerVelocityReference = profile.Advanced.SteerVelocityReference;
@@ -750,6 +759,12 @@ public sealed partial class MainViewModel
         StaticFrictionActiveDecay = profile.StaticFriction.ActiveDecay;
         StaticFrictionReturnDecay = profile.StaticFriction.ReturnDecay;
         StaticFrictionOutputSmoothAlpha = profile.StaticFriction.OutputSmoothAlpha;
+        StaticFrictionBreakoutGain = profile.StaticFriction.BreakoutGain;
+        StaticFrictionBreakoutFrequencyHz = profile.StaticFriction.BreakoutFrequencyHz;
+        StaticFrictionScrubGain = profile.StaticFriction.ScrubGain;
+        StaticFrictionLoadAsymmetryGain = profile.StaticFriction.LoadAsymmetryGain;
+        StaticFrictionPressureSensitivity = profile.StaticFriction.PressureSensitivity;
+        StaticFrictionSurfaceResponseEnabled = profile.StaticFriction.SurfaceResponseEnabled;
     }
 
     /// <summary>
@@ -880,6 +895,9 @@ public sealed partial class MainViewModel
             BrakeLoadBias = lmuSync.BrakeLoadBias;
             SuspRoadScale = lmuSync.SuspRoadScale;
             UseMixerSuspRoad = lmuSync.UseMixerSuspRoad;
+            UseNativeTorqueSign = lmuSync.UseNativeTorqueSign;
+            SelfSteerGain = lmuSync.SelfSteerGain;
+            RoadTextureGain = lmuSync.RoadTextureGain;
             SynthAbsEnabled = lmuSync.SynthAbsEnabled;
             SynthTcEnabled = lmuSync.SynthTcEnabled;
             CoreSmoothing = lmuSync.CoreSmoothing;
@@ -889,6 +907,8 @@ public sealed partial class MainViewModel
         {
             BrakeBoostGain = acSync.BrakeBoostGain;
             BrakeBoostThreshold = acSync.BrakeBoostThreshold;
+            CoreSmoothing = acSync.CoreSmoothing;
+            DetailSmoothing = acSync.DetailSmoothing;
         }
         else if (_pipeline is AccFfbPipeline accSync)
         {
@@ -1009,6 +1029,12 @@ public sealed partial class MainViewModel
         StaticFrictionActiveDecay = _telemetryLoop.StaticFriction.ActiveDecay;
         StaticFrictionReturnDecay = _telemetryLoop.StaticFriction.ReturnDecay;
         StaticFrictionOutputSmoothAlpha = _telemetryLoop.StaticFriction.OutputSmoothAlpha;
+        StaticFrictionBreakoutGain = _telemetryLoop.StaticFriction.BreakoutGain;
+        StaticFrictionBreakoutFrequencyHz = _telemetryLoop.StaticFriction.BreakoutFrequencyHz;
+        StaticFrictionScrubGain = _telemetryLoop.StaticFriction.ScrubGain;
+        StaticFrictionLoadAsymmetryGain = _telemetryLoop.StaticFriction.LoadAsymmetryGain;
+        StaticFrictionPressureSensitivity = _telemetryLoop.StaticFriction.PressureSensitivity;
+        StaticFrictionSurfaceResponseEnabled = _telemetryLoop.StaticFriction.SurfaceResponseEnabled;
     }
 
     private void PushValuesToPipeline()
@@ -1123,6 +1149,9 @@ public sealed partial class MainViewModel
             lmuLoad.BrakeLoadBias = BrakeLoadBias;
             lmuLoad.SuspRoadScale = SuspRoadScale;
             lmuLoad.UseMixerSuspRoad = UseMixerSuspRoad;
+            lmuLoad.UseNativeTorqueSign = UseNativeTorqueSign;
+            lmuLoad.SelfSteerGain = SelfSteerGain;
+            lmuLoad.RoadTextureGain = RoadTextureGain;
             lmuLoad.SynthAbsEnabled = SynthAbsEnabled;
             lmuLoad.SynthTcEnabled = SynthTcEnabled;
             lmuLoad.CoreSmoothing = CoreSmoothing;
@@ -1133,6 +1162,8 @@ public sealed partial class MainViewModel
             acLoad.GearChangeMuteEnabled = GearChangeMuteEnabled;
             acLoad.BrakeBoostGain = BrakeBoostGain;
             acLoad.BrakeBoostThreshold = BrakeBoostThreshold;
+            acLoad.CoreSmoothing = CoreSmoothing;
+            acLoad.DetailSmoothing = DetailSmoothing;
         }
         if (_pipeline is AccFfbPipeline accLoad)
         {

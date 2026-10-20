@@ -80,3 +80,7 @@ website/
 ## Relay runtime state & caches
 relay/relay.db
 relay/__pycache__/
+
+## vJoy installer binary — fetched + hash-verified at installer build time (see installer/third-party/vjoy/VERSION.txt)
+installer/third-party/vjoy/vJoySetup.exe
+

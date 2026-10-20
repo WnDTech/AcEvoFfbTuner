@@ -443,7 +443,7 @@ public class FfbPipeline
         };
     }
 
-    public void Reset()
+    public virtual void Reset()
     {
         ChannelMixer.Reset();
         Damping.Reset();

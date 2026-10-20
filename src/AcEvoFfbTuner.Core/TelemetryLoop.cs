@@ -58,6 +58,7 @@ public sealed class TelemetryLoop : IDisposable
     private int _packetsPerSecond;
     private int _packetCount;
     private long _ppsResetTicks;
+    private long _lastVJoyFeedTicks;
     private static readonly long TicksPerSecond = TimeSpan.TicksPerSecond;
 
     private readonly System.Diagnostics.Stopwatch _watchdog = new();
@@ -95,6 +96,16 @@ public sealed class TelemetryLoop : IDisposable
     private float _lastOfficialTrackLengthM;
     private bool _autoRecordFiredForTrack;
     private string _lastDetectedCarModel = "";
+    private string _lastDetectedCarClass = "";
+    // LMU car-detection debounce: a candidate (name+class) must be stable
+    // this long before CarModelChanged fires. Telemetry-slot reshuffles
+    // briefly read ANOTHER car's name at the old slot (verified 2026-10-19:
+    // '911GT3R Custom Team' flashed in for Garage 59 at a 26→25 slot move),
+    // which bounced auto-load between the PerCar and PerGame profiles.
+    private string _pendingCarModel = "";
+    private string _pendingCarClass = "";
+    private long _pendingCarSinceTicks;
+    private const double LmuCarStableSec = 1.5;
     private bool _staticDataRead;
     private long _lastStaticReReadTicks;
     private AcEvoStatus _lastSessionStatus = AcEvoStatus.AcOff;
@@ -106,9 +117,26 @@ public sealed class TelemetryLoop : IDisposable
     private float _latestPhysicalWheelNorm;
     private int _pitLimiterLatch;
 
+    // Stationary / driving handover: hysteresis + timed crossfade so the two
+    // force sources never double-drive and never pop at the boundary.
+    // Engage stationary below 0.4 km/h, release above 1.2 km/h. Blend moves
+    // toward the engaged target at 5/sec (≈200ms full fade).
+    private bool _stationaryEngaged = true;
+    private float _stationaryBlend = 1f;
+    private long _lastStationaryTicks;
+    /// <summary>0 = full driving force, 1 = full stationary friction. For diagnostics/UI.</summary>
+    public float StationaryBlend => _stationaryBlend;
+
     public readonly PedalInputManager PedalInput = new();
     private readonly KeyboardPedalSource _keyboardPedalSource = new();
     private readonly DirectInputPedalSource _directInputPedalSource = new();
+
+    /// <summary>vJoy input bridge (AC1 full-FFB mode). When enabled and
+    /// connected, each telemetry frame mirrors the physical wheel/pedals/
+    /// buttons to the vJoy virtual device that AC1 binds. Disabled by
+    /// default; managed by MainViewModel (game switch + user toggle).</summary>
+    public readonly DirectInput.VJoy.VJoyFeeder VJoyFeeder = new();
+    public bool VJoyBridgeEnabled { get; set; }
 
 
     public float LatestPhysicalWheelNormalized => _latestPhysicalWheelNorm;
@@ -169,10 +197,22 @@ public sealed class TelemetryLoop : IDisposable
     public IFFBProvider? ActiveProvider => _ffbProvider;
     public FfbStaticFriction StaticFriction => _staticFriction;
 
+    /// <summary>
+    /// Every car in the session (player flagged), refreshed ~10 Hz from readers that
+    /// implement <see cref="ICarPositionSource"/>; empty for games that expose none.
+    /// </summary>
+    public IReadOnlyList<CarPosition> Cars => _cars;
+    private volatile CarPosition[] _cars = Array.Empty<CarPosition>();
+    private readonly List<CarPosition> _carScratch = new();
+    private long _lastCarsTicks;
+
     public string DetectedTrackName => _lastDetectedTrackName;
     public string DetectedTrackConfig => _lastDetectedTrackConfig;
     public float OfficialTrackLengthM => _lastOfficialTrackLengthM;
     public string DetectedCarModel => _lastDetectedCarModel;
+    /// <summary>Car class/type where the game exposes one (LMU scoring
+    /// mVehicleClass); empty for every other game.</summary>
+    public string DetectedCarClass => _lastDetectedCarClass;
 
     public SPageFilePhysicsEvo? LatestPhysicsRaw => _latestPhysicsRaw;
     public SPageFileGraphicEvo? LatestGraphicsRaw => _latestGraphicsRaw;
@@ -315,6 +355,9 @@ public sealed class TelemetryLoop : IDisposable
         _ffbProvider?.Disengage();
         _deviceManager.ZeroForce();
         _staticFriction.Reset();
+        _stationaryEngaged = true;
+        _stationaryBlend = 1f;
+        _lastStationaryTicks = 0;
 
         if (_timerResolutionSet)
         {
@@ -341,6 +384,7 @@ public sealed class TelemetryLoop : IDisposable
             {
                 if (!_reader.IsConnected)
                 {
+                    _cars = Array.Empty<CarPosition>();
                     if (_reader.TryConnect())
                     {
                         if (!wasConnected)
@@ -350,12 +394,15 @@ public sealed class TelemetryLoop : IDisposable
                             {
                                 RaceroomSharedMemoryReader => "r3e",
                                 LmuSharedMemoryReader => "lmu",
-                                AssettoCorsaSharedMemoryReader => "evo",
+                                AssettoCorsaSharedMemoryReader => "ac",
                                 AccSharedMemoryReader => "acc",
                                 _ => ""
                             };
                             _pipeline.Reset();
                             _staticFriction.Reset();
+                            _stationaryEngaged = true;
+                            _stationaryBlend = 1f;
+                            _lastStationaryTicks = 0;
                             _staticDataRead = false;
                             _lastSessionStatus = AcEvoStatus.AcOff;
                             _lastGfxPacketId = -1;
@@ -575,16 +622,20 @@ public sealed class TelemetryLoop : IDisposable
                             raw.YawAccel = _lmuYawAccelSmooth;
 
                         // Plan C1: ABS/TC flag synthesis from slip + pedals.
-                        // Default disabled (zero-impact); enable via LMU props
-                        // once snapshot thresholds are confirmed.
+                        // Default disabled (zero-impact); the reader now feeds
+                        // the real mABSActive/mTCActive bytes, so this is a
+                        // fallback only. SlipRatio here is (v-ωr)/ωr, so
+                        // lockup under braking reads POSITIVE — compare by
+                        // magnitude (the old `< negative threshold` form could
+                        // never fire for lockup).
                         if (_pipeline is FfbProcessing.LmuFfbPipeline lmuPipe2)
                         {
-                            if (lmuPipe2.SynthAbsEnabled && raw.BrakeInput > 0.3f
+                            if (raw.AbsInAction == 0 && lmuPipe2.SynthAbsEnabled && raw.BrakeInput > 0.3f
                                 && raw.SlipRatio is { Length: >= 2 }
-                                && (raw.SlipRatio[0] < lmuPipe2.LockupSlipThreshold
-                                    || raw.SlipRatio[1] < lmuPipe2.LockupSlipThreshold))
+                                && (Math.Abs(raw.SlipRatio[0]) > Math.Abs(lmuPipe2.LockupSlipThreshold)
+                                    || Math.Abs(raw.SlipRatio[1]) > Math.Abs(lmuPipe2.LockupSlipThreshold)))
                                 raw.AbsInAction = 1;
-                            if (lmuPipe2.SynthTcEnabled && raw.GasInput > 0.5f
+                            if (raw.TcinAction == 0 && lmuPipe2.SynthTcEnabled && raw.GasInput > 0.5f
                                 && raw.SlipRatio is { Length: >= 4 }
                                 && (raw.SlipRatio[2] < lmuPipe2.SpinSlipThreshold
                                     || raw.SlipRatio[3] < lmuPipe2.SpinSlipThreshold))
@@ -608,13 +659,62 @@ public sealed class TelemetryLoop : IDisposable
                         _latestGraphicsRaw = graphics;
                     }
 
+                    // All-car positions for the Live Map (~10 Hz is plenty for map dots;
+                    // runs on this thread so readers can reuse this tick's raw buffers).
+                    if (_reader is ICarPositionSource carSource)
+                    {
+                        long nowTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+                        if (nowTicks - _lastCarsTicks > System.Diagnostics.Stopwatch.Frequency / 10)
+                        {
+                            _lastCarsTicks = nowTicks;
+                            try
+                            {
+                                carSource.ReadCarPositions(_carScratch);
+                                _cars = _carScratch.ToArray();
+                            }
+                            catch
+                            {
+                                _cars = Array.Empty<CarPosition>();
+                            }
+                        }
+                    }
+
                     if (graphics.CarModel != null && _packetCount % 60 == 0)
                     {
                         var gfxCarModel = DecodeString(graphics.CarModel);
-                        if (!string.IsNullOrEmpty(gfxCarModel) && gfxCarModel != _lastDetectedCarModel)
+                        // LMU class comes from the scoring section and can
+                        // resolve after the name — a class change re-fires
+                        // detection so class-matched profiles still load.
+                        // Always "" for non-LMU readers (zero impact).
+                        string carClass = (_reader as LmuSharedMemoryReader)?.VehicleClass ?? "";
+                        if (!string.IsNullOrEmpty(gfxCarModel)
+                            && (gfxCarModel != _lastDetectedCarModel || carClass != _lastDetectedCarClass))
                         {
-                            _lastDetectedCarModel = gfxCarModel;
-                            CarModelChanged?.Invoke(gfxCarModel);
+                            bool stable = true;
+                            if (_reader is LmuSharedMemoryReader)
+                            {
+                                long nowTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+                                if (gfxCarModel != _pendingCarModel || carClass != _pendingCarClass)
+                                {
+                                    _pendingCarModel = gfxCarModel;
+                                    _pendingCarClass = carClass;
+                                    _pendingCarSinceTicks = nowTicks;
+                                }
+                                stable = nowTicks - _pendingCarSinceTicks
+                                    >= (long)(LmuCarStableSec * System.Diagnostics.Stopwatch.Frequency);
+                            }
+                            if (stable)
+                            {
+                                _lastDetectedCarModel = gfxCarModel;
+                                _lastDetectedCarClass = carClass;
+                                CarModelChanged?.Invoke(gfxCarModel);
+                            }
+                        }
+                        else
+                        {
+                            // Back on the confirmed car: drop any half-seen flicker.
+                            _pendingCarModel = "";
+                            _pendingCarClass = "";
                         }
                     }
 
@@ -666,8 +766,55 @@ public sealed class TelemetryLoop : IDisposable
                     else if (!_suppressOutput)
                     {
 
-                        float stationaryForce = raw.SpeedKmh < 0.5f ? _staticFriction.Compute(raw) : 0f;
-                        bool hasStationaryForce = Math.Abs(stationaryForce) > 0.001f;
+                        // Stationary polarity follows the active pipeline's steer
+                        // convention: column-force games (R3E/LMU) center with the
+                        // SAME sign as steer, EVO/AC/ACC with the opposite sign.
+                        // Without this, LMU/R3E stationary friction assists
+                        // displacement (wheel pulls away from center).
+                        _staticFriction.CenteringMatchesSteerSign =
+                            _pipeline is FfbProcessing.R3eFfbPipeline
+                            or FfbProcessing.LmuFfbPipeline;
+
+                        // ── Stationary / driving handover (hysteresis + crossfade) ──
+                        // Driving pipelines zero below 0.5 km/h; stationary used to
+                        // hard-gate at the same point (chatter/pop risk). Now:
+                        // engage < 0.4, release > 1.2, blend ≈200ms between.
+                        // Compute() stays warm below 2.0 km/h so displacement and
+                        // steer tracking stay continuous through the fade; above
+                        // that NotifyDriving() keeps _prevSteerAngle fresh.
+                        if (raw.SpeedKmh < 0.4f)
+                            _stationaryEngaged = true;
+                        else if (raw.SpeedKmh > 1.2f)
+                            _stationaryEngaged = false;
+
+                        long nowTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+                        float blendDt = 0.003f;
+                        if (_lastStationaryTicks > 0)
+                        {
+                            blendDt = (float)(nowTicks - _lastStationaryTicks) / System.Diagnostics.Stopwatch.Frequency;
+                            blendDt = Math.Clamp(blendDt, 0.001f, 0.05f);
+                        }
+                        _lastStationaryTicks = nowTicks;
+                        float blendTarget = _stationaryEngaged ? 1f : 0f;
+                        float blendStep = blendDt * 5f;
+                        if (_stationaryBlend < blendTarget)
+                            _stationaryBlend = Math.Min(blendTarget, _stationaryBlend + blendStep);
+                        else if (_stationaryBlend > blendTarget)
+                            _stationaryBlend = Math.Max(blendTarget, _stationaryBlend - blendStep);
+
+                        float stationaryForce;
+                        if (raw.SpeedKmh < 2.0f)
+                        {
+                            stationaryForce = _staticFriction.Compute(raw);
+                        }
+                        else
+                        {
+                            _staticFriction.NotifyDriving(raw.SteerAngle);
+                            stationaryForce = 0f;
+                        }
+                        bool hasStationaryForce = _stationaryBlend > 0.001f && Math.Abs(stationaryForce) > 0.001f;
+                        bool stationaryOnly = _stationaryBlend >= 0.999f;
+                        bool drivingOnly = _stationaryBlend <= 0.001f;
 
                         // ── Handover fade ────────────────────────────────────────────
                         // Triggers when IsAiControlled transitions from 1 (AI) to 0 (player).
@@ -699,43 +846,68 @@ public sealed class TelemetryLoop : IDisposable
                                 else _handoverFadeEndTicks = 0;
                             }
                         }
+                        // Blended output: stationary and driving never double-drive.
+                        // stationaryOnly → pure static friction (vibration 0).
+                        // drivingOnly → pure pipeline (previous behaviour).
+                        // Between → linear crossfade over ~200ms.
+                        float drivingForce = processed.MainForce * handoverFade;
+                        float drivingVib = processed.VibrationForce * handoverFade;
+                        float mixedForce = stationaryOnly ? stationaryForce
+                            : drivingOnly ? drivingForce
+                            : stationaryForce * _stationaryBlend + drivingForce * (1f - _stationaryBlend);
+                        float mixedVib = stationaryOnly ? 0f
+                            : drivingOnly ? drivingVib
+                            : drivingVib * (1f - _stationaryBlend);
+                        bool mixedActive = Math.Abs(mixedForce) > 0.001f || Math.Abs(mixedVib) > 0.001f;
+
                         if (_ffbProvider != null && _ffbProvider.IsInitialized)
                         {
-                            if (hasStationaryForce)
+                            if (stationaryOnly)
                             {
-                                _ffbProvider.UpdateTorque(stationaryForce);
+                                if (hasStationaryForce)
+                                    _ffbProvider.UpdateTorque(stationaryForce);
+                                else
+                                    _ffbProvider.ZeroTorque();
                             }
-                            else if (raw.SpeedKmh < 0.5f)
+                            else if (drivingOnly)
                             {
-                                _ffbProvider.ZeroTorque();
-                            }
-                            else
-                            {
-                                float outputForce = processed.MainForce * handoverFade;
+                                float outputForce = drivingForce;
                                 LogDiag($"TORQ: force={outputForce:F4} mz={processed.ChannelMzFront:F4} vib={processed.VibrationForce:F4} steer={raw.SteerAngle:F4} spd={raw.SpeedKmh:F1}");
 
                                 _ffbProvider.UpdateTorque(outputForce);
-                                _reusableHapticData.VibrationIntensity = processed.VibrationForce;
+                                _reusableHapticData.VibrationIntensity = drivingVib;
+                                _ffbProvider.SetHaptics(_reusableHapticData);
+                            }
+                            else
+                            {
+                                _ffbProvider.UpdateTorque(mixedForce);
+                                _reusableHapticData.VibrationIntensity = mixedVib;
                                 _ffbProvider.SetHaptics(_reusableHapticData);
                             }
                         }
                         else if (_deviceManager.IsDeviceAcquired)
                         {
-                            if (hasStationaryForce)
+                            if (stationaryOnly)
                             {
-                                _deviceManager.SendConstantForce(stationaryForce);
+                                if (hasStationaryForce)
+                                    _deviceManager.SendConstantForce(stationaryForce);
+                                else
+                                {
+                                    _deviceManager.SendConstantForce(0f);
+                                    _deviceManager.SetTargetVibration(0f);
+                                }
                             }
-                            else if (raw.SpeedKmh < 0.5f)
+                            else if (drivingOnly)
                             {
-                                _deviceManager.SendConstantForce(0f);
-                                _deviceManager.SetTargetVibration(0f);
+                                float outputForce = drivingForce;
+
+                                _deviceManager.SendConstantForce(outputForce);
+                                _deviceManager.SetTargetVibration(drivingVib);
                             }
                             else
                             {
-                                float outputForce = processed.MainForce * handoverFade;
-
-                                _deviceManager.SendConstantForce(outputForce);
-                                _deviceManager.SetTargetVibration(processed.VibrationForce);
+                                _deviceManager.SendConstantForce(mixedActive ? mixedForce : 0f);
+                                _deviceManager.SetTargetVibration(mixedVib);
                             }
                         }
                     }
@@ -846,6 +1018,19 @@ public sealed class TelemetryLoop : IDisposable
                         Thread.Sleep(1);
                 }
 
+                // vJoy input bridge (AC1): mirror physical inputs on EVERY
+                // loop pass — not just on fresh physics packets. AC sends no
+                // physics in menus/pits/garage, but CM must still see the
+                // wheel move for binding and pre-drive checks. Throttled to
+                // ~100Hz (Stopwatch frequency, not TimeSpan ticks).
+                if (VJoyBridgeEnabled && VJoyFeeder.IsConnected
+                    && _reader is AssettoCorsaSharedMemoryReader
+                    && (System.Diagnostics.Stopwatch.GetTimestamp() - _lastVJoyFeedTicks) > System.Diagnostics.Stopwatch.Frequency / 100)
+                {
+                    _lastVJoyFeedTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+                    FeedVJoyBridge();
+                }
+
                 UpdatePps();
 
                 if (_watchdog.ElapsedMilliseconds > WatchdogTimeoutMs)
@@ -878,21 +1063,34 @@ public sealed class TelemetryLoop : IDisposable
 
     private void UpdateTrackPosition(FfbRawData raw)
     {
-        // Telemetry-first auto-record: with no map and no recording in progress,
-        // start silently once the car is moving on track. One driven lap then
-        // always yields a map with zero internet. Fires once per track so a
+        // Telemetry-first auto-record: with no usable map and no recording in
+        // progress, start silently once the car is moving on track. One driven lap
+        // then always yields a map with zero internet. Fires once per track so a
         // manual Clear sticks until the next track change or manual record.
-        if (!MapBuilder.IsRecording && !MapBuilder.HasCompleteMap && !PositionDetector.HasMap
+        // A loaded map that is not one closed full lap (older recorders saved
+        // partial laps) counts as unusable and is re-recorded; the position
+        // detector keeps using it until the new lap completes.
+        if (!MapBuilder.IsRecording
             && !_autoRecordFiredForTrack
             && !string.IsNullOrEmpty(_lastDetectedTrackName)
             && raw.SpeedKmh > 10f && raw.IsOnTrack)
         {
-            _autoRecordFiredForTrack = true;
-            MapBuilder.StartRecording(autoStarted: true);
+            string reason = "no map";
+            bool mapUsable = MapBuilder.HasCompleteMap
+                ? MapBuilder.CurrentMap is { } loaded && loaded.IsCompleteLap(_lastOfficialTrackLengthM, out reason)
+                : PositionDetector.HasMap;
+            if (!mapUsable)
+            {
+                _autoRecordFiredForTrack = true;
+                if (MapBuilder.HasCompleteMap)
+                    TrackMapBuilder.Log($"Loaded map for '{_lastDetectedTrackName}' unusable ({reason}) — auto re-recording");
+                MapBuilder.StartRecording(autoStarted: true);
+            }
         }
 
         if (MapBuilder.IsRecording)
         {
+            MapBuilder.ExpectedLengthM = _lastOfficialTrackLengthM;
             MapBuilder.Update(raw.CarX, raw.CarZ, raw.CarY, raw.SpeedKmh, raw.CurrentLap, raw.IsOnTrack, raw.Npos, raw.IsInPitLane);
 
             if (MapBuilder.HasCompleteMap && MapBuilder.CurrentMap != null)
@@ -1379,6 +1577,47 @@ public sealed class TelemetryLoop : IDisposable
         _ffbProvider?.Dispose();
         _ffbProvider = null;
         PedalInput.Dispose();
+        try { VJoyFeeder.Dispose(); } catch { }
+    }
+
+    /// <summary>
+    /// Feeds the vJoy bridge when the telemetry loop itself is STOPPED (the
+    /// running loop feeds every pass already). Lets CM see the wheel move for
+    /// binding/checks with the game closed or Start never pressed. No-op
+    /// unless the bridge is engaged and connected. Called from the UI tick.
+    /// </summary>
+    public void FeedBridgeIfIdle()
+    {
+        try
+        {
+            if (_running) return;
+            if (!VJoyBridgeEnabled || !VJoyFeeder.IsConnected) return;
+            if (_reader is not AssettoCorsaSharedMemoryReader) return;
+            FeedVJoyBridge();
+        }
+        catch { }
+    }
+    private void FeedVJoyBridge()
+    {
+        try
+        {
+            float steer = _deviceManager.ReadWheelAxisNormalized();
+            float gas = 0f, brake = 0f, clutch = 0f;
+            try
+            {
+                if (PedalInput.TryGetPhysicalState(out var ps))
+                {
+                    gas = ps.GasInput;
+                    brake = ps.BrakeInput;
+                    clutch = ps.ClutchInput;
+                }
+            }
+            catch { }
+            bool[]? buttons = null;
+            try { buttons = _deviceManager.PollButtons(); } catch { }
+            VJoyFeeder.Update(steer, gas, brake, clutch, buttons);
+        }
+        catch { }
     }
 
     private static void LogDiag(string msg)

@@ -475,8 +475,11 @@ public sealed partial class MainViewModel
 
     partial void OnLogitechRotationDegreesChanged(int value)
     {
-        if (_logitechUiLoading || _logitechHidpp?.IsConnected != true) return;
-        ScheduleLogitechWrite();
+        if (_logitechUiLoading) return;
+        if (_logitechHidpp?.IsConnected == true) { ScheduleLogitechWrite(); return; }
+        // HID++ unavailable (G HUB holding the interface) — G-series wheels
+        // can still take the hardware range via the legacy 0xF8/0x81 command.
+        if (_deviceManager?.IsLogitechLegacyWheelConnected == true) ScheduleLogitechWrite();
     }
 
     partial void OnLogitechProfileSlotChanged(int value)
@@ -567,7 +570,31 @@ public sealed partial class MainViewModel
     {
         _logitechWriteDebounce?.Stop();
         var provider = _logitechHidpp;
-        if (provider?.IsConnected != true) return;
+        if (provider?.IsConnected != true)
+        {
+            // G-series fallback: HID++ is unavailable (G HUB holding the
+            // interface), but rotation range can still reach the wheel via the
+            // legacy 0xF8/0x81 command on the LED controller's HID handle.
+            // Strength is HID++-only and stays untouched.
+            if (_deviceManager?.IsLogitechLegacyWheelConnected == true)
+            {
+                int legacyRotation = LogitechRotationDegrees;
+                _appSettings.LogitechRotationDegrees = legacyRotation;
+                _appSettings.Save();
+                AddSystemLog($"Logitech legacy range write: rotation={legacyRotation}°");
+                Task.Run(() =>
+                {
+                    bool ok = _deviceManager.TrySetLogitechWheelRange(legacyRotation);
+                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+                    {
+                        LogitechHidppStatus = ok
+                            ? $"G-series legacy range: {legacyRotation}° sent to wheel (HID++ unavailable — G HUB holding the interface?)"
+                            : "G-series legacy range: write FAILED (see led_debug.log)";
+                    });
+                });
+            }
+            return;
+        }
 
         bool force = _logitechWriteForceNext;
         _logitechWriteForceNext = false;

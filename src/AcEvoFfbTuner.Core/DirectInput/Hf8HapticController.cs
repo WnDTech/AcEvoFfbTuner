@@ -74,6 +74,16 @@ public sealed class Hf8HapticController : IDisposable
             return false;
         }
 
+        // Always start from a clean session: release any previous COM
+        // reference deterministically. Relying on GC finalization leaks the
+        // driver session, which keeps DeviceCommunicationActive for itself —
+        // every later Open() then returns True with comm False (verified
+        // Oct 2026: first connect works, all same-process retries fail comm
+        // with nothing else running). Settle delay lets the firmware close
+        // the HID session before we reopen it.
+        ReleaseSession();
+        Thread.Sleep(400);
+
         try
         {
             Log($"  Loading ForceFeel.dll from: {ForceFeelDllPath}");
@@ -131,8 +141,17 @@ public sealed class Hf8HapticController : IDisposable
             Log("  Enabling direct motor control mode...");
             _setDirectModeMethod.Invoke(_forceFeel, new object[] { true });
 
-            bool isConnected = _checkConnectedMethod != null && (bool)_checkConnectedMethod.Invoke(_forceFeel, null)!;
-            bool comm = _commActiveProperty != null && (bool)_commActiveProperty.GetValue(_forceFeel)!;
+            // Poll comm state: the firmware can need a moment after Open
+            // before DeviceCommunicationActive flips. Fail only after ~2s.
+            bool isConnected = false;
+            bool comm = false;
+            for (int i = 0; i < 5; i++)
+            {
+                isConnected = _checkConnectedMethod != null && (bool)_checkConnectedMethod.Invoke(_forceFeel, null)!;
+                comm = _commActiveProperty != null && (bool)_commActiveProperty.GetValue(_forceFeel)!;
+                if (isConnected && comm) break;
+                Thread.Sleep(400);
+            }
 
             _connected = isConnected && comm;
             DeviceInfo = $"ForceFeel SDK v1.0.1 | Connected: {_connected} | CommActive: {comm}";
@@ -140,8 +159,9 @@ public sealed class Hf8HapticController : IDisposable
 
             if (!_connected)
             {
-                LastError = "ForceFeel SDK opened but device communication not active. Close HFS software and retry.";
+                LastError = "ForceFeel SDK opened but device communication not active (another session holds the pad — close HFS software if running, then reconnect).";
                 Log(LastError);
+                ReleaseSession();
                 return false;
             }
 
@@ -259,24 +279,47 @@ public sealed class Hf8HapticController : IDisposable
 
     public void Disconnect()
     {
+        try
+        {
+            ReleaseSession();
+            Log("ForceFeel Close() called");
+        }
+        catch (Exception ex)
+        {
+            Log($"ForceFeel Close() failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Full session teardown: stops output, closes the SDK session and
+    /// deterministically releases the COM reference. Nulling _forceFeel
+    /// without ReleaseComObject leaks the driver session (finalization is
+    /// nondeterministic) and blocks all later connects with comm inactive.
+    /// </summary>
+    private void ReleaseSession()
+    {
         try { AllMotorsOff(); } catch { }
 
         StopOutputThread();
 
         if (_forceFeel != null && _closeMethod != null)
         {
-            try
-            {
-                _closeMethod.Invoke(_forceFeel, null);
-                Log("ForceFeel Close() called");
-            }
-            catch (Exception ex)
-            {
-                Log($"ForceFeel Close() failed: {ex.Message}");
-            }
+            try { _closeMethod.Invoke(_forceFeel, null); }
+            catch { }
         }
 
-        _forceFeel = null;
+        if (_forceFeel != null)
+        {
+            try
+            {
+                if (Marshal.IsComObject(_forceFeel))
+                    while (Marshal.ReleaseComObject(_forceFeel) > 0) { }
+            }
+            catch { }
+            _forceFeel = null;
+        }
+
+        _closeMethod = null;
         _connected = false;
     }
 

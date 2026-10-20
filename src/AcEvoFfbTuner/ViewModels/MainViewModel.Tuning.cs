@@ -169,6 +169,21 @@ public sealed partial class MainViewModel
         if (_pipeline is LmuFfbPipeline lmu)
             lmu.UseMixerSuspRoad = value;
     }
+    partial void OnUseNativeTorqueSignChanged(bool value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.UseNativeTorqueSign = value;
+    }
+    partial void OnSelfSteerGainChanged(float value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.SelfSteerGain = value;
+    }
+    partial void OnRoadTextureGainChanged(float value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.RoadTextureGain = value;
+    }
     partial void OnSynthAbsEnabledChanged(bool value)
     {
         if (_pipeline is LmuFfbPipeline lmu)
@@ -371,4 +386,10 @@ public sealed partial class MainViewModel
     partial void OnStaticFrictionActiveDecayChanged(float value) => _telemetryLoop.StaticFriction.ActiveDecay = value;
     partial void OnStaticFrictionReturnDecayChanged(float value) => _telemetryLoop.StaticFriction.ReturnDecay = value;
     partial void OnStaticFrictionOutputSmoothAlphaChanged(float value) => _telemetryLoop.StaticFriction.OutputSmoothAlpha = value;
+    partial void OnStaticFrictionBreakoutGainChanged(float value) => _telemetryLoop.StaticFriction.BreakoutGain = value;
+    partial void OnStaticFrictionBreakoutFrequencyHzChanged(float value) => _telemetryLoop.StaticFriction.BreakoutFrequencyHz = value;
+    partial void OnStaticFrictionScrubGainChanged(float value) => _telemetryLoop.StaticFriction.ScrubGain = value;
+    partial void OnStaticFrictionLoadAsymmetryGainChanged(float value) => _telemetryLoop.StaticFriction.LoadAsymmetryGain = value;
+    partial void OnStaticFrictionPressureSensitivityChanged(float value) => _telemetryLoop.StaticFriction.PressureSensitivity = value;
+    partial void OnStaticFrictionSurfaceResponseEnabledChanged(bool value) => _telemetryLoop.StaticFriction.SurfaceResponseEnabled = value;
 }

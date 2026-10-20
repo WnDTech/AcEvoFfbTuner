@@ -161,6 +161,10 @@ public sealed class WheelLedController : IDisposable
 
     private volatile int _activeLedCount;
 
+    // Legacy Logitech G-series state (kernel hid-lg4ff command family).
+    private bool _logitechHasLedStrip;
+    private bool _logLedSkipLogged;
+
     public int ActiveLedCount => _activeLedCount;
 
     private readonly List<string> _diagnosticLog = new();
@@ -694,6 +698,8 @@ public sealed class WheelLedController : IDisposable
     private bool ConnectHid()
     {
         _useSerialPort = false;
+        _logitechHasLedStrip = false;
+        _logLedSkipLogged = false;
         Guid hidGuid = HidGuidValue;
         IntPtr hInfo = SetupDiGetClassDevs(ref hidGuid, IntPtr.Zero, IntPtr.Zero, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
         if (hInfo == InvalidHandle)
@@ -702,6 +708,13 @@ public sealed class WheelLedController : IDisposable
             Log(LastError);
             return false;
         }
+
+        // Best-candidate selection: Logitech G-series wheels expose two vendor
+        // collections (e.g. G29 MI_01 Col01 7-byte + Col02 20-byte). The legacy
+        // LED/range commands are 7-byte reports — prefer the 7-byte collection.
+        IntPtr bestHandle = InvalidHandle;
+        ushort bestOutLen = 0;
+        string bestProduct = "";
 
         try
         {
@@ -753,8 +766,8 @@ public sealed class WheelLedController : IDisposable
                         : VendorMatch(attr.Vid) || ProductNameMatch(product);
 
                     // Direct-drive Logitech wheels (RS50, G PRO) have no G29-style
-                    // LED strip — the G29 report format (report id 0x03) is garbage
-                    // to them and would be written to the HID++ control collection.
+                    // LED strip — the legacy F8/12 report is meaningless to them
+                    // and would be written to the HID++ control collection.
                     // Their rev lights are driven via the HID++ LED effect feature.
                     bool isDirectDriveWheel = attr.Pid is 0xC276 or 0xC272 or 0xC268;
                     if (match && isDirectDriveWheel)
@@ -765,21 +778,43 @@ public sealed class WheelLedController : IDisposable
 
                     Log($"  HID {i}: VID=0x{attr.Vid:X4} PID=0x{attr.Pid:X4} UsagePage=0x{caps.UsagePage:X4} OutLen={caps.OutputReportByteLength} FeatLen={caps.FeatureReportByteLength} Product='{product}' {(match ? "<<MATCH>>" : "")}");
 
+                    bool claimed = false;
                     if (match && caps.OutputReportByteLength > 0)
                     {
-                        _handle = hDev;
-                        _reportBuf = new byte[caps.OutputReportByteLength];
-                        Log($"  Connected via HID OUTPUT: VID=0x{attr.Vid:X4} PID=0x{attr.Pid:X4} OutLen={caps.OutputReportByteLength}");
-                        LastError = null;
-                        return true;
+                        bool preferNew = bestHandle == InvalidHandle;
+                        if (_vendor == WheelVendor.Logitech && !preferNew)
+                            preferNew = caps.OutputReportByteLength == 7 && bestOutLen != 7;
+                        if (preferNew)
+                        {
+                            if (bestHandle != InvalidHandle) CloseHandle(bestHandle);
+                            bestHandle = hDev;
+                            bestOutLen = caps.OutputReportByteLength;
+                            bestProduct = product;
+                            claimed = true;
+                        }
                     }
 
-                    CloseHandle(hDev);
+                    if (!claimed)
+                        CloseHandle(hDev);
                 }
                 finally
                 {
                     Marshal.FreeHGlobal(buf);
                 }
+            }
+
+            if (bestHandle != InvalidHandle)
+            {
+                _handle = bestHandle;
+                _reportBuf = new byte[bestOutLen];
+                if (_vendor == WheelVendor.Logitech)
+                {
+                    _logitechHasLedStrip = HasLogitechLedStrip(bestProduct);
+                    Log($"  Logitech G-series: RPM LED strip {(_logitechHasLedStrip ? "present" : "NOT present on this model")} (product='{bestProduct}')");
+                }
+                Log($"  Connected via HID OUTPUT: OutLen={bestOutLen} Product='{bestProduct}'");
+                LastError = null;
+                return true;
             }
         }
         finally
@@ -968,12 +1003,68 @@ public sealed class WheelLedController : IDisposable
     #region Logitech
 
     private const int LogitechLedCount = 5;
-    private const byte LogitechLedReportId = 0x03;
+
+    /// <summary>Legacy G-series wheels whose command set follows the kernel
+    /// hid-lg4ff family (7-byte output reports: F8/12 LEDs, F8/81 range).</summary>
+    public bool IsLogitechLegacyWheel => _vendor == WheelVendor.Logitech && _handle != InvalidHandle;
+
+    private static bool HasLogitechLedStrip(string product)
+    {
+        if (string.IsNullOrEmpty(product)) return false;
+        var p = product.ToLowerInvariant();
+        // G27/G29/G920/G923 carry the 5-LED RPM strip (kernel lg4ff registers
+        // LEDs for G27/G29; G920/G923 are the same Driving Force family).
+        // Older wheels (G25/DFGT/DFP) have no strip — LED writes are skipped.
+        return p.Contains("g29") || p.Contains("g920") || p.Contains("g923") || p.Contains("g27");
+    }
+
+    /// <summary>Hardware rotation range via the legacy 0xF8/0x81 command
+    /// (kernel lg4ff_set_range_g25, shared by G25/G27/DFGT/G29, 40-900°).
+    /// Works while G HUB holds the HID++ interface — it uses the LED
+    /// controller's 7-byte output handle instead.</summary>
+    public bool TrySetLogitechRange(int degrees)
+    {
+        if (!IsLogitechLegacyWheel || _reportBuf == null || _reportBuf.Length != 7)
+        {
+            Log($"Logitech range: unavailable (connected={IsLogitechLegacyWheel} bufLen={_reportBuf?.Length})");
+            return false;
+        }
+        int clamped = Math.Clamp(degrees, 40, 900);
+        var buf = new byte[7] { 0xF8, 0x81, (byte)(clamped & 0xFF), (byte)((clamped >> 8) & 0xFF), 0x00, 0x00, 0x00 };
+        bool ok = WriteFile(_handle, buf, buf.Length, out _, IntPtr.Zero);
+        int err = Marshal.GetLastWin32Error();
+        if (!ok) { ok = HidD_SetOutputReport(_handle, buf, buf.Length); err = Marshal.GetLastWin32Error(); }
+        if (!ok) { ok = HidD_SetFeature(_handle, buf, buf.Length); err = Marshal.GetLastWin32Error(); }
+        Log($"Logitech range: requested={degrees}° applied={clamped}° ok={ok} err={err}");
+        return ok;
+    }
 
     private void WriteLogitech(float rpm, bool shift, bool limiter, int flag, bool absActive, bool pitLimiterActive = false)
     {
+        if (!_logitechHasLedStrip)
+        {
+            if (!_logLedSkipLogged)
+            {
+                _logLedSkipLogged = true;
+                Log("Logitech: no RPM LED strip on this model — LED writes skipped (range command still available)");
+            }
+            return;
+        }
+        if (_reportBuf == null || _reportBuf.Length != 7)
+        {
+            if (!_logLedSkipLogged)
+            {
+                _logLedSkipLogged = true;
+                Log($"Logitech: expected 7-byte output collection, have {_reportBuf?.Length} — LED writes skipped");
+            }
+            return;
+        }
+
         Array.Clear(_reportBuf!);
-        _reportBuf![0] = LogitechLedReportId;
+        // Kernel hid-lg4ff lg4ff_set_leds: 7-byte output report
+        // [0xF8, 0x12, led-bitmask, 0,0,0,0], one bit per RPM LED.
+        _reportBuf![0] = 0xF8;
+        _reportBuf![1] = 0x12;
 
         ushort bits;
 
@@ -1033,7 +1124,7 @@ public sealed class WheelLedController : IDisposable
             bits = (ushort)((1 << n) - 1);
         }
 
-        _reportBuf[1] = (byte)(bits & 0xFF);
+        _reportBuf[2] = (byte)(bits & 0xFF);
         SendReport();
     }
 
@@ -1535,7 +1626,7 @@ public sealed class WheelLedController : IDisposable
         if (string.IsNullOrEmpty(product)) return false;
         var p = product.ToLowerInvariant();
 
-        return p.Contains("g29") || p.Contains("g920") || p.Contains("g923")
+        return p.Contains("g29") || p.Contains("g920") || p.Contains("g923") || p.Contains("g27") || p.Contains("g25")
             || p.Contains("driving force") || p.Contains("rs50") || p.Contains("g pro");
     }
 

@@ -41,6 +41,42 @@ public sealed class DirectInputPedalSource : IPedalInputSource, IDisposable
         IsFfbCapable = d.IsFfbCapable
     }).ToArray();
 
+    /// <summary>
+    /// Normalized per-axis snapshot (0..1, same normalization as TryReadRaw)
+    /// for one enumerated device. Used by the press-to-detect wizard.
+    /// Returns null when the device can't be read.
+    /// </summary>
+    public IReadOnlyDictionary<string, float>? ReadDeviceAxes(int index)
+    {
+        if (!_initialized && !Initialize())
+            return null;
+        if (index < 0 || index >= _allDevices.Count)
+            return null;
+        var target = _allDevices[index];
+        try
+        {
+            if (!target.Acquired)
+            {
+                try { target.Joystick.Acquire(); target.Acquired = true; }
+                catch { return null; }
+            }
+            target.Joystick.Poll();
+            var js = target.Joystick.GetCurrentState();
+            return new Dictionary<string, float>
+            {
+                ["X"] = NormalizeAxis(js.X),
+                ["Y"] = NormalizeAxis(js.Y),
+                ["Z"] = NormalizeAxis(js.Z),
+                ["Rx"] = NormalizeAxis(js.RotationX),
+                ["Ry"] = NormalizeAxis(js.RotationY),
+                ["Rz"] = NormalizeAxis(js.RotationZ),
+                ["Slider0"] = js.Sliders is { Length: > 0 } ? NormalizeAxis(js.Sliders[0]) : 0f,
+                ["Slider1"] = js.Sliders is { Length: > 1 } ? NormalizeAxis(js.Sliders[1]) : 0f,
+            };
+        }
+        catch { return null; }
+    }
+
     public bool Initialize()
     {
         if (_initialized) return true;
@@ -65,6 +101,28 @@ public sealed class DirectInputPedalSource : IPedalInputSource, IDisposable
         _allDevices.Clear();
         _initialized = false;
         Initialize();
+    }
+
+    /// <summary>
+    /// Pins the source to the device with the given instance GUID (manual
+    /// pick from the setup UI), or back to Auto when null/empty/unknown.
+    /// Returns the product name when pinned, null when on Auto.
+    /// </summary>
+    public string? SelectPreferredDevice(string? instanceId)
+    {
+        if (!string.IsNullOrEmpty(instanceId))
+        {
+            for (int i = 0; i < _allDevices.Count; i++)
+            {
+                if (_allDevices[i].InstanceGuid.ToString().Equals(instanceId, StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeDeviceIndex = i;
+                    return _allDevices[i].ProductName;
+                }
+            }
+        }
+        _activeDeviceIndex = -1;
+        return null;
     }
 
     private static readonly string[] NonPedalPatterns =

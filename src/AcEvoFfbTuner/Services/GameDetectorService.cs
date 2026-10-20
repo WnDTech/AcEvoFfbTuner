@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using AcEvoFfbTuner.ViewModels;
 
 namespace AcEvoFfbTuner.Services;
@@ -95,9 +96,10 @@ public sealed class GameDetectorService : IDisposable
 
     private void DetectGames(CancellationToken ct)
     {
-        // 1. Check supported games
-        SupportedGame? foundSupported = null;
-        int supportedCount = 0;
+        // 1. Check supported games. Count DISTINCT games, not process-map keys:
+        // AC1 runs both acs.exe and AssettoCorsa.exe (same game) — counting
+        // keys made AC1 look "ambiguous" and auto-detect never fired.
+        var foundGames = new HashSet<SupportedGame>();
 
         foreach (var kvp in _processMap)
         {
@@ -105,20 +107,19 @@ public sealed class GameDetectorService : IDisposable
             var processes = Process.GetProcessesByName(kvp.Key);
             if (processes.Length > 0)
             {
-                foundSupported = kvp.Value;
-                supportedCount++;
+                foundGames.Add(kvp.Value);
                 foreach (var p in processes) p.Dispose();
             }
         }
 
-        // Multiple supported games → ambiguous, skip
-        if (supportedCount > 1)
+        // Multiple DISTINCT supported games → ambiguous, skip
+        if (foundGames.Count > 1)
             return;
 
         // Exactly one supported game found
-        if (supportedCount == 1)
+        if (foundGames.Count == 1)
         {
-            var game = foundSupported!.Value;
+            var game = foundGames.First();
             if (_lastDetectedGame != game)
             {
                 _lastDetectedGame = game;

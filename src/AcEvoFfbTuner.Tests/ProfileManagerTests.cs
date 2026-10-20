@@ -136,4 +136,66 @@ public class ProfileManagerTests
         var result = mgr.FindMatchingProfile("acevo", "bmw_m4", "monza");
         result.Should().NotBeNull();
     }
+
+    // In-memory registration: SaveProfileFromPipeline writes to the real
+    // AppData Profiles folder, so class-matching tests inject directly.
+    private static ProfileManager ManagerWith(params FfbProfile[] profiles)
+    {
+        var mgr = new ProfileManager();
+        var list = (List<FfbProfile>)typeof(ProfileManager)
+            .GetField("_profiles", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .GetValue(mgr)!;
+        list.AddRange(profiles);
+        return mgr;
+    }
+
+    private static FfbProfile P(string name, ProfileScope scope, string game = "", string car = "", string track = "")
+        => new() { Name = name, Scope = scope, GameMatch = game, CarMatch = car, TrackMatch = track };
+
+    [Fact]
+    public void FindMatchingProfile_ClassMatch_BeatsPerGame()
+    {
+        var mgr = ManagerWith(
+            P("LMU - Hypercar - All", ProfileScope.PerGame, "lemansultimate"),
+            P("LMU - GT3 - All", ProfileScope.PerCar, "lemansultimate", "GT3"));
+
+        mgr.FindMatchingProfile("lemansultimate", "Garage 59 2026 #10:LM", "Bahrain", "GT3")!
+            .Name.Should().Be("LMU - GT3 - All");
+    }
+
+    [Fact]
+    public void FindMatchingProfile_ExactCar_BeatsClass()
+    {
+        var mgr = ManagerWith(
+            P("LMU - GT3 - All", ProfileScope.PerCar, "lemansultimate", "GT3"),
+            P("Garage 59 special", ProfileScope.PerCar, "lemansultimate", "Garage 59 2026 #10:LM"));
+
+        mgr.FindMatchingProfile("lemansultimate", "Garage 59 2026 #10:LM", "Bahrain", "GT3")!
+            .Name.Should().Be("Garage 59 special");
+    }
+
+    [Fact]
+    public void FindMatchingProfile_ClassAndTrack_BeatsPerTrackAndClass()
+    {
+        var mgr = ManagerWith(
+            P("LMU - GT3 - All", ProfileScope.PerCar, "lemansultimate", "GT3"),
+            P("LMU - All - Spa", ProfileScope.PerTrack, "lemansultimate", "", "Spa"),
+            P("LMU - GT3 - Spa", ProfileScope.PerCarAndTrack, "lemansultimate", "GT3", "Spa"));
+
+        mgr.FindMatchingProfile("lemansultimate", "Iron Lynx #60", "Spa", "GT3")!
+            .Name.Should().Be("LMU - GT3 - Spa");
+    }
+
+    [Fact]
+    public void FindMatchingProfile_NoClass_LegacyBehaviourUnchanged()
+    {
+        var mgr = ManagerWith(
+            P("LMU - Hypercar - All", ProfileScope.PerGame, "lemansultimate"),
+            P("LMU - GT3 - All", ProfileScope.PerCar, "lemansultimate", "GT3"));
+
+        mgr.FindMatchingProfile("lemansultimate", "Garage 59 2026 #10:LM", "Bahrain")!
+            .Name.Should().Be("LMU - Hypercar - All");
+        mgr.FindMatchingProfile("lemansultimate", "Garage 59 2026 #10:LM", "Bahrain", "")!
+            .Name.Should().Be("LMU - Hypercar - All");
+    }
 }

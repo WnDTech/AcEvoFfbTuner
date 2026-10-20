@@ -1,0 +1,16 @@
+vJoy virtual joystick — bundled driver pin record
+=================================================
+Upstream:   https://github.com/jshafer817/vJoy (maintained fork of
+            https://github.com/shauleiz/vJoy for modern Windows)
+License:    MIT (see LICENSE.txt in this folder — ships in the installer
+            as {app}\vJoy-LICENSE.txt alongside the driver)
+Tag:        v2.1.9.1 (attestation-signed; good for Windows 10, works on 11)
+Asset:      vJoySetup.exe (11,482,272 bytes)
+URL:        https://github.com/jshafer817/vJoy/releases/download/v2.1.9.1/vJoySetup.exe
+SHA256:     F103CED4E7FF7CCB49C8415A542C56768ED4DA4FEA252B8F4FFDAC343074654A
+
+The binary is NOT committed to git (see .gitignore). It is downloaded and
+hash-verified by installer/fetch-vjoy.ps1 at installer build time (CI
+release workflow + local setup builds), then installed silently by the
+[vJoy] setup component. To re-pin a newer release: update tag/URL/SHA256
+here and in fetch-vjoy.ps1, then rebuild the installer.

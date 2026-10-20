@@ -4,6 +4,11 @@ on:
   release:
     types: [edited]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to announce (e.g. v1.29.0 or v1.29.0-beta.1). Empty = latest stable.'
+        required: false
+        type: string
 
 jobs:
   notify:
@@ -15,19 +20,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch latest release (manual run)
+      - name: Fetch release (manual run)
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
-          gh api repos/WnDTech/AcEvoFfbTuner/releases/latest \
-            --jq '{name: .name, html_url: .html_url, body: .body}' \
-            > release-manual.json
+          if [ -n "$INPUT_TAG" ]; then
+            # Tag given: fetch that exact release. This is how beta tags
+            # (vX.Y.Z-beta.N) are announced — releases/latest NEVER returns
+            # prereleases, so a beta announced via latest would leak the
+            # wrong (stable) release.
+            gh release view "$INPUT_TAG" \
+              --json name,tag_name,html_url,body,prerelease \
+              > release-manual.json
+          else
+            gh api repos/WnDTech/AcEvoFfbTuner/releases/latest \
+              --jq '{name: .name, tag_name: .tag_name, html_url: .html_url, body: .body, prerelease: .prerelease}' \
+              > release-manual.json
+          fi
 
       - name: Post to Discord
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: '1440318628661825587'
+          DISCORD_BETA_CHANNEL_ID: ${{ vars.DISCORD_BETA_CHANNEL_ID }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           MANUAL_RELEASE_FILE: ${{ github.workspace }}/release-manual.json
         run: python3 .github/scripts/discord_release_notify.py

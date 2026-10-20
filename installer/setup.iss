@@ -36,8 +36,19 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
+[Components]
+Name: "vjoy"; Description: "vJoy virtual joystick driver (required for Assetto Corsa FFB via the app's input bridge)"; Types: full custom compact
+
 [Files]
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+; ODbL notice for the bundled Open Racetrack DB index + OSM-derived track data (license compliance).
+Source: "..\src\AcEvoFfbTuner.Core\Data\OpenRacetrackDb\NOTICE.md"; DestDir: "{app}"; DestName: "OpenRacetrackDb-NOTICE.md"; Flags: ignoreversion
+; vJoy MIT license travels WITH the bundled driver (license compliance).
+; Only installed when the vjoy component is selected.
+Source: "third-party\vjoy\LICENSE.txt"; DestDir: "{app}"; DestName: "vJoy-LICENSE.txt"; Flags: ignoreversion; Components: vjoy
+; Pinned signed installer, fetched + hash-verified by fetch-vjoy.ps1 at build
+; time (not committed to git). Staged to {tmp} and silently installed below.
+Source: "third-party\vjoy\vJoySetup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall skipifsourcedoesntexist; Components: vjoy
 Source: "..\publish-test\AcEvoFfbTuner.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish-test\Moza_API_C.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish-test\Moza_SDK.dll"; DestDir: "{app}"; Flags: ignoreversion
@@ -50,6 +61,9 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: deskto
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; vJoy driver (Inno Setup based): silent install, elevated. The driver needs a
+; reboot before the virtual device appears — Windows handles the prompt.
+Filename: "{tmp}\vJoySetup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"; StatusMsg: "Installing vJoy virtual joystick driver (for Assetto Corsa)..."; Flags: runas waituntilterminated; Components: vjoy
 
 [Code]
 function PrepareToInstall(var NeedsRestart: Boolean): String;

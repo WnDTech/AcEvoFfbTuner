@@ -9,6 +9,13 @@ When making changes, ALWAYS explicitly state whether you are:
 
 Our goal is to **fix the code** so we can establish a reliable baseline profile that works for all users of this car (BMW GT3 with Moza R5).
 
+### Profile Naming — `Game - CarType - Track` (Short Names)
+- Default format for every profile: **`{GameShort} - {CarType} - {TrackShort}`**, e.g. `LMU - Hypercar - All`, `LMU - LMP3 - All`, `EVO - GT3 - Spa`.
+- Game shorts: `LMU`, `EVO`, `R3E`, `AC`, `ACC`. Use `All` for any dimension the profile does not restrict (fallback profiles).
+- The JSON filename and the internal `"name"` field MUST match exactly — the app lists files but tracks profiles by internal name; a mismatch (or a `*.bak.json` twin) creates phantom duplicates.
+- Backups of profiles must use the `*.json.bak` extension (never enumerated by the app). NEVER create new `*.json` files with near-identical names.
+- Per-car auto-load matches `CarMatch` by EXACT string (case-insensitive) with priority PerCarAndTrack > PerTrack > PerCar > PerGame > General. A General profile with non-empty matches loads for NOTHING — wire scope + matches deliberately (`lemansultimate` is the LMU game string).
+
 ### Git — Do NOT Commit or Push Unless Asked
 - **Never commit or push unless the user explicitly asks.** No exceptions.
 - Only stage files and run builds during the iterative coding loop.
@@ -16,6 +23,7 @@ Our goal is to **fix the code** so we can establish a reliable baseline profile 
 
 ### Build & Verify
 - Build command: `dotnet build AcEvoFfbTuner.slnx -c Release`
+- **If the app is running, CLOSE it before rebuilding.** A running `AcEvoFfbTuner.exe` locks its DLLs and the build fails with file-lock errors. Check first: `Get-Process AcEvoFfbTuner -ErrorAction SilentlyContinue`, and stop it: `Stop-Process -Name AcEvoFfbTuner -Force`. Same for `TelemetryBrowser` when it blocks a build.
 - **Always run a FULL clean build after any edit:** `dotnet clean AcEvoFfbTuner.slnx -c Release -q 2>&1; dotnet build AcEvoFfbTuner.slnx -c Release`
 - Incremental builds can cache stale XAML/code-behind artifacts, hiding mismatches until runtime. Always clean first.
 - Run lint/typecheck if available
@@ -46,7 +54,7 @@ When the user says **"push"** they mean the full STABLE release procedure below.
 4. Same full What's New notes requirement (`gh release edit vX.Y.Z-beta.N --notes-file <file>`), same build/test step.
 5. Verify with `gh release view v1.29.0-beta.1` that it is a prerelease.
 6. No extra gating work: stable-channel users never see prereleases in the updater or What's New; only Test Drive testers with the build channel enabled (server-gated by `me.betaChannel` = approved/paused) receive the beta. If it's the first beta after enabling the channel, confirm the server's `beta.php` with `me.betaChannel` is deployed.
-7. The Discord announce posts the beta release too — that is intended (tells testers a beta is up).
+7. The Discord announce routes by release type: betas go ONLY to the tester-gated channel (`DISCORD_BETA_CHANNEL_ID` repo variable — create the role-gated channel in Discord first, bot needs Send Messages there); stables go to the public channel. If the beta channel var is unset, the beta announce is skipped (never posted publicly). The updater re-verifies `me.betaChannel` at every check, so hand-edited settings can't unlock betas.
 8. Workflow `workflow_dispatch` accepts a version input for both stable and beta tags.
 
 ### Local Backups
@@ -285,6 +293,25 @@ for wi in 0..3:
   never Marshal-based reading for this struct.
 - The wheel dump diagnostic guard `tirePressures[0] > 50f` will silent-skip if tire data reads
   zero — make the first-frame dump unconditional when investigating.
+- **mGripFract (+112) and mPressure (+120) are UNUSABLE for FFB** (verified
+  Oct 2026 snapshots: fronts read 0.99 "sliding" dead straight at 300 km/h
+  under 7 kN load — physically impossible; pressure reads constant 0 —
+  while loads/forces/speeds at adjacent offsets read sane). Whatever the
+  docs claim, do NOT wire them back without a slide-test proving otherwise.
+  Internal `TireGrip` and slip vibration derive from wheel-speed slip ratio
+  (rotation + vehicle speed, both verified live) instead.
+- **mBrakePressure (per wheel) is normalized 0.0–1.0** in the shipped game, NOT
+  kPa. Any `> 100` threshold never fires. ABS feel must come from the
+  `mABSActive`/`mTCActive` bytes (telem offsets 746/747) or brake + slip synthesis.
+- **Float vs double reads** (pack=4 TelemInfoV01): `mVisualSteeringWheelRange` (660),
+  `mPhysicalSteeringWheelRange` (692), `mRegen` (768), `mStateOfCharge` (772),
+  `mVirtualEnergy` (776) and wheel `mOptimalTemp` (+236) are **float** — ReadF32.
+  `mFuelCapacity` (608) is **double** — ReadF64. Reading with the wrong width
+  returns garbage (verified 2026-09-30).
+- **Slot switches must validate content** (name len ≥ 5, rpm 0–15000, gear −1..10)
+  before accepting — torn reads flap the FFB between player and AI cars with
+  identical vehicle names (observed 0↔12 flips in a 40-min race log). Scoring
+  vehicle array base is fixed at 2192 (scan is fallback only).
 
 ## R3E Shared Memory — Authoritative Field Semantics (KW Studios r3e-api)
 

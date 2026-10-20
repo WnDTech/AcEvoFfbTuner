@@ -385,6 +385,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _useMixerSuspRoad = true;
 
     [ObservableProperty]
+    private bool _useNativeTorqueSign = true;
+
+    [ObservableProperty]
+    private float _selfSteerGain = 0.5f;
+
+    [ObservableProperty]
+    private float _roadTextureGain = 1f;
+
+    [ObservableProperty]
     private bool _synthAbsEnabled = false;
 
     [ObservableProperty]
@@ -1212,6 +1221,24 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _staticFrictionOutputSmoothAlpha = 0.35f;
 
     [ObservableProperty]
+    private float _staticFrictionBreakoutGain = 0.35f;
+
+    [ObservableProperty]
+    private float _staticFrictionBreakoutFrequencyHz = 42f;
+
+    [ObservableProperty]
+    private float _staticFrictionScrubGain = 0.30f;
+
+    [ObservableProperty]
+    private float _staticFrictionLoadAsymmetryGain = 0.5f;
+
+    [ObservableProperty]
+    private float _staticFrictionPressureSensitivity = 0.4f;
+
+    [ObservableProperty]
+    private bool _staticFrictionSurfaceResponseEnabled = true;
+
+    [ObservableProperty]
     private int _snapshotButtonIndex = -1;
     private bool _suppressSettingsSave;
 
@@ -1626,7 +1653,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _reader = CreateReader(SelectedGame);
         _pipeline = CreatePipeline(SelectedGame);
         _deviceManager = new FfbDeviceManager();
+        _acVJoyBridgeEnabled = _appSettings.AcVJoyBridgeEnabled;
         _telemetryLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
+        // Hardware setup lives in its own stores (settings.json + pedal_config.json),
+        // deliberately independent of FFB profiles: changing car/track/profile must
+        // never lose wheel/pedal/vJoy configuration. Re-apply it to the fresh sources.
+        LoadPedalConfig();
         _profileManager = new ProfileManager();
         _coachService = new FfbCoachService(_profileManager, _pipeline);
         InitializeAiCoach();
@@ -1708,127 +1740,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (!isRec && !msg.Contains("saved:") && !msg.Contains("stopped") && !msg.Contains("finalizing"))
                 StatusText = msg;
         });
-        _telemetryLoop.TrackMapCompleted += map => Application.Current?.Dispatcher.Invoke(() =>
-        {
-            IsTrackMapAvailable = true;
-            IsTrackMapRecording = false;
-            TrackLengthM = map.TrackLengthM;
-            TrackWaypointCount = map.Waypoints.Count;
-            CornerCount = map.Corners.Count;
-            SectorCount = map.Sectors.Count;
-            if (string.IsNullOrEmpty(map.TrackName) || map.TrackName.StartsWith("track_"))
-                map.TrackName = _telemetryLoop.DetectedTrackName;
-            DetectedTrackName = map.TrackName;
-            IsPitDetected = map.PitLane.IsDetected;
-            TrackMapStatus = $"{map.Waypoints.Count} pts | {map.TrackLengthM:F0}m | {map.Corners.Count} corners | {map.Sectors.Count} sectors";
-        });
-            _telemetryLoop.StaticDataReceived += (trackName, config, lengthM, latitude, longitude) => Application.Current?.Dispatcher.Invoke(() =>
-            {
-                DetectedTrackName = trackName;
-                DetectedTrackConfig = config;
-                OfficialTrackLengthM = lengthM;
-                _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
-
-                var calibration = SatelliteMapService.LoadCalibration(trackName);
-                if (calibration != null)
-                {
-                    TrackLatitude = calibration.Value.lat;
-                    TrackLongitude = calibration.Value.lon;
-                    TrackRotation = calibration.Value.rotationDeg;
-                }
-                else if (latitude != 0 || longitude != 0)
-                {
-                    TrackLatitude = latitude;
-                    TrackLongitude = longitude;
-                    TrackRotation = 0f;
-                }
-                else
-                {
-                    var lookup = SatelliteMapService.LookupTrackLocation(trackName);
-                    if (lookup != null)
-                    {
-                        TrackLatitude = lookup.Value.lat;
-                        TrackLongitude = lookup.Value.lon;
-                    }
-
-                    var rotation = SatelliteMapService.LookupTrackRotation(trackName);
-                    TrackRotation = rotation ?? 0f;
-                }
-
-                if (!string.IsNullOrEmpty(trackName))
-                {
-                    StatusText = $"Connected — Track: {trackName} ({config}) {lengthM:F0}m";
-                }
-
-                var mapKey = TrackMapKeys.BuildKey(trackName, config);
-                if (!_telemetryLoop.MapBuilder.HasCompleteMap && !string.IsNullOrEmpty(trackName) && !_mapClearedByUser && _lastAutoLoadedTrack != mapKey)
-                {
-                    var savedMap = TrackMap.Load(trackName, config);
-                    if (savedMap != null && savedMap.Waypoints.Count >= 10)
-                    {
-                        savedMap.InvalidateCache();
-                        savedMap.GetCumulativeDistances();
-                        if (savedMap.Corners.Count == 0) savedMap.Analyze();
-
-                        _lastAutoLoadedTrack = mapKey;
-                        _telemetryLoop.MapBuilder.SetImportedMap(savedMap);
-                        _telemetryLoop.PositionDetector.SetMap(savedMap);
-                        _telemetryLoop.ForceHeatmap.Initialize(savedMap.Waypoints.Count);
-                        _telemetryLoop.LapRecorder.Initialize(savedMap.Waypoints.Count);
-                        _telemetryLoop.DiagnosticHeatmap.Initialize(savedMap.Waypoints.Count);
-                        _telemetryLoop.RealignToMap();
-
-                        IsTrackMapAvailable = true;
-                        TrackLengthM = savedMap.TrackLengthM;
-                        TrackWaypointCount = savedMap.Waypoints.Count;
-                        CornerCount = savedMap.Corners.Count;
-                        SectorCount = savedMap.Sectors.Count;
-                        IsPitDetected = savedMap.PitLane.IsDetected;
-                        TrackMapStatus = $"Auto-loaded: {savedMap.Waypoints.Count} pts | {savedMap.TrackLengthM:F0}m | {savedMap.Corners.Count} corners | {savedMap.Sectors.Count} sectors";
-                        StatusText = $"Auto-loaded track map: {trackName} ({savedMap.Waypoints.Count} pts, {savedMap.Corners.Count} corners)";
-                    }
-                }
-            });
-        _telemetryLoop.CarModelChanged += carModel => Application.Current?.Dispatcher.Invoke(() =>
-        {
-            DetectedCarModel = carModel;
-            StatusText = $"Car detected: {carModel}";
-            _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
-
-            if (!_appSettings.AutoSwitchProfiles || _appSettings.ProfileLocked) return;
-
-            var gameName = SelectedGame.ToString().ToLowerInvariant();
-            var match = _profileManager.FindMatchingProfile(gameName, carModel, _telemetryLoop.DetectedTrackName);
-
-            if (match != null && (SelectedProfile == null || match.Name != SelectedProfile.Name))
-            {
-                SelectedProfile = match;
-                match.ApplyToPipeline(_pipeline);
-                match.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
-                LoadProfileValues(match);
-                _profileManager.SetActiveProfile(match);
-                StatusText = $"Auto-loaded profile '{match.Name}' for {carModel}";
-                _voiceService.Speak("Profile loaded");
-                if (Application.Current?.MainWindow is Views.MainWindow mw)
-                    mw.ShowToast("Auto-Loaded Profile", $"{match.Name} — {carModel}");
-            }
-        });
-        _telemetryLoop.TrackChanged += newTrackName => Application.Current?.Dispatcher.Invoke(() =>
-        {
-            DetectedTrackName = newTrackName;
-            _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
-            _mapClearedByUser = false;
-            _lastAutoLoadedTrack = null;
-            IsTrackMapAvailable = false;
-            IsTrackMapRecording = false;
-            TrackLengthM = 0;
-            TrackWaypointCount = 0;
-            CornerCount = 0;
-            SectorCount = 0;
-            IsPitDetected = false;
-            TrackMapStatus = $"Track changed to: {newTrackName}";
-            StatusText = $"Track changed to: {newTrackName} — loading map…";
-        });
+        _telemetryLoop.TrackMapCompleted += map => Application.Current?.Dispatcher.Invoke(() => OnTrackMapCompleted(map));
+        _telemetryLoop.StaticDataReceived += (trackName, config, lengthM, latitude, longitude) => Application.Current?.Dispatcher.Invoke(() =>
+            OnStaticDataReceived(trackName, config, lengthM, latitude, longitude));
+        _telemetryLoop.CarModelChanged += carModel => Application.Current?.Dispatcher.Invoke(() => OnCarModelDetected(carModel));
+        _telemetryLoop.TrackChanged += newTrackName => Application.Current?.Dispatcher.Invoke(() => OnTrackChanged(newTrackName));
 
         _uiUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
         _uiUpdateTimer.Tick += OnUiUpdate;

@@ -254,13 +254,20 @@ public sealed class ProfileManager
         return Path.Combine(ProfilesDirectory, $"{safeName}.json");
     }
 
-    public FfbProfile? FindMatchingProfile(string game, string car, string track)
+    /// <param name="carClass">Optional car class/type (LMU mVehicleClass). A
+    /// CarMatch equal to the class matches as a fallback within the same
+    /// scope tier: exact car name beats class, class beats the next tier.
+    /// Null/empty = legacy exact-name matching only.</param>
+    public FfbProfile? FindMatchingProfile(string game, string car, string track, string? carClass = null)
     {
         FfbProfile? perCarAndTrack = null;
+        FfbProfile? perClassAndTrack = null;
         FfbProfile? perTrack = null;
         FfbProfile? perCar = null;
+        FfbProfile? perClass = null;
         FfbProfile? perGame = null;
         FfbProfile? general = null;
+        bool hasClass = !string.IsNullOrWhiteSpace(carClass);
 
         foreach (var p in _profiles)
         {
@@ -269,6 +276,18 @@ public sealed class ProfileManager
                 string.Equals(p.CarMatch, car, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(p.TrackMatch, track, StringComparison.OrdinalIgnoreCase))
                 perCarAndTrack = p;
+
+            if (hasClass && p.Scope == ProfileScope.PerCarAndTrack &&
+                string.Equals(p.GameMatch, game, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(p.CarMatch, carClass, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(p.TrackMatch, track, StringComparison.OrdinalIgnoreCase))
+                perClassAndTrack ??= p;
+
+            if (hasClass && p.Scope == ProfileScope.PerCar &&
+                string.Equals(p.GameMatch, game, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(p.CarMatch, carClass, StringComparison.OrdinalIgnoreCase) &&
+                string.IsNullOrEmpty(p.TrackMatch))
+                perClass ??= p;
 
             if (p.Scope == ProfileScope.PerTrack &&
                 string.Equals(p.GameMatch, game, StringComparison.OrdinalIgnoreCase) &&
@@ -295,6 +314,6 @@ public sealed class ProfileManager
                 general ??= p;
         }
 
-        return perCarAndTrack ?? perTrack ?? perCar ?? perGame ?? general;
+        return perCarAndTrack ?? perClassAndTrack ?? perTrack ?? perCar ?? perClass ?? perGame ?? general;
     }
 }

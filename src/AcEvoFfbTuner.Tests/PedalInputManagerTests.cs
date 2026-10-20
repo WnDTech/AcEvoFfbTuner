@@ -137,4 +137,73 @@ public class PedalInputManagerTests
 
         _sut.Sources.Should().NotContain(source);
     }
+
+    [Fact]
+    public void TryGetPhysicalState_IgnoresDisabledToggle()
+    {
+        var source = Substitute.For<IPedalInputSource>();
+        source.IsAvailable.Returns(true);
+        source.TryReadRaw(out Arg.Any<RawPedalState>())
+            .Returns(x => { x[0] = new RawPedalState { BrakeRaw = 0.5f, GasRaw = 0.3f, Source = SourceType.DirectInput }; return true; });
+        _sut.RegisterSource(source);
+
+        PedalConfigManager.Instance.Save(new PedalConfig
+        {
+            Enabled = false,
+            Gas = new PedalAxisConfig { Deadzone = 0f, Smoothing = 0f },
+            Brake = new PedalAxisConfig { Deadzone = 0f, Smoothing = 0f },
+            Clutch = new PedalAxisConfig { Deadzone = 0f, Smoothing = 0f }
+        });
+
+        _sut.TryGetState(out _).Should().BeFalse();
+        var result = _sut.TryGetPhysicalState(out var state);
+        result.Should().BeTrue();
+        state.BrakeInput.Should().BeApproximately(0.5f, 0.001f);
+        state.GasInput.Should().BeApproximately(0.3f, 0.001f);
+    }
+
+    [Fact]
+    public void FindMovedAxis_PicksClearWinner()
+    {
+        var baseline = new List<PedalAxisSample>
+        {
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Y", Value = 0.0f },
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Z", Value = 0.0f },
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Rx", Value = 0.0f },
+        };
+        var current = new List<PedalAxisSample>
+        {
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Y", Value = 0.02f },
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Z", Value = 0.9f },
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Rx", Value = 0.01f },
+        };
+        var hit = PedalAxisDetector.FindMovedAxis(baseline, current);
+        hit.Should().NotBeNull();
+        hit!.Axis.Should().Be("Z");
+        hit.DeviceIndex.Should().Be(-1);
+    }
+
+    [Fact]
+    public void FindMovedAxis_RejectsNoiseAndTies()
+    {
+        var baseline = new List<PedalAxisSample>
+        {
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Y", Value = 0.0f },
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Z", Value = 0.0f },
+        };
+        // Jitter below threshold
+        var jitter = new List<PedalAxisSample>
+        {
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Y", Value = 0.05f },
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Z", Value = 0.04f },
+        };
+        PedalAxisDetector.FindMovedAxis(baseline, jitter).Should().BeNull();
+        // Two axes moved together — no daylight, no assignment
+        var tie = new List<PedalAxisSample>
+        {
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Y", Value = 0.8f },
+            new() { DeviceName = "Wheelbase", DeviceIndex = -1, Axis = "Z", Value = 0.75f },
+        };
+        PedalAxisDetector.FindMovedAxis(baseline, tie).Should().BeNull();
+    }
 }

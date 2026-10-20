@@ -30,6 +30,32 @@ public sealed class FfbDevicePedalSource : IPedalInputSource, IDisposable
     public AxisMap Mapping => _mapping;
 
     /// <summary>
+    /// Normalized per-axis snapshot of the wheelbase device (0..1 raw axis
+    /// positions, unmapped). Used by the press-to-detect wizard. Null when
+    /// the wheel isn't connected.
+    /// </summary>
+    public IReadOnlyDictionary<string, float>? ReadAxes()
+    {
+        try
+        {
+            var snapshot = _deviceManager.ReadAllAxes();
+            if (snapshot == null) return null;
+            return new Dictionary<string, float>
+            {
+                ["X"] = snapshot.X,
+                ["Y"] = snapshot.Y,
+                ["Z"] = snapshot.Z,
+                ["Rx"] = snapshot.RotationX,
+                ["Ry"] = snapshot.RotationY,
+                ["Rz"] = snapshot.RotationZ,
+                ["Slider0"] = snapshot.Sliders.Length > 0 ? snapshot.Sliders[0] : 0f,
+                ["Slider1"] = snapshot.Sliders.Length > 1 ? snapshot.Sliders[1] : 0f,
+            };
+        }
+        catch { return null; }
+    }
+
+    /// <summary>
     /// Reads pedal axes directly from the FfbDeviceManager's exclusive
     /// DirectInput handle. No second DI connection needed.
     /// </summary>

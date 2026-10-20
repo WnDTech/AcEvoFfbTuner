@@ -186,10 +186,11 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 - Auto-detects corners and sectors with labels
 - Real-time car position and heading indicator on 2D track map
 - **Satellite Map View** — Mapsui-based ESRI tile overlay with auto-alignment, calibration mode (drag to shift, scroll to rotate), and zoom-to-cursor
-- Hardcoded GPS coordinates for 25+ known tracks (Nurburgring, Spa, Monza, Suzuka, etc.)
+- Track gazetteer of 1,200+ circuits (curated list + Wikidata, CC0) with Open Racetrack DB layouts (ODbL) chosen by the game's lap length
 - Force heatmap and diagnostic heatmap overlay (snap events, oscillations, clipping, anomalies)
 - Popout overlay window for second-screen use during track creation
-- **Live Map page** — real-time car position on OSM satellite tiles with Npos-based start/finish auto-calibration on line crossing (work in progress)
+- **Live Map page** — every car on OSM satellite tiles (LMU, R3E, AC EVO, ACC), placed by a shape fit of your driven lap to the real circuit; class-coloured discs with race position and per-car flag rings, class legend and Field standings panel
+- **Track-network layouts** — variants no map source publishes (e.g. LMU Bahrain Outer) are assembled from OpenStreetMap track sections and confirmed against your recorded lap
 - Generates actionable tuning recommendations with one-click apply
 
 ### Telemetry Profiler
@@ -237,6 +238,10 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 
 - **In-App Help Guide** — Searchable, plain-language reference covering every page, section, and slider with "feel" descriptions; accessible from the sidebar
 - **Multi-Game Selection** — Switch between AC EVO, RaceRoom, Assetto Corsa, ACC, and Le Mans Ultimate from a dropdown; pipeline and reader auto-switch
+- **Assetto Corsa vJoy Bridge** — the app keeps the real wheel and mirrors axes and buttons to a virtual vJoy device so its own FFB works in AC; Devices → Game Config installs the driver, binds `controls.ini` and maps wheel buttons to AC actions
+- **Pedal Detection Wizard** — press each pedal to find its axis on the wheelbase or a separate USB device; choices persist across restarts
+- **LMU Car-Class Profiles** — set a profile's Car Match to the LMU class (e.g. GT3) for per-class auto-load
+- **Browser Overlays** — GT Dash, timing tower, inputs, tyres, FFB and minimal layouts with phone QR codes
 - **What's New Dialog** — Versioned changelog shown on startup after updates
 - **1 kHz Output Interpolation** — Dedicated thread interpolating between 333 Hz physics frames for smooth force transitions
 - **Auto-Update** — Downloads and installs new releases automatically
@@ -366,6 +371,7 @@ This project builds on the reverse-engineering and protocol work of the sim-raci
 - **logitech-trueforce-linux-driver** by [mescon](https://github.com/mescon/logitech-trueforce-linux-driver) — the reverse-engineered protocol specification, the 68-packet G HUB init capture (`tf_init_data.h`) and `patch_range_packet` used by the TrueForce stream and HID++ settings providers. GPL-2.0.
 - **PeposCJ** — hardware verification of the Dynamic OLED display (feature 0x8130) writes on the RS50.
 - **Simucube SC API** (`lib/simucube/sc-api`) — MIT licensed, see `lib/simucube/sc-api/LICENSE.txt`.
+- **vJoy virtual joystick** by Shaul Eizikovich ([shauleiz/vJoy](https://github.com/shauleiz/vJoy), maintained fork [jshafer817/vJoy](https://github.com/jshafer817/vJoy)) — MIT licensed, see `installer/third-party/vjoy/LICENSE.txt`. The signed driver installer is bundled with the app's setup (Assetto Corsa input-bridge component) and installed only when that component is selected.
 
 ## License
 

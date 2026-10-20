@@ -118,6 +118,41 @@ public class FfbLiveServerTests : IDisposable
         html.Should().Contain("md-waveform' style='display:none'");
     }
 
+    [Fact]
+    public async Task Overlay_Default_IsGtDash()
+    {
+        var html = await HttpGet(8731, "/overlay");
+        html.Should().Contain("ACE GT Dash");
+        html.Should().Contain("id='rpmbar'");
+        html.Should().Contain("id='flagbanner'");
+        html.Should().Contain("id='ge'");
+    }
+
+    [Theory]
+    [InlineData("/gt", "ACE GT Dash")]
+    [InlineData("/tower", "Relative Tower")]
+    [InlineData("/inputs", "FFB TRACE")]
+    [InlineData("/tires", "TYRES")]
+    [InlineData("/ffb", "FFB HEALTH")]
+    [InlineData("/minimal", "mled0")]
+    public async Task Overlay_DedicatedRoutes_ServeLayouts(string path, string marker)
+    {
+        var html = await HttpGet(8731, path);
+        html.Should().Contain(marker);
+    }
+
+    [Theory]
+    [InlineData("tower", "Relative Tower")]
+    [InlineData("inputs", "FFB TRACE")]
+    [InlineData("tires", "TYRES")]
+    [InlineData("ffb", "FFB HEALTH")]
+    [InlineData("minimal", "mled0")]
+    public async Task Overlay_LayoutParam_ServesLayouts(string layout, string marker)
+    {
+        var html = await HttpGet(8731, "/overlay?layout=" + layout);
+        html.Should().Contain(marker);
+    }
+
     private static async Task<(TcpClient tcp, StreamReader reader)> ConnectStream(int port)
     {
         var tcp = new TcpClient();
@@ -179,6 +214,8 @@ public class FfbLiveServerTests : IDisposable
             root.GetProperty("gx").GetSingle().Should().BeApproximately(0.4f, 0.001f);
             root.GetProperty("gy").GetSingle().Should().BeApproximately(0.8f, 0.001f);
             root.GetProperty("stD").GetSingle().Should().BeApproximately(0f, 0.05f);
+            root.TryGetProperty("lim", out _).Should().BeTrue();
+            root.TryGetProperty("bp0", out _).Should().BeTrue();
         }
         finally
         {

@@ -33,7 +33,8 @@ public sealed partial class OverlaysPage : UserControl
         _loaded = false;
         var ips = FfbLiveServer.GetLocalNetworkAddresses();
         var activeIp = FfbLiveServer.GetActiveNetworkAddress();
-        foreach (var combo in new[] { SourceDashboard, SourceOverlay, SourceClipping, SourceBuilder })
+        foreach (var combo in new[] { SourceDashboard, SourceOverlay, SourceClipping, SourceBuilder,
+                                      SourceTower, SourceInputs, SourceTires, SourceFfb, SourceMinimal })
         {
             combo.Items.Clear();
             combo.Items.Add("localhost");
@@ -50,6 +51,7 @@ public sealed partial class OverlaysPage : UserControl
         UpdateUrl(UrlOverlay, SourceOverlay, QrOverlay, "/overlay");
         UpdateUrl(UrlClipping, SourceClipping, QrClipping, "/?theme=clipping");
         UpdateBuilderUrl();
+        RefreshLayoutUrls();
 
         UpdateNetworkStatus();
     }
@@ -72,6 +74,11 @@ public sealed partial class OverlaysPage : UserControl
         _panels["Streamer"] = DtlStreamer;
         _panels["Builder"] = DtlBuilder;
         _panels["Clipping"] = DtlClipping;
+        _panels["Tower"] = DtlTower;
+        _panels["Inputs"] = DtlInputs;
+        _panels["Tires"] = DtlTires;
+        _panels["Ffb"] = DtlFfb;
+        _panels["Minimal"] = DtlMinimal;
         _panels["Setup"] = DtlSetup;
         _panels["Network"] = DtlNetwork;
     }
@@ -227,6 +234,27 @@ public sealed partial class OverlaysPage : UserControl
     {
         if (!_loaded) return;
         UpdateBuilderUrl();
+    }
+
+    private void RefreshLayoutUrls()
+    {
+        UpdateUrl(UrlTower, SourceTower, QrTower, "/tower");
+        UpdateUrl(UrlInputs, SourceInputs, QrInputs, "/inputs");
+        UpdateUrl(UrlTires, SourceTires, QrTires, "/tires");
+        UpdateUrl(UrlFfb, SourceFfb, QrFfb, "/ffb");
+        UpdateUrl(UrlMinimal, SourceMinimal, QrMinimal, "/minimal");
+    }
+
+    private void OnLayoutSourceChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_loaded) return;
+        RefreshLayoutUrls();
+    }
+
+    private void OnLayoutSourceLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (!_loaded) return;
+        RefreshLayoutUrls();
     }
 
     private void SelectAllOnClick(object sender, MouseButtonEventArgs e)

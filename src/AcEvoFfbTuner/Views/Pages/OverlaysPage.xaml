@@ -35,14 +35,14 @@
                 </controls:SectionCard>
 
                 <!-- OBS STREAMER OVERLAY -->
-                <controls:SectionCard Title="OBS STREAMER OVERLAY"
-                                      Tag="Streamer"
-                                      SectionBrush="#FF79C0FF"
-                                      Selectable="True">
+                <controls:SectionCard Title="GT DASH · STREAMER OVERLAY"
+                                       Tag="Streamer"
+                                       SectionBrush="#FF79C0FF"
+                                       Selectable="True">
                     <controls:SectionCard.SummaryContent>
                         <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
-                            <Run Text="Streamer-friendly: " Foreground="#FF79C0FF" />
-                            <Run Text="speed, gear, RPM bar, force, track map, waveform" />
+                            <Run Text="GT3 dash: " Foreground="#FF79C0FF" />
+                            <Run Text="RPM LEDs, gear, speed, flags, FFB, tyres, G" />
                         </TextBlock>
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
@@ -62,13 +62,78 @@
 
                 <!-- CLIPPING INDICATOR -->
                 <controls:SectionCard Title="CLIPPING INDICATOR"
-                                      Tag="Clipping"
-                                      SectionBrush="#FFFF7B72"
-                                      Selectable="True">
+                                       Tag="Clipping"
+                                       SectionBrush="#FFFF7B72"
+                                       Selectable="True">
                     <controls:SectionCard.SummaryContent>
                         <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
                             <Run Text="Big CLIPPING/OK indicator " Foreground="#FFFF7B72" />
                             <Run Text="to warn viewers when FFB is clipping" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- RELATIVE TOWER -->
+                <controls:SectionCard Title="RELATIVE TOWER"
+                                       Tag="Tower"
+                                       SectionBrush="#FF56D4A0"
+                                       Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="Racecraft: " Foreground="#FF56D4A0" />
+                            <Run Text="position, gaps ahead/behind, lap, flag" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- INPUT TRACE -->
+                <controls:SectionCard Title="INPUT TRACE"
+                                       Tag="Inputs"
+                                       SectionBrush="#FFD2A8FF"
+                                       Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="Coaching: " Foreground="#FFD2A8FF" />
+                            <Run Text="throttle/brake traces, steering, FFB" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- TYRE & BRAKE -->
+                <controls:SectionCard Title="TYRE &amp; BRAKE"
+                                       Tag="Tires"
+                                       SectionBrush="#FFFFB86B"
+                                       Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FFFFB86B" TextWrapping="Wrap">
+                            <Run Text="Stint watch: " Foreground="#FFFFB86B" />
+                            <Run Text="4-corner temps, pressures, brake load, G" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- FFB HEALTH -->
+                <controls:SectionCard Title="FFB HEALTH"
+                                       Tag="Ffb"
+                                       SectionBrush="#FFFF7B72"
+                                       Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="Tuning: " Foreground="#FFFF7B72" />
+                            <Run Text="force, clipping, Mz/Fx/Fy channels" />
+                        </TextBlock>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- MINIMAL SHIFT -->
+                <controls:SectionCard Title="MINIMAL SHIFT"
+                                       Tag="Minimal"
+                                       SectionBrush="#FF8B949E"
+                                       Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="Tiny: " Foreground="#FFE6EDF3" />
+                            <Run Text="shift LEDs + gear + flag dot for VR" />
                         </TextBlock>
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
@@ -192,7 +257,7 @@
                             <StackPanel>
                                 <TextBlock Text="OBS Streamer Overlay" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
                                 <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
-                                    Clean streamer-friendly overlay showing speed, gear, RPM bar, force (Nm), clipping indicator, Mz/Fx/Fy channel values, lap counter, track position map, and scrolling force waveform. Optimized for OBS browser source with transparent background support.
+                                    GT3-style dash (Bosch DDU inspired): 15-LED RPM bar with shift flash, big central gear, speed, lap/position/gaps, full-width flag banner, TC/ABS/pit/limiter chips, FFB force bar with clipping alert, Mz/Fx/Fy channels, throttle/brake/steering, 4-corner tyre temps, G-meter, force waveform and track position. Transparent background support.
                                 </TextBlock>
                                 <Border Background="#FF0D1117" CornerRadius="6" Padding="4" Margin="0,0,0,8">
                                     <StackPanel>
@@ -381,6 +446,296 @@
                                                 <Image x:Name="QrClipping" Width="110" Height="110"
                                                        RenderOptions.BitmapScalingMode="HighQuality"
                                                        ToolTip="{Binding Text, ElementName=UrlClipping}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="Scan with your phone" FontSize="12" FontWeight="SemiBold" Foreground="#FFE6EDF3" />
+                                                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,0">Choose a network IP in Source above (not localhost) so your phone can reach the app. localhost only works on this PC.</TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- RELATIVE TOWER -->
+                    <StackPanel x:Name="DtlTower" Visibility="Collapsed">
+                        <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Relative Tower" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                                    Racecraft at a glance: big position readout, lap counter, live gaps ahead/behind, flag alerts, speed/gear and a mini shift bar. Dock it top-left of your stream or second monitor.
+                                </TextBlock>
+                                <Border Background="#FF0D1117" CornerRadius="6" Padding="4">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" x:Name="UrlTower" Text=""
+                                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                                     VerticalAlignment="Center" Padding="8,4"
+                                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                            <Button Grid.Column="1" Content="Copy" Tag="UrlTower"
+                                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                            <ComboBox Grid.Column="1" x:Name="SourceTower" IsEditable="True"
+                                                      SelectionChanged="OnLayoutSourceChanged"
+                                                      LostFocus="OnLayoutSourceLostFocus"
+                                                      Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                                      BorderBrush="#FF484F58" FontSize="13" />
+                                        </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="6">
+                                                <Image x:Name="QrTower" Width="110" Height="110"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       ToolTip="{Binding Text, ElementName=UrlTower}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="Scan with your phone" FontSize="12" FontWeight="SemiBold" Foreground="#FFE6EDF3" />
+                                                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,0">Choose a network IP in Source above (not localhost) so your phone can reach the app. localhost only works on this PC.</TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- INPUT TRACE -->
+                    <StackPanel x:Name="DtlInputs" Visibility="Collapsed">
+                        <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Input Trace" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                                    Driver coaching view: large throttle/brake traces with percentages, live steering wheel with degrees, and a scrolling FFB trace with clipping alert. Ideal for reviewing technique on stream.
+                                </TextBlock>
+                                <Border Background="#FF0D1117" CornerRadius="6" Padding="4">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" x:Name="UrlInputs" Text=""
+                                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                                     VerticalAlignment="Center" Padding="8,4"
+                                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                            <Button Grid.Column="1" Content="Copy" Tag="UrlInputs"
+                                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                            <ComboBox Grid.Column="1" x:Name="SourceInputs" IsEditable="True"
+                                                      SelectionChanged="OnLayoutSourceChanged"
+                                                      LostFocus="OnLayoutSourceLostFocus"
+                                                      Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                                      BorderBrush="#FF484F58" FontSize="13" />
+                                        </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="6">
+                                                <Image x:Name="QrInputs" Width="110" Height="110"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       ToolTip="{Binding Text, ElementName=UrlInputs}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="Scan with your phone" FontSize="12" FontWeight="SemiBold" Foreground="#FFE6EDF3" />
+                                                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,0">Choose a network IP in Source above (not localhost) so your phone can reach the app. localhost only works on this PC.</TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- TYRE & BRAKE -->
+                    <StackPanel x:Name="DtlTires" Visibility="Collapsed">
+                        <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Tyre &amp; Brake" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                                    Stint watch: 4-corner tyre temperatures with heat colours, pressures, per-wheel brake load bars, grip levels and a G-meter. Spot overheating fronts or a dragging brake before it costs you.
+                                </TextBlock>
+                                <Border Background="#FF0D1117" CornerRadius="6" Padding="4">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" x:Name="UrlTires" Text=""
+                                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                                     VerticalAlignment="Center" Padding="8,4"
+                                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                            <Button Grid.Column="1" Content="Copy" Tag="UrlTires"
+                                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                            <ComboBox Grid.Column="1" x:Name="SourceTires" IsEditable="True"
+                                                      SelectionChanged="OnLayoutSourceChanged"
+                                                      LostFocus="OnLayoutSourceLostFocus"
+                                                      Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                                      BorderBrush="#FF484F58" FontSize="13" />
+                                        </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="6">
+                                                <Image x:Name="QrTires" Width="110" Height="110"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       ToolTip="{Binding Text, ElementName=UrlTires}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="Scan with your phone" FontSize="12" FontWeight="SemiBold" Foreground="#FFE6EDF3" />
+                                                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,0">Choose a network IP in Source above (not localhost) so your phone can reach the app. localhost only works on this PC.</TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- FFB HEALTH -->
+                    <StackPanel x:Name="DtlFfb" Visibility="Collapsed">
+                        <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="FFB Health" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                                    Tuning view: big force readout with OK/CLIPPING status, scrolling force trace with clip lines, and live Mz/Fx/Fy channel bars. Keep it on a second monitor while dialling in gain.
+                                </TextBlock>
+                                <Border Background="#FF0D1117" CornerRadius="6" Padding="4">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" x:Name="UrlFfb" Text=""
+                                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                                     VerticalAlignment="Center" Padding="8,4"
+                                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                            <Button Grid.Column="1" Content="Copy" Tag="UrlFfb"
+                                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                            <ComboBox Grid.Column="1" x:Name="SourceFfb" IsEditable="True"
+                                                      SelectionChanged="OnLayoutSourceChanged"
+                                                      LostFocus="OnLayoutSourceLostFocus"
+                                                      Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                                      BorderBrush="#FF484F58" FontSize="13" />
+                                        </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="6">
+                                                <Image x:Name="QrFfb" Width="110" Height="110"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       ToolTip="{Binding Text, ElementName=UrlFfb}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="Scan with your phone" FontSize="12" FontWeight="SemiBold" Foreground="#FFE6EDF3" />
+                                                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#FF8B949E" Margin="0,4,0,0">Choose a network IP in Source above (not localhost) so your phone can reach the app. localhost only works on this PC.</TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- MINIMAL SHIFT -->
+                    <StackPanel x:Name="DtlMinimal" Visibility="Collapsed">
+                        <Border Background="#FF161B22" CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Minimal Shift" FontSize="20" FontWeight="SemiBold" Foreground="#FFE6EDF3" Margin="0,0,0,8" />
+                                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,12">
+                                    Tiny transparent strip: shift LEDs, gear, speed, flag dot and clipping dot. Made for VR overlays, small windows, or tucking into a corner of the stream.
+                                </TextBlock>
+                                <Border Background="#FF0D1117" CornerRadius="6" Padding="4">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" x:Name="UrlMinimal" Text=""
+                                                     Background="Transparent" BorderThickness="0" FontSize="14" FontFamily="Consolas"
+                                                     Foreground="#FF4FC3F7" IsReadOnly="True" IsTabStop="False"
+                                                     VerticalAlignment="Center" Padding="8,4"
+                                                     PreviewMouseLeftButtonDown="SelectAllOnClick" />
+                                            <Button Grid.Column="1" Content="Copy" Tag="UrlMinimal"
+                                                    Click="CopyUrl" Cursor="Hand" Margin="4,0" Padding="10,4"
+                                                    Background="#FF30363D" Foreground="#FFE6EDF3"
+                                                    BorderThickness="1" BorderBrush="#FF484F58" FontSize="12" />
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Source:" VerticalAlignment="Center" FontSize="12" Foreground="#FF8B949E" Margin="0,0,8,0" />
+                                            <ComboBox Grid.Column="1" x:Name="SourceMinimal" IsEditable="True"
+                                                      SelectionChanged="OnLayoutSourceChanged"
+                                                      LostFocus="OnLayoutSourceLostFocus"
+                                                      Background="#FF0D1117" Foreground="#FFE6EDF3"
+                                                      BorderBrush="#FF484F58" FontSize="13" />
+                                        </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="6">
+                                                <Image x:Name="QrMinimal" Width="110" Height="110"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       ToolTip="{Binding Text, ElementName=UrlMinimal}" />
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                                                 <TextBlock Text="Scan with your phone" FontSize="12" FontWeight="SemiBold" Foreground="#FFE6EDF3" />

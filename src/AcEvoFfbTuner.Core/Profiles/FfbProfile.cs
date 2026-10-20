@@ -16,7 +16,7 @@ public enum ProfileScope
 
 public sealed class FfbProfile
 {
-    public const int CurrentVersion = 21;
+    public const int CurrentVersion = 22;
 
     public int Version { get; set; } = CurrentVersion;
     public string Name { get; set; } = "Default";
@@ -97,6 +97,7 @@ public sealed class FfbProfile
     public StaticFrictionConfig StaticFriction { get; set; } = new();
     public CrashConfig Crash { get; set; } = new();
     public TyreConditionConfig TyreCondition { get; set; } = new();
+    public AcSynthConfig AcSynth { get; set; } = new();
     public WetWeatherConfig WetWeather { get; set; } = new();
     public SoftLockConfig SoftLock { get; set; } = new();
     public GyroConfig Gyro { get; set; } = new();
@@ -189,6 +190,20 @@ public sealed class FfbProfile
             ac.GearSpikeThreshold = Slip.GearSpikeThreshold;
             ac.BrakeBoostGain = Slip.BrakeBoostGain;
             ac.BrakeBoostThreshold = Slip.BrakeBoostThreshold;
+            ac.CoreSmoothing = Slip.CoreSmoothing;
+            ac.DetailSmoothing = Slip.DetailSmoothing;
+            // AC1 synthesizer settings
+            var synth = AcSynth;
+            ac.SynthGain = synth.Gain;
+            ac.SynthSpeedRefKmh = synth.SpeedRefKmh;
+            ac.SynthMinSpeedKmh = synth.MinSpeedKmh;
+            ac.SynthSlipThreshold = synth.SlipThreshold;
+            ac.SynthSlipReduction = synth.SlipReduction;
+            ac.SynthMinGrip = synth.MinGrip;
+            ac.SynthBrakeBoost = synth.BrakeBoost;
+            ac.SynthThrottleCut = synth.ThrottleCut;
+            ac.SynthLatScale = synth.LatScale;
+            ac.SynthLoadTransferGain = synth.LoadTransferGain;
         }
 
         if (pipeline is LmuFfbPipeline lmu)
@@ -214,6 +229,9 @@ public sealed class FfbProfile
             lmu.YawOnsetMax = Slip.YawOnsetMax;
             lmu.SuspRoadScale = Slip.SuspRoadScale;
             lmu.UseMixerSuspRoad = Slip.UseMixerSuspRoad;
+            lmu.UseNativeTorqueSign = Slip.UseNativeTorqueSign;
+            lmu.SelfSteerGain = Slip.SelfSteerGain;
+            lmu.RoadTextureGain = Slip.RoadTextureGain;
             lmu.BrakeLoadBias = Slip.BrakeLoadBias;
             lmu.SynthYawEnabled = Slip.SynthYawEnabled;
             lmu.SynthAbsEnabled = Slip.SynthAbsEnabled;
@@ -362,6 +380,12 @@ public sealed class FfbProfile
         sf.ActiveDecay = StaticFriction.ActiveDecay;
         sf.ReturnDecay = StaticFriction.ReturnDecay;
         sf.OutputSmoothAlpha = StaticFriction.OutputSmoothAlpha;
+        sf.BreakoutGain = StaticFriction.BreakoutGain;
+        sf.BreakoutFrequencyHz = StaticFriction.BreakoutFrequencyHz;
+        sf.ScrubGain = StaticFriction.ScrubGain;
+        sf.LoadAsymmetryGain = StaticFriction.LoadAsymmetryGain;
+        sf.PressureSensitivity = StaticFriction.PressureSensitivity;
+        sf.SurfaceResponseEnabled = StaticFriction.SurfaceResponseEnabled;
     }
 
     public static FfbProfile CreateFromPipeline(FfbPipeline pipeline, string name)
@@ -460,8 +484,8 @@ public sealed class FfbProfile
             EngineTorqueLfeMod = r3ePipe?.EngineTorqueLfeMod ?? prevSlip.EngineTorqueLfeMod,
             BrakePressureGain = r3ePipe?.BrakePressureGain ?? prevSlip.BrakePressureGain,
             TcFeelGain = r3ePipe?.TcFeelGain ?? prevSlip.TcFeelGain,
-            CoreSmoothing = r3ePipe?.CoreSmoothing ?? lmuPipe?.CoreSmoothing ?? prevSlip.CoreSmoothing,
-            DetailSmoothing = r3ePipe?.DetailSmoothing ?? lmuPipe?.DetailSmoothing ?? prevSlip.DetailSmoothing,
+            CoreSmoothing = r3ePipe?.CoreSmoothing ?? lmuPipe?.CoreSmoothing ?? acPipe?.CoreSmoothing ?? prevSlip.CoreSmoothing,
+            DetailSmoothing = r3ePipe?.DetailSmoothing ?? lmuPipe?.DetailSmoothing ?? acPipe?.DetailSmoothing ?? prevSlip.DetailSmoothing,
             GripScaleGain = lmuPipe?.GripScaleGain ?? prevSlip.GripScaleGain,
             TyreTempGain = lmuPipe?.TyreTempGain ?? prevSlip.TyreTempGain,
             RearGripDetailGain = lmuPipe?.RearGripDetailGain ?? prevSlip.RearGripDetailGain,
@@ -478,6 +502,9 @@ public sealed class FfbProfile
             YawOnsetMax = lmuPipe?.YawOnsetMax ?? prevSlip.YawOnsetMax,
             SuspRoadScale = lmuPipe?.SuspRoadScale ?? prevSlip.SuspRoadScale,
             UseMixerSuspRoad = lmuPipe != null ? lmuPipe.UseMixerSuspRoad : prevSlip.UseMixerSuspRoad,
+            UseNativeTorqueSign = lmuPipe != null ? lmuPipe.UseNativeTorqueSign : prevSlip.UseNativeTorqueSign,
+            SelfSteerGain = lmuPipe?.SelfSteerGain ?? prevSlip.SelfSteerGain,
+            RoadTextureGain = lmuPipe?.RoadTextureGain ?? prevSlip.RoadTextureGain,
             BrakeLoadBias = lmuPipe?.BrakeLoadBias ?? prevSlip.BrakeLoadBias,
             SynthYawEnabled = lmuPipe != null ? lmuPipe.SynthYawEnabled : prevSlip.SynthYawEnabled,
             SynthAbsEnabled = lmuPipe != null ? lmuPipe.SynthAbsEnabled : prevSlip.SynthAbsEnabled,
@@ -1149,6 +1176,14 @@ public sealed class FfbProfile
             Scope = ProfileScope.General;
         }
 
+        if (Version < 22)
+        {
+            StaticFriction ??= new StaticFrictionConfig();
+            // New stationary-detail fields deserialize to their C# defaults
+            // when missing from old JSON — no overwrite of user-tuned base
+            // stationary values. Nothing else to migrate.
+        }
+
         Version = CurrentVersion;
     }
 }
@@ -1283,6 +1318,14 @@ public sealed class SlipConfig
     // Plan C5: mixer susp-road scale/gate (1/true = current stacking).
     public float SuspRoadScale { get; set; } = 1f;
     public bool UseMixerSuspRoad { get; set; } = true;
+    // LMU only: core direction from the game's signed torque (true) or the
+    // legacy steer-derived centring sign (false, A/B only). Missing key in
+    // older profiles deserializes to true = the fix.
+    public bool UseNativeTorqueSign { get; set; } = true;
+    // LMU only: fraction of the game's oversteer self-steer torque felt.
+    public float SelfSteerGain { get; set; } = 0.5f;
+    // LMU only: zero-mean kerb/bump/slip texture in the steering force.
+    public float RoadTextureGain { get; set; } = 1f;
     // Plan C6: brake load bias (0 = legacy scalar only).
     public float BrakeLoadBias { get; set; } = 0f;
     // Plan C1: synthesis gates (yaw on; ABS/TC off until tuned).
@@ -1302,7 +1345,7 @@ public sealed class SlipConfig
     public float DetailSmoothing { get; set; } = 0.0f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); GearSpikeThreshold = S(GearSpikeThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); GripScaleGain = S(GripScaleGain); TyreTempGain = S(TyreTempGain); ForceGain = S(ForceGain); TyreGripScale = S(TyreGripScale); FlatspotGain = S(FlatspotGain); SurfaceFeelGain = S(SurfaceFeelGain); EngineTorqueLfeMod = S(EngineTorqueLfeMod); BrakePressureGain = S(BrakePressureGain); TcFeelGain = S(TcFeelGain); CoreSmoothing = S(CoreSmoothing); DetailSmoothing = S(DetailSmoothing); RearGripDetailGain = S(RearGripDetailGain); AutoMinPeak = S(AutoMinPeak); AutoTarget = S(AutoTarget); DcBlockCutoffHz = S(DcBlockCutoffHz); RearFyScale = S(RearFyScale); RearSlipAngleThreshold = S(RearSlipAngleThreshold); RearYawThreshold = S(RearYawThreshold); RearMaxOutput = S(RearMaxOutput); YawOnsetGain = S(YawOnsetGain); YawOnsetThreshold = S(YawOnsetThreshold); YawOnsetDecay = S(YawOnsetDecay); YawOnsetMax = S(YawOnsetMax); SuspRoadScale = S(SuspRoadScale); BrakeLoadBias = S(BrakeLoadBias); LockupSlipThreshold = S(LockupSlipThreshold); SpinSlipThreshold = S(SpinSlipThreshold); }
+    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); GearSpikeThreshold = S(GearSpikeThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); GripScaleGain = S(GripScaleGain); TyreTempGain = S(TyreTempGain); ForceGain = S(ForceGain); TyreGripScale = S(TyreGripScale); FlatspotGain = S(FlatspotGain); SurfaceFeelGain = S(SurfaceFeelGain); EngineTorqueLfeMod = S(EngineTorqueLfeMod); BrakePressureGain = S(BrakePressureGain); TcFeelGain = S(TcFeelGain); CoreSmoothing = S(CoreSmoothing); DetailSmoothing = S(DetailSmoothing); RearGripDetailGain = S(RearGripDetailGain); SelfSteerGain = S(SelfSteerGain); RoadTextureGain = S(RoadTextureGain); AutoMinPeak = S(AutoMinPeak); AutoTarget = S(AutoTarget); DcBlockCutoffHz = S(DcBlockCutoffHz); RearFyScale = S(RearFyScale); RearSlipAngleThreshold = S(RearSlipAngleThreshold); RearYawThreshold = S(RearYawThreshold); RearMaxOutput = S(RearMaxOutput); YawOnsetGain = S(YawOnsetGain); YawOnsetThreshold = S(YawOnsetThreshold); YawOnsetDecay = S(YawOnsetDecay); YawOnsetMax = S(YawOnsetMax); SuspRoadScale = S(SuspRoadScale); BrakeLoadBias = S(BrakeLoadBias); LockupSlipThreshold = S(LockupSlipThreshold); SpinSlipThreshold = S(SpinSlipThreshold); }
 }
 
 public sealed class DynamicConfig
@@ -1627,8 +1670,26 @@ public sealed class StaticFrictionConfig
     /// <summary>Output EMA alpha for smoothing quantization artifacts. 0.35 = responsive but smooth. 1.0 = no smoothing.</summary>
     public float OutputSmoothAlpha { get; set; } = 0.35f;
 
+    /// <summary>Stick-slip judder amplitude near/after breakaway (0-1). 0 = off.</summary>
+    public float BreakoutGain { get; set; } = 0.35f;
+
+    /// <summary>Stick-slip judder frequency Hz (20-70).</summary>
+    public float BreakoutFrequencyHz { get; set; } = 42f;
+
+    /// <summary>Scrub grain amplitude (0-1): tread/aggregate texture while twisting. 0 = off.</summary>
+    public float ScrubGain { get; set; } = 0.30f;
+
+    /// <summary>Front load-asymmetry feel (0-1). 0 = off.</summary>
+    public float LoadAsymmetryGain { get; set; } = 0.5f;
+
+    /// <summary>Tyre-pressure sensitivity (0-1). 0 = off.</summary>
+    public float PressureSensitivity { get; set; } = 0.4f;
+
+    /// <summary>Respond to R3E TireOnMtrl surface.</summary>
+    public bool SurfaceResponseEnabled { get; set; } = true;
+
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { Gain = S(Gain); MaxElasticStretch = S(MaxElasticStretch); SpringStiffness = S(SpringStiffness); KineticFrictionBase = S(KineticFrictionBase); EngineOffDamping = S(EngineOffDamping); EngineOnDamping = S(EngineOnDamping); EngineOffScale = S(EngineOffScale); EngineOnScale = S(EngineOnScale); ActiveDecay = S(ActiveDecay); ReturnDecay = S(ReturnDecay); OutputSmoothAlpha = S(OutputSmoothAlpha); }
+    public void SanitizeFloats() { Gain = S(Gain); MaxElasticStretch = S(MaxElasticStretch); SpringStiffness = S(SpringStiffness); KineticFrictionBase = S(KineticFrictionBase); EngineOffDamping = S(EngineOffDamping); EngineOnDamping = S(EngineOnDamping); EngineOffScale = S(EngineOffScale); EngineOnScale = S(EngineOnScale); ActiveDecay = S(ActiveDecay); ReturnDecay = S(ReturnDecay); OutputSmoothAlpha = S(OutputSmoothAlpha); BreakoutGain = S(BreakoutGain); BreakoutFrequencyHz = S(BreakoutFrequencyHz); ScrubGain = S(ScrubGain); LoadAsymmetryGain = S(LoadAsymmetryGain); PressureSensitivity = S(PressureSensitivity); }
 }
 
 public sealed class CrashConfig
@@ -1782,4 +1843,22 @@ public sealed class MozaMotorConfig
         motor.SetNaturalInertia(NaturalInertia);
         motor.SetNaturalInertiaRatio(NaturalInertiaRatio);
     }
+}
+
+/// <summary>
+/// AC1 telemetry-to-force synthesizer settings. All values are applied to
+/// AcFfbPipeline only — zero impact on EVO/R3E/LMU.
+/// </summary>
+public sealed class AcSynthConfig
+{
+    public float Gain { get; set; } = 1.0f;
+    public float SpeedRefKmh { get; set; } = 80f;
+    public float MinSpeedKmh { get; set; } = 3f;
+    public float SlipThreshold { get; set; } = 0.2f;
+    public float SlipReduction { get; set; } = 0.6f;
+    public float MinGrip { get; set; } = 0.15f;
+    public float BrakeBoost { get; set; } = 0.3f;
+    public float ThrottleCut { get; set; } = 0.1f;
+    public float LatScale { get; set; } = 0.07f;
+    public float LoadTransferGain { get; set; } = 1.0f;
 }

@@ -1,34 +1,59 @@
-# Test Drive Page: Remove Hero Join Discord Button, Add Footer Link — Plan
+# API outage — root cause found: error 2014 from ANALYZE TABLE via exec()
 
-## Problem
+## Evidence (host error log, 2026-10-02 23:07)
 
-`beta.html` hero has both "Apply Now" and "Join Discord" CTAs. Two Discord entry
-points confuse the apply flow — "Join Discord" looks like it could be the
-sign-in step, but the real sign-in is the "Continue with Discord" OAuth flow in
-the apply section. The only Discord invite on the page is the hero button
-(beta.html:67-70); the login box, FAQ, and rewards copy all already point into
-the apply flow.
+```
+[db.php] unique credit guard creation failed: SQLSTATE[HY000]: General error: 2014
+  Cannot execute queries while other unbuffered queries are active... — deduping + retrying
+[db.php] credit guard still failing after dedupe: (same 2014)
+[beta.php] (same 2014) @ beta.php:376 / :545 / :563
+```
 
-## Change (website only, HTML only)
+## Root cause (my regression)
 
-1. **`website/beta.html` — hero** (lines 63-71): remove the "Join Discord"
-   `<a href="https://discord.gg/wDrE2PZJyN">` button block. "Apply Now" becomes
-   the single hero CTA (hero-actions container centers fine with one button).
-2. **`website/beta.html` — footer**: add a subdued "Discord" footer link to the
-   community server: `<li><a href="https://discord.gg/wDrE2PZJyN" target="_blank" rel="noopener">Discord</a></li>`
-   alongside the other footer links (e.g. after Hub / near GitHub) — the footer
-   links are already dim, so it reads as a community link, not a CTA.
+`ANALYZE TABLE beta_credits` was added to `ensureSchema` via
+`$pdo->exec(...)`. `ANALYZE TABLE` **returns a result set**; `exec()` does not
+consume it, leaving an unbuffered pending result on the connection. Every
+subsequent query on that request then throws MySQL error 2014.
 
-No JS or CSS changes. `index.html`'s beta section keeps its "Join Discord"
-button (main site, out of scope).
+Why the symptom pattern fits exactly:
+- `status` / `podium` / `me` → call `db()` → poisoned connection → 500
+- unknown actions → never call `db()` → 404 (dispatch alive)
+- The guard index itself already exists (`#1061` earlier); only the migration
+  path is broken.
 
-## Validation
+## Fix (website/api/db.php only)
 
-- `grep beta.html` for `discord.gg` → exactly 1 match (footer).
-- `grep beta.html` for "Join Discord" → 0 matches.
-- Hero shows only "Apply Now"; apply flow unchanged (login box "Continue with
-  Discord" untouched).
+1. **Remove both `ANALYZE TABLE ... exec()` calls.** `db_status` now derives
+   its verdict from `SHOW CREATE TABLE` (live metadata), so the
+   information_schema stats cache no longer matters — ANALYZE was unnecessary
+   and is the outage source.
+2. **Make the unique-guard migration conditional**: check `SHOW INDEX FROM
+   beta_credits` with `query()->fetchAll()` (result consumed) and only attempt
+   `CREATE UNIQUE INDEX` when the guard is missing. Removes per-request
+   attempts and log spam now that the index exists.
+3. **Add `PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true`** to the MySQL PDO
+   options (the error's own recommendation) — hardening so a stray unconsumed
+   result can never poison the connection again.
+4. Keep dedupe + retry, with `error_log` only on genuine failure (no noise on
+   the happy path).
 
-## Files touched
+`beta.php` unchanged — the :376/:545/:563 errors are collateral from the
+poisoned connection.
 
-- `website/beta.html`
+## Verification after deploy
+
+1. `?action=status` and `?action=podium` → **200** (currently 500)
+2. Admin dashboard loads; `me` → 200; banner shows healthy (guard exists,
+   evidence printed if not)
+3. No new `[db.php]` / `2014` lines in the host error log
+4. Click Verified → task ticks Verified, 1 credit row, `verifiedTasks: 1`
+
+## Files
+
+- `website/api/db.php`
+
+## Out of scope
+
+No commits/pushes, no app (C#) changes, README already documents the guard +
+self-heal (the ANALYZE mention should be trimmed when editing README next).

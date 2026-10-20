@@ -682,7 +682,7 @@
 
                         <!-- STEERING FRICTION -->
                         <StackPanel x:Name="DtlSteeringFriction" Visibility="Collapsed">
-                            <TextBlock Text="Simulates stationary tyre scrub when the car is stopped. Uses elastic displacement model — no centering bias, no oscillation." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
+                            <TextBlock Text="Simulates stationary tyre scrub when the car is stopped. Universal — works in all games (EVO/R3E/LMU/AC/ACC). Uses elastic displacement model — no centering bias, no oscillation. Fades out 0.4-1.2 km/h so it never overlaps driving forces." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,8" TextWrapping="Wrap" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Master Gain" StringFormat="{}{0:F2}"
                                 Description="Overall intensity of stationary friction. 0 = disabled, 1 = normal, 2 = extra heavy."
@@ -741,6 +741,43 @@
                                         Description="EMA alpha for smoothing force output. 0.35 = smooth but responsive, 1.0 = no smoothing. Reduces notchy feel from game's discrete steer steps."
                                         DefaultValue="{Binding BuiltInDefaults.StaticFriction.OutputSmoothAlpha}"
                                         SectionColor="{StaticResource SectionDamping}" />
+                                </StackPanel>
+                            </Expander>
+
+                            <Expander Style="{StaticResource SectionExpander}" Header="Stationary Detail (tyre twist)">
+                                <StackPanel>
+                                    <controls:LabeledSlider Value="{Binding StaticFrictionBreakoutGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                        Label="Breakout Judder" StringFormat="{}{0:F2}"
+                                        Description="Stick-slip judder near breakaway as the contact patch catches and releases. 0 = off, 0.35 default. Higher = more pronounced judder."
+                                        DefaultValue="{Binding BuiltInDefaults.StaticFriction.BreakoutGain}"
+                                        SectionColor="{StaticResource SectionDamping}" />
+                                    <controls:LabeledSlider Value="{Binding StaticFrictionBreakoutFrequencyHz, Mode=TwoWay}" Minimum="20" Maximum="70" TickFrequency="1"
+                                        Label="Judder Frequency" StringFormat="{}{0:F0} Hz"
+                                        Description="Stick-slip judder frequency. 42 Hz default (tyre judder band)."
+                                        DefaultValue="{Binding BuiltInDefaults.StaticFriction.BreakoutFrequencyHz}"
+                                        SectionColor="{StaticResource SectionDamping}" />
+                                    <controls:LabeledSlider Value="{Binding StaticFrictionScrubGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                        Label="Scrub Grain" StringFormat="{}{0:F2}"
+                                        Description="Tread-block/aggregate texture felt while twisting the stationary tyre. Travel-driven (grainy, not buzzy). 0 = off, 0.30 default."
+                                        DefaultValue="{Binding BuiltInDefaults.StaticFriction.ScrubGain}"
+                                        SectionColor="{StaticResource SectionDamping}" />
+                                    <controls:LabeledSlider Value="{Binding StaticFrictionLoadAsymmetryGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                        Label="Load Asymmetry" StringFormat="{}{0:F2}"
+                                        Description="Subtle weight from left/right front-load difference (driver/fuel). 0 = off, 0.5 default."
+                                        DefaultValue="{Binding BuiltInDefaults.StaticFriction.LoadAsymmetryGain}"
+                                        SectionColor="{StaticResource SectionDamping}" />
+                                    <controls:LabeledSlider Value="{Binding StaticFrictionPressureSensitivity, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
+                                        Label="Pressure Feel" StringFormat="{}{0:F2}"
+                                        Description="Low tyre pressure = heavier + grainier. Auto-detects PSI vs kPa. 0 = off, 0.4 default."
+                                        DefaultValue="{Binding BuiltInDefaults.StaticFriction.PressureSensitivity}"
+                                        SectionColor="{StaticResource SectionDamping}" />
+                                    <DockPanel Margin="0,6">
+                                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                            <TextBlock Text="Surface Response" Width="160" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
+                                            <CheckBox IsChecked="{Binding StaticFrictionSurfaceResponseEnabled}" Margin="0,0,12,0" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <TextBlock Text="Surface response uses R3E kerb-material data (grass/dirt/gravel lighter, rumble heavier). Other games stay neutral." FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Expander>
                         </StackPanel>
@@ -864,6 +901,19 @@
                                 Description="Extra centering force when braking (weight transfer increases front grip). 0 = off. 0.15 = subtle. Higher = stronger brake pull."
                                 DefaultValue="0.15"
                                 SectionColor="{StaticResource SectionTyreSlip}" />
+                            <DockPanel Margin="0,6" Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}">
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                    <TextBlock Text="Native Torque Direction" Width="160" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                    <CheckBox IsChecked="{Binding UseNativeTorqueSign}" Margin="0,0,12,0" />
+                                </StackPanel>
+                                <TextBlock Text="On = force follows LMU's own torque direction, so the wheel self-steers into countersteer when the rear steps out and carries real road/camber feel on straights. Off = legacy: always pulls to centre (fights countersteer). Leave on; off is for A/B only." FontSize="13" Foreground="#FF8B949E" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            </DockPanel>
+                            <controls:LabeledSlider Value="{Binding SelfSteerGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.05"
+                                Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}"
+                                Label="Slide Self-Steer" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="How much of LMU's slide torque you feel when the rear steps out and the wheel pulls into the countersteer. 1 = full game force (can yank the wheel to lock in a spin). 0.5 = half. 0 = wheel goes light in slides. Normal cornering is unaffected."
+                                DefaultValue="0.5"
+                                SectionColor="{StaticResource SectionTyreSlip}" />
                             <controls:LabeledSlider Value="{Binding BrakeBoostThreshold, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Brake Boost Threshold" LabelWidth="175" StringFormat="{}{0:F2}"
                                 Description="Brake pedal position where boost starts. 0.1 = light brake touch engages. Higher = need harder braking."
@@ -878,6 +928,12 @@
                                 SectionColor="{StaticResource SectionTyreSlip}" />
 
                             <TextBlock Text="Texture &amp; Effects" Style="{StaticResource SubSectionHeader}" />
+                            <controls:LabeledSlider Value="{Binding RoadTextureGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}"
+                                Label="Road Texture" LabelWidth="175" StringFormat="{}{0:F2}"
+                                Description="Kerb strikes, bumps and wheel-slip texture in the steering force. Short knocks that never pull the wheel to one side. 1 = full detail, 0 = off (the separate vibration buzz still plays). Kerb/Slip gains under Vibrations shape what feeds it."
+                                DefaultValue="1"
+                                SectionColor="{StaticResource SectionTyreSlip}" />
                             <controls:LabeledSlider Value="{Binding EngineTorqueLfeMod, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
                                 Label="Torque LFE Mod" LabelWidth="175" StringFormat="{}{0:F2}"
                                 Description="Scales engine rumble (LFE) by actual engine torque from telemetry. 0 = torque doesn't affect LFE."
@@ -924,7 +980,7 @@
                             <controls:LabeledSlider Value="{Binding GripScaleGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Visibility="{Binding IsGripScaleAndTempVisible, Converter={StaticResource BoolToVis}}"
                                 Label="Grip Scale" LabelWidth="175" StringFormat="{}{0:F3}"
-                                Description="How much centering force fades as the front tyres approach grip limit. 0 = always full force, 1 = full fade at zero grip. Uses LMU's real grip fraction per wheel."
+                                Description="How much centering force fades as the front tyres lock or spin (front wheel-speed slip ratio). 0 = always full force, 1 = full fade at a hard lockup. LMU's native grip fraction is unusable, so this does not react to cornering understeer — LMU's own torque already lightens for that."
                                 DefaultValue="{Binding BuiltInDefaults.Lmu.GripScaleGain}"
                                 SectionColor="{StaticResource SectionTyreSlip}" />
                             <controls:LabeledSlider Value="{Binding TyreTempGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"

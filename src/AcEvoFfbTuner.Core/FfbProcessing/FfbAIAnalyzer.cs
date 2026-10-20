@@ -571,7 +571,9 @@ Analyze this telemetry data and the current profile values. Identify FFB issues 
                 profile.StaticFriction?.SpringStiffness,
                 profile.StaticFriction?.KineticFrictionBase,
                 profile.StaticFriction?.EngineOffDamping,
-                profile.StaticFriction?.EngineOnDamping
+                profile.StaticFriction?.EngineOnDamping,
+                profile.StaticFriction?.BreakoutGain,
+                profile.StaticFriction?.ScrubGain
             },
             GripGuard = new
             {
@@ -919,13 +921,15 @@ clipping, but don't leave too much headroom either.
 - `suggestedValue` MUST be inside the slider min–max and differ from `currentValue` by a meaningful step.
 - Every recommendation needs `reason` (WHY it fixes the data issue) and `impact` (what the driver will feel).
 
-### Static Friction — Parking Lot Feel (UI section: per-wheel games EVO/AC/ACC only)
+### Static Friction — Parking Lot Feel (universal: all games, standstill only)
 | Parameter | Slider Range | Effect |
 |-----------|-------|--------|
 | Gain (StaticFrictionGain) | 0–2 | Overall static friction strength. 1-1.5 typical |
 | MaxElasticStretch | 0.001–0.05 | How far wheel stretches before breaking friction. 0.01-0.03 typical |
 | SpringStiffness | 1-50 | Centering spring rate. 20-50 typical |
 | KineticFrictionBase | 0–1 | Sliding friction when wheels not driven. 0.1-0.25 typical |
+| BreakoutGain | 0–1 | Stick-slip judder near breakaway. 0.2-0.5 typical |
+| ScrubGain | 0–1 | Tyre-twist grain texture. 0.2-0.4 typical |
 
 ## Tuning Guidelines
 

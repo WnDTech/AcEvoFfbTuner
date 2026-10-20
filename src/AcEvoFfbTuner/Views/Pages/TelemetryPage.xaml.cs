@@ -256,8 +256,12 @@ public partial class TelemetryPage : UserControl
         {
             bool sustained = clipRate > 0.05f || clipPct > 5f;
             bool hot = !sustained && peakHold >= 0.8f;
+            // Universal wording: lower MasterGain / Center Strength works on
+            // every game. ("Raise ForceScale" was EVO-only — LMU's core
+            // divides by 120/ForceScale so raising it strengthens, and R3E
+            // ignores ForceScale entirely.)
             ProfHeadroomHint.Text = sustained
-                ? "Sustained clipping — raise ForceScale / lower MasterGain for 20-30% headroom."
+                ? "Sustained clipping — lower MasterGain / Center Strength for 20-30% headroom."
                 : hot ? "Near full scale — leave 20-30% headroom."
                 : "Headroom OK.";
             ProfHeadroomHint.Foreground = sustained ? Brushes.Red

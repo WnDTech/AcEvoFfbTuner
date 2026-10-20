@@ -43,6 +43,16 @@ public sealed class FfbDeviceManager : IDisposable
     /// lets the game keep its force path untouched.</summary>
     public bool InputOnlyMode { get; set; }
 
+    /// <summary>Requested by the game layer for DI-input games (Assetto Corsa 1:
+    /// its 2014 engine reads wheel/pedals through DirectInput). Our DI force
+    /// effects require an EXCLUSIVE acquire, which starves such games of ALL
+    /// input (wheel invisible in settings, dead on track). When true, the next
+    /// connect acquires NON-exclusively (same as InputOnlyMode): the game owns
+    /// the wheel with its native FFB while the app keeps telemetry/LED/HF8/
+    /// snapshot duties. Scoped per-game by the caller — EVO and other games
+    /// keep exclusive mode untouched.</summary>
+    public bool SharedWheelMode { get; set; }
+
     /// <summary>Serializes ALL DirectInput device creation across the app.
     /// The field crashes (offset 0x279e58/0x28299c, every version) happen when
     /// the FFB connect and the pedal-source enumeration create DI devices on
@@ -464,9 +474,10 @@ public sealed class FfbDeviceManager : IDisposable
         ConnLog($"WindowHandle: 0x{_windowHandle.ToInt64():X8} IsZero={_windowHandle == IntPtr.Zero}");
         ConnLog($"Primary acquired: {_isAcquired}, Secondary acquired: {_secondaryAcquired}");
         ConnLog($"DirectInput instance: {_directInput != null}, Device: {_device != null}");
-        InputOnlyMode = WheelbaseFactory.IsTrueForceStreamWheel(deviceInfo.ProductName)
-                        && !WheelbaseFactory.ForceDiForTrueForce;
-        ConnLog($"InputOnlyMode: {InputOnlyMode} — TrueForce-stream wheel: force rides the HID stream, DI acquired input-only (non-exclusive, no effects)");
+        InputOnlyMode = (WheelbaseFactory.IsTrueForceStreamWheel(deviceInfo.ProductName)
+                        && !WheelbaseFactory.ForceDiForTrueForce)
+                        || SharedWheelMode;
+        ConnLog($"InputOnlyMode: {InputOnlyMode} (TrueForce={WheelbaseFactory.IsTrueForceStreamWheel(deviceInfo.ProductName)}, SharedWheel={SharedWheelMode}) — non-exclusive input-only acquire, game keeps its force path");
 
         DisconnectDevice();
         DisconnectSecondaryDevice();
@@ -531,6 +542,13 @@ public sealed class FfbDeviceManager : IDisposable
                     DiscoverFfAxes();
                     ConnLog($"FFB axes: {string.Join(",", _ffAxes ?? Array.Empty<int>())}, Periodic: {SupportsPeriodicEffects}");
                 }
+                try
+                {
+                    int btnCount = GetButtonNames()?.Count ?? 0;
+                    ConnLog($"Buttons on acquired handle: {btnCount}" +
+                        (btnCount == 0 ? " — wheel buttons may live on a companion interface; snapshot/vJoy buttons will read empty" : ""));
+                }
+                catch { }
                 ConnectedDevice = deviceInfo;
 
                 ResetLostState();
@@ -747,6 +765,48 @@ public sealed class FfbDeviceManager : IDisposable
         _ffAxes = null;
         ConnectedDevice = null;
         DeviceDisconnected?.Invoke();
+    }
+
+    /// <summary>
+    /// Reconnects the currently-connected wheel (e.g. after SharedWheelMode
+    /// changed on a game switch). Returns false when no device is connected.
+    /// </summary>
+    public bool ReconnectDevice()
+    {
+        var current = ConnectedDevice;
+        if (current == null) return false;
+        ConnLog($"ReconnectDevice: {current.ProductName} (SharedWheel={SharedWheelMode})");
+        return TryConnectDevice(current);
+    }
+
+    /// <summary>
+    /// Physical buttons the acquired wheel handle reports (for the AC setup
+    /// card + vJoy slot planning). Fail-closed 0 when disconnected.
+    /// </summary>
+    public int GetPhysicalButtonCount()
+    {
+        try { return GetButtonNames()?.Count ?? 0; }
+        catch { return 0; }
+    }
+
+    /// <summary>
+    /// Finds the vJoy virtual joystick in the DirectInput enumeration (for
+    /// the AC1 bridge one-click binding). Returns null when the vJoy driver
+    /// is not installed or no virtual device is enabled.
+    /// </summary>
+    public FfbDeviceInfo? FindVJoyDevice()
+    {
+        try
+        {
+            foreach (var dev in EnumerateFfbDevices())
+            {
+                var name = dev.ProductName ?? "";
+                if (name.Contains("vJoy", StringComparison.OrdinalIgnoreCase))
+                    return dev;
+            }
+        }
+        catch { }
+        return null;
     }
 
     /// <summary>
@@ -1278,6 +1338,8 @@ public sealed class FfbDeviceManager : IDisposable
     }
 
     public bool IsLedControllerConnected => _ledController.IsConnected;
+    public bool IsLogitechLegacyWheelConnected => _ledController.IsLogitechLegacyWheel;
+    public bool TrySetLogitechWheelRange(int degrees) => _ledController.TrySetLogitechRange(degrees);
     public WheelVendor LedControllerVendor => _ledController.Vendor;
     public string LedDiagnosticInfo => _ledController.DiagnosticSummary;
     public int LedCount => _ledController.LedCount;

@@ -95,8 +95,44 @@ public sealed class LmuFfbPipeline : FfbPipeline
     public float LockupSlipThreshold { get; set; } = -0.12f;
     public float SpinSlipThreshold { get; set; } = -0.12f;
 
+    // Core direction source. true = the game's signed shaft torque (inverted
+    // to the output convention: in steady cornering LMU torque runs opposite
+    // to steer in 89-99% of rows, verified across 22 Oct 2026 snapshots).
+    // false = legacy |torque| x tanh(steer) — always centres, so it pushed
+    // AGAINST the driver's countersteer in oversteer, where LMU's torque
+    // self-steers into the slide (verified 2026-10-17: +30..+61 Nm
+    // same-as-steer during a power slide, legacy output +0.5..+0.975
+    // centring). Kept for A/B comparison only.
+    public bool UseNativeTorqueSign { get; set; } = true;
+
+    // Scale applied to the core only while it self-steers (pushes AWAY from
+    // centre — oversteer/spin). LMU's self-steer torque runs as high as peak
+    // cornering (verified 2026-10-19 GT3 snapshots: 45-77 Nm in slides, core
+    // median 0.79 vs 0.72 cornering, clipping, wheel driven to full lock in
+    // ~0.8 s during a spin). Applied after compression so the gain is a true
+    // fraction of the felt force. 1 = game's full self-steer.
+    public float SelfSteerGain { get; set; } = 0.5f;
+
+    // Kerb/bump/slip texture in the steering force, built from the one-sided
+    // vibration envelope with its own fast high-pass (zero-mean): a strike
+    // becomes a short knock and a sustained level fades in ~0.1 s instead of
+    // pulling the wheel one way. 1 = the detail level the raw envelope gave
+    // (verified 2026-10-19: detail RMS 0.07 / 0.16 on kerbs before the
+    // envelope was removed, 0.017 / 0.042 after). 0 = off.
+    public float RoadTextureGain { get; set; } = 1f;
+    private const float TextureTauSec = 0.04f;
+    private const float TextureMax = 0.3f;
+    private float _textureEnvLp;
+
     public LmuFfbPipeline()
     {
+        // LMU is a column-force game like R3E: centering force matches the
+        // steer sign (verified ChangeLog convention — same-direction-as-steer
+        // centers, EVO/ACC use the opposite). Without this, SoftLock/TcWheel
+        // direction helpers (which branch on this flag) push the wrong way
+        // when enabled. Zero-impact on default driving: this pipeline never
+        // calls GripGuard.Apply (standalone core path).
+        GripGuard.CenteringForceMatchesSteerSign = true;
         // On-center damping authority (Plan B5 consumer): shared Damping
         // instance default is 0 (EVO legacy); LMU opts into 0.03.
         Damping.CenterDampFloor = 0.03f;
@@ -132,20 +168,36 @@ public sealed class LmuFfbPipeline : FfbPipeline
         // cross-contamination. Same isolation pattern as R3eFfbPipeline.
         // ═══════════════════════════════════════════════════════════════════════
 
-        // Centering direction via steer angle (smooth tanh to avoid snap at center)
-        float steerSign = MathF.Tanh(raw.SteerAngle * 50f);
+        // Core direction. Native: the game's own signed torque, negated to
+        // the output convention — carries oversteer self-steer and real
+        // on-centre road/camber texture (both lost when the sign is rebuilt
+        // from steer). Single-frame braking sign spikes are held in the
+        // reader (LmuSharedMemoryReader torque spike hold).
+        //
+        // Legacy: centering direction via smooth tanh of steer. Slope 150x:
+        // ~0.5 at typical straight-line corrections (±0.004), ~1.0 by ±0.02.
+        // The old 50x crushed ~85% on straights; a hard sign-hold flip-flopped
+        // 652 times in 2923 center rows on steer noise (verified Oct 2026).
         float magnitude = Math.Abs(steeringForce);
+        float signedTorque = UseNativeTorqueSign
+            ? -steeringForce
+            : magnitude * MathF.Tanh(raw.SteerAngle * 150f);
 
         // Column force normalization. ForceScale acts as sensitivity multiplier
         // with 1.0 = safe default (20 Nm torque → low-moderate normalized force).
         // Plan B2: rolling-peak auto-norm caps Hypercar spikes without touching
         // normal forces (peak below AutoMinPeak → manual scale unchanged).
+        // When tanh compression is active it owns peak management instead:
+        // auto-norm would pre-flatten every torque above the manual scale to
+        // one identical value (verified 2026-10-13: all mag>80Nm mapped to the
+        // same pre-compression core), leaving compression nothing to shape.
+        // Tracker still updates for telemetry either way.
         float manualScale = Math.Max(120f / Math.Max(ForceScale, 0.01f), 1f);
         _lmuPeak = Math.Max(_lmuPeak * LmuPeakDecay, magnitude);
         float effectiveScale = manualScale;
-        if (_lmuPeak > AutoMinPeak)
+        if (CompressionPower <= 1.001f && _lmuPeak > AutoMinPeak)
             effectiveScale = Math.Max(effectiveScale, _lmuPeak / Math.Max(AutoTarget, 0.01f));
-        float coreNorm = magnitude * steerSign * MasterGain / effectiveScale;
+        float coreNorm = signedTorque * MasterGain / effectiveScale;
 
         // Damping with deterministic physics dt (Plan B3). Shared instance
         // carries CenterDampFloor=0.03 (LMU ctor) + straight-line props.
@@ -211,6 +263,39 @@ public sealed class LmuFfbPipeline : FfbPipeline
         else if (raw.SpeedKmh < 5.0f)
             coreForce *= (raw.SpeedKmh - 0.5f) / 4.5f;
 
+        // Normalized tanh compression (the documented CompressionPower
+        // semantic: Tanh(|x|*p)/Tanh(p)). The property was previously stored
+        // but never consumed by ANY pipeline — for LMU it is now live on the
+        // final shaped core. Default 1.0 = passthrough (zero-impact on all
+        // existing profiles). EVO/R3E/AC/ACC never read this property —
+        // their behavior is unchanged.
+        //
+        // The normalized ceiling (1/Tanh(p)) sits ABOVE the soft-clip knee,
+        // so peaks still railed the output clipper (verified 2026-10-13:
+        // GainOut pinned at 1.037 = 1/Tanh(2), 18.4% frames clipped). The
+        // ceiling is therefore derived from the clip knee minus headroom:
+        // the core wall parks just under the clipper and detail always has
+        // room to show. Tracks SoftClipThreshold if the user moves it.
+        if (CompressionPower > 1.001f)
+        {
+            float absCore = Math.Abs(coreForce);
+            float ratio = MathF.Tanh(absCore * CompressionPower) / MathF.Tanh(CompressionPower);
+            float ceiling = Math.Clamp(OutputClipper.SoftClipThreshold - 0.08f, 0.5f, 0.95f);
+            coreForce = Math.Sign(coreForce) * ratio * ceiling;
+        }
+
+        // Self-steer scaling: centring carries the steer sign, so a core
+        // opposite to steer is pushing the wheel further from centre. Weight
+        // ramps in over |steer| 0.01-0.04 (≈4.5-18° at 900°) so on-centre road
+        // texture is never touched. Multiplicative, so continuous as the
+        // torque passes through zero. Legacy sign mode never self-steers.
+        if (UseNativeTorqueSign && SelfSteerGain < 0.999f && coreForce * raw.SteerAngle < 0f)
+        {
+            float w = Math.Clamp((Math.Abs(raw.SteerAngle) - 0.01f) / 0.03f, 0f, 1f);
+            w = w * w * (3f - 2f * w);
+            coreForce *= 1f - w * (1f - Math.Clamp(SelfSteerGain, 0f, 1f));
+        }
+
         // Core EMA smoothing: slider 0 = none (passthrough, zero-impact default).
         float coreAlpha = 1f - Math.Clamp(CoreSmoothing, 0f, 0.95f);
         if (coreAlpha < 0.999f)
@@ -228,12 +313,39 @@ public sealed class LmuFfbPipeline : FfbPipeline
         float slipDelta = SlipEnhancer.Apply(coreForce, raw) - coreForce;
         if (Math.Abs(slipDelta) > 0.0001f) detailForce += slipDelta;
 
+        // Mix() still runs every tick: it computes the signed modulations used
+        // below (ABS/road/rear-slip/offtrack) and the vibration envelope.
+        // Plan C5: RoadForceModulation (the susp-delta product) is scaled at
+        // the consumption site below.
+        //
+        // The envelope itself is NOT added to the steering force. Mix()
+        // returns Clamp(kerb+slip+road+abs, 0, 1) — a one-sided intensity,
+        // so adding it pushed the wheel the same way (positive = LEFT) on
+        // every kerb/slide/ABS event regardless of direction (verified
+        // 2026-10-19: detail +0.65 stacked on a 0.34 core mid-slide, output
+        // 0.972, all signed diag taps ~0). It reaches the wheel through its
+        // proper channel instead: VibrationForce → provider SetHaptics →
+        // periodic effect.
         float vibration = VibrationMixer.Mix(raw);
-        // Plan C5: LMU mixer-layer scales (default 1 = current stacking).
-        // The susp-delta layer inside the mixer cannot be per-game gated from
-        // here without touching shared code, so RoadForceModulation (the
-        // susp-delta product) is scaled at the consumption site instead.
-        detailForce += vibration;
+
+        // Zero-mean texture (applied after the opposition clamp below so it
+        // can never be half-rectified into a pull). Source is the UNCLAMPED
+        // kerb+slip+road sum, not Mix()'s return: Mix clamps the sum to
+        // [0,1], and on violent kerbs kerb+slip+ABS exceed it, so the
+        // envelope pinned at 1.0 and the texture read exactly 0 on the
+        // biggest hits (verified 2026-10-19 snapshot 215350: KerbVib
+        // 1.00/0.78/0.52/0.98 at a 70 km/h chicane, texture 0.000 x4).
+        // ABS is excluded — it has its own signed pulse (AbsForceModulation).
+        // Soft tanh limit instead of a hard cut so huge hits still vary.
+        float texSpeedFade = raw.SpeedKmh < 10f ? Math.Clamp((raw.SpeedKmh - 2f) / 8f, 0f, 1f) : 1f;
+        float texSource = (raw.KerbVibration * VibrationMixer.KerbGain
+                         + raw.SlipVibrations * VibrationMixer.SlipGain
+                         + raw.RoadVibrations * VibrationMixer.RoadGain)
+                         * VibrationMixer.MasterGain * texSpeedFade;
+        float texAlpha = 1f - MathF.Exp(-PhysicsDt / TextureTauSec);
+        _textureEnvLp += (texSource - _textureEnvLp) * texAlpha;
+        float texture = TextureMax * MathF.Tanh((texSource - _textureEnvLp) * RoadTextureGain / TextureMax);
+        if (raw.SpeedKmh < 0.5f) { _textureEnvLp = texSource; texture = 0f; }
 
         // LMU has no dynamics/flex stages — the tyre-temp term is reported on
         // the DynFlex tap (badged TEMP ONLY) so the meter stays truthful.
@@ -301,6 +413,7 @@ public sealed class LmuFfbPipeline : FfbPipeline
         }
 
         OnDetailForceProcessed(coreForce, ref detailForce);
+        detailForce += texture;
 
         // Gyro stabilizer + TC wheel feel (no-ops unless enabled).
         detailForce = ApplyGyroStabilizer(detailForce, raw);
@@ -360,6 +473,13 @@ public sealed class LmuFfbPipeline : FfbPipeline
             GearShiftMuteGain = GearShiftMuteGain,
             StageGainForce = stageGainForce,
             StageSlipDelta = slipDelta,
+            // DiagSlipEnhancer was never assigned here, so the snapshot
+            // DiagSlipEn column read 0 for LMU even while the enhancer fired —
+            // every slip-path diagnosis since was blind. Same tap as R3E.
+            DiagSlipEnhancer = slipDelta,
+            DiagVibMixer = texture,
+            DiagAbsMod = VibrationMixer.AbsForceModulation,
+            DiagRoadMod = UseMixerSuspRoad ? VibrationMixer.RoadForceModulation * SuspRoadScale : 0f,
             StageDynFlex = stageDynFlex,
             StageSubMods = stageSubMods,
             StagePreClipForce = stagePreClip
@@ -386,10 +506,24 @@ public sealed class LmuFfbPipeline : FfbPipeline
         _dcBlockSmooth += dcBlocked * alpha;
         detailForce = dcBlocked;
 
-        if (coreOutput > 0f && detailForce < 0f)
-            detailForce = Math.Max(detailForce, -coreOutput * 0.8f);
-        else if (coreOutput < 0f && detailForce > 0f)
-            detailForce = Math.Min(detailForce, -coreOutput * 0.8f);
+        // Deadband: when |core| is tiny (straights) the clamp below
+        // half-wave-rectifies bipolar road texture into a pulsing pull that
+        // follows steer noise — the same defect R3E fixed with its 0.03
+        // deadband (verified 2026-09-20 snapshot). In corners protection
+        // still applies unchanged.
+        //
+        // Opposing-detail cap is 0.5x core (R3E parity). The old 0.8x allowed
+        // near-total dropouts in loaded corners (verified 2026-10-14: detail
+        // cancelled 68-75% of core for ~0.7s with all envelopes near zero —
+        // unipolar texture bursts and DC-block recovery tails vs the core).
+        // 0.5x keeps curb strikes clearly felt while bounding worst case.
+        if (Math.Abs(coreOutput) > 0.03f)
+        {
+            if (coreOutput > 0f && detailForce < 0f)
+                detailForce = Math.Max(detailForce, -coreOutput * 0.5f);
+            else if (coreOutput < 0f && detailForce > 0f)
+                detailForce = Math.Min(detailForce, -coreOutput * 0.5f);
+        }
     }
 
     /// <summary>
@@ -484,6 +618,7 @@ public sealed class LmuFfbPipeline : FfbPipeline
     public void ResetDetail()
     {
         _prevDetailOutput = 0f;
+        _textureEnvLp = 0f;
         _dcBlockSmooth = 0f;
         _prevSmoothedCore = 0f;
         _prevSmoothedDetail = 0f;
@@ -501,6 +636,7 @@ public sealed class LmuFfbPipeline : FfbPipeline
     {
         base.Reset();
         _prevDetailOutput = 0f;
+        _textureEnvLp = 0f;
         _dcBlockSmooth = 0f;
         _prevSmoothedCore = 0f;
         _prevSmoothedDetail = 0f;

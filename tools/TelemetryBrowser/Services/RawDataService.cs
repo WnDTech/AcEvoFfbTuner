@@ -14,7 +14,10 @@ public sealed class RawDataService
     private const string EVO_GRAPHICS = @"Local\acevo_pmf_graphics";
     private const string EVO_STATIC = @"Local\acevo_pmf_static";
     private const string AC1_PHYSICS = @"Local\acpmf_physics";
-    private const string AC1_GRAPHICS = @"Local\acpmf_graphic";
+    // Real AC1 graphics MMF is the plural "acpmf_graphics" (Kunos sim_info.py);
+    // the singular name is a legacy fallback.
+    private const string AC1_GRAPHICS = @"Local\acpmf_graphics";
+    private const string AC1_GRAPHICS_ALT = @"Local\acpmf_graphic";
     private const string AC1_STATIC = @"Local\acpmf_static";
     private const string LMU_MMF = @"LMU_Data";
     private const string RF2_MMF = @"$rFactor2Telemetry$";
@@ -659,16 +662,24 @@ public sealed class RawDataService
             if (buf != null)
             {
                 try { AddStructFields(MarshalBuffer<SPageFilePhysicsAC>(buf), "", result); }
-                catch { }
+                catch (Exception ex) { result["_phys_error"] = $"{ex.GetType().Name}: {ex.Message}"; }
+            }
+            else
+            {
+                result["_phys_missing"] = AC1_PHYSICS;
             }
         }
         if (section == "graphics" || section == "all")
         {
-            var buf = ReadMmf(AC1_GRAPHICS, 4096);
+            var buf = ReadMmf(AC1_GRAPHICS, 4096) ?? ReadMmf(AC1_GRAPHICS_ALT, 4096);
             if (buf != null)
             {
                 try { AddStructFields(MarshalBuffer<SPageFileGraphicAC>(buf), "", result); }
-                catch { }
+                catch (Exception ex) { result["_gfx_error"] = $"{ex.GetType().Name}: {ex.Message}"; }
+            }
+            else
+            {
+                result["_gfx_missing"] = $"{AC1_GRAPHICS} (alt {AC1_GRAPHICS_ALT})";
             }
         }
         if (section == "static" || section == "all")
@@ -677,7 +688,11 @@ public sealed class RawDataService
             if (buf != null)
             {
                 try { AddStructFields(MarshalBuffer<SPageFileStaticAC>(buf), "", result); }
-                catch { }
+                catch (Exception ex) { result["_st_error"] = $"{ex.GetType().Name}: {ex.Message}"; }
+            }
+            else
+            {
+                result["_st_missing"] = AC1_STATIC;
             }
         }
 

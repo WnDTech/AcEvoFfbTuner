@@ -97,17 +97,40 @@ public sealed partial class MainViewModel
         }
     }
 
+    private int _connectDeferCount;
+
     [RelayCommand]
     private void ConnectDevice()
     {
         if (SelectedDevice == null) return;
 
+        // Exclusive DirectInput needs a real HWND. A connect issued while the
+        // main window is still being built read Handle = 0, failed with "No
+        // valid window handle" and never retried — the app then ran a whole
+        // session sending zero force (verified 2026-10-19 connection_debug.log
+        // + 0 TORQ sends). EnsureHandle creates the HWND if it does not exist
+        // yet; with no main window at all, defer until the UI is up.
         var window = Application.Current?.MainWindow;
-        if (window != null)
+        IntPtr hwnd = window != null
+            ? new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle()
+            : IntPtr.Zero;
+        if (hwnd == IntPtr.Zero)
         {
-            var helper = new System.Windows.Interop.WindowInteropHelper(window);
-            _deviceManager.SetWindowHandle(helper.Handle);
+            if (_connectDeferCount < 20)
+            {
+                _connectDeferCount++;
+                StatusText = "Waiting for window before connecting wheel...";
+                Application.Current?.Dispatcher.BeginInvoke(
+                    DispatcherPriority.ApplicationIdle, new Action(ConnectDevice));
+            }
+            else
+            {
+                StatusText = "Could not connect wheel: no application window. Use Connect from the device menu.";
+            }
+            return;
         }
+        _connectDeferCount = 0;
+        _deviceManager.SetWindowHandle(hwnd);
 
         if (_deviceManager.TryConnectDevice(SelectedDevice))
         {
@@ -985,8 +1008,27 @@ public sealed partial class MainViewModel
         try
         {
             var service = new GitHubUpdateService();
-            LogUpdate($"CheckForUpdates: current version={service.CurrentVersion}, channel={(BetaChannel ? "beta" : "stable")}, checking...");
-            var update = await service.CheckForUpdateAsync(BetaChannel);
+            // Beta eligibility is server-side (me.betaChannel for approved/
+            // paused testers). The local toggle alone must never unlock
+            // prereleases — fail closed to stable when offline, signed out,
+            // or revoked. (The Test Drive toggle itself only appears for
+            // eligible testers; this is the update-time enforcement.)
+            bool beta = false;
+            if (BetaChannel && !string.IsNullOrEmpty(BetaSessionToken))
+            {
+                try
+                {
+                    var me = await BetaClient.GetMeAsync(BetaSessionToken);
+                    beta = me.Ok && me.BetaChannel;
+                    LogUpdate($"CheckForUpdates: local BetaChannel={BetaChannel}, server betaChannel={me.BetaChannel} (ok={me.Ok}), effective={(beta ? "beta" : "stable")}");
+                }
+                catch (Exception ex)
+                {
+                    LogUpdate($"CheckForUpdates: eligibility check failed ({ex.GetType().Name}), using stable channel");
+                }
+            }
+            LogUpdate($"CheckForUpdates: current version={service.CurrentVersion}, channel={(beta ? "beta" : "stable")}, checking...");
+            var update = await service.CheckForUpdateAsync(beta);
 
             if (update != null)
             {

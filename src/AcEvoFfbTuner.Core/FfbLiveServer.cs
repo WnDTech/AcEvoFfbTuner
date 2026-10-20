@@ -314,6 +314,18 @@ public sealed class FfbLiveServer : IDisposable
             _sb.Append(raw.Flag.ToString());
             _sb.Append(",\"pit\":");
             _sb.Append(raw.IsPitLimiterOn ? "1" : "0");
+            _sb.Append(",\"lim\":");
+            _sb.Append(raw.IsRpmLimiterOn ? "1" : "0");
+            _sb.Append(",\"up\":");
+            _sb.Append(raw.IsChangeUpRpm ? "1" : "0");
+            _sb.Append(",\"bp0\":");
+            _sb.Append(raw.BrakePressure.Length > 0 ? raw.BrakePressure[0].ToString("F0") : "0");
+            _sb.Append(",\"bp1\":");
+            _sb.Append(raw.BrakePressure.Length > 1 ? raw.BrakePressure[1].ToString("F0") : "0");
+            _sb.Append(",\"bp2\":");
+            _sb.Append(raw.BrakePressure.Length > 2 ? raw.BrakePressure[2].ToString("F0") : "0");
+            _sb.Append(",\"bp3\":");
+            _sb.Append(raw.BrakePressure.Length > 3 ? raw.BrakePressure[3].ToString("F0") : "0");
             _sb.Append('}');
 
             var payload = Encoding.UTF8.GetBytes("data: " + _sb.ToString() + "\n\n");
@@ -410,6 +422,30 @@ public sealed class FfbLiveServer : IDisposable
             else if (path == "/overlay")
             {
                 await ServeOverlay(stream, query);
+            }
+            else if (path == "/gt" || path == "/dash")
+            {
+                await ServeOverlay(stream, CombineQuery(query, "layout=gt"));
+            }
+            else if (path == "/tower" || path == "/relative")
+            {
+                await ServeOverlay(stream, CombineQuery(query, "layout=tower"));
+            }
+            else if (path == "/inputs" || path == "/pedals")
+            {
+                await ServeOverlay(stream, CombineQuery(query, "layout=inputs"));
+            }
+            else if (path == "/tires")
+            {
+                await ServeOverlay(stream, CombineQuery(query, "layout=tires"));
+            }
+            else if (path == "/ffb")
+            {
+                await ServeOverlay(stream, CombineQuery(query, "layout=ffb"));
+            }
+            else if (path == "/minimal" || path == "/shift")
+            {
+                await ServeOverlay(stream, CombineQuery(query, "layout=minimal"));
             }
             else
             {
@@ -961,11 +997,12 @@ public sealed class FfbLiveServer : IDisposable
         public bool ShowTrack { get; set; }
         public bool ShowWaveform { get; set; }
         public string Mods { get; set; }   // comma list: speed,force,waveform,track,pedals,tires,gforce (empty = all)
+        public string Layout { get; set; } // "gt" (default), "tower", "inputs", "tires", "ffb", "minimal"
     }
 
     private static OverlayOptions ParseOptions(string query)
     {
-        var opts = new OverlayOptions { Theme = "dark", Charts = "all", Stats = "all", Opacity = 1.0f, ShowTrack = true, ShowWaveform = true, Mods = "" };
+        var opts = new OverlayOptions { Theme = "dark", Charts = "all", Stats = "all", Opacity = 1.0f, ShowTrack = true, ShowWaveform = true, Mods = "", Layout = "gt" };
         if (string.IsNullOrEmpty(query)) return opts;
 
         var q = query.TrimStart('?');
@@ -982,12 +1019,22 @@ public sealed class FfbLiveServer : IDisposable
                 case "showtrack": opts.ShowTrack = kv[1] != "false"; break;
                 case "showwaveform": opts.ShowWaveform = kv[1] != "false"; break;
                 case "mods": opts.Mods = kv[1].ToLowerInvariant(); break;
+                case "layout": opts.Layout = kv[1].ToLowerInvariant(); break;
             }
         }
         return opts;
     }
 
     // ── HTML Serving ─────────────────────────────────────────────────────
+
+    private static string CombineQuery(string query, string extra)
+    {
+        if (string.IsNullOrEmpty(query)) return "?" + extra;
+        var q = query.TrimStart('?');
+        // Don't duplicate layout if caller already set one
+        if (q.Contains("layout=", StringComparison.OrdinalIgnoreCase)) return query;
+        return "?" + q + (q.Length > 0 ? "&" : "") + extra;
+    }
 
     private async Task ServeHtml(NetworkStream stream, string query)
     {
@@ -1061,9 +1108,10 @@ body.charts-none .pane,.charts-none .row{display:none}
 <html><head><meta charset=""utf-8""><title>FFB Live Telemetry</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0a0f;color:#ccc;font-family:'Consolas','Courier New',monospace;font-size:12px;overflow:hidden;height:100vh;display:flex;flex-direction:column}
-.header{background:#111;padding:6px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #333;flex-shrink:0}
-.header h1{font-size:14px;color:#4fc3f7}
+body{background:#0a0a0f;color:#ccc;font-family:'Rajdhani','Bahnschrift','Segoe UI','Consolas',monospace;font-size:12px;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+.header{background:linear-gradient(180deg,#171a1f,#0e1013);padding:6px 12px;display:flex;align-items:center;gap:12px;border-bottom:2px solid #e10600;flex-shrink:0}
+.header h1{font-size:15px;color:#f2f5f7;letter-spacing:0.12em;font-weight:700}
+.header h1 .ace{color:#e10600}
 .status{color:#4caf50;font-size:11px}
 .status.err{color:#f44336}
 .stats{display:flex;gap:16px;margin-left:auto;font-size:11px;color:#888}
@@ -1106,7 +1154,7 @@ canvas{width:100%;flex:1;display:block}
 <div id=""frozenData""></div>
 <div id=""clippingIndicator""><div class=""big"" id=""clipText"">OK</div><div class=""sub"">FFB CLIPPING INDICATOR</div></div>
 <div class=""header"">
-  <h1>FFB Live Telemetry</h1>
+  <h1><span class=""ace"">ACE</span> · FFB Live Telemetry</h1>
   <span class=""status"" id=""conn"">Connecting...</span>
   <div class=""stats"">
     <span>Pkts:<span class=""v"" id=""pkts"">0</span></span>
@@ -1223,6 +1271,7 @@ function buildFrozenTable(){
   h+='</table>';
   h+='<div class=""section"">LAST 80 FRAMES RAW DATA</div>';
   h+='<table><tr><th>#</th><th>Speed</th><th>Steer</th><th>ForceOut</th><th>Mz</th><th>Fx</th><th>Fy</th><th>Compress</th><th>Gas</th><th>Brake</th></tr>';
+  const fof=last(D.fo,n);
   let cnt=Math.min(80,fof.length);
   for(let i=fof.length-cnt;i<fof.length;i++){
     const fi=(si+i)%N;
@@ -1336,6 +1385,34 @@ addEventListener('keydown',(e)=>{if(e.code==='Space'){e.preventDefault();toggleF
 
     private static string GetOverlayHtml(OverlayOptions opts)
     {
+        return opts.Layout switch
+        {
+            "tower" => GetTowerHtml(opts),
+            "inputs" => GetInputsHtml(opts),
+            "tires" => GetTiresHtml(opts),
+            "ffb" => GetFfbHtml(opts),
+            "minimal" => GetMinimalHtml(opts),
+            _ => GetGtHtml(opts),
+        };
+    }
+
+    // ── Shared GT bits ──────────────────────────────────────────────────
+    // Bosch DDU / BMW M4 GT3 inspired: carbon weave (pure CSS, no external
+    // images so OBS stays sharp at any canvas size and works offline),
+    // top RPM LED bar, central gear, flag banner, shift flash.
+
+    private static string GtLedBar(int count, string prefix)
+    {
+        var sb = new StringBuilder();
+        for (int i = 0; i < count; i++)
+            sb.Append("<div class='led' id='").Append(prefix).Append(i).Append("'></div>");
+        return sb.ToString();
+    }
+
+    private const string GtFontStack = "'Rajdhani','Barlow Condensed','Bahnschrift','Arial Narrow','Segoe UI',Arial,sans-serif";
+
+    private static string GetGtHtml(OverlayOptions opts)
+    {
         var opacity = opts.Opacity.ToString("F2");
 
         var mods = string.IsNullOrEmpty(opts.Mods)
@@ -1351,123 +1428,141 @@ addEventListener('keydown',(e)=>{if(e.code==='Space'){e.preventDefault();toggleF
         string Vis(bool on) => on ? "" : "display:none";
 
         return @"<!DOCTYPE html>
-<html><head><meta charset=""utf-8""><title>FFB Overlay</title>
+<html><head><meta charset=""utf-8""><title>ACE GT Dash</title>
+<link href='https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap' rel='stylesheet'>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:transparent;color:#fff;font-family:'Inter','Segoe UI',Arial,sans-serif;overflow:hidden;height:100vh;width:100vw;display:flex;align-items:center;justify-content:center}
-#p{background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.06);border-radius:clamp(12px,1.2vw,24px);padding:clamp(12px,2vw,32px);width:96vw;max-width:1400px;display:flex;flex-direction:column;gap:clamp(8px,1.2vh,20px);opacity:" + opacity + @"}
-#tr{display:flex;flex-wrap:wrap;align-items:center;gap:clamp(8px,1.5vw,24px)}
-#sg{display:flex;align-items:baseline;gap:clamp(6px,0.8vw,14px);flex-shrink:0}
-#sp{font-size:clamp(24px,6vw,96px);font-weight:700;line-height:1;letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
-#sp .u{font-size:clamp(10px,1.5vw,28px);font-weight:400;color:rgba(255,255,255,0.4);margin-left:clamp(2px,0.3vw,8px)}
-#ge{display:inline-flex;align-items:center;justify-content:center;min-width:clamp(26px,2.8vw,56px);height:clamp(26px,2.8vw,56px);border-radius:clamp(6px,0.6vw,12px);font-size:clamp(15px,2.5vw,48px);font-weight:700;background:rgba(255,255,255,0.08);color:#fff;font-variant-numeric:tabular-nums}
-#rs{flex:1;min-width:clamp(60px,10vw,300px);display:flex;flex-direction:column;gap:clamp(2px,0.2vh,4px)}
-#rl{font-size:clamp(7px,0.65vw,13px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em}
-#rb{width:100%;height:clamp(4px,0.6vh,12px);background:rgba(255,255,255,0.06);border-radius:clamp(2px,0.3vw,6px);overflow:hidden}
-#rf{height:100%;border-radius:clamp(2px,0.3vw,6px);transition:width 40ms ease;background:linear-gradient(90deg,#22c55e,#eab308 45%,#ef4444 75%,#dc2626)}
-#lc{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;min-width:clamp(30px,4vw,80px)}
-#ll{font-size:clamp(7px,0.65vw,13px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em}
-#lv{font-size:clamp(12px,1.4vw,26px);font-weight:600;font-variant-numeric:tabular-nums}
-#pc{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;min-width:clamp(40px,5vw,100px)}
-#pl{font-size:clamp(7px,0.65vw,13px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.12em}
-#pv{font-size:clamp(12px,1.4vw,26px);font-weight:600;font-variant-numeric:tabular-nums}
-#chips{display:flex;gap:clamp(4px,0.5vw,10px);flex-shrink:0;align-items:center}
-.chip{display:none;align-items:center;justify-content:center;padding:clamp(2px,0.25vw,6px) clamp(6px,0.8vw,14px);border-radius:clamp(4px,0.4vw,8px);font-size:clamp(8px,0.7vw,14px);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap}
-.chip.tc{background:rgba(234,179,8,0.16);color:#eab308;border:1px solid rgba(234,179,8,0.4)}
-.chip.abs{background:rgba(239,68,68,0.16);color:#ef4444;border:1px solid rgba(239,68,68,0.4)}
-.chip.pit{background:rgba(59,130,246,0.16);color:#3b82f6;border:1px solid rgba(59,130,246,0.4)}
-.chip.flag{background:rgba(250,204,21,0.16);color:#facc15;border:1px solid rgba(250,204,21,0.5)}
-.chip.flag.blue{background:rgba(33,150,243,0.18);color:#2196f3;border-color:rgba(33,150,243,0.5)}
-.chip.flag.red{background:rgba(239,68,68,0.18);color:#ef4444;border-color:rgba(239,68,68,0.5)}
-#fa{display:flex;flex-direction:column;gap:clamp(4px,0.5vh,10px)}
-#fv{font-size:clamp(14px,2.5vw,44px);font-weight:400;letter-spacing:-0.01em;font-variant-numeric:tabular-nums}
-#fv .n{font-size:clamp(9px,1vw,18px);font-weight:400;color:rgba(255,255,255,0.35);margin-left:clamp(4px,0.4vw,10px)}
-#fbw{width:100%;height:clamp(8px,1.2vh,24px);background:rgba(255,255,255,0.05);border-radius:clamp(4px,0.5vw,10px);overflow:hidden;position:relative}
-#fb{height:100%;border-radius:clamp(4px,0.5vw,10px);transition:width 40ms ease;position:absolute;top:0}
-#fb.p{right:50%;background:linear-gradient(90deg,#0ea5e9,#22d3ee)}
-#fb.n{left:50%;background:linear-gradient(270deg,#f97316,#fb923c)}
-#cp{display:none;font-size:clamp(10px,1vw,20px);font-weight:700;color:#ef4444;text-shadow:0 0 clamp(6px,0.8vw,16px) rgba(239,68,68,0.5);animation:p 0.7s ease-in-out infinite}
-@keyframes p{0%,100%{opacity:1}50%{opacity:0.4}}
-#gp{display:flex;gap:clamp(10px,1.2vw,24px);font-size:clamp(10px,1vw,20px);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
-#gA{color:#22c55e;min-width:4ch;display:inline-block}#gB{color:#f87171;min-width:4ch;display:inline-block}.gL{font-size:clamp(7px,0.55vw,11px);color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-right:clamp(2px,0.2vw,6px)}
-#ch{display:flex;flex-wrap:wrap;gap:clamp(10px,1.8vw,36px);align-items:center}
-.cg{display:flex;flex-direction:column;gap:0;min-width:clamp(28px,3.5vw,70px)}
-.cl{font-size:clamp(7px,0.6vw,12px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em}
-.cv{font-size:clamp(10px,1.1vw,22px);font-weight:600;font-variant-numeric:tabular-nums}
-.cv.mz{color:#fbbf24}.cv.fx{color:#f87171}.cv.fy{color:#34d399}.cv.ga{color:#fff}.cv.br{color:#f87171}.cv.lt{color:#a78bfa}.cv.ln{color:#f59e0b}
-#btr{display:flex;flex-wrap:wrap;gap:clamp(8px,1vw,20px);align-items:flex-end;min-height:0;flex:1}
-#ww{flex:1;min-width:clamp(60px,20vw,400px);height:clamp(24px,4vh,70px)}
-#ww canvas{width:100%;height:100%;border-radius:clamp(4px,0.4vw,10px);background:rgba(0,0,0,0.15);display:block}
-#tw{width:clamp(50px,7vw,140px);height:clamp(50px,7vw,140px);flex-shrink:0}
-#tw canvas{width:100%;height:100%;border-radius:clamp(6px,0.6vw,12px);background:rgba(0,0,0,0.2);display:block}
-#mr{display:flex;flex-wrap:wrap;gap:clamp(14px,2vw,40px);align-items:center;justify-content:center}
-#md-pedals{display:flex;gap:clamp(10px,1.5vw,26px);align-items:flex-end}
-.pedal-box{display:flex;flex-direction:column;align-items:center;gap:clamp(2px,0.3vh,6px)}
-.pedal-track{width:clamp(18px,2vw,40px);height:clamp(44px,6vh,110px);background:rgba(255,255,255,0.06);border-radius:clamp(4px,0.4vw,8px);position:relative;overflow:hidden}
-.pedal-fill{position:absolute;bottom:0;left:0;right:0;transition:height 40ms ease}
-.pedal-fill.gas{background:linear-gradient(0deg,#16a34a,#4ade80)}
-.pedal-fill.brake{background:linear-gradient(0deg,#b91c1c,#f87171)}
-.pedal-lb{font-size:clamp(7px,0.6vw,12px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em}
-#wheel-box{display:flex;flex-direction:column;align-items:center;gap:clamp(2px,0.3vh,6px)}
-#cWheel{width:clamp(64px,7vw,132px);height:clamp(64px,7vw,132px);display:block}
-#md-tires{display:flex;flex-direction:column;gap:clamp(3px,0.4vh,8px)}
+body{background:transparent;color:#f2f5f7;font-family:" + GtFontStack + @";overflow:hidden;height:100vh;width:100vw;display:flex;align-items:center;justify-content:center}
+body.theme-transparent #p{background:rgba(8,10,12,0.55)}
+#p{position:relative;width:96vw;max-width:1400px;opacity:" + opacity + @";border-radius:clamp(10px,1vw,20px);padding:clamp(10px,1.4vw,24px) clamp(12px,1.8vw,30px) clamp(10px,1.2vh,18px);display:flex;flex-direction:column;gap:clamp(6px,0.9vh,14px);
+background:linear-gradient(160deg,rgba(24,27,31,0.96),rgba(10,11,13,0.96)),repeating-linear-gradient(45deg,rgba(255,255,255,0.022) 0 2px,transparent 2px 4px),repeating-linear-gradient(-45deg,rgba(255,255,255,0.022) 0 2px,transparent 2px 4px);
+background-blend-mode:normal;border:1px solid rgba(255,255,255,0.09);box-shadow:0 18px 60px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.08);overflow:hidden}
+#p::before{content:'';position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,#e10600,#ff6a00,#ffd400,#00e676,#00b0ff);opacity:0.9}
+body.shift #p{animation:shiftflash 0.45s steps(2) infinite;border-color:rgba(255,30,30,0.8)}
+@keyframes shiftflash{50%{box-shadow:0 0 0 3px rgba(255,30,30,0.9),0 0 44px rgba(255,30,30,0.55)}}
+#flagbanner{display:none;align-items:center;justify-content:center;gap:10px;border-radius:8px;padding:clamp(4px,0.6vh,8px);font-weight:700;letter-spacing:0.22em;font-size:clamp(11px,1.3vw,24px);text-transform:uppercase}
+#flagbanner.show{display:flex}
+#flagbanner.yellow{background:repeating-linear-gradient(45deg,#facc15 0 18px,#111 18px 36px);color:#fff;text-shadow:0 2px 6px #000}
+#flagbanner.blue{background:#1565c0;color:#fff}
+#flagbanner.black{background:#000;color:#fff;border:1px solid #555}
+#flagbanner.white{background:#e8e8e8;color:#111}
+#flagbanner.checked{background:repeating-conic-gradient(#fff 0 25%,#111 0 50%) 0 0/22px 22px;color:#ffd400;text-shadow:0 2px 4px #000}
+#flagbanner.red{background:#b71c1c;color:#fff}
+#rpmbar{display:flex;gap:clamp(3px,0.35vw,7px);justify-content:center;padding:clamp(2px,0.3vh,5px) clamp(4px,0.5vw,10px);background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.07);border-radius:9px}
+.led{flex:1;height:clamp(8px,1.5vh,22px);max-width:64px;border-radius:4px;background:rgba(255,255,255,0.08);box-shadow:inset 0 1px 2px rgba(0,0,0,0.7)}
+.led.on.g{background:#00e676;box-shadow:0 0 12px #00e676}
+.led.on.r{background:#ff1744;box-shadow:0 0 12px #ff1744}
+.led.on.b{background:#40c4ff;box-shadow:0 0 14px #40c4ff;animation:ledblink 0.3s steps(2) infinite}
+@keyframes ledblink{50%{opacity:0.45}}
+#dash{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:clamp(8px,1.4vw,26px)}
+#speedbox{display:flex;flex-direction:column;line-height:1}
+#sp{font-size:clamp(30px,5.2vw,84px);font-weight:700;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}
+#sp .u{font-size:clamp(10px,1.1vw,20px);font-weight:500;color:rgba(255,255,255,0.42);margin-left:6px;letter-spacing:0.14em}
+#rpmrow{display:flex;align-items:center;gap:8px;margin-top:4px}
+#rpbar{flex:1;height:clamp(5px,0.8vh,10px);background:rgba(255,255,255,0.07);border-radius:5px;overflow:hidden}
+#rpfill{height:100%;width:0%;background:linear-gradient(90deg,#00e676,#ffea00 55%,#ff1744 80%);transition:width 50ms linear}
+#rptxt{font-size:clamp(10px,1vw,18px);font-weight:600;color:rgba(255,255,255,0.6);font-variant-numeric:tabular-nums}
+#gearbox{display:flex;flex-direction:column;align-items:center;line-height:1}
+#ge{font-size:clamp(52px,8.5vw,150px);font-weight:700;text-shadow:0 4px 24px rgba(0,0,0,0.7);font-variant-numeric:tabular-nums}
+#ge.shift{color:#ff1744;animation:gearblink 0.4s steps(2) infinite}
+@keyframes gearblink{50%{opacity:0.5}}
+#glb{font-size:clamp(8px,0.7vw,13px);letter-spacing:0.34em;color:rgba(255,255,255,0.4);font-weight:600}
+#racebox{display:flex;flex-direction:column;align-items:flex-end;gap:clamp(2px,0.4vh,6px)}
+#pos{font-size:clamp(20px,2.6vw,46px);font-weight:700;font-variant-numeric:tabular-nums}
+#pos small{font-size:0.5em;color:rgba(255,255,255,0.45);font-weight:600}
+#lap{font-size:clamp(11px,1.2vw,20px);font-weight:600;color:rgba(255,255,255,0.75);font-variant-numeric:tabular-nums}
+#gaps{display:flex;gap:12px;font-size:clamp(10px,1.05vw,18px);font-weight:600;font-variant-numeric:tabular-nums}
+#gA{color:#00e676}#gB{color:#ff8a65}
+#chips{display:flex;gap:6px}
+.chip{display:none;align-items:center;padding:2px 10px;border-radius:6px;font-size:clamp(9px,0.85vw,15px);font-weight:700;letter-spacing:0.1em}
+.chip.tc{background:rgba(234,179,8,0.18);color:#ffd400;border:1px solid rgba(234,179,8,0.5)}
+.chip.abs{background:rgba(239,68,68,0.18);color:#ff5252;border:1px solid rgba(239,68,68,0.5)}
+.chip.pit{background:rgba(59,130,246,0.18);color:#64b5f6;border:1px solid rgba(59,130,246,0.5)}
+.chip.lim{background:rgba(255,23,68,0.2);color:#ff1744;border:1px solid #ff1744;animation:ledblink 0.4s steps(2) infinite}
+#ffbsec{background:rgba(0,0,0,0.42);border:1px solid rgba(255,255,255,0.07);border-radius:9px;padding:clamp(6px,0.8vh,10px) clamp(8px,1vw,16px)}
+#ffbtop{display:flex;align-items:baseline;gap:12px}
+#ffv{font-size:clamp(18px,2.4vw,40px);font-weight:700;font-variant-numeric:tabular-nums}
+#ffv .n{font-size:0.45em;font-weight:500;color:rgba(255,255,255,0.4);margin-left:6px}
+#cp{display:none;margin-left:auto;font-weight:700;color:#ff1744;font-size:clamp(11px,1.2vw,22px);letter-spacing:0.14em;animation:ledblink 0.7s steps(2) infinite}
+#ffbarw{position:relative;height:clamp(9px,1.4vh,20px);background:rgba(255,255,255,0.06);border-radius:7px;overflow:hidden;margin-top:6px}
+#ffbar{position:absolute;top:0;bottom:0;left:50%;width:0%;background:linear-gradient(90deg,#00b0ff,#00e676);border-radius:7px;transition:width 40ms linear}
+#ffbar.neg{background:linear-gradient(270deg,#ff9100,#ff3d00)}
+#ffbar.clip{background:#ff1744!important;box-shadow:0 0 16px #ff1744}
+#chrow{display:flex;flex-wrap:wrap;gap:clamp(8px,1.4vw,26px);margin-top:6px}
+.cg{display:flex;flex-direction:column;min-width:52px}
+.cl{font-size:clamp(8px,0.65vw,12px);color:rgba(255,255,255,0.38);letter-spacing:0.16em;font-weight:600}
+.cv{font-size:clamp(12px,1.25vw,22px);font-weight:700;font-variant-numeric:tabular-nums}
+.cv.mz{color:#ffd54f}.cv.fx{color:#ff8a80}.cv.fy{color:#69f0ae}.cv.pb{color:#90caf9}.cv.gl{color:#ce93d8}
+#btr{display:flex;gap:clamp(8px,1vw,18px);align-items:stretch}
+#ww{flex:1;min-height:clamp(30px,5vh,76px);background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.06);border-radius:9px;overflow:hidden}
+#ww canvas{width:100%;height:100%;display:block}
+#tw{width:clamp(64px,8vw,150px);background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.06);border-radius:9px}
+#tw canvas{width:100%;height:100%;display:block}
+#mr{display:flex;flex-wrap:wrap;gap:clamp(12px,1.8vw,34px);align-items:stretch;justify-content:space-between}
+#md-pedals{display:flex;gap:clamp(10px,1.2vw,22px);align-items:flex-end}
+.pedal-box{display:flex;flex-direction:column;align-items:center;gap:4px}
+.pedal-track{width:clamp(20px,2.2vw,42px);height:clamp(52px,7vh,120px);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:7px;position:relative;overflow:hidden}
+.pedal-fill{position:absolute;bottom:0;left:0;right:0;transition:height 40ms linear}
+.pedal-fill.gas{background:linear-gradient(0deg,#00897b,#00e676)}
+.pedal-fill.brake{background:linear-gradient(0deg,#b71c1c,#ff5252)}
+.pedal-num{font-size:clamp(9px,0.9vw,15px);font-weight:700;font-variant-numeric:tabular-nums}
+.pedal-lb{font-size:clamp(8px,0.65vw,12px);color:rgba(255,255,255,0.38);letter-spacing:0.18em;font-weight:600}
+#cWheel{width:clamp(72px,7.5vw,140px);height:clamp(72px,7.5vw,140px);display:block}
+#md-tires{display:flex;flex-direction:column;gap:5px}
 #tires-row{display:flex;gap:clamp(8px,1vw,20px)}
-.tire{display:flex;flex-direction:column;align-items:center;gap:clamp(2px,0.2vh,4px)}
-.tire-bar{width:clamp(16px,1.8vw,34px);height:clamp(46px,6vh,110px);background:rgba(255,255,255,0.06);border-radius:clamp(4px,0.4vw,8px);position:relative;overflow:hidden}
-.tire-fill{position:absolute;bottom:0;left:0;right:0;transition:height 60ms ease}
-.tire-lb{font-size:clamp(7px,0.6vw,12px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em}
-.tire-t{font-size:clamp(8px,0.8vw,14px);font-weight:600;font-variant-numeric:tabular-nums}
-.tire-p{font-size:clamp(7px,0.6vw,11px);color:rgba(255,255,255,0.35);font-variant-numeric:tabular-nums}
-#md-gforce{display:flex;flex-direction:column;align-items:center;gap:clamp(2px,0.3vh,6px)}
-#cG{width:clamp(84px,9vw,170px);height:clamp(84px,9vw,170px);display:block}
-.g-lb{font-size:clamp(7px,0.6vw,12px);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em}
-#gvals{display:flex;gap:clamp(8px,1vw,20px);font-size:clamp(8px,0.8vw,14px);font-weight:600;font-variant-numeric:tabular-nums}
-#gvals .lat{color:#34d399}#gvals .lon{color:#fbbf24}
-</style></head><body>
+.tire{display:flex;flex-direction:column;align-items:center;gap:3px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:clamp(4px,0.5vh,8px) clamp(6px,0.7vw,12px)}
+.tire-bar{width:clamp(22px,2.4vw,44px);height:clamp(52px,7vh,118px);background:rgba(255,255,255,0.06);border-radius:6px;position:relative;overflow:hidden}
+.tire-fill{position:absolute;bottom:0;left:0;right:0;transition:height 120ms linear}
+.tire-lb{font-size:clamp(8px,0.7vw,13px);color:rgba(255,255,255,0.45);font-weight:700;letter-spacing:0.12em}
+.tire-t{font-size:clamp(11px,1.1vw,19px);font-weight:700;font-variant-numeric:tabular-nums}
+.tire-p{font-size:clamp(8px,0.75vw,13px);color:rgba(255,255,255,0.5);font-variant-numeric:tabular-nums}
+#md-gforce{display:flex;flex-direction:column;align-items:center;gap:3px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:clamp(4px,0.5vh,8px) clamp(8px,0.9vw,14px)}
+#cG{width:clamp(92px,9.5vw,180px);height:clamp(92px,9.5vw,180px);display:block}
+#gvals{display:flex;gap:12px;font-size:clamp(9px,0.9vw,15px);font-weight:700;font-variant-numeric:tabular-nums}
+#gvals .lat{color:#69f0ae}#gvals .lon{color:#ffd54f}
+.g-lb{font-size:clamp(8px,0.65vw,12px);color:rgba(255,255,255,0.38);letter-spacing:0.2em;font-weight:600}
+.sec-lb{font-size:clamp(8px,0.65vw,12px);color:rgba(255,255,255,0.38);letter-spacing:0.2em;font-weight:600}
+</style></head><body class='theme-" + opts.Theme + @"'>
 <div id='p'>
+<div id='flagbanner'></div>
+<div id='rpmbar'>" + GtLedBar(15, "led") + @"</div>
 <div id='md-speed' style='" + Vis(showSpeed) + @"'>
-<div id='tr'>
-<div id='sg'><div id='sp'>0<span class='u'>km/h</span></div><div id='ge'>N</div></div>
-<div id='rs'><div id='rl'>RPM</div><div id='rb'><div id='rf' style='width:0%'></div></div></div>
-<div id='lc'><div id='ll'>LAP</div><div id='lv'>0</div></div>
-<div id='pc'><div id='pl'>POS</div><div id='pv'>P0/0</div></div>
-<div id='chips'>
-<div class='chip flag' id='chFlag' style='display:none'>FLAG</div>
-<div class='chip tc' id='chTc' style='display:none'>TC</div>
-<div class='chip abs' id='chAbs' style='display:none'>ABS</div>
-<div class='chip pit' id='chPit' style='display:none'>PIT</div>
-</div>
+<div id='dash'>
+<div id='speedbox'><div id='sp'>0<span class='u'>KM/H</span></div>
+<div id='rpmrow'><div id='rpbar'><div id='rpfill'></div></div><div id='rptxt'>0%</div></div></div>
+<div id='gearbox'><div id='ge'>N</div><div id='glb'>GEAR</div></div>
+<div id='racebox'><div id='pos'>P0<small>/0</small></div><div id='lap'>LAP 0</div>
+<div id='gaps'><span id='gA'>+0.000</span><span id='gB'>+0.000</span></div>
+<div id='chips'><div class='chip tc' id='chTc'>TC</div><div class='chip abs' id='chAbs'>ABS</div><div class='chip pit' id='chPit'>PIT</div><div class='chip lim' id='chLim'>LIMIT</div></div></div>
 </div>
 </div>
 <div id='md-force' style='" + Vis(showForce) + @"'>
-<div id='fa'>
-<div id='fv'>0.000<span class='n'>Nm</span></div>
-<div id='fbw'><div id='fb' class='p' style='width:0%'></div></div>
-<div id='cp'>CLIPPING</div>
-<div id='gp'><span><span class='gL'>Ahead</span><span id='gA'>+0.000</span></span><span><span class='gL'>Behind</span><span id='gB'>+0.000</span></span></div>
-<div id='ch'>
+<div id='ffbsec'>
+<div id='ffbtop'><span class='sec-lb'>FFB</span><span id='ffv'>0.000<span class='n'>Nm</span></span><span id='cp'>CLIPPING</span></div>
+<div id='ffbarw'><div id='ffbar'></div></div>
+<div id='chrow'>
 <div class='cg'><span class='cl'>Mz</span><span class='cv mz' id='vMz'>0.000</span></div>
 <div class='cg'><span class='cl'>Fx</span><span class='cv fx' id='vFx'>0.000</span></div>
 <div class='cg'><span class='cl'>Fy</span><span class='cv fy' id='vFy'>0.000</span></div>
-<div class='cg'><span class='cl'>Gas</span><span class='cv ga' id='vGa'>0</span></div>
-<div class='cg'><span class='cl'>Brk</span><span class='cv br' id='vBr'>0</span></div>
-<div class='cg'><span class='cl'>Lat</span><span class='cv lt' id='vLt'>0.00</span></div>
-<div class='cg'><span class='cl'>Lon</span><span class='cv ln' id='vLn'>0.00</span></div>
+<div class='cg'><span class='cl'>THR</span><span class='cv pb' id='vGa'>0%</span></div>
+<div class='cg'><span class='cl'>BRK</span><span class='cv fx' id='vBr'>0%</span></div>
+<div class='cg'><span class='cl'>LAT-G</span><span class='cv gl' id='vLt'>0.00</span></div>
+<div class='cg'><span class='cl'>LON-G</span><span class='cv mz' id='vLn'>0.00</span></div>
 </div>
 </div>
 </div>
 <div id='btr'>
-<div id='md-waveform' style='" + Vis(showWaveform) + @"'><div id='ww'><canvas id='cWave'></canvas></div></div>
+<div id='md-waveform' style='" + Vis(showWaveform) + @"'><div id='ww' style='flex:1;display:flex;min-height:inherit'><canvas id='cWave'></canvas></div></div>
 <div id='md-track' style='" + Vis(showTrack) + @"'><div id='tw'><canvas id='cTrack'></canvas></div></div>
 </div>
 <div id='mr'>
 <div id='md-pedals' style='" + Vis(showPedals) + @"'>
-<div class='pedal-box'><div class='pedal-track'><div class='pedal-fill gas' id='pfG'></div></div><div class='pedal-lb'>GAS</div></div>
-<div class='pedal-box'><div class='pedal-track'><div class='pedal-fill brake' id='pfB'></div></div><div class='pedal-lb'>BRAKE</div></div>
-<div id='wheel-box'><canvas id='cWheel'></canvas><div class='pedal-lb'>STEER</div></div>
+<div class='pedal-box'><div class='pedal-track'><div class='pedal-fill gas' id='pfG'></div></div><div class='pedal-num' id='pfGn'>0</div><div class='pedal-lb'>THR</div></div>
+<div class='pedal-box'><div class='pedal-track'><div class='pedal-fill brake' id='pfB'></div></div><div class='pedal-num' id='pfBn'>0</div><div class='pedal-lb'>BRK</div></div>
+<div class='pedal-box'><canvas id='cWheel'></canvas><div class='pedal-num' id='stNum'>0&deg;</div><div class='pedal-lb'>STEER</div></div>
 </div>
 <div id='md-tires' style='" + Vis(showTires) + @"'>
-<div class='g-lb'>TIRES &deg;C / kPa / grip</div>
+<span class='sec-lb'>TYRES &deg;C / kPa / GRIP</span>
 <div id='tires-row'>
 <div class='tire'><div class='tire-lb'>FL</div><div class='tire-bar'><div class='tire-fill' id='tf0'></div></div><div class='tire-t' id='tt0'>--</div><div class='tire-p' id='tp0'>--</div></div>
 <div class='tire'><div class='tire-lb'>FR</div><div class='tire-bar'><div class='tire-fill' id='tf1'></div></div><div class='tire-t' id='tt1'>--</div><div class='tire-p' id='tp1'>--</div></div>
@@ -1484,181 +1579,458 @@ body{background:transparent;color:#fff;font-family:'Inter','Segoe UI',Arial,sans
 </div>
 <script>
 const N=300;
-let D={fo:new Float32Array(N),st:new Float32Array(N),sp:new Float32Array(N)};
+let D={fo:new Float32Array(N)};
 let idx=0;
+const $=id=>document.getElementById(id);
 const es=new EventSource('/stream');
 es.onmessage=(e)=>{
 const d=JSON.parse(e.data);
-if(d.force){for(let k in D)if(d[k])for(let i=0;i<d[k].length;i++)D[k][i]=d[k][i];return;}
-const $=id=>document.getElementById(id);
-(idx>=N?null:null);
-if(idx<N){D.fo[idx]=d.fo||0;D.st[idx]=d.st||0;D.sp[idx]=d.sp||0;}
-else{D.fo[idx%N]=d.fo||0;D.st[idx%N]=d.st||0;D.sp[idx%N]=d.sp||0;}
+if(d.force)return;
 idx++;
+const rp=d.rp||0;
+const rpf=$('rpfill');if(rpf)rpf.style.width=Math.min(rp*100,100)+'%';
+const rpt=$('rptxt');if(rpt)rpt.textContent=Math.round(rp*100)+'%';
+const lit=Math.round(Math.min(Math.max(rp,0),1)*15);
+for(let i=0;i<15;i++){
+const l=$('led'+i);if(!l)continue;
+l.className='led'+(i<lit?(' on '+(i<5?'g':(i<10?'r':'b'))):'');
+}
+const shift=rp>0.95||d.lim===1||d.up===1;
+document.body.classList.toggle('shift',!!shift);
 const sp=d.sp||0;
-$('sp').innerHTML=sp.toFixed(0)+'<span class=""u"">km/h</span>';
-const gr=d.ge;
-const ge=$('ge');
-if(gr===0){ge.textContent='R';ge.style.background='rgba(239,68,68,0.25)';}
-else if(gr<=1){ge.textContent='N';ge.style.background='rgba(255,255,255,0.06)';}
-else{ge.textContent=gr;ge.style.background='rgba(255,255,255,0.08)';}
-const rp=(d.rp||0);
-$('rf').style.width=Math.min(rp*100,100)+'%';
-const fo=Math.abs(d.fo||0);
-$('fv').innerHTML=fo.toFixed(3)+'<span class=""n"">Nm</span>';
-const barPct=Math.min(fo*100,100);
+const spe=$('sp');if(spe)spe.innerHTML=sp.toFixed(0)+'<span class=""u"">KM/H</span>';
+const gr=d.ge,ge=$('ge');
+if(ge){
+if(gr===0||gr===1){ge.textContent=gr===0?'R':'N';ge.classList.remove('shift');ge.style.background='';}
+else{ge.textContent=gr;ge.classList.toggle('shift',!!shift);}
+}
+const pos=$('pos');if(pos)pos.innerHTML='P'+(d.pos||0)+'<small>/'+(d.tot||0)+'</small>';
+const lap=$('lv');if(lap)lap.textContent=d.la||0;
+const lap2=$('lap');if(lap2)lap2.textContent='LAP '+(d.la||0);
+const gA=$('gA');if(gA)gA.textContent='+'+(d.gapA||0).toFixed(3);
+const gB=$('gB');if(gB)gB.textContent='+'+(d.gapB||0).toFixed(3);
+setChips(d);
+const fo=d.fo||0;
+const ffv=$('fv');if(ffv)ffv.innerHTML=Math.abs(fo).toFixed(3)+'<span class=""n"">Nm</span>';
+const ff2=$('ffv');if(ff2)ff2.innerHTML=Math.abs(fo).toFixed(3)+'<span class=""n"">Nm</span>';
 const fb=$('fb');
-fb.style.width=barPct+'%';
-fb.className=(d.fo||0)>=0?'p':'n';
-const clip=d.cl||0;
-const ce=$('cp');
-ce.style.display=clip?'block':'none';
-$('vMz').textContent=(d.mz||0).toFixed(3);
-$('vFx').textContent=(d.fx||0).toFixed(3);
-$('vFy').textContent=(d.fy||0).toFixed(3);
-$('vGa').textContent=(d.ga||0).toFixed(2);
-$('vBr').textContent=(d.br||0).toFixed(2);
-$('vLt').textContent=(d.latG||0).toFixed(2);
-$('vLn').textContent=(d.lonG||0).toFixed(2);
-$('lv').textContent=d.la||0;
-const p=d.pos||0,t=d.tot||0;
-$('pv').textContent='P'+p+'/'+t;
-const gA=d.gapA||0,gB=d.gapB||0;
-$('gA').textContent=(gA>=0?'+':'')+gA.toFixed(3);
-$('gB').textContent=(gB>=0?'+':'')+gB.toFixed(3);
-updateChips(d);
-updatePedals(d);
-updateTires(d);
-drawG(d);
-drawWave();
-drawTrack(d);
+if(fb){const pct=Math.min(Math.abs(fo)*100,100);fb.style.width='0%';}
+const ffb=$('ffbar');
+if(ffb){
+const pct=Math.min(Math.abs(fo)*50,50);
+ffb.style.left=fo>=0?'50%':(50-pct)+'%';
+ffb.style.width=pct+'%';
+ffb.className=fo<0?'neg':'';
+if(d.cl)ffb.classList.add('clip');
+}
+const ce=$('cp');if(ce)ce.style.display=d.cl?'block':'none';
+setT('vMz',(d.mz||0).toFixed(3));setT('vFx',(d.fx||0).toFixed(3));setT('vFy',(d.fy||0).toFixed(3));
+setT('vGa',Math.round((d.ga||0)*100)+'%');setT('vBr',Math.round((d.br||0)*100)+'%');
+setT('vLt',(d.latG||0).toFixed(2));setT('vLn',(d.lonG||0).toFixed(2));
+setT('lv',d.la||0);
+D.fo[idx%N]=fo;
+updatePedals(d);updateTires(d);drawG(d);drawWave();drawTrack(d);
 };
-function updateChips(d){
-const chf=$('chFlag');
-if(chf){
-const fl=d.fl;
-const lbl=['','BLUE','YELLOW','BLACK','WHITE','CHECKED','PENALTY','','ORANGE'];
-const name=fl>=0&&fl<lbl.length?lbl[fl]:'';
-if(!name||fl===0||fl===7){chf.style.display='none';}
-else{
-chf.textContent=name;
-chf.className='chip flag'+(fl===1?' blue':(fl===2?'':' red'));
-chf.style.display='flex';
-}
-}
+function setT(id,txt){const e=$(id);if(e)e.textContent=txt;}
+function setChips(d){
 const tc=$('chTc');if(tc)tc.style.display=d.tca?'flex':'none';
 const ab=$('chAbs');if(ab)ab.style.display=d.aba?'flex':'none';
 const pit=$('chPit');if(pit)pit.style.display=d.pit?'flex':'none';
+const lim=$('chLim');if(lim)lim.style.display=d.lim?'flex':'none';
+const fl=d.fl;
+const bn=$('flagbanner');
+if(bn){
+const map={1:['BLUE','blue'],2:['YELLOW','yellow'],3:['BLACK — DRIVE THROUGH','black'],4:['WHITE — SLOW CAR','white'],5:['CHEQUERED','checked'],6:['PENALTY','red'],8:['ORANGE — TRACK LIMITS','red']};
+if(map[fl]){bn.textContent=map[fl][0];bn.className='show '+map[fl][1];}
+else{bn.className='';bn.textContent='';}
+}
 }
 function updatePedals(d){
-const gas=Math.max(0,Math.min(1,d.ga||0));
-$('pfG').style.height=(gas*100)+'%';
-const brk=Math.max(0,Math.min(1,d.br||0));
-$('pfB').style.height=(brk*100)+'%';
+const gas=Math.max(0,Math.min(1,d.ga||0)),brk=Math.max(0,Math.min(1,d.br||0));
+const g=$('pfG');if(g)g.style.height=(gas*100)+'%';
+const b=$('pfB');if(b)b.style.height=(brk*100)+'%';
+setT('pfGn',Math.round(gas*100));setT('pfBn',Math.round(brk*100));
 drawWheel(d);
+const st=$('stNum');if(st){const deg=d.stD!==undefined?d.stD:(d.st||0)*60;st.innerHTML=Math.round(deg)+'&deg;';}
 }
 function drawWheel(d){
-const c=document.getElementById('cWheel');
-if(!c)return;
+const c=$('cWheel');if(!c||!c.clientWidth)return;
 const w=c.clientWidth,h=c.clientHeight;
 if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
-const x=c.getContext('2d');
-x.clearRect(0,0,w,h);
+const x=c.getContext('2d');x.clearRect(0,0,w,h);
 const cx=w/2,cy=h/2,r=Math.min(w,h)*0.42;
-let deg=0;
-if(d.stD!==undefined&&Math.abs(d.stD)>0.1){deg=Math.max(-720,Math.min(720,d.stD));}
-else{deg=Math.max(-180,Math.min(180,(d.st||0)*60));}
-x.strokeStyle='rgba(255,255,255,0.12)';x.lineWidth=1;
-x.beginPath();x.arc(cx,cy,r*0.66,0,Math.PI*2);x.stroke();
+let deg=d.stD!==undefined&&Math.abs(d.stD)>0.1?Math.max(-540,Math.min(540,d.stD)):Math.max(-180,Math.min(180,(d.st||0)*90));
+x.strokeStyle='rgba(255,255,255,0.14)';x.lineWidth=2;
+x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.stroke();
 x.save();x.translate(cx,cy);x.rotate(deg*Math.PI/180);
-x.strokeStyle='rgba(255,255,255,0.85)';x.lineWidth=Math.max(2.5,r*0.14);
-x.beginPath();x.arc(0,0,r,0,Math.PI*2);x.stroke();
-x.strokeStyle='rgba(255,255,255,0.5)';x.lineWidth=Math.max(1.5,r*0.08);
-x.beginPath();x.moveTo(-r*0.55,0);x.lineTo(r*0.55,0);x.moveTo(0,-r*0.55);x.lineTo(0,r*0.55);x.stroke();
-x.beginPath();x.arc(0,0,r*0.16,0,Math.PI*2);x.fillStyle='rgba(255,255,255,0.22)';x.fill();
+x.strokeStyle='#f2f5f7';x.lineWidth=Math.max(4,r*0.2);
+x.beginPath();x.arc(0,0,r*0.82,Math.PI*0.15,Math.PI*0.85);x.stroke();
+x.beginPath();x.arc(0,0,r*0.82,Math.PI*1.15,Math.PI*1.85);x.stroke();
+x.strokeStyle='rgba(255,255,255,0.55)';x.lineWidth=Math.max(2,r*0.1);
+x.beginPath();x.moveTo(-r*0.5,0);x.lineTo(r*0.5,0);x.stroke();
+x.fillStyle='#e10600';x.beginPath();x.arc(0,-r*0.82,Math.max(2.5,r*0.09),0,Math.PI*2);x.fill();
 x.restore();
-x.fillStyle='#ef4444';x.beginPath();x.arc(cx,cy,Math.max(2,r*0.07),0,Math.PI*2);x.fill();
+x.fillStyle='#e10600';x.beginPath();x.arc(cx,cy- r*0.82 - 4,2,0,Math.PI*2);x.fill();
 }
 function updateTires(d){
 const temps=[d.tt0||0,d.tt1||0,d.tt2||0,d.tt3||0];
 const pres=[d.tp0||0,d.tp1||0,d.tp2||0,d.tp3||0];
 const grip=[d.tg0||0,d.tg1||0,d.tg2||0,d.tg3||0];
 for(let i=0;i<4;i++){
-const t=temps[i],f=$('tf'+i);
-if(t<=0.5){f.style.height='2%';f.style.background='rgba(255,255,255,0.08)';}
-else{
-const pct=Math.max(0,Math.min(1,(t-20)/90));
-f.style.height=(pct*100)+'%';
-f.style.background='hsl('+(240-pct*240)+',85%,55%)';
-}
-$('tt'+i).textContent=t<=0.5?'--':t.toFixed(0)+'°';
-$('tp'+i).textContent=(pres[i]<=0.5?'--':pres[i].toFixed(0)+(grip[i]>0.01?' · '+Math.round(grip[i]*100)+'%':''));
+const t=temps[i],f=$('tf'+i);if(!f)continue;
+if(t<=0.5){f.style.height='3%';f.style.background='rgba(255,255,255,0.1)';}
+else{const pct=Math.max(0,Math.min(1,(t-20)/90));f.style.height=(pct*100)+'%';f.style.background='hsl('+(215-pct*215)+',90%,55%)';}
+setT('tt'+i,t<=0.5?'--':t.toFixed(0)+'°');
+setT('tp'+i,(pres[i]<=0.5?'--':pres[i].toFixed(0))+(grip[i]>0.01?' · '+Math.round(grip[i]*100)+'%':''));
 }
 }
 function drawG(d){
-const c=document.getElementById('cG');
-if(!c)return;
+const c=$('cG');if(!c||!c.clientWidth)return;
 const w=c.clientWidth,h=c.clientHeight;
 if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
-const x=c.getContext('2d');
-x.clearRect(0,0,w,h);
+const x=c.getContext('2d');x.clearRect(0,0,w,h);
 const cx=w/2,cy=h/2,r=Math.min(w,h)*0.44;
-x.strokeStyle='rgba(255,255,255,0.2)';x.lineWidth=1.5;
+x.strokeStyle='rgba(255,255,255,0.22)';x.lineWidth=1.5;
 x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.stroke();
 x.strokeStyle='rgba(255,255,255,0.1)';
 x.beginPath();x.arc(cx,cy,r*0.5,0,Math.PI*2);x.stroke();
 x.beginPath();x.moveTo(cx-r,cy);x.lineTo(cx+r,cy);x.moveTo(cx,cy-r);x.lineTo(cx,cy+r);x.stroke();
 const gx=(d.gx!==undefined?d.gx:0),gy=(d.gy!==undefined?d.gy:0);
-const scale=r/2.2;
-const bx=cx+Math.max(-r,Math.min(r,gx*scale));
-const by=cy+Math.max(-r,Math.min(r,gy*scale));
-x.beginPath();x.arc(bx,by,Math.max(4,r*0.13),0,Math.PI*2);
-x.fillStyle='rgba(34,211,238,0.9)';x.fill();
-x.strokeStyle='#fff';x.lineWidth=1.5;x.stroke();
-const gl=$('gLat');if(gl)gl.textContent='LAT '+gx.toFixed(2);
-const go=$('gLon');if(go)go.textContent='LON '+gy.toFixed(2);
+const bx=cx+Math.max(-r,Math.min(r,gx*r/2.2)),by=cy+Math.max(-r,Math.min(r,gy*r/2.2));
+const grd=x.createRadialGradient(bx,by,1,bx,by,r*0.16);
+grd.addColorStop(0,'#40c4ff');grd.addColorStop(1,'rgba(64,196,255,0.25)');
+x.fillStyle=grd;x.beginPath();x.arc(bx,by,Math.max(4,r*0.14),0,Math.PI*2);x.fill();
+x.strokeStyle='#fff';x.lineWidth=1.2;x.stroke();
+setT('gLat','LAT '+gx.toFixed(2));setT('gLon','LON '+gy.toFixed(2));
 }
-window.addEventListener('resize',()=>{drawWave();});
 function drawWave(){
-const c=document.getElementById('cWave');
-if(!c)return;
+const c=$('cWave');if(!c||!c.clientWidth)return;
 const w=c.clientWidth,h=c.clientHeight;
 if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
-const x=c.getContext('2d');
-x.clearRect(0,0,w,h);
+const x=c.getContext('2d');x.clearRect(0,0,w,h);
 const n=Math.min(idx,N);if(n<2)return;
-const si=idx>=N?idx%N:0;
-const mid=h/2;
-x.strokeStyle='rgba(255,255,255,0.05)';x.lineWidth=1;x.setLineDash([3,6]);
+const si=idx>=N?idx%N:0,mid=h/2;
+x.strokeStyle='rgba(255,255,255,0.12)';x.setLineDash([3,6]);
 x.beginPath();x.moveTo(0,mid);x.lineTo(w,mid);x.stroke();x.setLineDash([]);
-x.strokeStyle='#22d3ee';x.lineWidth=Math.max(1,h*0.1);
+const grad=x.createLinearGradient(0,0,w,0);grad.addColorStop(0,'rgba(0,176,255,0.25)');grad.addColorStop(1,'#00e676');
+x.strokeStyle=grad;x.lineWidth=Math.max(1.5,h*0.12);x.lineJoin='round';
 x.beginPath();
-for(let i=0;i<n;i++){
-let v=D.fo[(si+i)%N]||0;
-const px=i/(n-1)*w,py=mid-v*mid*0.75;
-i===0?x.moveTo(px,py):x.lineTo(px,py);
-}
+for(let i=0;i<n;i++){const v=D.fo[(si+i)%N]||0;const px=i/(n-1)*w,py=mid-v*mid*0.8;i===0?x.moveTo(px,py):x.lineTo(px,py);}
 x.stroke();
 }
 function drawTrack(d){
-const c=document.getElementById('cTrack');
-if(!c||d.np===undefined)return;
+const c=$('cTrack');if(!c||!c.clientWidth||d.np===undefined)return;
 const w=c.clientWidth,h=c.clientHeight;
 if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
-const x=c.getContext('2d');
-x.clearRect(0,0,w,h);
+const x=c.getContext('2d');x.clearRect(0,0,w,h);
 const cx=w/2,cy=h/2,r=Math.min(w,h)*0.35;
-x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);
-x.strokeStyle='rgba(255,255,255,0.1)';x.lineWidth=1.5;x.stroke();
-const np=d.np||0;
-const angle=np*Math.PI*2-Math.PI/2;
-const px=cx+Math.cos(angle)*r;
-const py=cy+Math.sin(angle)*r;
-x.beginPath();x.arc(px,py,Math.max(3,w*0.04),0,Math.PI*2);
-x.fillStyle='rgba(34,211,238,0.8)';x.fill();
-x.beginPath();x.arc(px,py,Math.max(1.5,w*0.018),0,Math.PI*2);
-x.fillStyle='#fff';x.fill();
+x.strokeStyle='rgba(255,255,255,0.18)';x.lineWidth=2;
+x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.stroke();
+const a=(d.np||0)*Math.PI*2-Math.PI/2,px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r;
+x.fillStyle='#00e676';x.beginPath();x.arc(px,py,Math.max(3.5,w*0.045),0,Math.PI*2);x.fill();
+x.fillStyle='#fff';x.beginPath();x.arc(px,py,Math.max(1.5,w*0.02),0,Math.PI*2);x.fill();
 }
+</script></body></html>";
+    }
+
+    // ── Relative tower: racecraft at a glance ────────────────────────────
+    private static string GetTowerHtml(OverlayOptions opts)
+    {
+        var opacity = opts.Opacity.ToString("F2");
+        return @"<!DOCTYPE html>
+<html><head><meta charset=""utf-8""><title>Relative Tower</title>
+<link href='https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap' rel='stylesheet'>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:transparent;color:#f2f5f7;font-family:" + GtFontStack + @";display:flex;align-items:flex-start;justify-content:flex-start;height:100vh}
+#t{opacity:" + opacity + @";background:linear-gradient(165deg,rgba(22,25,29,0.95),rgba(9,10,12,0.95));border:1px solid rgba(255,255,255,0.1);border-left:3px solid #e10600;border-radius:0 12px 12px 0;padding:14px 18px;min-width:230px;box-shadow:0 12px 40px rgba(0,0,0,0.5)}
+#tpos{font-size:clamp(38px,5vw,72px);font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+#tpos small{font-size:0.42em;color:rgba(255,255,255,0.5)}
+#tlap{font-size:clamp(12px,1.2vw,19px);color:rgba(255,255,255,0.65);letter-spacing:0.2em;font-weight:600;margin-top:2px}
+.gap{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;padding:8px 10px;background:rgba(0,0,0,0.4);border-radius:8px}
+.gap .n{font-size:11px;letter-spacing:0.2em;color:rgba(255,255,255,0.45);font-weight:600}
+.gap .v{font-size:clamp(18px,2vw,30px);font-weight:700;font-variant-numeric:tabular-nums}
+#gAv{color:#00e676}#gBv{color:#ff8a65}
+#tflag{display:none;margin-top:10px;text-align:center;font-weight:700;letter-spacing:0.2em;padding:6px;border-radius:8px;font-size:14px}
+#tflag.show{display:block}
+#tflag.yellow{background:#facc15;color:#111}#tflag.blue{background:#1565c0;color:#fff}#tflag.red{background:#b71c1c;color:#fff}#tflag.white{background:#eee;color:#111}
+#tsp{margin-top:8px;font-size:13px;color:rgba(255,255,255,0.55);font-variant-numeric:tabular-nums;letter-spacing:0.1em}
+#tleds{display:flex;gap:3px;margin-top:8px}
+#tleds .led{flex:1;height:10px;border-radius:3px;background:rgba(255,255,255,0.08)}
+#tleds .led.on{background:#00e676;box-shadow:0 0 8px #00e676}
+#tleds .led.on.r{background:#ff1744;box-shadow:0 0 8px #ff1744}
+</style></head><body>
+<div id='t'>
+<div id='tpos'>P0<small>/0</small></div>
+<div id='tlap'>LAP 0</div>
+<div class='gap'><span class='n'>AHEAD</span><span class='v' id='gAv'>+0.000</span></div>
+<div class='gap'><span class='n'>BEHIND</span><span class='v' id='gBv'>+0.000</span></div>
+<div id='tflag'></div>
+<div id='tsp'>0 km/h · N</div>
+<div id='tleds'>" + GtLedBar(10, "tled") + @"</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const es=new EventSource('/stream');
+es.onmessage=(e)=>{
+const d=JSON.parse(e.data);if(d.force)return;
+$('tpos').innerHTML='P'+(d.pos||0)+'<small>/'+(d.tot||0)+'</small>';
+$('tlap').textContent='LAP '+(d.la||0);
+$('gAv').textContent='+'+(d.gapA||0).toFixed(3);
+$('gBv').textContent='+'+(d.gapB||0).toFixed(3);
+const gr=d.ge;$('tsp').textContent=(d.sp||0).toFixed(0)+' km/h · '+(gr===0?'R':(gr<=1?'N':gr));
+const rp=d.rp||0,lit=Math.round(rp*10);
+for(let i=0;i<10;i++){const l=$('tled'+i);if(l)l.className='led'+(i<lit?(' on'+(i>6?' r':'')):'');}
+const fl=d.fl,f=$('tflag');
+const map={1:['BLUE','blue'],2:['YELLOW','yellow'],3:['BLACK FLAG','red'],4:['WHITE FLAG','white'],5:['FINISH','white'],6:['PENALTY','red'],8:['TRACK LIMITS','red']};
+if(map[fl]){f.textContent=map[fl][0];f.className='show '+map[fl][1];}else{f.className='';f.textContent='';}
+};
+</script></body></html>";
+    }
+
+    // ── Inputs: pedals + steering + FFB trace for coaching ───────────────
+    private static string GetInputsHtml(OverlayOptions opts)
+    {
+        var opacity = opts.Opacity.ToString("F2");
+        return @"<!DOCTYPE html>
+<html><head><meta charset=""utf-8""><title>Inputs</title>
+<link href='https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap' rel='stylesheet'>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:transparent;color:#f2f5f7;font-family:" + GtFontStack + @";display:flex;align-items:center;justify-content:center;height:100vh}
+#i{opacity:" + opacity + @";display:flex;gap:clamp(12px,1.6vw,28px);align-items:stretch;background:linear-gradient(165deg,rgba(22,25,29,0.95),rgba(9,10,12,0.95));border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:clamp(12px,1.5vw,24px)}
+.col{display:flex;flex-direction:column;align-items:center;gap:6px}
+.bar{width:clamp(44px,5vw,90px);height:clamp(150px,28vh,340px);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;position:relative;overflow:hidden}
+.fill{position:absolute;bottom:0;left:0;right:0;transition:height 35ms linear}
+.fill.gas{background:linear-gradient(0deg,#00897b,#00e676)}
+.fill.brake{background:linear-gradient(0deg,#b71c1c,#ff5252)}
+.num{font-size:clamp(20px,2.4vw,40px);font-weight:700;font-variant-numeric:tabular-nums}
+.lb{font-size:11px;letter-spacing:0.24em;color:rgba(255,255,255,0.45);font-weight:600}
+#cW{width:clamp(130px,15vw,260px);height:clamp(130px,15vw,260px)}
+#trace{width:clamp(220px,30vw,560px);display:flex;flex-direction:column;gap:6px}
+#cT{width:100%;height:clamp(150px,28vh,340px);background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.08);border-radius:10px}
+#ffn{font-size:clamp(18px,2vw,34px);font-weight:700;font-variant-numeric:tabular-nums}
+#clipn{display:none;color:#ff1744;font-weight:700;letter-spacing:0.2em;animation:bl 0.6s steps(2) infinite}
+@keyframes bl{50%{opacity:0.4}}
+</style></head><body>
+<div id='i'>
+<div class='col'><div class='bar'><div class='fill gas' id='ig'></div></div><div class='num' id='ign'>0</div><div class='lb'>THROTTLE</div></div>
+<div class='col'><div class='bar'><div class='fill brake' id='ib'></div></div><div class='num' id='ibn'>0</div><div class='lb'>BRAKE</div></div>
+<div class='col'><canvas id='cW'></canvas><div class='num' id='stn'>0&deg;</div><div class='lb'>STEERING</div></div>
+<div id='trace'><canvas id='cT'></canvas><div><span id='ffn'>0.000 Nm</span> <span id='clipn'>CLIP</span></div><div class='lb'>FFB TRACE</div></div>
+</div>
+<script>
+const N=400;let buf=new Float32Array(N),idx=0;
+const $=id=>document.getElementById(id);
+const es=new EventSource('/stream');
+es.onmessage=(e)=>{
+const d=JSON.parse(e.data);if(d.force)return;
+const g=d.ga||0,b=d.br||0;
+$('ig').style.height=(g*100)+'%';$('ib').style.height=(b*100)+'%';
+$('ign').textContent=Math.round(g*100);$('ibn').textContent=Math.round(b*100);
+const deg=d.stD!==undefined?d.stD:(d.st||0)*90;
+$('stn').innerHTML=Math.round(deg)+'&deg;';
+drawWheel(deg);
+buf[idx%N]=d.fo||0;idx++;drawTrace();
+$('ffn').textContent=Math.abs(d.fo||0).toFixed(3)+' Nm';
+$('clipn').style.display=d.cl?'inline':'none';
+};
+function drawWheel(deg){
+const c=$('cW'),w=c.clientWidth,h=c.clientHeight;
+if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+const x=c.getContext('2d');x.clearRect(0,0,w,h);
+const cx=w/2,cy=h/2,r=Math.min(w,h)*0.4;
+x.strokeStyle='rgba(255,255,255,0.15)';x.lineWidth=3;
+x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.stroke();
+x.save();x.translate(cx,cy);x.rotate(Math.max(-540,Math.min(540,deg))*Math.PI/180);
+x.strokeStyle='#fff';x.lineWidth=7;
+x.beginPath();x.arc(0,0,r*0.8,Math.PI*0.15,Math.PI*0.85);x.stroke();
+x.beginPath();x.arc(0,0,r*0.8,Math.PI*1.15,Math.PI*1.85);x.stroke();
+x.fillStyle='#e10600';x.beginPath();x.arc(0,-r*0.8,6,0,Math.PI*2);x.fill();
+x.restore();
+}
+function drawTrace(){
+const c=$('cT'),w=c.clientWidth,h=c.clientHeight;
+if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+const x=c.getContext('2d');x.clearRect(0,0,w,h);
+x.strokeStyle='rgba(255,255,255,0.15)';x.setLineDash([4,6]);
+x.beginPath();x.moveTo(0,h/2);x.lineTo(w,h/2);x.stroke();x.setLineDash([]);
+const n=Math.min(idx,N),si=idx>=N?idx%N:0;
+x.strokeStyle='#00e676';x.lineWidth=2.5;x.lineJoin='round';x.beginPath();
+for(let i=0;i<n;i++){const v=buf[(si+i)%N];const px=i/(n-1)*w,py=h/2-v*h*0.42;i===0?x.moveTo(px,py):x.lineTo(px,py);}
+x.stroke();
+}
+</script></body></html>";
+    }
+
+    // ── Tires & brakes: 4-corner detail ──────────────────────────────────
+    private static string GetTiresHtml(OverlayOptions opts)
+    {
+        var opacity = opts.Opacity.ToString("F2");
+        return @"<!DOCTYPE html>
+<html><head><meta charset=""utf-8""><title>Tires</title>
+<link href='https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap' rel='stylesheet'>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:transparent;color:#f2f5f7;font-family:" + GtFontStack + @";display:flex;align-items:center;justify-content:center;height:100vh}
+#tt{opacity:" + opacity + @";background:linear-gradient(165deg,rgba(22,25,29,0.95),rgba(9,10,12,0.95));border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:clamp(12px,1.5vw,24px);display:flex;flex-direction:column;gap:10px}
+#tt h2{font-size:12px;letter-spacing:0.3em;color:rgba(255,255,255,0.45);font-weight:600}
+#row{display:flex;gap:clamp(10px,1.2vw,22px)}
+.t{display:flex;flex-direction:column;align-items:center;gap:4px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 14px;min-width:clamp(90px,10vw,170px)}
+.t .n{font-weight:700;letter-spacing:0.15em;color:rgba(255,255,255,0.55)}
+.t .tmp{font-size:clamp(26px,3vw,52px);font-weight:700;font-variant-numeric:tabular-nums}
+.t .pr{font-size:clamp(12px,1.2vw,19px);color:rgba(255,255,255,0.65);font-variant-numeric:tabular-nums}
+.t .bp{width:100%;height:8px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden}
+.t .bp>div{height:100%;background:linear-gradient(90deg,#ff9100,#ff3d00);width:0%}
+.t .gr{width:100%;height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden}
+.t .gr>div{height:100%;background:#00e676;width:0%}
+#cG2{width:120px;height:120px}
+#bot{display:flex;gap:18px;align-items:center;justify-content:center}
+.gv{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+</style></head><body>
+<div id='tt'><h2>TYRES · °C / kPa / BRAKE N / GRIP</h2>
+<div id='row'>
+<div class='t'><span class='n'>FL</span><span class='tmp' id='t0'>--</span><span class='pr' id='p0'>--</span><div class='bp'><div id='b0'></div></div><div class='gr'><div id='g0'></div></div></div>
+<div class='t'><span class='n'>FR</span><span class='tmp' id='t1'>--</span><span class='pr' id='p1'>--</span><div class='bp'><div id='b1'></div></div><div class='gr'><div id='g1'></div></div></div>
+<div class='t'><span class='n'>RL</span><span class='tmp' id='t2'>--</span><span class='pr' id='p2'>--</span><div class='bp'><div id='b2'></div></div><div class='gr'><div id='g2'></div></div></div>
+<div class='t'><span class='n'>RR</span><span class='tmp' id='t3'>--</span><span class='pr' id='p3'>--</span><div class='bp'><div id='b3'></div></div><div class='gr'><div id='g3'></div></div></div>
+</div>
+<div id='bot'><canvas id='cG2'></canvas><span class='gv' id='gv'>LAT 0.00 · LON 0.00</span></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const es=new EventSource('/stream');
+es.onmessage=(e)=>{
+const d=JSON.parse(e.data);if(d.force)return;
+const T=[d.tt0||0,d.tt1||0,d.tt2||0,d.tt3||0],P=[d.tp0||0,d.tp1||0,d.tp2||0,d.tp3||0];
+const B=[d.bp0||0,d.bp1||0,d.bp2||0,d.bp3||0],G=[d.tg0||0,d.tg1||0,d.tg2||0,d.tg3||0];
+for(let i=0;i<4;i++){
+const t=T[i],te=$('t'+i);
+if(t<=0.5){te.textContent='--';te.style.color='#888';}
+else{te.textContent=t.toFixed(0)+'°';const pct=Math.max(0,Math.min(1,(t-20)/90));te.style.color='hsl('+(215-pct*215)+',90%,62%)';}
+$('p'+i).textContent=(P[i]<=0.5?'--':P[i].toFixed(0)+' kPa');
+$('b'+i).style.width=Math.min(B[i]/5000*100,100)+'%';
+$('g'+i).style.width=Math.min(G[i]*100,100)+'%';
+}
+const gx=d.gx||0,gy=d.gy||0;
+$('gv').textContent='LAT '+gx.toFixed(2)+' · LON '+gy.toFixed(2);
+const c=$('cG2'),w=c.clientWidth||120,h=c.clientHeight||120;
+if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+const x=c.getContext('2d');x.clearRect(0,0,w,h);
+const cx=w/2,cy=h/2,r=Math.min(w,h)*0.42;
+x.strokeStyle='rgba(255,255,255,0.2)';x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.stroke();
+x.fillStyle='#40c4ff';x.beginPath();x.arc(cx+Math.max(-r,Math.min(r,gx*r/2.2)),cy+Math.max(-r,Math.min(r,gy*r/2.2)),6,0,Math.PI*2);x.fill();
+};
+</script></body></html>";
+    }
+
+    // ── FFB health: tuning view ──────────────────────────────────────────
+    private static string GetFfbHtml(OverlayOptions opts)
+    {
+        var opacity = opts.Opacity.ToString("F2");
+        return @"<!DOCTYPE html>
+<html><head><meta charset=""utf-8""><title>FFB Health</title>
+<link href='https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap' rel='stylesheet'>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:transparent;color:#f2f5f7;font-family:" + GtFontStack + @";display:flex;align-items:center;justify-content:center;height:100vh}
+#f{opacity:" + opacity + @";background:linear-gradient(165deg,rgba(22,25,29,0.95),rgba(9,10,12,0.95));border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:clamp(12px,1.5vw,24px);width:min(92vw,760px)}
+#f h2{font-size:12px;letter-spacing:0.3em;color:rgba(255,255,255,0.45);font-weight:600}
+#fv2{font-size:clamp(40px,5vw,84px);font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+#fv2 small{font-size:0.35em;color:rgba(255,255,255,0.4);font-weight:500}
+#ok{display:inline-block;margin-left:12px;padding:4px 14px;border-radius:8px;font-weight:700;letter-spacing:0.15em;background:rgba(0,230,118,0.15);color:#00e676;border:1px solid rgba(0,230,118,0.5)}
+#ok.bad{background:rgba(255,23,68,0.18);color:#ff1744;border-color:#ff1744;animation:bl 0.6s steps(2) infinite}
+@keyframes bl{50%{opacity:0.45}}
+#cW2{width:100%;height:clamp(90px,14vh,170px);background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.08);border-radius:10px;margin-top:10px}
+.ch{display:flex;align-items:center;gap:10px;margin-top:8px}
+.ch .n{width:34px;font-weight:700;color:rgba(255,255,255,0.55)}
+.ch .tr{flex:1;height:10px;background:rgba(255,255,255,0.07);border-radius:5px;position:relative;overflow:hidden}
+.ch .tr>div{position:absolute;top:0;bottom:0;left:50%;width:0%}
+.ch .v{width:70px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+</style></head><body>
+<div id='f'><h2>FFB HEALTH</h2>
+<div><span id='fv2'>0.000 <small>Nm</small></span><span id='ok'>OK</span></div>
+<canvas id='cW2'></canvas>
+<div class='ch'><span class='n'>Mz</span><div class='tr'><div id='fmz' style='background:#ffd54f'></div></div><span class='v' id='fmzv'>0</span></div>
+<div class='ch'><span class='n'>Fx</span><div class='tr'><div id='ffx' style='background:#ff8a80'></div></div><span class='v' id='ffxv'>0</span></div>
+<div class='ch'><span class='n'>Fy</span><div class='tr'><div id='ffy' style='background:#69f0ae'></div></div><span class='v' id='ffyv'>0</span></div>
+</div>
+<script>
+const N=400;let buf=new Float32Array(N),idx=0;
+const $=id=>document.getElementById(id);
+const es=new EventSource('/stream');
+es.onmessage=(e)=>{
+const d=JSON.parse(e.data);if(d.force)return;
+const fo=d.fo||0;
+$('fv2').innerHTML=Math.abs(fo).toFixed(3)+' <small>Nm</small>';
+const ok=$('ok'),clip=d.cl?true:false;
+ok.textContent=clip?'CLIPPING':'OK';ok.className=clip?'bad':'';
+if(clip)ok.id='ok';ok.classList.toggle('bad',clip);
+buf[idx%N]=fo;idx++;draw();
+bar('fmz','fmzv',d.mz||0);bar('ffx','ffxv',d.fx||0);bar('ffy','ffyv',d.fy||0);
+};
+function bar(id,vid,v){
+const b=$(id);const pct=Math.min(Math.abs(v)*50,50);
+b.style.left=v>=0?'50%':(50-pct)+'%';b.style.width=pct+'%';
+$(vid).textContent=v.toFixed(3);
+}
+function draw(){
+const c=$('cW2'),w=c.clientWidth,h=c.clientHeight;
+if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+const x=c.getContext('2d');x.clearRect(0,0,w,h);
+x.strokeStyle='rgba(255,23,68,0.5)';x.setLineDash([5,5]);
+x.beginPath();x.moveTo(0,h*0.05);x.lineTo(w,h*0.05);x.moveTo(0,h*0.95);x.lineTo(w,h*0.95);x.stroke();x.setLineDash([]);
+x.strokeStyle='rgba(255,255,255,0.15)';
+x.beginPath();x.moveTo(0,h/2);x.lineTo(w,h/2);x.stroke();
+const n=Math.min(idx,N),si=idx>=N?idx%N:0;
+x.strokeStyle='#fff';x.lineWidth=2;x.beginPath();
+for(let i=0;i<n;i++){const v=buf[(si+i)%N];const px=i/(n-1)*w,py=h/2-v*h*0.45;i===0?x.moveTo(px,py):x.lineTo(px,py);}
+x.stroke();
+}
+</script></body></html>";
+    }
+
+    // ── Minimal: shift + gear + flag dot for VR / small window ───────────
+    private static string GetMinimalHtml(OverlayOptions opts)
+    {
+        var opacity = opts.Opacity.ToString("F2");
+        return @"<!DOCTYPE html>
+<html><head><meta charset=""utf-8""><title>Shift</title>
+<link href='https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap' rel='stylesheet'>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:transparent;color:#fff;font-family:" + GtFontStack + @";display:flex;align-items:center;justify-content:center;height:100vh}
+#m{opacity:" + opacity + @";display:flex;align-items:center;gap:12px;background:rgba(8,10,12,0.72);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:8px 16px}
+#mleds{display:flex;gap:4px}
+#mleds .led{width:clamp(10px,1.4vw,20px);height:clamp(14px,2.4vh,30px);border-radius:4px;background:rgba(255,255,255,0.1)}
+#mleds .led.on{background:#00e676;box-shadow:0 0 10px #00e676}
+#mleds .led.on.r{background:#ff1744;box-shadow:0 0 10px #ff1744}
+#mg{font-size:clamp(28px,4vw,58px);font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+#mg.shift{color:#ff1744;animation:bl 0.35s steps(2) infinite}
+@keyframes bl{50%{opacity:0.5}}
+#ms{font-size:clamp(13px,1.4vw,22px);color:rgba(255,255,255,0.6);font-variant-numeric:tabular-nums}
+#flagdot{width:14px;height:14px;border-radius:50%;background:transparent}
+#clipdot{width:14px;height:14px;border-radius:50%;background:rgba(0,230,118,0.9);box-shadow:0 0 8px rgba(0,230,118,0.8)}
+#clipdot.bad{background:#ff1744;box-shadow:0 0 10px #ff1744}
+</style></head><body>
+<div id='m'><div id='mleds'>" + GtLedBar(7, "mled") + @"</div><div id='mg'>N</div><div id='ms'>0</div><div id='flagdot'></div><div id='clipdot'></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const es=new EventSource('/stream');
+es.onmessage=(e)=>{
+const d=JSON.parse(e.data);if(d.force)return;
+const rp=d.rp||0,lit=Math.round(rp*7);
+for(let i=0;i<7;i++){const l=$('mled'+i);if(l)l.className='led'+(i<lit?(' on'+(i>4?' r':'')):'');}
+const gr=d.ge,g=$('mg');
+g.textContent=gr===0?'R':(gr<=1?'N':gr);
+g.classList.toggle('shift',rp>0.95||d.lim===1);
+$('ms').textContent=(d.sp||0).toFixed(0);
+const fl=d.fl,fd=$('flagdot');
+const cols={1:'#2196f3',2:'#facc15',3:'#000',4:'#fff',5:'#fff',6:'#ff1744',8:'#ff9100'};
+fd.style.background=cols[fl]||'transparent';
+fd.style.boxShadow=cols[fl]?('0 0 10px '+cols[fl]):'none';
+$('clipdot').className=d.cl?'bad':'';
+};
 </script></body></html>";
     }
 

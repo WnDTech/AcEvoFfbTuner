@@ -58,15 +58,25 @@ public sealed class PedalConfigManager
         try
         {
             if (!File.Exists(ConfigPath))
+            {
+                Core.DirectInput.VJoy.VJoyFeeder.LogAlways($"PedalConfigManager: file NOT found at {ConfigPath}");
                 return new PedalConfig();
+            }
 
             var json = File.ReadAllText(ConfigPath);
             var config = JsonSerializer.Deserialize<PedalConfig>(json, JsonOptions);
-            return config ?? new PedalConfig();
+            if (config == null)
+            {
+                Core.DirectInput.VJoy.VJoyFeeder.LogAlways($"PedalConfigManager: deserialized NULL from {ConfigPath}");
+                return new PedalConfig();
+            }
+            Core.DirectInput.VJoy.VJoyFeeder.LogAlways(
+                $"PedalConfigManager: loaded {ConfigPath} — gasAxis={config.GasAxis} brakeAxis={config.BrakeAxis} clutchAxis={config.ClutchAxis}");
+            return config;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[PedalConfigManager] Failed to load config: {ex.Message}");
+            Core.DirectInput.VJoy.VJoyFeeder.LogAlways($"PedalConfigManager: FAILED to load {ConfigPath}: {ex.Message}");
             return new PedalConfig();
         }
     }

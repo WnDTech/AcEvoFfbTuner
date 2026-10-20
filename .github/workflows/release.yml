@@ -75,6 +75,10 @@ jobs:
           -p:InformationalVersion=${{ steps.version.outputs.version }}
           -o ./publish
 
+      - name: Fetch pinned vJoy installer (AC1 bridge, hash-verified)
+        shell: pwsh
+        run: .\installer\fetch-vjoy.ps1 -FailOnError
+
       - name: Build Inno Setup installer
         shell: pwsh
         run: |

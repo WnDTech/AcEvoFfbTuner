@@ -30,8 +30,8 @@
                                       Selectable="True" IsSelected="True">
                     <controls:SectionCard.SummaryContent>
                         <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
-                            <Run Text="{Binding DeviceName, FallbackValue='No device', TargetNullValue='No device'}" Foreground="#FFE6EDF3" />
-                            <Run Text="  ·  " /><Run Text="{Binding IsDeviceConnected, StringFormat='Connected: {0}'}" Foreground="#FF7EE787" />
+                            <Run Text="{Binding DeviceName, Mode=OneWay, FallbackValue='No device', TargetNullValue='No device'}" Foreground="#FFE6EDF3" />
+                            <Run Text="  ·  " /><Run Text="{Binding IsDeviceConnected, Mode=OneWay, StringFormat='Connected: {0}'}" Foreground="#FF7EE787" />
                         </TextBlock>
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
@@ -43,8 +43,8 @@
                                       Selectable="True">
                     <controls:SectionCard.SummaryContent>
                         <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
-                            <Run Text="{Binding LedVisibleCount, StringFormat='{}{0} LEDs'}" Foreground="#FF79C0FF" />
-                            <Run Text="  ·  " /><Run Text="{Binding LedSupportedInfo}" Foreground="#FF79C0FF" />
+                            <Run Text="{Binding LedVisibleCount, Mode=OneWay, StringFormat='{}{0} LEDs'}" Foreground="#FF79C0FF" />
+                            <Run Text="  ·  " /><Run Text="{Binding LedSupportedInfo, Mode=OneWay}" Foreground="#FF79C0FF" />
                         </TextBlock>
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
@@ -82,13 +82,26 @@
                         <StackPanel>
                             <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
                                 <Run Text="Serial pedal haptics" />
-                                <Run Text="  ·  " /><Run Text="{Binding OsoyooIsConnected, StringFormat='Connected: {0}'}" Foreground="#FF7EE787" />
+                                <Run Text="  ·  " /><Run Text="{Binding OsoyooIsConnected, Mode=OneWay, StringFormat='Connected: {0}'}" Foreground="#FF7EE787" />
                             </TextBlock>
                             <Border Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,4,0,0"
                                     HorizontalAlignment="Left">
                                 <TextBlock Text="WIP" FontSize="9" FontWeight="Bold" Foreground="#FFF0A030" />
                             </Border>
                         </StackPanel>
+                    </controls:SectionCard.SummaryContent>
+                </controls:SectionCard>
+
+                <!-- GAME CONFIG -->
+                <controls:SectionCard Title="GAME CONFIG"
+                                       Tag="GameConfig"
+                                       SectionBrush="#FF7EE787"
+                                       Selectable="True">
+                    <controls:SectionCard.SummaryContent>
+                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <Run Text="Per-game wheel setup" />
+                            <Run Text="  ·  " /><Run Text="{Binding GameDisplayName, Mode=OneWay}" Foreground="#FF7EE787" />
+                        </TextBlock>
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
 
@@ -126,9 +139,9 @@
                         <Run Text="Wheelbase: " /><Run FontWeight="Bold" Foreground="#FFE6EDF3" Text="{Binding DeviceName}" />
                     </TextBlock>
                     <TextBlock FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap">
-                        <Run Text="{Binding IsDeviceConnected, StringFormat='Connected: {0}'}" />
-                        <Run Text="   |   " /><Run Text="{Binding ForceInvertEnabled, StringFormat='Force inversion: {0}'}" />
-                        <Run Text="   |   " /><Run Text="{Binding SupportsPeriodicEffects, StringFormat='Periodic effects: {0}'}" />
+                        <Run Text="{Binding IsDeviceConnected, Mode=OneWay, StringFormat='Connected: {0}'}" />
+                        <Run Text="   |   " /><Run Text="{Binding ForceInvertEnabled, Mode=OneWay, StringFormat='Force inversion: {0}'}" />
+                        <Run Text="   |   " /><Run Text="{Binding SupportsPeriodicEffects, Mode=OneWay, StringFormat='Periodic effects: {0}'}" />
                     </TextBlock>
 
                     <!-- Logitech HID++ direct wheel settings (no G HUB) -->
@@ -1128,6 +1141,16 @@
                                 <StackPanel>
                                     <TextBlock Text="PEDAL AXIS MAPPING" FontSize="11" FontWeight="Bold" Foreground="#FFFF9800" Margin="0,0,0,6" />
                                     <TextBlock Text="Select which DirectInput axis each pedal uses. If the Step 1 bars don't match your pedals, change these here." FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <Button Content="Find my pedals…" Command="{Binding OpenPedalDetectDialogCommand}"
+                                                Height="28" Padding="10,0"
+                                                Background="#FF21262D" Foreground="#FFE6EDF3"
+                                                BorderThickness="0" Cursor="Hand" FontSize="12"
+                                                ToolTip="Opens pedal setup: big live bars plus per-pedal Detect, Undo and Clear." />
+                                        <TextBlock Text="{Binding PedalDetectStatus}" FontSize="11" Foreground="#FF7EE787"
+                                                   VerticalAlignment="Center" TextWrapping="Wrap" Margin="10,0,0,0"
+                                                   Visibility="{Binding PedalDetectStatus, Converter={StaticResource NotEmptyToVis}}" />
+                                    </StackPanel>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -1639,6 +1662,185 @@
                             BorderThickness="1" BorderBrush="#333355">
                         <TextBlock Text="The panic device is opened in non-exclusive mode, so it won't conflict with the game or your FFB wheel." FontSize="13" Foreground="#FF9999CC" TextWrapping="Wrap" />
                     </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- PANEL: GAME CONFIG (per-game wheel setup)   -->
+            <!-- ═══════════════════════════════════════════ -->
+            <ScrollViewer x:Name="GameConfigPanel" VerticalScrollBarVisibility="Auto" Padding="24,20" Visibility="Collapsed">
+                <StackPanel>
+
+                    <TextBlock Text="Assetto Corsa needs the one-time setup below — game doesn't need to be running. Every other game works by selecting it and driving."
+                               FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
+
+                    <!-- Assetto Corsa: three things, done once, in order.
+                         Always visible on purpose: driver install and axis
+                         binding need neither the game selected nor running.
+                         (Live bridge state engages on its own once AC runs.) -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="#3347A15C">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,6">
+                                <TextBlock Text="ASSETTO CORSA — DO ONCE, IN ORDER" FontSize="12" FontWeight="Bold" Foreground="#FF7EE787" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding GameDisplayName}" FontSize="11"
+                                           Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBlock FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10"
+                                       Text="The game and this app can't share your wheel, so the app makes a virtual wheel for the game. Your real wheel stays plugged into the app for its force." />
+
+                            <TextBlock Text="1. Install the virtual wheel" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="18,0,0,0">
+                                <Button Content="Install driver" Command="{Binding InstallVJoyDriverCommand}"
+                                        Height="30" Padding="12,0"
+                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        BorderThickness="0" Cursor="Hand" FontSize="12"
+                                        ToolTip="Downloads the vJoy driver, checks it, and installs it (one admin prompt). Reboot afterwards." />
+                                <TextBlock FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <Run FontWeight="Bold">
+                                        <Run.Style>
+                                            <Style TargetType="Run">
+                                                <Setter Property="Text" Value="✓ ready" />
+                                                <Setter Property="Foreground" Value="#FF7EE787" />
+                                                <Style.Triggers>
+                                                <DataTrigger Binding="{Binding VJoyDriverPresent}" Value="False">
+                                                    <Setter Property="Text" Value="✗ not installed yet — hit Install driver below (one admin prompt, usually no reboot)" />
+                                                    <Setter Property="Foreground" Value="#FFFF7A7A" />
+                                                </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Run.Style>
+                                    </Run>
+                                </TextBlock>
+                            </StackPanel>
+                            <TextBlock Text="{Binding VJoyDriverStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                       TextWrapping="Wrap" Margin="18,4,0,10"
+                                       Visibility="{Binding VJoyDriverStatus, Converter={StaticResource NotEmptyToVis}}" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                <CheckBox IsChecked="{Binding AcVJoyBridgeEnabled, Mode=TwoWay}" VerticalAlignment="Center"
+                                          Content="2. Send my wheel and pedals to the game" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Cursor="Hand" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding VJoyBridgeStatus}" FontSize="12" Foreground="#FF7EE787"
+                                       TextWrapping="Wrap" Margin="18,0,0,10" />
+
+                            <TextBlock Text="3. Pedals — press each one, all three bars should move:" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                            <StackPanel Margin="18,0,0,0">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                    <TextBlock Text="Gas" Width="52" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                    <ProgressBar Value="{Binding SetupPedalGas, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="#FF4CAF50" />
+                                    <TextBlock Text="{Binding SetupPedalGas, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="#FF4CAF50" Margin="4,0,0,0" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                    <TextBlock Text="Brake" Width="52" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                    <ProgressBar Value="{Binding SetupPedalBrake, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="#FFE53935" />
+                                    <TextBlock Text="{Binding SetupPedalBrake, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="#FFE53935" Margin="4,0,0,0" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <TextBlock Text="Clutch" Width="52" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                    <ProgressBar Value="{Binding SetupPedalClutch, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="#FFFF9800" />
+                                    <TextBlock Text="{Binding SetupPedalClutch, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="#FFFF9800" Margin="4,0,0,0" />
+                                </StackPanel>
+                                <TextBlock FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,6">
+                                    <Run Text="Reading from: " /><Run Text="{Binding SetupPedalSource, Mode=OneWay}" FontWeight="Bold" />
+                                    <Run Text="  (your min/max/deadzone from Devices → Pedals apply here too)" />
+                                </TextBlock>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                    <TextBlock Text="Separate USB pedals:" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <ComboBox ItemsSource="{Binding PedalUsbDeviceNames}" SelectedIndex="{Binding PedalUsbDeviceIndex, Mode=TwoWay}"
+                                              Width="220" Height="28" FontSize="12" />
+                                    <Button Content="Rescan" Command="{Binding RescanPedalUsbDevicesCommand}"
+                                            Height="28" Padding="10,0" Margin="8,0,0,0"
+                                            Background="#FF21262D" Foreground="#FFE6EDF3"
+                                            BorderThickness="0" Cursor="Hand" FontSize="12" />
+                                </StackPanel>
+                                <TextBlock Text="Pedals plugged into the wheelbase are automatic — leave this on Auto." FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,6" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                    <Button Content="Find my pedals…" Command="{Binding OpenPedalDetectDialogCommand}"
+                                            Height="28" Padding="10,0"
+                                            Background="#FF21262D" Foreground="#FFE6EDF3"
+                                            BorderThickness="0" Cursor="Hand" FontSize="12"
+                                            ToolTip="Opens pedal setup: big live bars plus per-pedal Detect, Undo and Clear." />
+                                </StackPanel>
+                                <TextBlock Text="{Binding PedalDetectStatus}" FontSize="12" Foreground="#FF7EE787"
+                                           TextWrapping="Wrap" Margin="0,4,0,10"
+                                           Visibility="{Binding PedalDetectStatus, Converter={StaticResource NotEmptyToVis}}" />
+                            </StackPanel>
+
+                            <TextBlock Text="4. Tell Assetto Corsa to use the virtual wheel (game must be closed):" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="18,0,0,0">
+                                <Button Content="Point Assetto Corsa at the virtual wheel" Command="{Binding WriteAcVJoyBindingsCommand}"
+                                        Height="30" Padding="12,0"
+                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        BorderThickness="0" Cursor="Hand" FontSize="12"
+                                        ToolTip="Switches steering, pedals and your assigned button tasks in the game's settings file to the virtual wheel. Keyboard lines and everything else untouched; a backup is kept." />
+                            </StackPanel>
+                            <TextBlock Text="{Binding VJoyBindStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                       TextWrapping="Wrap" Margin="18,4,0,10" />
+
+                            <TextBlock Text="5. Wheel buttons (gears, pits, lights…) — press to assign each task, then run step 4 again to push them to the game:" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="18,0,0,4">
+                                <TextBlock Text="{Binding VJoyButtonsText}" FontSize="11" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                <Button Content="Match buttons to wheel" Command="{Binding MatchVJoyButtonsCommand}"
+                                        Height="26" Padding="10,0" Margin="8,0,0,0"
+                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        BorderThickness="0" Cursor="Hand" FontSize="11"
+                                        ToolTip="Sets vJoy to 128 buttons (matches any racing wheel). One admin prompt, done forever." />
+                                <Button Content="Open vJoyConf" Command="{Binding OpenVJoyConfCommand}"
+                                        Height="26" Padding="10,0" Margin="8,0,0,0"
+                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        BorderThickness="0" Cursor="Hand" FontSize="11"
+                                        ToolTip="Needs more vJoy buttons than the device offers? Change the count here (admin), Apply, then come back." />
+                                <Button Content="Reset 1:1" Command="{Binding ResetVJoyButtonMapCommand}"
+                                        Height="26" Padding="10,0" Margin="8,0,0,0"
+                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        BorderThickness="0" Cursor="Hand" FontSize="11"
+                                        ToolTip="Repairs a scrambled map: every vJoy slot follows its own wheel button again. Task list is kept." />
+                            </StackPanel>
+                            <TextBlock Margin="18,0,0,4" FontSize="11" Foreground="{StaticResource TextDimBrush}">
+                                <Run Text="Last wheel press: " /><Run Text="{Binding LastWheelButtonText, Mode=OneWay}" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                            </TextBlock>
+                            <ItemsControl ItemsSource="{Binding AcTaskRows}" Margin="18,0,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <TextBlock Text="{Binding DisplayName}" Width="130" FontSize="12" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding Assignment, Mode=OneWay}" Width="190" FontSize="11" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            <Button Content="Press to assign" Command="{Binding DataContext.CaptureAcTaskCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding Section}"
+                                                    Height="26" Padding="10,0" Margin="8,0,0,0"
+                                                    Background="#FF21262D" Foreground="#FFE6EDF3"
+                                                    BorderThickness="0" Cursor="Hand" FontSize="11" />
+                                            <Button Content="Clear" Command="{Binding DataContext.ClearAcTaskCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding Section}"
+                                                    Height="26" Padding="10,0" Margin="8,0,0,0"
+                                                    Background="#FF21262D" Foreground="#FFE6EDF3"
+                                                    BorderThickness="0" Cursor="Hand" FontSize="11" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding VJoyTaskCapturePrompt}" FontSize="12" Foreground="#FF7EE787"
+                                       TextWrapping="Wrap" Margin="18,4,0,10"
+                                       Visibility="{Binding VJoyTaskCapturePrompt, Converter={StaticResource NotEmptyToVis}}" />
+
+                            <TextBlock FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,0"
+                                       Text="Then in the game's controls screen (stock options or Content Manager) check 'vJoy Device' owns steering, gas, brake, clutch and your tasks — and leave the game's force sliders at 100%. Its output goes nowhere, but this app reads the game's torque signal, which needs the gain up. After that, just drive." />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Every other game: nothing to configure -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
+                            Visibility="{Binding IsAssettoCorsa, Converter={StaticResource InvertBoolToVis}}">
+                        <StackPanel>
+                            <TextBlock FontSize="13" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap">
+                                <Run Text="{Binding GameDisplayName, Mode=OneWay, FallbackValue='This game'}" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                                <Run Text=" needs no extra setup — the app drives your wheel directly. Select the game and drive." />
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
                 </StackPanel>
             </ScrollViewer>
                 </StackPanel>

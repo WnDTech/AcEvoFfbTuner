@@ -50,6 +50,54 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.28.0-beta.7",
+            Date = new DateTime(2026, 10, 20),
+            Title = "Live Map for every car, Assetto Corsa vJoy bridge and new AC FFB, LMU native torque direction, pedal wizard",
+            Features =
+            [
+                "Live Map: every car on track (LMU, RaceRoom, AC EVO, ACC) with class-coloured discs, race position in each disc, a flag ring per car (yellow, blue, penalty, finished, retired), a class legend and a Field standings panel",
+                "Live Map: cars are placed by a shape fit of your driven lap to the real circuit — rotation, mirroring, driving direction and start/finish are solved automatically (typically within 2–4 m)",
+                "Live Map: layouts for variants no map source publishes (e.g. LMU Bahrain Outer Circuit) are assembled from OpenStreetMap track sections, matched to the game's lap length and confirmed against your recorded lap",
+                "Track data: Wikidata (1,200 circuits) and Open Racetrack DB added as track sources; the game's lap length picks the right layout",
+                "Assetto Corsa: vJoy input bridge so the app's own FFB drives your wheel in AC — Devices → Game Config installs the driver, binds controls.ini and maps wheel buttons to AC actions",
+                "Assetto Corsa: new FFB pipeline that builds the force from telemetry (lateral G, speed, front load, braking and grip)",
+                "Le Mans Ultimate: Native Torque Direction (on by default) — the wheel no longer fights countersteer in oversteer; new Slide Self-Steer and Road Texture controls",
+                "Profiles: Le Mans Ultimate car-class auto-load — set a profile's Car Match to the class (e.g. GT3)",
+                "Pedals: \"Find my pedals\" wizard and a separate-USB pedal device picker; axis choices are now saved across restarts",
+                "Stationary friction: new parked-car detail — breakout judder, scrub grain, load asymmetry, pressure feel and surface response",
+                "Overlays: new browser layouts (timing tower, inputs, tyres, FFB, minimal) and the new GT Dash, each with a phone QR code",
+                "Logitech G-series: rotation range works while G HUB holds the wheel",
+            ],
+            Improvements =
+            [
+                "Live Map redesign in the app's theme: track header, stats strip, status pill, Satellite / Corners / Field / Follow / Fit tools and zoom-to-track; shows the venue when no layout exists",
+                "Live Map stays fast over long sessions (overlay labels no longer pile up)",
+                "Track lookups: hedged OpenStreetMap mirrors, better name matching (glued digits, short names, COTA, Lusail, Estoril and more) and nine corrected circuit locations (Valencia, Road Atlanta, Moscow, Okayama, Slovakia Ring, SUGO, Tsukuba, VIR, Phillip Island)",
+                "Smooth hand-over between parked and driving force — a short crossfade instead of a hard switch",
+                "Le Mans Ultimate: Compression Power now applies, tighter opposing-detail cap, steadier player-car tracking with a torque spike guard, and grip, ABS and TC from better signals",
+                "HF8 haptic pad reconnects reliably",
+                "Logitech LEDs use the documented command and skip models without an RPM strip",
+                "Pipeline page: serpentine swimlanes and compact VU meters",
+                "Beta updates re-check tester eligibility at every update check",
+            ],
+            Fixes =
+            [
+                "Live Map searched at the previous track's location after a game switch, so the new track was never found",
+                "Profile auto-load, track layout and lap length stopped working after a game switch or auto-detect",
+                "ACC never reported a track name and never recorded a track map — both fixed",
+                "Le Mans Ultimate lap position stayed at 100 % until the first start/finish crossing; the track length now comes from the scoring data",
+                "Assetto Corsa got no telemetry (the AC EVO reader was used); the AC reader now follows the official layout (a centred wheel read as full lock, max RPM read 3)",
+                "Assetto Corsa auto-detect never fired (its two processes counted as two games)",
+                "The wheel got no force for a whole session when it connected before the main window existed",
+                "Parked-car friction pulled the wheel away from centre in RaceRoom and Le Mans Ultimate",
+                "Le Mans Ultimate one-way pull on kerbs, slides and ABS",
+                "Le Mans Ultimate fields read at the wrong width (steering range, regen, battery, virtual energy, tyre temperature, fuel capacity)",
+                "Coach Core Force suggestions had no effect for Le Mans Ultimate and RaceRoom",
+                "The game-mode button looked dead on the first click",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.28.0-beta.6",
             Date = new DateTime(2026, 9, 20),
             Title = "Standstill friction spring sign fix — wheel no longer pulls away from center",

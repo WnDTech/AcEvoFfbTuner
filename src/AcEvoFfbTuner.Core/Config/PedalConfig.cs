@@ -6,6 +6,16 @@ public sealed class PedalConfig
     public bool Enabled { get; set; }
     public bool AutoDetectDevice { get; set; } = true;
     public PedalSourceType PreferredSource { get; set; } = PedalSourceType.Auto;
+    /// <summary>Instance GUID of the manually picked separate-USB pedal
+    /// device. Null/empty = Auto (first available). Wheelbase-routed pedals
+    /// need no selection — they follow the connected wheel automatically.</summary>
+    public string? PreferredDeviceInstanceId { get; set; }
+    /// <summary>Axis assignment (was memory-only before — Find-my-pedals and
+    /// manual combo choices were lost every restart). Defaults match every
+    /// source's own defaults, so old files behave identically.</summary>
+    public string GasAxis { get; set; } = "Y";
+    public string BrakeAxis { get; set; } = "Z";
+    public string ClutchAxis { get; set; } = "Rx";
     public PedalAxisConfig Gas { get; set; } = new();
     public PedalAxisConfig Brake { get; set; } = new();
     public PedalAxisConfig Clutch { get; set; } = new()
