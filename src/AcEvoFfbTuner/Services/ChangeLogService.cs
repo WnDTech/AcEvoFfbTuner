@@ -50,6 +50,45 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.28.0",
+            Date = new DateTime(2026, 10, 21),
+            Title = "Test Drive program, Live Map, AC vJoy bridge, LMU native torque, RaceRoom Historic Update support",
+            Features =
+            [
+                "Test Drive Program: Discord sign-in, application status and tier, open tasks with instructions, the Podium leaderboard, and one-click diagnostic submission linked to the task you're working on",
+                "Beta build channel: approved testers can ride prerelease builds from inside the app while stable-channel users never see a beta",
+                "Live Map: every car on track (LMU, RaceRoom, AC EVO, ACC) with class-coloured discs, race positions, flag rings, class legend and standings, placed by automatic shape fit of your driven lap",
+                "Assetto Corsa: vJoy input bridge so the app's own FFB drives your wheel, plus a new telemetry-built FFB pipeline",
+                "Le Mans Ultimate: Native Torque Direction (on by default), Slide Self-Steer and Road Texture controls, car-class profile auto-load",
+                "RaceRoom Historic Update support: Steering Angle Compensation toggle for the rebuilt dynamic SAT curve, grip release limiter that spreads touchdown landings, and in-game FFB setup guidance",
+                "RaceRoom: synthesized slip vibration — speed-oscillating sliding texture from per-wheel slip ratio, load-modulated and split front/rear",
+                "Wheel Limits & Aids, A/B profile compare, MOZA motor and pedal haptics, layout-aware track maps",
+                "Send to Dev now attaches the auto-saved snapshot and profile",
+                "Pedals: \"Find my pedals\" wizard and separate-USB device picker with persisted axis choices",
+                "Stationary friction: parked-car detail — breakout judder, scrub grain, load asymmetry, pressure feel and surface response",
+                "Overlays: new browser layouts (timing tower, inputs, tyres, FFB, minimal) and the GT Dash, each with a phone QR code",
+            ],
+            Improvements =
+            [
+                "RaceRoom steering overhaul: GripGuard no longer misreads centering force mid-corner, braking adds weight-transfer heaviness, core multiplier corrected 3.0 to 1.0",
+                "RaceRoom: grip floor rescaled for the rebuilt tyre model, force-scale auto-guard, coach and help coverage for the new knobs",
+                "Setup wizard polarity safety: attenuated flips, post-flip verification with auto-revert, and correct R3E/LMU sign convention",
+                "AC EVO 0.9 re-acquire polling prevents full device reconnects",
+                "Track lookups: hedged mirrors, better name matching and corrected circuit locations; Live Map stays fast over long sessions",
+                "FFB Coach and tuning UI refresh immediately on apply/undo/chat",
+            ],
+            Fixes =
+            [
+                "Parked-car friction pulled the wheel away from centre in RaceRoom and Le Mans Ultimate",
+                "Le Mans Ultimate one-way pull on kerbs, slides and ABS; fields read at the wrong width",
+                "Profile auto-load, track layout and lap length stopped working after a game switch; ACC never reported a track name",
+                "Assetto Corsa got no telemetry and auto-detect never fired",
+                "New RaceRoom profile values were silently dropped on app save",
+                "Standstill friction spring sign fix — wheel no longer pulls away from center",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.28.0-beta.8",
             Date = new DateTime(2026, 10, 21),
             Title = "RaceRoom Historic Update FFB support — dynamic SAT toggle, touchdown limiter, grip rescale",
