@@ -919,6 +919,13 @@
                                 Description="Brake pedal position where boost starts. 0.1 = light brake touch engages. Higher = need harder braking."
                                 DefaultValue="0.1"
                                 SectionColor="{StaticResource SectionTyreSlip}" />
+                            <DockPanel Margin="0,6" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}">
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                                    <TextBlock Text="Steering Angle Comp" Width="160" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                    <CheckBox IsChecked="{Binding SteeringAngleCompensationEnabled}" Margin="0,0,12,0" />
+                                </StackPanel>
+                                <TextBlock Text="On = legacy +15% high-steer boost (pre-Historic-Update fixed SAT-drop workaround). Off = feel the Historic Update's own dynamic SAT curve (recommended A/B: turn off on the same car/track — if mid-corner detail improves, leave it off)." FontSize="13" Foreground="#FF8B949E" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            </DockPanel>
 
                             <TextBlock Text="Tyre &amp; Grip" Style="{StaticResource SubSectionHeader}" />
                             <controls:LabeledSlider Value="{Binding TyreGripScale, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"

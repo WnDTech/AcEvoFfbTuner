@@ -199,7 +199,7 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
                 Heading = _lastData.CarOrientation.Yaw,
                 Pitch = _lastData.CarOrientation.Pitch,
                 Roll = _lastData.CarOrientation.Roll,
-                FinalFf = (float)_lastData.Player.SteeringForcePercentage,
+                FinalFf = NormalizeSteeringForce((float)_lastData.Player.SteeringForcePercentage),
                 SlipRatio = new float[4],
                 SlipAngle = new float[4],
                 Mz = new float[4],
@@ -266,13 +266,12 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
                 IsAiControlled = _lastData.ControlType == 1 ? 1 : 0,
             };
 
-            var steeringForcePct = (float)_lastData.Player.SteeringForcePercentage;
+            var steeringForcePct = NormalizeSteeringForce((float)_lastData.Player.SteeringForcePercentage);
             var steerNorm = _lastData.SteerInputRaw; // normalized -1..+1 (R3E API)
             var carSpeedMs = _lastData.CarSpeed;
 
-            // Raw centering force: use percentage magnitude, derive direction
-            // from steer angle. R3E SteeringForcePercentage is 0-100%.
-            // Pipeline's ApplyCenteringOverride handles all on-center shaping.
+            // Raw centering force: use normalized magnitude (0-1), derive direction
+            // from steer angle. Pipeline's ApplyCenteringOverride handles all on-center shaping.
             float steerSign = steerNorm >= 0f ? -1f : 1f;
             float centeringForce = steerSign * Math.Abs(steeringForcePct);
 
@@ -532,6 +531,21 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
     }
 
     private static float Clamp01(float v) => Math.Max(0f, Math.Min(1f, v));
+
+    /// <summary>
+    /// Normalize SteeringForcePercentage to a 0-1 signal. The SDK documents
+    /// 0-100%, but observed live values (and the R3E pipeline, which maps 1:1
+    /// with CoreForceMultiplier = 1.0) behave as 0-1. The Historic Update
+    /// (2026-10-20) rebuilt power steering also rescaled the top end
+    /// (Power Steering All Cars tones down peak forces). Auto-divide when the
+    /// value is clearly in percent units so either scale maps correctly
+    /// instead of pinning the output at the clip.
+    /// </summary>
+    private static float NormalizeSteeringForce(float v)
+    {
+        if (v > 2f || v < -2f) return v / 100f;
+        return v;
+    }
 
     /// <summary>
     /// Prefer the RAW pedal value when valid — it is the unprocessed device input

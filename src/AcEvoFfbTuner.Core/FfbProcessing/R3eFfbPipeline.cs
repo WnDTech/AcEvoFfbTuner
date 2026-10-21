@@ -51,6 +51,17 @@ public sealed class R3eFfbPipeline : FfbPipeline
     public float BrakeBoostThreshold { get; set; } = 0.1f;
 
     /// <summary>
+    /// Steering-angle compensation: legacy +15% boost ramp above 0.08 steer
+    /// (~36° wheel) to 1.15x at 0.20 (~90°). Workaround for the pre-Historic-Update
+    /// fixed-angle SAT drop in R3E telemetry. The Historic Update (2026-10-20)
+    /// rebuilt the tyre contact model with a dynamic SAT peak (varies with temp,
+    /// wear, grip, speed), so the fixed boost fights real physics — turn OFF to
+    /// feel the game's own SAT curve. Default ON preserves existing profiles.
+    /// R3E-only; zero impact on EVO/LMU/AC/ACC.
+    /// </summary>
+    public bool SteeringAngleCompensationEnabled { get; set; } = true;
+
+    /// <summary>
     /// Core force multiplier. Default 1.0: R3E's SteeringForcePercentage is
     /// already a 0-1 normalized signal, so 1.0 maps it 1:1 (with MasterGain
     /// and OutputGain on top). The old 3.0 default was a leftover from the
@@ -89,6 +100,16 @@ public sealed class R3eFfbPipeline : FfbPipeline
     /// <summary>Detail smoothing factor (EMA alpha). 0 = no smoothing. 0.2 = light. 0.8 = very smooth. Smoothes vibration/texture feel.</summary>
     public float DetailSmoothing { get; set; } = 0.0f;
 
+    /// <summary>
+    /// Grip reload limiter (grip-scale units/sec of upward recovery).
+    /// Unloads always snap down instantly (crest feel preserved); reloads
+    /// recover at this capped rate so touchdown punches spread over time
+    /// instead of landing in one frame. 3.0 ≈ full 0.1→1.0 recovery in
+    /// ~0.3 s. Higher = snappier landings (≥10 ≈ near-instant); lower =
+    /// softer (~1 ≈ ~1 s). R3E-only; zero impact on EVO/LMU/AC/ACC.
+    /// </summary>
+    public float GripReleaseRate { get; set; } = 3.0f;
+
     private readonly R3eHf8SignalMapper _r3eHf8Mapper = new();
 
     public override Hf8SignalMapper Hf8SignalMapper => _r3eHf8Mapper;
@@ -96,6 +117,7 @@ public sealed class R3eFfbPipeline : FfbPipeline
     private float[] _flatspotPhase = new float[4];
     private float _prevSmoothedCore;
     private float _prevSmoothedDetail;
+    private float _smGripScale = 1f;
 
     public override bool GearShiftFilterEnabled
     {
@@ -147,16 +169,55 @@ public sealed class R3eFfbPipeline : FfbPipeline
         float steerSign = raw.SteerAngle > 0f ? 1f : raw.SteerAngle < 0f ? -1f : 0f;
         float magnitude = Math.Abs(steeringForce);
 
+        // Real tick interval from game simulation ticks. The pipeline runs
+        // once per new game tick (~400 Hz for R3E) — NOT at 60 Hz. The old
+        // hardcoded 1/60 step made every synth oscillator run ~6x sharp
+        // and alias against the output rate (the "slowing motor" whine
+        // that tracked speed, verified 2026-09-20 via the Slip slider).
+        // Computed here (ahead of the grip block) because the grip release
+        // limiter below needs dt; _prevSynthTickId advances once per frame.
+        float deltaTime;
+        {
+            deltaTime = 1f / R3eTickHz;
+            if (_prevSynthTickId >= 0)
+            {
+                int tickDelta = raw.PacketId - _prevSynthTickId;
+                if (tickDelta > 0 && tickDelta <= 40)
+                    deltaTime = tickDelta / R3eTickHz;
+            }
+            _prevSynthTickId = raw.PacketId;
+        }
+
         // Tyre grip modulation: scale core force by average front tyre grip.
         // When grip drops (sliding, wet, cold tyres), centering force reduces
         // naturally — the wheel feels lighter as the front tyres lose grip.
         // R3E TireGrip: ~1.0 optimal, ~0.8 cold/worn, lower = sliding/wet.
+        // Floor is 0.25 (not 0.10): the Historic Update (2026-10-20) tyre
+        // model reports systematically lower grip in normal cornering
+        // (0.3–0.6 medians on Silverstone/Nordschleife 2026-10-21 snapshots),
+        // so the old floor buried all lateral feel at ~0.7 Nm medians.
+        // 0.25 keeps a strong unload fade (75% cut at zero grip — verified
+        // passing on Flugplatz/Pflanzgarten air) while lifting mid-corner
+        // weight ~20%. R3E-only.
         float gripScale = 1f;
         if (TyreGripScale > 0.001f && raw.TyreGrip != null && raw.TyreGrip.Length >= 2)
         {
             float avgFrontGrip = (raw.TyreGrip[0] + raw.TyreGrip[1]) * 0.5f;
-            gripScale = 0.1f + (1f - 0.1f) * Math.Clamp(avgFrontGrip, 0f, 1f);
-            gripScale = 1f + (gripScale - 1f) * TyreGripScale;
+            float target = 0.25f + (1f - 0.25f) * Math.Clamp(avgFrontGrip, 0f, 1f);
+            target = 1f + (target - 1f) * TyreGripScale;
+            // Release limiter (Nordschleife 2026-10-21: touchdown punches of
+            // 0.3–0.8 from the simultaneous RawFF+grip+load step-back).
+            // Down moves snap instantly (unload feel preserved); up moves
+            // recover at GripReleaseRate so landings spread over ~0.3 s.
+            if (target < _smGripScale)
+                _smGripScale = target;
+            else
+                _smGripScale = Math.Min(target, _smGripScale + Math.Max(0.5f, GripReleaseRate) * deltaTime);
+            gripScale = _smGripScale;
+        }
+        else
+        {
+            _smGripScale = gripScale;
         }
         magnitude *= gripScale;
 
@@ -177,14 +238,17 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // Exposed as "Center Strength (x)" slider in the UI.
         coreOutput *= CoreForceMultiplier;
 
-        // Steering angle compensation: R3E's SteeringForce always drops at the
-        // same fixed angle (~90° wheel rotation) regardless of tire state.
-        // In a real car the SAT peak varies with temp, wear, grip, and speed —
-        // a fixed-angle drop is a game telemetry simplification, not physics.
-        // Above 0.08 steer (~36° wheel), ramp to 1.15x at 0.20 (~90°) and hold.
+        // Steering angle compensation (gated): pre-Historic-Update, R3E's
+        // SteeringForce always dropped at the same fixed angle (~90° wheel
+        // rotation) regardless of tire state — a game telemetry simplification,
+        // not physics. Above 0.08 steer (~36° wheel), ramp to 1.15x at 0.20
+        // (~90°) and hold. The Historic Update (2026-10-20) rebuilt the tyre
+        // contact model (full patch shape vs exact polygons) with a dynamic SAT
+        // peak, so this fixed boost fights real physics — disable via
+        // SteeringAngleCompensationEnabled to feel the game's own SAT curve.
         // Keep boost modest to avoid saturating the output and causing sign flips.
         float absSteer = Math.Abs(raw.SteerAngle);
-        if (absSteer > 0.08f)
+        if (SteeringAngleCompensationEnabled && absSteer > 0.08f)
         {
             float boost = 1.0f + 0.15f * Math.Clamp((absSteer - 0.08f) / 0.12f, 0f, 1f);
             coreOutput *= boost;
@@ -231,22 +295,8 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // DETAIL PATH — Texture effects only
         // ═════════════════════════════════════════════════════════════════
 
-        float deltaTime;
-        {
-            // Real tick interval from game simulation ticks. The pipeline runs
-            // once per new game tick (~400 Hz for R3E) — NOT at 60 Hz. The old
-            // hardcoded 1/60 step made every synth oscillator run ~6x sharp
-            // and alias against the output rate (the "slowing motor" whine
-            // that tracked speed, verified 2026-09-20 via the Slip slider).
-            deltaTime = 1f / R3eTickHz;
-            if (_prevSynthTickId >= 0)
-            {
-                int tickDelta = raw.PacketId - _prevSynthTickId;
-                if (tickDelta > 0 && tickDelta <= 40)
-                    deltaTime = tickDelta / R3eTickHz;
-            }
-            _prevSynthTickId = raw.PacketId;
-        }
+        // deltaTime was computed above (ahead of the grip block, which needs
+        // it for the release limiter); _prevSynthTickId already advanced.
         float detailForce = 0f;
 
         // Vibration mixer (road, curb, slip, ABS, scrub, rear slip, offtrack)
@@ -770,6 +820,7 @@ public sealed class R3eFfbPipeline : FfbPipeline
         _rearSlipEngaged = false;
         _frontSlipSmooth = 0f;
         _rearSlipSmooth = 0f;
+        _smGripScale = 1f;
         _prevSynthTickId = -1;
     }
 }

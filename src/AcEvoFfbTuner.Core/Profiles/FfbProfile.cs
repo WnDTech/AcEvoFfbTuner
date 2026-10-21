@@ -182,6 +182,8 @@ public sealed class FfbProfile
             r3e.TcFeelGain = Slip.TcFeelGain;
             r3e.CoreSmoothing = Slip.CoreSmoothing;
             r3e.DetailSmoothing = Slip.DetailSmoothing;
+            r3e.SteeringAngleCompensationEnabled = Slip.SteeringAngleCompensationEnabled;
+            r3e.GripReleaseRate = Slip.GripReleaseRate;
         }
 
         if (pipeline is AcFfbPipeline ac)
@@ -486,6 +488,8 @@ public sealed class FfbProfile
             TcFeelGain = r3ePipe?.TcFeelGain ?? prevSlip.TcFeelGain,
             CoreSmoothing = r3ePipe?.CoreSmoothing ?? lmuPipe?.CoreSmoothing ?? acPipe?.CoreSmoothing ?? prevSlip.CoreSmoothing,
             DetailSmoothing = r3ePipe?.DetailSmoothing ?? lmuPipe?.DetailSmoothing ?? acPipe?.DetailSmoothing ?? prevSlip.DetailSmoothing,
+            SteeringAngleCompensationEnabled = r3ePipe != null ? r3ePipe.SteeringAngleCompensationEnabled : prevSlip.SteeringAngleCompensationEnabled,
+            GripReleaseRate = r3ePipe?.GripReleaseRate ?? prevSlip.GripReleaseRate,
             GripScaleGain = lmuPipe?.GripScaleGain ?? prevSlip.GripScaleGain,
             TyreTempGain = lmuPipe?.TyreTempGain ?? prevSlip.TyreTempGain,
             RearGripDetailGain = lmuPipe?.RearGripDetailGain ?? prevSlip.RearGripDetailGain,
@@ -1343,9 +1347,16 @@ public sealed class SlipConfig
     public float TcFeelGain { get; set; } = 1.0f;
     public float CoreSmoothing { get; set; } = 0.0f;
     public float DetailSmoothing { get; set; } = 0.0f;
+    // R3E only: legacy fixed-angle SAT boost (pre-Historic-Update workaround).
+    // Missing key in older profiles deserializes to true = current behavior.
+    public bool SteeringAngleCompensationEnabled { get; set; } = true;
+    // R3E only: grip reload limiter, grip-scale units/sec of upward recovery.
+    // 3.0 ≈ full recovery in ~0.3 s. Missing key deserializes to 3.0.
+    public float GripReleaseRate { get; set; } = 3.0f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
-    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); GearSpikeThreshold = S(GearSpikeThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); GripScaleGain = S(GripScaleGain); TyreTempGain = S(TyreTempGain); ForceGain = S(ForceGain); TyreGripScale = S(TyreGripScale); FlatspotGain = S(FlatspotGain); SurfaceFeelGain = S(SurfaceFeelGain); EngineTorqueLfeMod = S(EngineTorqueLfeMod); BrakePressureGain = S(BrakePressureGain); TcFeelGain = S(TcFeelGain); CoreSmoothing = S(CoreSmoothing); DetailSmoothing = S(DetailSmoothing); RearGripDetailGain = S(RearGripDetailGain); SelfSteerGain = S(SelfSteerGain); RoadTextureGain = S(RoadTextureGain); AutoMinPeak = S(AutoMinPeak); AutoTarget = S(AutoTarget); DcBlockCutoffHz = S(DcBlockCutoffHz); RearFyScale = S(RearFyScale); RearSlipAngleThreshold = S(RearSlipAngleThreshold); RearYawThreshold = S(RearYawThreshold); RearMaxOutput = S(RearMaxOutput); YawOnsetGain = S(YawOnsetGain); YawOnsetThreshold = S(YawOnsetThreshold); YawOnsetDecay = S(YawOnsetDecay); YawOnsetMax = S(YawOnsetMax); SuspRoadScale = S(SuspRoadScale); BrakeLoadBias = S(BrakeLoadBias); LockupSlipThreshold = S(LockupSlipThreshold); SpinSlipThreshold = S(SpinSlipThreshold); }
+    public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); GearSpikeThreshold = S(GearSpikeThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); GripScaleGain = S(GripScaleGain); TyreTempGain = S(TyreTempGain); ForceGain = S(ForceGain); TyreGripScale = S(TyreGripScale); FlatspotGain = S(FlatspotGain); SurfaceFeelGain = S(SurfaceFeelGain); EngineTorqueLfeMod = S(EngineTorqueLfeMod); BrakePressureGain = S(BrakePressureGain); TcFeelGain = S(TcFeelGain); CoreSmoothing = S(CoreSmoothing); DetailSmoothing =
+S(DetailSmoothing); GripReleaseRate = Math.Max(0.5f, Math.Min(20f, S(GripReleaseRate))); RearGripDetailGain = S(RearGripDetailGain); SelfSteerGain = S(SelfSteerGain); RoadTextureGain = S(RoadTextureGain); AutoMinPeak = S(AutoMinPeak); AutoTarget = S(AutoTarget); DcBlockCutoffHz = S(DcBlockCutoffHz); RearFyScale = S(RearFyScale); RearSlipAngleThreshold = S(RearSlipAngleThreshold); RearYawThreshold = S(RearYawThreshold); RearMaxOutput = S(RearMaxOutput); YawOnsetGain = S(YawOnsetGain); YawOnsetThreshold = S(YawOnsetThreshold); YawOnsetDecay = S(YawOnsetDecay); YawOnsetMax = S(YawOnsetMax); SuspRoadScale = S(SuspRoadScale); BrakeLoadBias = S(BrakeLoadBias); LockupSlipThreshold = S(LockupSlipThreshold); SpinSlipThreshold = S(SpinSlipThreshold); }
 }
 
 public sealed class DynamicConfig

@@ -64,6 +64,7 @@ Each game's pipeline extends the base with game-specific force shaping:
 - **DC Blocker** — Removes turn-correlated bias from suspension EMAs that would push the wheel off-center during cornering
 - **Dynamic Suppression** — Prevents the detail channel from reversing the core centering direction at small steer angles
 - **V-Shape Centre Suppression** — Quadratic force fade near steering centre for smooth, natural self-centering
+- **Historic Update support** — Steering Angle Compensation toggle for the rebuilt dynamic SAT curve, grip release limiter that spreads touchdown landings, and grip floor rescaled for the new tyre model
 
 **Assetto Corsa (`AcFfbPipeline`):**
 - **AC-Specific Mixer Scales** — Overrides channel mixer gains (Mz, Fx, Fy) tuned for AC's synthesized force data

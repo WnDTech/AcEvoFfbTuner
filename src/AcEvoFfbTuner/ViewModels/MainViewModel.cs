@@ -537,6 +537,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _detailSmoothing = 0.0f;
 
     [ObservableProperty]
+    private bool _steeringAngleCompensationEnabled = true;
+
+    [ObservableProperty]
+    private float _gripReleaseRate = 3.0f;
+
+    [ObservableProperty]
     private float _brakeBoostGain = 0.15f;
 
     [ObservableProperty]

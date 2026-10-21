@@ -289,6 +289,16 @@ public sealed partial class MainViewModel
         if (_pipeline is R3eFfbPipeline r3e)
             r3e.BrakeBoostThreshold = value;
     }
+    partial void OnSteeringAngleCompensationEnabledChanged(bool value)
+    {
+        if (_pipeline is R3eFfbPipeline r3e)
+            r3e.SteeringAngleCompensationEnabled = value;
+    }
+    partial void OnGripReleaseRateChanged(float value)
+    {
+        if (_pipeline is R3eFfbPipeline r3e)
+            r3e.GripReleaseRate = value;
+    }
     partial void OnForceGainChanged(float value)
     {
         if (_pipeline is AccFfbPipeline acc)

@@ -50,6 +50,29 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.28.0-beta.8",
+            Date = new DateTime(2026, 10, 21),
+            Title = "RaceRoom Historic Update FFB support — dynamic SAT toggle, touchdown limiter, grip rescale",
+            Features =
+            [
+                "RaceRoom: Steering Angle Compensation toggle (Column Force section) — switch off the legacy high-steer boost to feel the Historic Update's own dynamic SAT curve",
+                "RaceRoom: grip release limiter (GripReleaseRate) — touchdown landings after jumps spread over ~0.3 s instead of landing as single-frame punches, while crest unloads still snap down instantly",
+                "RaceRoom: in-app setup guidance for the Historic Update in-game FFB (Power Steering All Cars, Strength 100%, Smoothing off on direct drive, Gyro Damping/Effect 0%)",
+            ],
+            Improvements =
+            [
+                "RaceRoom: grip floor rescaled 0.10 to 0.25 for the rebuilt tyre model's lower grip readings — restores mid-corner weight without touching peak clipping",
+                "RaceRoom: SteeringForcePercentage auto-normalization guards the 0-100 vs 0-1 scale ambiguity so a rescaled signal can never pin the output at the clip",
+                "RaceRoom: new knobs (Steering Angle Comp, GripReleaseRate) registered in the coach catalog with in-app help",
+                "RaceRoom Historic Update verified against snapshot data: crest unloads (Flugplatz/Pflanzgarten air), touchdown reloads, braking load-up and oversteer/understeer grip split",
+            ],
+            Fixes =
+            [
+                "RaceRoom: new profile values (GripReleaseRate) were silently dropped on app save — ViewModel plumbing added so they persist across restarts",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.28.0-beta.7",
             Date = new DateTime(2026, 10, 20),
             Title = "Live Map for every car, Assetto Corsa vJoy bridge and new AC FFB, LMU native torque direction, pedal wizard",

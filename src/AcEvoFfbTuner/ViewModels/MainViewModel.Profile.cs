@@ -604,6 +604,8 @@ public sealed partial class MainViewModel
         TcFeelGain = profile.Slip.TcFeelGain;
         CoreSmoothing = profile.Slip.CoreSmoothing;
         DetailSmoothing = profile.Slip.DetailSmoothing;
+        SteeringAngleCompensationEnabled = profile.Slip.SteeringAngleCompensationEnabled;
+        GripReleaseRate = profile.Slip.GripReleaseRate;
         BrakeBoostGain = profile.Slip.BrakeBoostGain;
         BrakeBoostThreshold = profile.Slip.BrakeBoostThreshold;
         ForceGain = profile.Slip.ForceGain;
@@ -879,6 +881,8 @@ public sealed partial class MainViewModel
             TcFeelGain = r3eSync.TcFeelGain;
             CoreSmoothing = r3eSync.CoreSmoothing;
             DetailSmoothing = r3eSync.DetailSmoothing;
+            SteeringAngleCompensationEnabled = r3eSync.SteeringAngleCompensationEnabled;
+            GripReleaseRate = r3eSync.GripReleaseRate;
             BrakeBoostGain = r3eSync.BrakeBoostGain;
             BrakeBoostThreshold = r3eSync.BrakeBoostThreshold;
         }
@@ -1132,6 +1136,8 @@ public sealed partial class MainViewModel
             r3eLoad.TcFeelGain = TcFeelGain;
             r3eLoad.CoreSmoothing = CoreSmoothing;
             r3eLoad.DetailSmoothing = DetailSmoothing;
+            r3eLoad.SteeringAngleCompensationEnabled = SteeringAngleCompensationEnabled;
+            r3eLoad.GripReleaseRate = GripReleaseRate;
             r3eLoad.BrakeBoostGain = BrakeBoostGain;
             r3eLoad.BrakeBoostThreshold = BrakeBoostThreshold;
         }

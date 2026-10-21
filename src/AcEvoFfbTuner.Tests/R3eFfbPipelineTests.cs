@@ -19,7 +19,7 @@ public class R3eFfbPipelineTests
 
     public R3eFfbPipelineTests()
     {
-        _raw.FinalFf = 0.5f;            // R3E SteeringForcePercentage (0-100%, here 50%)
+        _raw.FinalFf = 0.5f;            // R3E SteeringForcePercentage (0-1 normalized)
         _raw.SteerAngle = 0.3f;         // turned right
         _raw.SpeedKmh = 120f;
         _raw.Gear = 4;
@@ -94,6 +94,102 @@ public class R3eFfbPipelineTests
         _raw.AccG = [0f, 0f, 0f];
         var r2 = _sut.Process(_raw);
         r1.DetailForce.Should().BeGreaterThan(r2.DetailForce - 0.01f);
+    }
+
+    [Fact]
+    public void SteeringAngleComp_DefaultsOn()
+    {
+        _sut.SteeringAngleCompensationEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void SteeringAngleComp_Off_RemovesHighSteerBoost()
+    {
+        // At 0.3 steer (above the 0.20 full-boost point) the legacy path
+        // applies 1.15x. Disabling must remove exactly that factor so the
+        // Historic Update's own dynamic SAT curve comes through untouched.
+        _raw.FinalFf = 0.5f;
+        _raw.SteerAngle = 0.3f;
+        _sut.SteeringAngleCompensationEnabled = true;
+        var on = _sut.Process(_raw);
+        _sut.Reset();
+        _sut.SteeringAngleCompensationEnabled = false;
+        var off = _sut.Process(_raw);
+        Math.Abs(off.CoreForce).Should().BeLessThan(Math.Abs(on.CoreForce));
+        (Math.Abs(on.CoreForce) / Math.Abs(off.CoreForce)).Should().BeApproximately(1.15f, 0.02f);
+    }
+
+    [Fact]
+    public void SteeringAngleComp_Off_LowSteerUnchanged()
+    {
+        // Below 0.08 steer neither path boosts — toggle must be a no-op there.
+        _raw.FinalFf = 0.5f;
+        _raw.SteerAngle = 0.05f;
+        _sut.SteeringAngleCompensationEnabled = true;
+        var on = _sut.Process(_raw);
+        _sut.Reset();
+        _sut.SteeringAngleCompensationEnabled = false;
+        var off = _sut.Process(_raw);
+        Math.Abs(on.CoreForce - off.CoreForce).Should().BeLessThan(0.001f);
+    }
+
+    [Fact]
+    public void GripRelease_DefaultsToThree()
+    {
+        _sut.GripReleaseRate.Should().Be(3.0f);
+    }
+
+    [Fact]
+    public void GripRelease_SnapsDownInstantlyOnUnload()
+    {
+        _raw.SteerAngle = 0.05f; // below comp-boost threshold
+        _sut.Process(_raw); // loaded: scale 1 → out ≈ 0.5
+        _raw.TyreGrip = [0f, 0f, 1f, 1f];
+        var unloaded = _sut.Process(_raw);
+        // target 0.25 applies in the SAME frame — unload feel preserved
+        Math.Abs(unloaded.CoreForce).Should().BeApproximately(0.125f, 0.015f);
+    }
+
+    [Fact]
+    public void GripRelease_RisesAtCappedRate()
+    {
+        _raw.SteerAngle = 0.05f;
+        _raw.TyreGrip = [0f, 0f, 1f, 1f];
+        _sut.Process(_raw); // snap down to 0.25
+        _raw.TyreGrip = [1f, 1f, 1f, 1f];
+        var first = _sut.Process(_raw);
+        // rise ≤ rate*dt = 3/400 ≈ 0.0075 → scale ≤ 0.2575 → out ≈ 0.129
+        Math.Abs(first.CoreForce).Should().BeGreaterThan(0.11f);
+        Math.Abs(first.CoreForce).Should().BeLessThan(0.15f);
+    }
+
+    [Fact]
+    public void GripRelease_RecoversFullyGivenTime()
+    {
+        _raw.SteerAngle = 0.05f;
+        _raw.TyreGrip = [0f, 0f, 1f, 1f];
+        _sut.Process(_raw); // snap down to 0.25
+        _raw.TyreGrip = [1f, 1f, 1f, 1f];
+        var last = _sut.Process(_raw);
+        for (int i = 1; i <= 200; i++)
+        {
+            _raw.PacketId = i;
+            last = _sut.Process(_raw);
+        }
+        // 200 frames × 3/400 = 1.5 ≥ 0.75 deficit → fully recovered
+        Math.Abs(last.CoreForce).Should().BeApproximately(0.5f, 0.03f);
+    }
+
+    [Fact]
+    public void GripRelease_ResetRestoresFullScale()
+    {
+        _raw.SteerAngle = 0.05f;
+        _raw.TyreGrip = [0f, 0f, 1f, 1f];
+        _sut.Process(_raw); // snap down to 0.25
+        _sut.Reset();
+        _raw.TyreGrip = [1f, 1f, 1f, 1f];
+        var result = _sut.Process(_raw);
+        Math.Abs(result.CoreForce).Should().BeApproximately(0.5f, 0.03f);
     }
 
     [Fact]

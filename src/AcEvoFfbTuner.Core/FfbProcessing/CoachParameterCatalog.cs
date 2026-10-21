@@ -120,6 +120,10 @@ public static class CoachParameterCatalog
                 "feel", "Brake pedal threshold for boost."),
             E("GearSpikeThreshold", null, null, All, "Core: gear-shift filter (numeric, no slider)",
                 "snap", "RPM gate for shift-spike mute."),
+            E("SteeringAngleCompensationEnabled", null, null, [CoachGame.Raceroom], "Core: R3E high-steer boost toggle",
+                "feel", "Legacy +15% high-steer boost for the pre-Historic-Update fixed SAT drop. Off = feel the Historic Update's own dynamic SAT curve."),
+            E("GripReleaseRate", 0.5f, 20f, [CoachGame.Raceroom], "Core: R3E grip reload limiter (profile-only)",
+                "snap", "Upward recovery rate of the grip scale after unloads. Lower = softer touchdown landings. No UI slider."),
             // LMU-only slip extras
             E("RearFyScale", 0f, 2f, [CoachGame.LeMansUltimate], "Detail: LMU rear-slip warning",
                 "low_detail", "LMU rear warning from rear Fy oscillation. No effect in other games."),
