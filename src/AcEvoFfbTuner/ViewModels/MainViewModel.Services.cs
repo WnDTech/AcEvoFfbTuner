@@ -1004,47 +1004,67 @@ public sealed partial class MainViewModel
         _updateCheckRunning = true;
         UpdateStatusText = "Checking for updates...";
         IsUpdateAvailable = false;
+        IsBetaOfferAvailable = false;
+        _betaOffer = null;
 
         try
         {
             var service = new GitHubUpdateService();
-            // Beta eligibility is server-side (me.betaChannel for approved/
-            // paused testers). The local toggle alone must never unlock
-            // prereleases — fail closed to stable when offline, signed out,
-            // or revoked. (The Test Drive toggle itself only appears for
-            // eligible testers; this is the update-time enforcement.)
-            bool beta = false;
-            if (BetaChannel && !string.IsNullOrEmpty(BetaSessionToken))
+            // Test Drive eligibility comes from the Discord sign-in: the server
+            // (me.betaChannel = approved + tester role) decides, re-checked on
+            // every update check. Fail closed to stable when offline, signed
+            // out, or revoked — no local setting can unlock beta builds.
+            bool eligible = false;
+            var token = BetaSessionToken;
+            if (!string.IsNullOrEmpty(token))
             {
                 try
                 {
-                    var me = await BetaClient.GetMeAsync(BetaSessionToken);
-                    beta = me.Ok && me.BetaChannel;
-                    LogUpdate($"CheckForUpdates: local BetaChannel={BetaChannel}, server betaChannel={me.BetaChannel} (ok={me.Ok}), effective={(beta ? "beta" : "stable")}");
+                    var me = await BetaClient.GetMeAsync(token);
+                    eligible = me.Ok && me.BetaChannel;
+                    LogUpdate($"CheckForUpdates: server betaChannel={me.BetaChannel} (ok={me.Ok}), preferStable={PreferStableReleases}");
                 }
                 catch (Exception ex)
                 {
                     LogUpdate($"CheckForUpdates: eligibility check failed ({ex.GetType().Name}), using stable channel");
                 }
             }
-            LogUpdate($"CheckForUpdates: current version={service.CurrentVersion}, channel={(beta ? "beta" : "stable")}, checking...");
+
+            // Eligible testers ride the private Test Drive builds unless they
+            // chose full releases.
+            bool beta = eligible && !PreferStableReleases;
+            LogUpdate($"CheckForUpdates: installed={service.CurrentReleaseTag}, channel={(beta ? "beta" : "stable")}, checking...");
             var update = beta
-                ? await service.CheckForUpdateAsync(BetaClient, BetaSessionToken)
+                ? await service.CheckForUpdateAsync(BetaClient, token)
                 : await service.CheckForUpdateAsync();
 
             if (update != null)
             {
                 _pendingUpdate = update;
-                LatestVersionText = $"v{update.Version}";
+                LatestVersionText = $"v{update.Tag}";
                 IsUpdateAvailable = true;
-                UpdateStatusText = $"Update available: v{update.Version}";
-                LogUpdate($"CheckForUpdates: update available v{update.Version}, url={update.DownloadUrl}");
+                UpdateStatusText = update.IsBeta
+                    ? $"Test Drive beta available: v{update.Tag}"
+                    : $"Update available: v{update.Tag}";
+                LogUpdate($"CheckForUpdates: update available {update.Tag}, url={update.DownloadUrl}");
             }
             else
             {
-                UpdateStatusText = $"You're up to date (v{service.CurrentVersion.ToString(3)})";
+                UpdateStatusText = $"You're up to date (v{AppVersion})";
                 _pendingUpdate = null;
                 LogUpdate("CheckForUpdates: up to date");
+            }
+
+            // Testers on full releases still hear about a newer beta.
+            if (eligible && PreferStableReleases && !string.IsNullOrEmpty(token))
+            {
+                _betaOffer = await service.CheckForBetaOfferAsync(BetaClient, token);
+                if (_betaOffer != null)
+                {
+                    BetaOfferVersionText = $"v{_betaOffer.Tag}";
+                    IsBetaOfferAvailable = true;
+                    LogUpdate($"CheckForUpdates: beta offer {_betaOffer.Tag} (tester is on full releases)");
+                }
             }
         }
         catch (Exception ex)
@@ -1058,6 +1078,21 @@ public sealed partial class MainViewModel
         }
     }
 
+    /// <summary>Install the beta offered to a tester on full releases. Taking
+    /// a beta moves them back onto the Test Drive channel, so the next check
+    /// follows the beta line instead of re-offering it.</summary>
+    [RelayCommand]
+    private async Task InstallBetaOfferAsync()
+    {
+        if (_betaOffer == null || IsDownloadingUpdate) return;
+        PreferStableReleases = false;
+        _pendingUpdate = _betaOffer;
+        IsBetaOfferAvailable = false;
+        IsUpdateAvailable = true;
+        LatestVersionText = $"v{_betaOffer.Tag}";
+        await DownloadAndInstallUpdateAsync();
+    }
+
     [RelayCommand]
     private async Task DownloadAndInstallUpdateAsync()
     {
@@ -1066,7 +1101,7 @@ public sealed partial class MainViewModel
         IsDownloadingUpdate = true;
         DownloadProgressPercent = 0;
         UpdateStatusText = "Downloading update...";
-        LogUpdate($"DownloadAndInstall: starting for v{_pendingUpdate.Version}");
+        LogUpdate($"DownloadAndInstall: starting for {_pendingUpdate.Tag}");
 
         try
         {
@@ -1109,7 +1144,9 @@ public sealed partial class MainViewModel
     public void SetBetaSession(string token, BetaUserDto? user, BetaApplicationDto? application)
     {
         BetaSessionToken = token;
-        BetaUserCacheJson = SerializeBetaUserCache(user, application);
+        BetaUserCacheJson = SerializeBetaUserCache(user, application, betaChannel: false);
+        // Signing in can unlock the Test Drive channel — re-check right away.
+        _ = CheckForUpdatesAsync();
     }
 
     /// <summary>Sign out: clear the persisted token and cached user.</summary>
@@ -1121,12 +1158,14 @@ public sealed partial class MainViewModel
 
     /// <summary>Update the persisted beta user cache (instant paint on the next
     /// app start / page open before the first API call completes).</summary>
-    public void CacheBetaUser(BetaUserDto? user, BetaApplicationDto? application)
+    public void CacheBetaUser(BetaUserDto? user, BetaApplicationDto? application, bool betaChannel)
     {
-        BetaUserCacheJson = SerializeBetaUserCache(user, application);
+        BetaUserCacheJson = SerializeBetaUserCache(user, application, betaChannel);
     }
 
-    private static string? SerializeBetaUserCache(BetaUserDto? user, BetaApplicationDto? application)
+    /// <summary><paramref name="betaChannel"/> is the server's me.betaChannel
+    /// (approved + Discord tester role) — not derived from the status alone.</summary>
+    private static string? SerializeBetaUserCache(BetaUserDto? user, BetaApplicationDto? application, bool betaChannel)
     {
         if (user == null) return null;
         return JsonSerializer.Serialize(new BetaUserCache
@@ -1135,8 +1174,7 @@ public sealed partial class MainViewModel
             Avatar = user.Avatar,
             Tier = application?.Tier,
             Status = application?.Status,
-            BetaChannel = application != null &&
-                          (application.Status == "approved" || application.Status == "paused")
+            BetaChannel = betaChannel
         }, Services.BetaClient.JsonOptions);
     }
 
@@ -1156,7 +1194,7 @@ public sealed partial class MainViewModel
                 return;
             }
             if (result.Ok && result.User != null)
-                BetaUserCacheJson = SerializeBetaUserCache(result.User, result.Application);
+                BetaUserCacheJson = SerializeBetaUserCache(result.User, result.Application, result.BetaChannel);
         }
         catch
         {

@@ -51,11 +51,12 @@ public sealed class AppSettings
     /// Drive page can paint instantly before the first API call completes.</summary>
     public string? BetaUserCacheJson { get; set; }
 
-    /// <summary>Test Drive build channel: when true the updater offers
-    /// prerelease (beta) builds. Only meaningful for approved testers — the
-    /// server gates eligibility via `me.betaChannel`; this just persists the
-    /// user's choice.</summary>
-    public bool BetaChannel { get; set; }
+    /// <summary>Update channel for Test Drive testers. Eligible testers (Discord
+    /// sign-in + server `me.betaChannel`: approved + tester role) ride the
+    /// private beta builds by default; true = the tester chose full releases
+    /// instead — they are still offered a newer beta alongside the stable
+    /// update. Ignored for everyone else (always stable).</summary>
+    public bool PreferStableReleases { get; set; }
 
     /// <summary>True once the WER LocalDumps registry keys for this exe have
     /// been requested (one-time elevated setup) — Windows then writes a

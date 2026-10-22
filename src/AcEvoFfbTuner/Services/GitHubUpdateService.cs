@@ -55,28 +55,10 @@ public sealed class GitHubUpdateService
 
     public Version CurrentVersion { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0);
 
-    /// <summary>Exact installed release tag from InformationalVersion (e.g.
-    /// "1.29.0-beta.1"). The assembly version is numeric-only, so the beta
-    /// iteration number lives here — the updater needs it to tell beta.1 from
-    /// beta.2 when the numeric versions are equal.</summary>
-    public string CurrentReleaseTag { get; } = GetCurrentReleaseTag();
-
-    private static string GetCurrentReleaseTag()
-    {
-        try
-        {
-            var attr = Assembly.GetExecutingAssembly()
-                .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>();
-            var raw = attr?.InformationalVersion ?? "";
-            int plus = raw.IndexOf('+');
-            if (plus >= 0) raw = raw[..plus];
-            return raw.Trim().TrimStart('v', 'V');
-        }
-        catch
-        {
-            return "";
-        }
-    }
+    /// <summary>Exact installed release tag (e.g. "1.29.0-beta.1") — the
+    /// assembly version is numeric-only, so the beta iteration lives here; the
+    /// updater needs it to tell beta.1 from beta.2.</summary>
+    public string CurrentReleaseTag => BuildInfo.ReleaseTag;
 
     /// <summary>Parse a release tag into (numeric version, beta iteration or
     /// null). Handles "1.29.0" and "1.29.0-beta.2".</summary>
@@ -113,51 +95,36 @@ public sealed class GitHubUpdateService
         return ba.Value.CompareTo(bb.Value);
     }
 
-    /// <summary>Check for an update. Stable channel (default) uses the public
-    /// repo's releases/latest — GitHub never returns prereleases there, so
-    /// release users can never receive a beta build. Beta channel (Test Drive
-    /// testers, <paramref name="betaClient"/> + session token given): beta
-    /// builds live in a PRIVATE repo served only by the Test Drive server, so
-    /// the newest beta from the server is weighed against the newest public
-    /// stable — a stable final with the SAME numeric version upgrades a beta
-    /// build. The server re-checks tester eligibility on every call; when it
-    /// refuses or is unreachable this falls back to stable.</summary>
+    /// <summary>Check for an update on the tester's chosen channel.
+    /// Stable (default, no beta client): the public repo's releases/latest —
+    /// GitHub never returns prereleases there, so release users can never
+    /// receive a beta build.
+    /// Beta (Test Drive testers on the beta channel): the PRIVATE Test Drive
+    /// builds, served only by the Test Drive server, are checked first; the
+    /// newest public stable wins only when it is newer (a beta that fell behind
+    /// a stable release, or the stable final of the same version). The server
+    /// re-checks eligibility on every call; refused/unreachable → stable.</summary>
     public async Task<UpdateInfo?> CheckForUpdateAsync(BetaClient? betaClient = null, string? betaSessionToken = null)
     {
         try
         {
             bool betaChannel = betaClient != null && !string.IsNullOrEmpty(betaSessionToken);
-            Log($"CheckForUpdate: channel={(betaChannel ? "beta" : "stable")}, requesting {ApiUrl}");
-            var response = await _http.GetAsync(ApiUrl);
-            Log($"CheckForUpdate: HTTP {(int)response.StatusCode} {response.StatusCode}");
+            Log($"CheckForUpdate: channel={(betaChannel ? "beta" : "stable")}");
             GitHubRelease? release = null;
-            if (response.IsSuccessStatusCode)
-            {
-                release = JsonSerializer.Deserialize<GitHubRelease>(await response.Content.ReadAsStringAsync());
-            }
-            else
-            {
-                var body = await response.Content.ReadAsStringAsync();
-                Log($"CheckForUpdate: response body (first 500 chars): {body.Substring(0, Math.Min(body.Length, 500))}");
-            }
-
             bool fromBetaServer = false;
             if (betaChannel)
             {
-                var betas = await betaClient!.GetBetaReleasesAsync(betaSessionToken!);
-                var beta = betas.Ok
-                    ? betas.Releases?.Deserialize<List<GitHubRelease>>()?.FirstOrDefault(r => !r.Draft)
-                    : null;
-                Log(betas.Ok
-                    ? $"CheckForUpdate: beta server newest={beta?.TagName ?? "none"}, public stable={release?.TagName ?? "none"}"
-                    : $"CheckForUpdate: beta server refused/unreachable ({betas.Error}) — stable only");
-                if (beta != null && (release == null || CompareReleases(beta.TagName, release.TagName) > 0))
-                {
-                    release = beta;
-                    fromBetaServer = true;
-                }
-                Log($"CheckForUpdate: beta channel picked {release?.TagName ?? "none"} (prerelease={release?.Prerelease})");
+                release = await FetchNewestBetaAsync(betaClient!, betaSessionToken!);
+                fromBetaServer = release != null;
             }
+            var stable = await FetchLatestStableAsync();
+            if (stable != null && (release == null || CompareReleases(stable.TagName, release.TagName) > 0))
+            {
+                release = stable;
+                fromBetaServer = false;
+            }
+            if (betaChannel)
+                Log($"CheckForUpdate: beta channel picked {release?.TagName ?? "none"} ({(fromBetaServer ? "Test Drive build" : "public stable")})");
             if (release == null) { Log("CheckForUpdate: no release available"); return null; }
 
             var (latestVersion, latestBeta) = ParseReleaseVersion(release.TagName);
@@ -191,57 +158,119 @@ public sealed class GitHubUpdateService
                 return null;
             }
 
-            var asset = release.Assets?.FirstOrDefault(a =>
-                a.Name?.Contains("Setup", StringComparison.OrdinalIgnoreCase) == true &&
-                a.Name?.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) == true);
-
-            if (asset == null)
-            {
-                asset = release.Assets?.FirstOrDefault(a =>
-                    a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true);
-                Log($"CheckForUpdate: no Setup.exe asset found, fallback zip={asset?.Name ?? "none"}");
-            }
-            else
-            {
-                Log($"CheckForUpdate: selected asset={asset.Name}, size={asset.Size}, url={asset.BrowserDownloadUrl}");
-            }
-
-            if (asset == null) { Log("CheckForUpdate: no suitable asset found at all"); return null; }
-
-            // Private-repo assets: the server link is exchanged for GitHub's
-            // short-lived signed URL right before downloading (it expires in
-            // minutes, so it cannot be resolved at check time).
-            Func<Task<string?>>? resolve = null;
-            if (fromBetaServer)
-            {
-                var serverLink = asset.BrowserDownloadUrl ?? "";
-                resolve = async () =>
-                {
-                    var r = await betaClient!.ResolveBetaDownloadAsync(betaSessionToken!, serverLink);
-                    if (!r.Ok) throw new InvalidOperationException($"Beta download refused: {r.Error}");
-                    return r.Url;
-                };
-            }
-
-            var info = new UpdateInfo
-            {
-                Version = latestVersion,
-                ReleaseUrl = release.HtmlUrl ?? $"https://github.com/{Owner}/{Repo}/releases/latest",
-                DownloadUrl = asset.BrowserDownloadUrl,
-                ResolveDownloadUrl = resolve,
-                FileName = asset.Name,
-                FileSize = asset.Size,
-                ReleaseNotes = release.Body ?? "",
-                PublishedAt = release.PublishedAt
-            };
-            Log($"CheckForUpdate: update available v{info.Version}, download={info.DownloadUrl}");
-            return info;
+            return BuildUpdateInfo(release, fromBetaServer ? betaClient : null, betaSessionToken);
         }
         catch (Exception ex)
         {
             Log($"CheckForUpdate FAILED: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
             return null;
         }
+    }
+
+    /// <summary>For Test Drive testers who chose full releases: the newest
+    /// Test Drive build, offered alongside (never instead of) the stable
+    /// update — only when it is newer than BOTH the installed build and the
+    /// newest public stable, so a beta that fell behind is never offered.</summary>
+    public async Task<UpdateInfo?> CheckForBetaOfferAsync(BetaClient betaClient, string betaSessionToken)
+    {
+        try
+        {
+            var beta = await FetchNewestBetaAsync(betaClient, betaSessionToken);
+            if (beta == null) return null;
+            var stable = await FetchLatestStableAsync();
+            var installed = string.IsNullOrEmpty(CurrentReleaseTag) ? CurrentVersion.ToString(3) : CurrentReleaseTag;
+            if ((stable != null && CompareReleases(beta.TagName, stable.TagName) <= 0) ||
+                CompareReleases(beta.TagName, installed) <= 0)
+            {
+                Log($"CheckForBetaOffer: {beta.TagName} is not newer than installed {installed} / stable {stable?.TagName ?? "none"}, no offer");
+                return null;
+            }
+            Log($"CheckForBetaOffer: offering Test Drive build {beta.TagName}");
+            return BuildUpdateInfo(beta, betaClient, betaSessionToken);
+        }
+        catch (Exception ex)
+        {
+            Log($"CheckForBetaOffer FAILED: {ex.GetType().Name}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static async Task<GitHubRelease?> FetchLatestStableAsync()
+    {
+        var response = await _http.GetAsync(ApiUrl);
+        var body = await response.Content.ReadAsStringAsync();
+        Log($"CheckForUpdate: {ApiUrl} → HTTP {(int)response.StatusCode} {response.StatusCode}");
+        if (response.IsSuccessStatusCode) return JsonSerializer.Deserialize<GitHubRelease>(body);
+        Log($"CheckForUpdate: response body (first 500 chars): {body.Substring(0, Math.Min(body.Length, 500))}");
+        return null;
+    }
+
+    private static async Task<GitHubRelease?> FetchNewestBetaAsync(BetaClient betaClient, string betaSessionToken)
+    {
+        var betas = await betaClient.GetBetaReleasesAsync(betaSessionToken);
+        if (!betas.Ok)
+        {
+            Log($"CheckForUpdate: Test Drive server refused/unreachable ({betas.Error})");
+            return null;
+        }
+        var beta = betas.Releases?.Deserialize<List<GitHubRelease>>()?.FirstOrDefault(r => !r.Draft);
+        Log($"CheckForUpdate: Test Drive newest={beta?.TagName ?? "none"}");
+        return beta;
+    }
+
+    /// <summary>Pick the installer asset and build the UpdateInfo. A non-null
+    /// <paramref name="betaClient"/> marks a private-repo (Test Drive) asset:
+    /// its server link is exchanged for GitHub's short-lived signed URL right
+    /// before downloading (it expires in minutes, so not at check time).</summary>
+    private static UpdateInfo? BuildUpdateInfo(GitHubRelease release, BetaClient? betaClient, string? betaSessionToken)
+    {
+        var (version, _) = ParseReleaseVersion(release.TagName);
+        if (version == null) return null;
+
+        var asset = release.Assets?.FirstOrDefault(a =>
+            a.Name?.Contains("Setup", StringComparison.OrdinalIgnoreCase) == true &&
+            a.Name?.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) == true);
+
+        if (asset == null)
+        {
+            asset = release.Assets?.FirstOrDefault(a =>
+                a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true);
+            Log($"CheckForUpdate: no Setup.exe asset found, fallback zip={asset?.Name ?? "none"}");
+        }
+        else
+        {
+            Log($"CheckForUpdate: selected asset={asset.Name}, size={asset.Size}, url={asset.BrowserDownloadUrl}");
+        }
+
+        if (asset == null) { Log("CheckForUpdate: no suitable asset found at all"); return null; }
+
+        Func<Task<string?>>? resolve = null;
+        if (betaClient != null && !string.IsNullOrEmpty(betaSessionToken))
+        {
+            var serverLink = asset.BrowserDownloadUrl ?? "";
+            resolve = async () =>
+            {
+                var r = await betaClient.ResolveBetaDownloadAsync(betaSessionToken, serverLink);
+                if (!r.Ok) throw new InvalidOperationException($"Beta download refused: {r.Error}");
+                return r.Url;
+            };
+        }
+
+        var info = new UpdateInfo
+        {
+            Version = version,
+            Tag = (release.TagName ?? "").TrimStart('v', 'V'),
+            IsBeta = release.Prerelease,
+            ReleaseUrl = release.HtmlUrl ?? $"https://github.com/{Owner}/{Repo}/releases/latest",
+            DownloadUrl = asset.BrowserDownloadUrl,
+            ResolveDownloadUrl = resolve,
+            FileName = asset.Name,
+            FileSize = asset.Size,
+            ReleaseNotes = release.Body ?? "",
+            PublishedAt = release.PublishedAt
+        };
+        Log($"CheckForUpdate: update available {info.Tag}, download={info.DownloadUrl}");
+        return info;
     }
 
     public static async Task DownloadAndInstallAsync(UpdateInfo update, IProgress<DownloadProgress>? progress = null)
@@ -347,6 +376,10 @@ public sealed class GitHubUpdateService
 public sealed class UpdateInfo
 {
     public Version Version { get; init; } = new(0, 0, 0);
+    /// <summary>Full release tag without "v" ("1.29.0-beta.1" / "1.28.1") —
+    /// the display version; <see cref="Version"/> is numeric-only.</summary>
+    public string Tag { get; init; } = "";
+    public bool IsBeta { get; init; }
     public string ReleaseUrl { get; init; } = "";
     public string? DownloadUrl { get; init; }
     /// <summary>Set for Test Drive beta builds: exchanges <see cref="DownloadUrl"/>

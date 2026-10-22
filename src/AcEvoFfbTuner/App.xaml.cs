@@ -431,7 +431,20 @@ public partial class App : Application
     {
         try
         {
-            Services.ChangeLogService.BetaChannel = Settings.BetaChannel;
+            // Beta notes: testers on the Test Drive channel (cached server
+            // eligibility — the server re-authorizes the notes fetch itself),
+            // and anyone already running a beta build.
+            Services.BetaUserCache? betaCache = null;
+            try
+            {
+                if (!string.IsNullOrEmpty(Settings.BetaUserCacheJson))
+                    betaCache = System.Text.Json.JsonSerializer.Deserialize<Services.BetaUserCache>(
+                        Settings.BetaUserCacheJson, Services.BetaClient.JsonOptions);
+            }
+            catch { }
+            Services.ChangeLogService.BetaChannel = Services.BuildInfo.IsBeta ||
+                (betaCache?.BetaChannel == true && !Settings.PreferStableReleases &&
+                 !string.IsNullOrEmpty(Settings.BetaSessionToken));
             Services.ChangeLogService.BetaApiBaseUrl = Settings.BetaApiBaseUrl;
             Services.ChangeLogService.BetaSessionToken = Settings.BetaSessionToken;
             await Services.ChangeLogService.InitializeAsync();

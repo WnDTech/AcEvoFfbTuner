@@ -140,15 +140,10 @@ public partial class TestDrivePage : UserControl
             return;
         }
 
-        _vm.CacheBetaUser(result.User, result.Application);
-
-        // The server is the authority on channel eligibility — an application
-        // that is no longer approved/paused silently drops the beta channel.
-        if (!result.BetaChannel && _vm.BetaChannel)
-        {
-            _vm.BetaChannel = false;
-            _vm.StatusText = "Test Drive build channel disabled — your application is no longer active";
-        }
+        // The server is the authority on channel eligibility (approved +
+        // Discord tester role); the updater re-checks it on every check, so a
+        // revoked tester falls back to stable without touching their choice.
+        _vm.CacheBetaUser(result.User, result.Application, result.BetaChannel);
 
         var fresh = new BetaUserCache
         {
@@ -418,8 +413,8 @@ public partial class TestDrivePage : UserControl
         {
             var chk = new CheckBox
             {
-                Content = "Test Drive build channel — receive beta builds",
-                IsChecked = _vm?.BetaChannel == true,
+                Content = "Receive Test Drive beta builds",
+                IsChecked = _vm?.PreferStableReleases != true,
                 Foreground = BrushForeground,
                 FontSize = 13,
                 FontWeight = FontWeights.SemiBold,
@@ -430,7 +425,7 @@ public partial class TestDrivePage : UserControl
             inner.Children.Add(chk);
             inner.Children.Add(new TextBlock
             {
-                Text = "Beta builds are published as prereleases — the updater will offer them automatically while this is on. Turn it off to receive stable releases only.",
+                Text = "On (default for testers): the updater checks the private Test Drive builds first, and a newer full release still wins. Off: full releases only — you'll still be told when a newer beta is available.",
                 FontSize = 11,
                 Foreground = BrushMuted,
                 TextWrapping = TextWrapping.Wrap,
@@ -447,10 +442,11 @@ public partial class TestDrivePage : UserControl
     private void OnBetaChannelChanged(object sender, RoutedEventArgs e)
     {
         if (_vm == null || sender is not CheckBox cb) return;
-        _vm.BetaChannel = cb.IsChecked == true;
+        _vm.PreferStableReleases = cb.IsChecked != true;
         _vm.StatusText = cb.IsChecked == true
-            ? "Test Drive build channel enabled — beta updates will be offered"
-            : "Test Drive build channel disabled — stable releases only";
+            ? "Test Drive channel — beta builds first"
+            : "Full releases — newer betas are still offered on the Home page";
+        _vm.CheckForUpdatesCommand.Execute(null);
     }
 
     private StackPanel CreateActionsRow()

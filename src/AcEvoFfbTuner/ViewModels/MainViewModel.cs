@@ -68,8 +68,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         float ClippingPercent, float PeakMz, float PeakFx, float PeakFy,
         int FrameCount);
 
-    public string AppVersion { get; } =
-        System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
+    /// <summary>Header version label — the full tag on beta builds
+    /// ("1.29.0-beta.1") so testers can tell iterations apart.</summary>
+    public string AppVersion { get; } = BuildInfo.IsBeta
+        ? BuildInfo.ReleaseTag
+        : System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
 
     [ObservableProperty]
     private string _statusText = "Ready";
@@ -163,6 +166,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private int _downloadProgressPercent;
+
+    /// <summary>A newer Test Drive build offered to a tester who chose full
+    /// releases — shown as its own Home banner beside the stable update.</summary>
+    [ObservableProperty]
+    private bool _isBetaOfferAvailable;
+
+    [ObservableProperty]
+    private string _betaOfferVersionText = "";
+
+    private UpdateInfo? _betaOffer;
 
     private UpdateInfo? _pendingUpdate;
 
@@ -1637,19 +1650,23 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Test Drive build channel: when true the updater offers beta
-    /// (prerelease) builds. Eligibility is server-gated (me.betaChannel); this
-    /// persists the tester's choice.</summary>
-    public bool BetaChannel
+    /// <summary>Test Drive tester chose full releases over the default beta
+    /// channel (still offered newer betas). Eligibility itself is server-gated
+    /// (me.betaChannel) and re-checked at every update check.</summary>
+    public bool PreferStableReleases
     {
-        get => _appSettings.BetaChannel;
+        get => _appSettings.PreferStableReleases;
         set
         {
-            if (_appSettings.BetaChannel == value) return;
-            _appSettings.BetaChannel = value;
+            if (_appSettings.PreferStableReleases == value) return;
+            _appSettings.PreferStableReleases = value;
             _appSettings.Save();
         }
     }
+
+    /// <summary>Running a Test Drive (beta) build — shows the BETA corner
+    /// ribbon. Never true for a stable release.</summary>
+    public bool IsBetaBuild => BuildInfo.IsBeta;
 
     private readonly DispatcherTimer _uiUpdateTimer;
     private bool _updateCheckRunning;

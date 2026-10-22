@@ -61,7 +61,10 @@ public partial class SplashScreen : Window
     {
         try
         {
-            var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
+            // Beta builds show their full tag ("1.29.0-beta.1").
+            var version = Services.BuildInfo.IsBeta
+                ? Services.BuildInfo.ReleaseTag
+                : Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
             VersionText.Text = $"v{version}";
 
             var commit = GitHash.Commit;

@@ -50,6 +50,26 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.29.0-beta.1",
+            Date = new DateTime(2026, 10, 22),
+            Title = "Test Drive channel by default, BETA ribbon",
+            Features =
+            [
+                "Test Drive builds are clearly marked: a purple BETA corner ribbon, plus the full beta version in the header, splash screen and window title (full releases never show it)",
+                "Test Drive testers ride the beta channel by default: the updater checks the private Test Drive builds first, and a newer full release still wins",
+            ],
+            Improvements =
+            [
+                "Testers who switch to full releases on the Test Drive page are still offered a newer beta through its own Home banner",
+                "Signing in to Test Drive re-checks for updates straight away; beta access follows your approval and Discord tester role",
+            ],
+            Fixes =
+            [
+                "The cached Test Drive eligibility ignored the Discord tester role",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.28.1",
             Date = new DateTime(2026, 10, 22),
             Title = "Private Test Drive beta builds",

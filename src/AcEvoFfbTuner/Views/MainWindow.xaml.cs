@@ -175,7 +175,9 @@ public partial class MainWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        Title = $"AC Evo FFB Tuner v{typeof(MainWindow).Assembly.GetName().Version?.ToString(3)} ({GitHash.Commit})";
+        Title = Services.BuildInfo.IsBeta
+            ? $"AC Evo FFB Tuner v{Services.BuildInfo.ReleaseTag} — Test Drive beta ({GitHash.Commit})"
+            : $"AC Evo FFB Tuner v{typeof(MainWindow).Assembly.GetName().Version?.ToString(3)} ({GitHash.Commit})";
     }
 
     private void OnNavigateRequested(NavPage page)
