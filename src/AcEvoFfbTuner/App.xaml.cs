@@ -432,6 +432,8 @@ public partial class App : Application
         try
         {
             Services.ChangeLogService.BetaChannel = Settings.BetaChannel;
+            Services.ChangeLogService.BetaApiBaseUrl = Settings.BetaApiBaseUrl;
+            Services.ChangeLogService.BetaSessionToken = Settings.BetaSessionToken;
             await Services.ChangeLogService.InitializeAsync();
 
             var currentVersion = Services.ChangeLogService.CurrentVersion;

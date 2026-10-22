@@ -97,6 +97,23 @@ public sealed class BetaReportResult
     public string? ReportId { get; set; }
 }
 
+/// <summary>Beta builds from the server's private repo, in GitHub's release
+/// JSON shape (tag_name, body, prerelease, assets[].browser_download_url) so
+/// the updater and What's New deserialize them with their own GitHub DTOs.</summary>
+public sealed class BetaReleasesResult
+{
+    public bool Ok { get; set; }
+    public string? Error { get; set; }
+    public JsonElement? Releases { get; set; }
+}
+
+public sealed class BetaDownloadResult
+{
+    public bool Ok { get; set; }
+    public string? Error { get; set; }
+    public string? Url { get; set; }
+}
+
 public sealed class BetaTokenResult
 {
     public bool Ok { get; set; }
@@ -210,6 +227,77 @@ public sealed class BetaClient : IDisposable
         catch (Exception ex)
         {
             return new BetaMeResult { Ok = false, Error = ex.Message };
+        }
+    }
+
+    /// <summary>Beta builds (approved testers only — the server re-checks the
+    /// approval + Discord role on every call).</summary>
+    public async Task<BetaReleasesResult> GetBetaReleasesAsync(string token, CancellationToken ct = default)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}?action=beta_releases");
+            req.Headers.Add("X-Beta-Session", token);
+            var resp = await _http.SendAsync(req, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode)
+                return new BetaReleasesResult { Ok = false, Error = TryParseError(body) ?? $"Server error ({resp.StatusCode})" };
+
+            using var doc = JsonDocument.Parse(body);
+            if (!doc.RootElement.TryGetProperty("releases", out var releases) || releases.ValueKind != JsonValueKind.Array)
+                return new BetaReleasesResult { Ok = false, Error = "Invalid server response" };
+            return new BetaReleasesResult { Ok = true, Releases = releases.Clone() };
+        }
+        catch (TaskCanceledException)
+        {
+            return new BetaReleasesResult { Ok = false, Error = "Request timed out — check your connection" };
+        }
+        catch (HttpRequestException)
+        {
+            return new BetaReleasesResult { Ok = false, Error = "Could not reach the Test Drive server — are you online?" };
+        }
+        catch (Exception ex)
+        {
+            return new BetaReleasesResult { Ok = false, Error = ex.Message };
+        }
+    }
+
+    /// <summary>Resolve a beta asset's server download link (from
+    /// <see cref="GetBetaReleasesAsync"/>) to GitHub's short-lived signed URL.
+    /// Only the asset id is taken from the link — the request always goes to
+    /// this client's own server, so the session header is never sent anywhere
+    /// else; the returned URL is downloaded without it.</summary>
+    public async Task<BetaDownloadResult> ResolveBetaDownloadAsync(string token, string serverDownloadUrl, CancellationToken ct = default)
+    {
+        try
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(serverDownloadUrl, @"[?&]asset=(\d+)");
+            if (!match.Success)
+                return new BetaDownloadResult { Ok = false, Error = "Unexpected beta download link" };
+            using var req = new HttpRequestMessage(HttpMethod.Get,
+                $"{_baseUrl}?action=beta_download&asset={match.Groups[1].Value}&json=1");
+            req.Headers.Add("X-Beta-Session", token);
+            var resp = await _http.SendAsync(req, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode)
+                return new BetaDownloadResult { Ok = false, Error = TryParseError(body) ?? $"Server error ({resp.StatusCode})" };
+
+            var data = JsonSerializer.Deserialize<BetaDownloadResult>(body, JsonOptions);
+            return data?.Ok == true && !string.IsNullOrEmpty(data.Url)
+                ? data
+                : new BetaDownloadResult { Ok = false, Error = data?.Error ?? "Invalid server response" };
+        }
+        catch (TaskCanceledException)
+        {
+            return new BetaDownloadResult { Ok = false, Error = "Request timed out — check your connection" };
+        }
+        catch (HttpRequestException)
+        {
+            return new BetaDownloadResult { Ok = false, Error = "Could not reach the Test Drive server — are you online?" };
+        }
+        catch (Exception ex)
+        {
+            return new BetaDownloadResult { Ok = false, Error = ex.Message };
         }
     }
 

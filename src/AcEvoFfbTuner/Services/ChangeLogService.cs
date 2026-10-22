@@ -50,6 +50,26 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.28.1",
+            Date = new DateTime(2026, 10, 22),
+            Title = "Private Test Drive beta builds",
+            Features =
+            [
+                "Test Drive beta builds are now private: approved testers get them through the in-app updater and the Test Drive page, and they no longer appear on the public releases page",
+            ],
+            Improvements =
+            [
+                "Beta channel updater weighs the newest beta against the newest stable release, and falls back to stable whenever the Test Drive server can't confirm you're an approved tester",
+                "What's New shows beta release notes to Test Drive testers only",
+            ],
+            Fixes =
+            [
+                "Stable users saw Test Drive beta entries in What's New, listed above the stable release",
+                "Beta release announcements now post only to the Test Drive Discord channel",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.28.0",
             Date = new DateTime(2026, 10, 21),
             Title = "Test Drive program, Live Map, AC vJoy bridge, LMU native torque, RaceRoom Historic Update support",
@@ -1134,6 +1154,12 @@ public static class ChangeLogService
     /// Set by the app at startup before InitializeAsync.</summary>
     public static bool BetaChannel { get; set; }
 
+    /// <summary>Test Drive server + session used to fetch beta release notes
+    /// (beta builds live in a private repo, not the public releases list).
+    /// Set alongside <see cref="BetaChannel"/>.</summary>
+    public static string? BetaApiBaseUrl { get; set; }
+    public static string? BetaSessionToken { get; set; }
+
     public static string CurrentVersion =>
         Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.0.0";
 
@@ -1169,6 +1195,16 @@ public static class ChangeLogService
             }
 
             _gitHubEntries ??= LoadCache();
+
+            // Not cached: beta notes are re-fetched (and re-authorized by the
+            // server) every launch, and AllEntries hides them off-channel.
+            var betaEntries = await FetchBetaEntriesAsync();
+            if (betaEntries.Count > 0)
+            {
+                _gitHubEntries ??= [];
+                var have = _gitHubEntries.Select(e => e.Version).ToHashSet();
+                _gitHubEntries.AddRange(betaEntries.Where(e => !have.Contains(e.Version)));
+            }
             _initialized = true;
         }
         finally
@@ -1177,7 +1213,34 @@ public static class ChangeLogService
         }
     }
 
-    public static List<ChangeLogEntry> AllEntries
+    private static async Task<List<ChangeLogEntry>> FetchBetaEntriesAsync()
+    {
+        if (!BetaChannel || string.IsNullOrEmpty(BetaSessionToken)) return [];
+        try
+        {
+            using var client = new BetaClient(BetaApiBaseUrl ?? "");
+            var res = await client.GetBetaReleasesAsync(BetaSessionToken);
+            if (!res.Ok || res.Releases is not { } releases) return [];
+            return releases.Deserialize<List<GitHubRelease>>()?
+                .Select(ParseRelease)
+                .Where(e => e != null)
+                .ToList()! ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Merged GitHub + cached + hardcoded entries. Beta entries
+    /// ("1.28.0-beta.8") are tester-only: hidden unless BetaChannel, whatever
+    /// their source (the hardcoded list and an old cache both carry them).</summary>
+    public static List<ChangeLogEntry> AllEntries =>
+        MergedEntries.Where(e => BetaChannel || !IsPrerelease(e.Version)).ToList();
+
+    private static bool IsPrerelease(string version) => version.Contains('-');
+
+    private static List<ChangeLogEntry> MergedEntries
     {
         get
         {
@@ -1234,8 +1297,13 @@ public static class ChangeLogService
 
     private static int CompareVersions(string a, string b)
     {
-        var partsA = a.Split('.').Select(ParseVersionPart).ToArray();
-        var partsB = b.Split('.').Select(ParseVersionPart).ToArray();
+        // "1.28.0-beta.8" = numeric core "1.28.0" + suffix "beta.8". Cores
+        // compare first; on a tie the stable release outranks its betas and
+        // betas order by their trailing number (beta.8 < 1.28.0, not after it).
+        var coreA = a.Split('-', 2);
+        var coreB = b.Split('-', 2);
+        var partsA = coreA[0].Split('.').Select(ParseVersionPart).ToArray();
+        var partsB = coreB[0].Split('.').Select(ParseVersionPart).ToArray();
         var maxLen = Math.Max(partsA.Length, partsB.Length);
 
         for (var i = 0; i < maxLen; i++)
@@ -1245,7 +1313,13 @@ public static class ChangeLogService
             if (valA != valB) return valA.CompareTo(valB);
         }
 
-        return 0;
+        var preA = coreA.Length > 1 ? coreA[1] : "";
+        var preB = coreB.Length > 1 ? coreB[1] : "";
+        if (preA == preB) return 0;
+        if (preA == "") return 1;
+        if (preB == "") return -1;
+        return ParseVersionPart(Regex.Match(preA, @"\d+$").Value)
+            .CompareTo(ParseVersionPart(Regex.Match(preB, @"\d+$").Value));
     }
 
     private static ChangeLogEntry? ParseRelease(GitHubRelease release)

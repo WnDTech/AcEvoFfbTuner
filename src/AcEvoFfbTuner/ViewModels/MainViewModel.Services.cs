@@ -1028,7 +1028,9 @@ public sealed partial class MainViewModel
                 }
             }
             LogUpdate($"CheckForUpdates: current version={service.CurrentVersion}, channel={(beta ? "beta" : "stable")}, checking...");
-            var update = await service.CheckForUpdateAsync(beta);
+            var update = beta
+                ? await service.CheckForUpdateAsync(BetaClient, BetaSessionToken)
+                : await service.CheckForUpdateAsync();
 
             if (update != null)
             {

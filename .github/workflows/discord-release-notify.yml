@@ -24,15 +24,25 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BETA_REPO_TOKEN: ${{ secrets.BETA_REPO_TOKEN }}
           INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
-          if [ -n "$INPUT_TAG" ]; then
-            # Tag given: fetch that exact release. This is how beta tags
-            # (vX.Y.Z-beta.N) are announced — releases/latest NEVER returns
-            # prereleases, so a beta announced via latest would leak the
-            # wrong (stable) release.
-            gh release view "$INPUT_TAG" \
-              --json name,tag_name,html_url,body,prerelease \
+          if [[ "$INPUT_TAG" == *-* ]]; then
+            # Beta tag: Test Drive builds live in the PRIVATE repo (release.yml
+            # publishes them there), so this is how betas are announced — after
+            # writing their notes with `gh release edit --repo <private repo>`.
+            # The embed links the Test Drive page: testers cannot open the
+            # private repo, and the download is gated there.
+            GH_TOKEN="$BETA_REPO_TOKEN" gh api "repos/WnDTech/AcEvoFfbTuner-TestDrive/releases/tags/$INPUT_TAG" \
+              --jq '{name: .name, tag_name: .tag_name, html_url: "https://ffbtuner.wndtech.tips/beta.html", body: .body, prerelease: true}' \
+              > release-manual.json
+          elif [ -n "$INPUT_TAG" ]; then
+            # Stable tag given: fetch that exact public release.
+            # REST API, not `gh release view --json` — gh's JSON fields are
+            # tagName/url/isPrerelease, so the snake_case names the script
+            # reads made that call fail outright.
+            gh api "repos/WnDTech/AcEvoFfbTuner/releases/tags/$INPUT_TAG" \
+              --jq '{name: .name, tag_name: .tag_name, html_url: .html_url, body: .body, prerelease: .prerelease}' \
               > release-manual.json
           else
             gh api repos/WnDTech/AcEvoFfbTuner/releases/latest \

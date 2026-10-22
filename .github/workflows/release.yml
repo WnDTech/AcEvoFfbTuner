@@ -15,6 +15,8 @@ env:
   DOTNET_VERSION: '8.0.x'
   PROJECT_PATH: 'src/AcEvoFfbTuner/AcEvoFfbTuner.csproj'
   CONFIGURATION: Release
+  # Private repo holding Test Drive (beta) releases — see website/api/config.php BETA_GH_REPO.
+  BETA_REPO: 'WnDTech/AcEvoFfbTuner-TestDrive'
 
 jobs:
   build:
@@ -92,31 +94,63 @@ jobs:
           Set-Content -Path "installer\setup-ci.iss" -Value $iss
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\setup-ci.iss"
 
+      # Beta builds NEVER go to this public repo: they are published to the
+      # private Test Drive repo, and approved testers download them through the
+      # Test Drive server (beta.php beta_releases / beta_download). Refuse to
+      # run rather than fall back to a public prerelease.
+      - name: Check Test Drive repo token (beta only)
+        if: steps.version.outputs.prerelease == 'true'
+        shell: pwsh
+        env:
+          BETA_REPO_TOKEN: ${{ secrets.BETA_REPO_TOKEN }}
+        run: |
+          if (-not $env:BETA_REPO_TOKEN) {
+            Write-Error "BETA_REPO_TOKEN secret is not set - beta builds publish only to the private $env:BETA_REPO repo"
+            exit 1
+          }
+
       - name: Clean old assets from release
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.version.outputs.prerelease == 'true' && secrets.BETA_REPO_TOKEN || secrets.GITHUB_TOKEN }}
+          RELEASE_REPO: ${{ steps.version.outputs.prerelease == 'true' && env.BETA_REPO || github.repository }}
         run: |
           $ErrorActionPreference = 'Continue'
           $tag = "${{ steps.version.outputs.tag }}"
-          $existing = gh release view "$tag" --json assets --jq ".assets[].name" 2>$null
+          $existing = gh release view "$tag" --repo $env:RELEASE_REPO --json assets --jq ".assets[].name" 2>$null
           if ($LASTEXITCODE -eq 0 -and $existing) {
             foreach ($asset in $existing) {
               Write-Host "Removing old asset: $asset"
-              gh release delete-asset "$tag" "$asset" --yes
+              gh release delete-asset "$tag" "$asset" --repo $env:RELEASE_REPO --yes
             }
           } else {
-            Write-Host "No existing release to clean for $tag"
+            Write-Host "No existing release to clean for $tag in $env:RELEASE_REPO"
           }
           exit 0
 
+      - name: Create Test Drive (beta) release in the private repo
+        if: steps.version.outputs.prerelease == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ${{ env.BETA_REPO }}
+          token: ${{ secrets.BETA_REPO_TOKEN }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: main
+          name: "AC Evo FFB Tuner ${{ steps.version.outputs.tag }}"
+          draft: false
+          prerelease: true
+          generate_release_notes: false
+          files: |
+            ./installer-output/AcEvoFfbTuner-Setup-*.exe
+
       - name: Create GitHub Release
+        if: steps.version.outputs.prerelease != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: "AC Evo FFB Tuner ${{ steps.version.outputs.tag }}"
           draft: false
-          prerelease: ${{ steps.version.outputs.prerelease }}
+          prerelease: false
           generate_release_notes: true
           files: |
             ./installer-output/AcEvoFfbTuner-Setup-*.exe

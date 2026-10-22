@@ -97,46 +97,68 @@ public sealed class GitHubUpdateService
         return (numeric, beta);
     }
 
-    /// <summary>Check for an update. Stable channel (default) uses
-    /// releases/latest — GitHub never returns prereleases there, so release
-    /// users can never receive a beta build. Beta channel (Test Drive testers)
-    /// lists the newest releases and rides the latest prerelease; a stable
-    /// final with the SAME numeric version upgrades a beta build.</summary>
-    public async Task<UpdateInfo?> CheckForUpdateAsync(bool betaChannel = false)
+    /// <summary>Order release tags: numeric version first, then a stable final
+    /// above its betas, then beta iteration (1.29.0-beta.2 &lt; 1.29.0).
+    /// Unparseable tags rank lowest.</summary>
+    private static int CompareReleases(string? a, string? b)
+    {
+        var (va, ba) = ParseReleaseVersion(a);
+        var (vb, bb) = ParseReleaseVersion(b);
+        if (va == null || vb == null) return va == null ? (vb == null ? 0 : -1) : 1;
+        int c = va.CompareTo(vb);
+        if (c != 0) return c;
+        if (ba == bb) return 0;
+        if (ba == null) return 1;
+        if (bb == null) return -1;
+        return ba.Value.CompareTo(bb.Value);
+    }
+
+    /// <summary>Check for an update. Stable channel (default) uses the public
+    /// repo's releases/latest — GitHub never returns prereleases there, so
+    /// release users can never receive a beta build. Beta channel (Test Drive
+    /// testers, <paramref name="betaClient"/> + session token given): beta
+    /// builds live in a PRIVATE repo served only by the Test Drive server, so
+    /// the newest beta from the server is weighed against the newest public
+    /// stable — a stable final with the SAME numeric version upgrades a beta
+    /// build. The server re-checks tester eligibility on every call; when it
+    /// refuses or is unreachable this falls back to stable.</summary>
+    public async Task<UpdateInfo?> CheckForUpdateAsync(BetaClient? betaClient = null, string? betaSessionToken = null)
     {
         try
         {
-            var url = betaChannel
-                ? $"https://api.github.com/repos/{Owner}/{Repo}/releases?per_page=10"
-                : ApiUrl;
-            Log($"CheckForUpdate: channel={(betaChannel ? "beta" : "stable")}, requesting {url}");
-            var response = await _http.GetAsync(url);
+            bool betaChannel = betaClient != null && !string.IsNullOrEmpty(betaSessionToken);
+            Log($"CheckForUpdate: channel={(betaChannel ? "beta" : "stable")}, requesting {ApiUrl}");
+            var response = await _http.GetAsync(ApiUrl);
             Log($"CheckForUpdate: HTTP {(int)response.StatusCode} {response.StatusCode}");
-            if (!response.IsSuccessStatusCode)
+            GitHubRelease? release = null;
+            if (response.IsSuccessStatusCode)
             {
-                var body = await response.Content.ReadAsStringAsync();
-                Log($"CheckForUpdate: response body (first 500 chars): {body.Substring(0, Math.Min(body.Length, 500))}");
-                return null;
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            GitHubRelease? release;
-            if (betaChannel)
-            {
-                var list = JsonSerializer.Deserialize<List<GitHubRelease>>(json);
-                release = list?.FirstOrDefault(r => !r.Draft);
-                if (release == null)
-                {
-                    Log("CheckForUpdate: beta channel — no non-draft release found");
-                    return null;
-                }
-                Log($"CheckForUpdate: beta channel picked {release.TagName} (prerelease={release.Prerelease})");
+                release = JsonSerializer.Deserialize<GitHubRelease>(await response.Content.ReadAsStringAsync());
             }
             else
             {
-                release = JsonSerializer.Deserialize<GitHubRelease>(json);
+                var body = await response.Content.ReadAsStringAsync();
+                Log($"CheckForUpdate: response body (first 500 chars): {body.Substring(0, Math.Min(body.Length, 500))}");
             }
-            if (release == null) { Log("CheckForUpdate: failed to deserialize release JSON"); return null; }
+
+            bool fromBetaServer = false;
+            if (betaChannel)
+            {
+                var betas = await betaClient!.GetBetaReleasesAsync(betaSessionToken!);
+                var beta = betas.Ok
+                    ? betas.Releases?.Deserialize<List<GitHubRelease>>()?.FirstOrDefault(r => !r.Draft)
+                    : null;
+                Log(betas.Ok
+                    ? $"CheckForUpdate: beta server newest={beta?.TagName ?? "none"}, public stable={release?.TagName ?? "none"}"
+                    : $"CheckForUpdate: beta server refused/unreachable ({betas.Error}) — stable only");
+                if (beta != null && (release == null || CompareReleases(beta.TagName, release.TagName) > 0))
+                {
+                    release = beta;
+                    fromBetaServer = true;
+                }
+                Log($"CheckForUpdate: beta channel picked {release?.TagName ?? "none"} (prerelease={release?.Prerelease})");
+            }
+            if (release == null) { Log("CheckForUpdate: no release available"); return null; }
 
             var (latestVersion, latestBeta) = ParseReleaseVersion(release.TagName);
             Log($"CheckForUpdate: remote tag={release.TagName}, parsed={latestVersion}{(latestBeta != null ? $"-beta.{latestBeta}" : "")}, installed={CurrentReleaseTag}, assembly={CurrentVersion}");
@@ -186,11 +208,27 @@ public sealed class GitHubUpdateService
 
             if (asset == null) { Log("CheckForUpdate: no suitable asset found at all"); return null; }
 
+            // Private-repo assets: the server link is exchanged for GitHub's
+            // short-lived signed URL right before downloading (it expires in
+            // minutes, so it cannot be resolved at check time).
+            Func<Task<string?>>? resolve = null;
+            if (fromBetaServer)
+            {
+                var serverLink = asset.BrowserDownloadUrl ?? "";
+                resolve = async () =>
+                {
+                    var r = await betaClient!.ResolveBetaDownloadAsync(betaSessionToken!, serverLink);
+                    if (!r.Ok) throw new InvalidOperationException($"Beta download refused: {r.Error}");
+                    return r.Url;
+                };
+            }
+
             var info = new UpdateInfo
             {
                 Version = latestVersion,
                 ReleaseUrl = release.HtmlUrl ?? $"https://github.com/{Owner}/{Repo}/releases/latest",
                 DownloadUrl = asset.BrowserDownloadUrl,
+                ResolveDownloadUrl = resolve,
                 FileName = asset.Name,
                 FileSize = asset.Size,
                 ReleaseNotes = release.Body ?? "",
@@ -226,8 +264,18 @@ public sealed class GitHubUpdateService
         long downloadedBytes;
         long totalBytes;
 
+        var downloadUrl = update.DownloadUrl;
+        if (update.ResolveDownloadUrl != null)
         {
-            using var response = await _downloadHttp.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
+            downloadUrl = await update.ResolveDownloadUrl();
+            if (string.IsNullOrEmpty(downloadUrl))
+                throw new InvalidOperationException("The Test Drive server returned no download URL.");
+            // The signed URL carries a token in its query — log the host only.
+            Log($"DownloadAndInstall: resolved beta download via Test Drive server → {new Uri(downloadUrl).Host}");
+        }
+
+        {
+            using var response = await _downloadHttp.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
             Log($"DownloadAndInstall: download HTTP {(int)response.StatusCode}, content-length={response.Content.Headers.ContentLength}");
             response.EnsureSuccessStatusCode();
 
@@ -301,6 +349,9 @@ public sealed class UpdateInfo
     public Version Version { get; init; } = new(0, 0, 0);
     public string ReleaseUrl { get; init; } = "";
     public string? DownloadUrl { get; init; }
+    /// <summary>Set for Test Drive beta builds: exchanges <see cref="DownloadUrl"/>
+    /// (a Test Drive server link) for the short-lived signed GitHub URL.</summary>
+    public Func<Task<string?>>? ResolveDownloadUrl { get; init; }
     public string? FileName { get; init; }
     public long FileSize { get; init; }
     public string ReleaseNotes { get; init; } = "";

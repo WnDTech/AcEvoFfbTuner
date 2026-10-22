@@ -234,6 +234,7 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 - In-app tester program: Discord sign-in (secure loopback OAuth with PKCE), application status, tasks, and Podium leaderboard
 - One-click diagnostic submission linked to the active task — each pack opens its own Discord thread
 - **Beta build channel** for approved testers: the updater offers prerelease builds and What's New shows beta releases; stable-channel users never see a beta
+- **Private beta builds**: Test Drive installers live in a private repository and are served only to approved testers (in-app updater or the Test Drive page) — they are not on the public releases page
 
 ### Additional Features
 
