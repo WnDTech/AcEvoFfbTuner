@@ -115,7 +115,11 @@ def main():
         return 1
 
     if is_prerelease:
-        description = "🧪 *Tester-only prerelease — please report issues in your task thread.*\n\n" + body
+        description = (
+            "🧪 *Tester-only prerelease — please report issues in your task thread.*\n"
+            f"⬇️ **[Download the installer]({url})** — sign in with Discord if asked, "
+            "or update from the app (Test Drive channel).\n\n" + body
+        )
     else:
         description = body
     if len(description) > MAX_DESCRIPTION_LEN:

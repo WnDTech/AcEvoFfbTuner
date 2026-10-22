@@ -31,10 +31,15 @@ jobs:
             # Beta tag: Test Drive builds live in the PRIVATE repo (release.yml
             # publishes them there), so this is how betas are announced — after
             # writing their notes with `gh release edit --repo <private repo>`.
-            # The embed links the Test Drive page: testers cannot open the
-            # private repo, and the download is gated there.
+            # The embed links the Test Drive server's gated download for THIS
+            # build's installer: signed-in testers get the file straight away,
+            # signed-out ones sign in with Discord first and the download
+            # resumes; non-testers are refused. (Testers cannot open the
+            # private repo itself.)
             GH_TOKEN="$BETA_REPO_TOKEN" gh api "repos/WnDTech/AcEvoFfbTuner-TestDrive/releases/tags/$INPUT_TAG" \
-              --jq '{name: .name, tag_name: .tag_name, html_url: "https://ffbtuner.wndtech.tips/beta.html", body: .body, prerelease: true}' \
+              --jq '{name: .name, tag_name: .tag_name, body: .body, prerelease: true,
+                     html_url: ("https://ffbtuner.wndtech.tips/api/beta.php?action=beta_download"
+                       + ([.assets[] | select(.name | test("Setup.*[.]exe$")) | "&asset=\(.id)"] | first // ""))}' \
               > release-manual.json
           elif [ -n "$INPUT_TAG" ]; then
             # Stable tag given: fetch that exact public release.
