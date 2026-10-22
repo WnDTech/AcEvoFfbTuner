@@ -50,6 +50,21 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.29.0-beta.2",
+            Date = new DateTime(2026, 10, 22),
+            Title = "Direct beta downloads from Discord",
+            Features =
+            [
+                "Beta announcements in Discord now link straight to the installer — sign in with Discord if asked and the download starts automatically",
+            ],
+            Improvements =
+            [
+                "Test build for the Test Drive update path: updating from beta.1 to beta.2 in the app, and the beta offer for testers on full releases",
+            ],
+            Fixes = [],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.29.0-beta.1",
             Date = new DateTime(2026, 10, 22),
             Title = "Test Drive channel by default, BETA ribbon",
