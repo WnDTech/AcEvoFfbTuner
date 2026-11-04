@@ -82,6 +82,29 @@ public sealed partial class MainViewModel
     public bool IsWetWeatherSectionVisible => IsAcEvo || IsAssettoCorsa || IsAssettoCorsaCompetizione;
     public bool IsGripScaleAndTempVisible => IsLeMansUltimate;
 
+    // Finer-grained gates for the feel-based Tuning page (from the per-game consumer audit):
+    // only show a slider for games whose pipeline actually reads it.
+    /// <summary>Per-wheel Mz/Fx/Fy channel mixer, LUT, centre knee/blend, auto-gain: EVO + ACC (AC1 reader zeroes tyre forces).</summary>
+    public bool IsTyreChannelGame => IsAcEvo || IsAssettoCorsaCompetizione;
+    /// <summary>Slip enhancer (slip ratio/angle gains): every game except AC1 (no slip data).</summary>
+    public bool IsSlipEnhancerVisible => !IsAssettoCorsa && !IsNoGame;
+    /// <summary>Rear slip warning rumble (Vibrations.RearSlipGain): EVO, R3E, LMU.</summary>
+    public bool IsRearSlipWarningVisible => IsAcEvo || IsRaceroom || IsLeMansUltimate;
+    /// <summary>Slip vibration: EVO, AC1, LMU (R3E reader zeroes it, ACC zeroes mixer gains).</summary>
+    public bool IsSlipVibrationVisible => IsAcEvo || IsAssettoCorsa || IsLeMansUltimate;
+    /// <summary>Contact-patch load flex + flex smoothing: EVO, AC1, ACC, R3E.</summary>
+    public bool IsLoadFlexVisible => !IsLeMansUltimate && !IsNoGame;
+    /// <summary>Contact-patch weight (needs slip angle): EVO, ACC, R3E.</summary>
+    public bool IsContactPatchWeightVisible => IsAcEvo || IsAssettoCorsaCompetizione || IsRaceroom;
+    /// <summary>Core force gain (Main Force Gain): R3E, LMU, AC1 pipelines.</summary>
+    public bool IsCoreForceVisible => IsRaceroom || IsLeMansUltimate || IsAssettoCorsa;
+    /// <summary>Brake boost: every pipeline except EVO.</summary>
+    public bool IsBrakeBoostVisible => !IsAcEvo && !IsNoGame;
+    /// <summary>Core/detail smoothing: R3E, LMU, AC1.</summary>
+    public bool IsColumnSmoothingVisible => IsRaceroom || IsLeMansUltimate || IsAssettoCorsa;
+    /// <summary>Steer-velocity damping tuning + inertia: every damping consumer (all but R3E).</summary>
+    public bool IsDampingTuningVisible => !IsRaceroom && !IsNoGame;
+
     public int SelectedGameIndex
     {
         get => (int)SelectedGame;
@@ -272,6 +295,16 @@ public sealed partial class MainViewModel
             OnPropertyChanged(nameof(IsAutoGainSectionVisible));
             OnPropertyChanged(nameof(IsWetWeatherSectionVisible));
             OnPropertyChanged(nameof(IsGripScaleAndTempVisible));
+            OnPropertyChanged(nameof(IsTyreChannelGame));
+            OnPropertyChanged(nameof(IsSlipEnhancerVisible));
+            OnPropertyChanged(nameof(IsRearSlipWarningVisible));
+            OnPropertyChanged(nameof(IsSlipVibrationVisible));
+            OnPropertyChanged(nameof(IsLoadFlexVisible));
+            OnPropertyChanged(nameof(IsContactPatchWeightVisible));
+            OnPropertyChanged(nameof(IsCoreForceVisible));
+            OnPropertyChanged(nameof(IsBrakeBoostVisible));
+            OnPropertyChanged(nameof(IsColumnSmoothingVisible));
+            OnPropertyChanged(nameof(IsDampingTuningVisible));
 
             _coachService.CurrentGame = value switch
             {

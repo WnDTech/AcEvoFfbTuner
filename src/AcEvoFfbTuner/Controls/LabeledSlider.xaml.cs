@@ -116,6 +116,31 @@ namespace AcEvoFfbTuner.Controls
 
         public bool LabelAbove { get => (bool)GetValue(LabelAboveProperty); set => SetValue(LabelAboveProperty, value); }
 
+        // ── Feel hints: what each end of the slider does + live "vs default" readout ──
+        public static readonly DependencyProperty LowLabelProperty =
+            DependencyProperty.Register(nameof(LowLabel), typeof(string), typeof(LabeledSlider),
+                new PropertyMetadata(string.Empty, OnEndsChanged));
+        public static readonly DependencyProperty HighLabelProperty =
+            DependencyProperty.Register(nameof(HighLabel), typeof(string), typeof(LabeledSlider),
+                new PropertyMetadata(string.Empty, OnEndsChanged));
+        public static readonly DependencyProperty ShowMeaningProperty =
+            DependencyProperty.Register(nameof(ShowMeaning), typeof(bool), typeof(LabeledSlider),
+                new PropertyMetadata(true, OnEndsChanged));
+
+        /// <summary>What the car feels like with the slider at the LEFT end (e.g. "Lighter, less detail").</summary>
+        public string LowLabel { get => (string)GetValue(LowLabelProperty); set => SetValue(LowLabelProperty, value); }
+        /// <summary>What the car feels like with the slider at the RIGHT end (e.g. "Heavier, more detail").</summary>
+        public string HighLabel { get => (string)GetValue(HighLabelProperty); set => SetValue(HighLabelProperty, value); }
+        /// <summary>Show the "+25% vs default" line under the slider.</summary>
+        public bool ShowMeaning { get => (bool)GetValue(ShowMeaningProperty); set => SetValue(ShowMeaningProperty, value); }
+
+        private static void OnEndsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var c = (LabeledSlider)d;
+            c.ApplyEnds();
+            c.UpdateMeaning();
+        }
+
         public static readonly DependencyProperty RecentlyChangedProperty =
             DependencyProperty.Register(nameof(RecentlyChanged), typeof(bool), typeof(LabeledSlider),
                 new PropertyMetadata(false, OnRecentlyChanged));
@@ -212,7 +237,11 @@ namespace AcEvoFfbTuner.Controls
             SyncSliderFromValue();
             SyncTextBoxFromValue();
             UpdateResetButton();
+            ApplyEnds();
+            UpdateMeaning();
+            UpdateDefaultMarker();
             BuildContextMenu();
+            PART_Slider.SizeChanged += (_, _) => UpdateDefaultMarker();
 
             PART_CheckBox.Checked += (s, _) => IsChecked = true;
             PART_CheckBox.Unchecked += (s, _) => IsChecked = false;
@@ -240,6 +269,8 @@ namespace AcEvoFfbTuner.Controls
         {
             var c = (LabeledSlider)d;
             c.SyncSliderFromValue();
+            c.UpdateDefaultMarker();
+            c.UpdateMeaning();
         }
 
         private static void OnLabelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -255,6 +286,7 @@ namespace AcEvoFfbTuner.Controls
         private static void OnDefaultValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             ((LabeledSlider)d).UpdateResetButton();
+            ((LabeledSlider)d).UpdateDefaultMarker();
         }
 
         private static void OnDisplayPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -437,8 +469,8 @@ namespace AcEvoFfbTuner.Controls
         {
             _isEditing = true;
             _valueBeforeEdit = Value;
-            try { PART_ValueTextBox.Text = string.Format(StringFormat, Value); }
-            catch { PART_ValueTextBox.Text = Value.ToString("G"); }
+            // Plain number while editing, so unit/percent formats ("50%", "42 Hz") stay editable.
+            PART_ValueTextBox.Text = Value.ToString("0.#####", System.Globalization.CultureInfo.InvariantCulture);
             PART_ValueTextBox.SelectAll();
         }
 
@@ -473,7 +505,9 @@ namespace AcEvoFfbTuner.Controls
             if (!_isEditing) return;
             _isEditing = false;
 
-            string text = PART_ValueTextBox.Text.Trim();
+            string text = PART_ValueTextBox.Text.Trim().TrimEnd('%', '°', 'x', '×').Trim();
+            int sp = text.IndexOf(' ');
+            if (sp > 0) text = text.Substring(0, sp);
             if (double.TryParse(text, System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out double val))
             {
@@ -521,7 +555,7 @@ namespace AcEvoFfbTuner.Controls
             double left = LabelAbove
                 ? (ShowCheckBox ? 32 : 0)
                 : LabelWidth + (ShowCheckBox ? 30 : 0) + 12;
-            PART_Description.Margin = new Thickness(left, 2, 30, 2);
+            PART_Description.Margin = new Thickness(left, 3, 30, 2);
         }
 
         private void ApplyLabelWidth()
@@ -533,7 +567,7 @@ namespace AcEvoFfbTuner.Controls
         private void ApplyValueWidth()
         {
             if (PART_ValueTextBox == null) return;
-            PART_ValueTextBox.Width = ValueWidth;
+            PART_ValueTextBox.MinWidth = ValueWidth;
         }
 
         private void ApplyShowCheckBox()
@@ -559,10 +593,93 @@ namespace AcEvoFfbTuner.Controls
 
         #endregion
 
+        #region Feel hints
+
+        private void ApplyEnds()
+        {
+            if (PART_EndsRow == null) return;
+            bool any = !string.IsNullOrWhiteSpace(LowLabel) || !string.IsNullOrWhiteSpace(HighLabel);
+            PART_EndsRow.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
+            PART_LowLabel.Text = string.IsNullOrWhiteSpace(LowLabel) ? string.Empty : "◀ " + LowLabel;
+            PART_HighLabel.Text = string.IsNullOrWhiteSpace(HighLabel) ? string.Empty : HighLabel + " ▶";
+        }
+
+        private void UpdateDefaultMarker()
+        {
+            if (PART_DefaultMarker == null || PART_Slider == null) return;
+            if (!DefaultValue.HasValue || Maximum <= Minimum || PART_Slider.ActualWidth <= 40)
+            {
+                PART_DefaultMarker.Visibility = Visibility.Collapsed;
+                return;
+            }
+            // Thumb centre travels from (padding 4 + half thumb 15) to (width - 19).
+            double frac = ValueToPosition(DefaultValue.Value) / Res;
+            double usable = PART_Slider.ActualWidth - 38;
+            Canvas.SetLeft(PART_DefaultMarker, 19 + frac * usable - 1);
+            PART_DefaultMarker.Visibility = Visibility.Visible;
+            PART_DefaultMarker.ToolTip = $"Default: {FormatValue(DefaultValue.Value)}";
+        }
+
+        /// <summary>
+        /// Turns the raw number into something readable: how far it is from the
+        /// built-in default, and which way (using the Low/High feel words).
+        /// </summary>
+        private void UpdateMeaning()
+        {
+            if (PART_Meaning == null) return;
+            if (!ShowMeaning || !DefaultValue.HasValue)
+            {
+                PART_Meaning.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            double d = DefaultValue.Value;
+            double v = Value;
+            double tol = Math.Max(TickFrequency * 0.5, 1e-9);
+            string def = FormatValue(d);
+
+            string text;
+            if (Math.Abs(v - d) <= tol)
+            {
+                text = $"● At default ({def})";
+            }
+            else
+            {
+                string toward = v > d ? HighLabel : LowLabel;
+                string dir = string.IsNullOrWhiteSpace(toward) ? string.Empty : $" → {toward.ToLowerInvariant()}";
+
+                if (Math.Abs(d) < 1e-9)
+                    text = Math.Abs(v) < 1e-9
+                        ? $"Default is {def} (off)"
+                        : $"Default is {def} (off) — now active{dir}";
+                else if (Math.Abs(v) < 1e-9)
+                    text = $"Off (default {def})";
+                else if (Math.Sign(v) != Math.Sign(d))
+                    text = $"Direction flipped vs default ({def})";
+                else
+                {
+                    double ratio = v / d;
+                    string rel = ratio >= 2.0 || ratio <= 0.5
+                        ? $"{ratio:0.0#}× default"
+                        : $"{(ratio - 1.0) * 100.0:+0;-0}% vs default";
+                    text = $"{rel} ({def}){dir}";
+                }
+            }
+
+            PART_Meaning.Text = text;
+            PART_Meaning.ToolTip = text;
+            PART_Meaning.Visibility = Visibility.Visible;
+            double left = LabelAbove ? (ShowCheckBox ? 32 : 0) : LabelWidth + (ShowCheckBox ? 30 : 0) + 12;
+            PART_Meaning.Margin = new Thickness(left, 6, 30, 0);
+        }
+
+        #endregion
+
         #region Reset Button
 
         private void UpdateResetButton()
         {
+            UpdateMeaning();
             if (PART_ResetButton == null) return;
             if (DefaultValue.HasValue && Math.Abs(Value - DefaultValue.Value) > TickFrequency * 0.01)
             {
@@ -571,7 +688,9 @@ namespace AcEvoFfbTuner.Controls
             }
             else
             {
-                PART_ResetButton.Visibility = Visibility.Collapsed;
+                // Hidden (not Collapsed) keeps its 26px slot, so the track never
+                // resizes under the mouse when you drag across the default.
+                PART_ResetButton.Visibility = Visibility.Hidden;
             }
         }
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,6 +19,7 @@ public partial class FfbTuningPage : UserControl
     private List<SectionCard> _visibleCards = new();
     private string _currentSearch = string.Empty;
     private string _currentTag = string.Empty;
+    private DispatcherTimer? _gameWatchTimer;
 
     private static readonly string AppDataPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
@@ -41,9 +43,28 @@ public partial class FfbTuningPage : UserControl
         // the intermittent startup crash on machines with the wheel powered on.
         Dispatcher.BeginInvoke(DispatcherPriority.DataBind, () =>
         {
-            RestoreSelection();
             ApplySearchFilter();
+            RestoreSelection();
         });
+
+        // Game switches flip per-slider visibility bindings; re-evaluate which
+        // feel-cards have anything to show. Cheap tree walk, ~2x per second.
+        _gameWatchTimer ??= new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(500) };
+        _gameWatchTimer.Tick -= OnGameWatchTick;
+        _gameWatchTimer.Tick += OnGameWatchTick;
+        _gameWatchTimer.Start();
+        Unloaded -= OnUnloaded;
+        Unloaded += OnUnloaded;
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) => _gameWatchTimer?.Stop();
+
+    private void OnGameWatchTick(object? sender, EventArgs e)
+    {
+        ApplySearchFilter();
+        if (!string.IsNullOrEmpty(_currentTag) && _cardsByTag.TryGetValue(_currentTag, out var cur)
+            && cur.Visibility != Visibility.Visible)
+            ShowFirstVisibleSection();
     }
 
     private void CacheCards()
@@ -88,7 +109,6 @@ public partial class FfbTuningPage : UserControl
 
     private void ShowFirstVisibleSection()
     {
-        if (string.IsNullOrEmpty(_currentTag)) return;
         foreach (var kv in _cardsByTag)
         {
             if (kv.Value.Visibility == Visibility.Visible)
@@ -130,7 +150,7 @@ public partial class FfbTuningPage : UserControl
         }
         else
         {
-            ShowSection("MasterOutput");
+            ShowSection("Output");
         }
     }
 
@@ -174,6 +194,13 @@ public partial class FfbTuningPage : UserControl
         ApplySearchFilter();
     }
 
+    /// <summary>
+    /// Card visibility is computed here (not bound): a feel-card is shown when
+    /// its detail panel contains at least one control that is visible for the
+    /// current game, AND it matches the search text (title, subtitle, or any
+    /// slider label / description / end-label inside it). Re-evaluated on a
+    /// light timer so game switches update the list without per-card bindings.
+    /// </summary>
     private void ApplySearchFilter()
     {
         if (_allCards == null || _allCards.Count == 0) return;
@@ -185,47 +212,77 @@ public partial class FfbTuningPage : UserControl
         {
             try
             {
-                if (string.IsNullOrEmpty(query))
-                {
-                    // No search active — clear any locally-set visibility so the
-                    // XAML binding (game-specific visibility) controls the card.
-                    card.ClearValue(VisibilityProperty);
+                if (card.Tag is not string tag || !_detailPanels.TryGetValue(tag, out var panel))
+                    continue;
+
+                bool hasContent = HasVisibleControl(panel);
+                bool matches = string.IsNullOrEmpty(query)
+                    || Contains(card.Title, query)
+                    || Contains(card.ToolTip as string, query)
+                    || PanelMatches(panel, query);
+
+                var want = hasContent && matches ? Visibility.Visible : Visibility.Collapsed;
+                if (card.Visibility != want)
+                    card.Visibility = want;
+                if (want == Visibility.Visible)
                     _visibleCards.Add(card);
-                }
-                else
-                {
-                    var titleMatch = card.Title?.IndexOf(query, System.StringComparison.OrdinalIgnoreCase) >= 0;
-                    if (titleMatch)
-                    {
-                        card.ClearValue(VisibilityProperty);
-                        _visibleCards.Add(card);
-                    }
-                    else
-                    {
-                        card.Visibility = Visibility.Collapsed;
-                    }
-                }
             }
             catch (Exception)
             {
-                // WPF can throw internally when a card's Visibility binding is
-                // mid-detach (device data context updates) — never let the
-                // search filter take the app down.
+                // Never let the filter take the app down mid-binding churn.
             }
         }
 
         UpdateFilterCounter();
     }
 
+    private static bool Contains(string? text, string query) =>
+        !string.IsNullOrEmpty(text) && text.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
+
+    private static bool IsInteractive(object o) =>
+        o is LabeledSlider || o is CheckBox || o is RadioButton || o is ComboBox;
+
+    /// <summary>True if any slider/toggle under <paramref name="root"/> is not collapsed by its own (game) visibility or an ancestor's.</summary>
+    private static bool HasVisibleControl(DependencyObject root)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(root))
+        {
+            if (child is UIElement ui && ui.Visibility == Visibility.Collapsed) continue;
+            if (IsInteractive(child)) return true;
+            if (child is DependencyObject d && HasVisibleControl(d)) return true;
+        }
+        return false;
+    }
+
+    private static bool PanelMatches(DependencyObject root, string query)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(root))
+        {
+            if (child is UIElement ui && ui.Visibility == Visibility.Collapsed) continue;
+            switch (child)
+            {
+                case LabeledSlider ls when Contains(ls.Label, query) || Contains(ls.Description, query)
+                                           || Contains(ls.LowLabel, query) || Contains(ls.HighLabel, query):
+                    return true;
+                case TextBlock tb when Contains(tb.Text, query):
+                    return true;
+                case Expander ex when Contains(ex.Header as string, query):
+                    return true;
+            }
+            if (child is DependencyObject d && PanelMatches(d, query)) return true;
+        }
+        return false;
+    }
+
     private void UpdateFilterCounter()
     {
         if (FilterCounter == null) return;
-        var total = _allCards.Count;
+        var total = _allCards.Count(c => c.Tag is string t && _detailPanels.TryGetValue(t, out var p) && HasVisibleControl(p));
         var visible = _visibleCards.Count;
         if (string.IsNullOrEmpty(_currentSearch?.Trim()))
             FilterCounter.Text = $"{total} sections";
         else
-            FilterCounter.Text = $"{visible} / {total} sections match";
+            FilterCounter.Text = $"{visible} / {total} match";
     }
 
     private static IEnumerable<SectionCard> FindSectionCards(DependencyObject parent)

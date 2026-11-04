@@ -11,7 +11,12 @@
                        Text=""
                        Visibility="Collapsed"
                        Margin="0,2,0,0" />
-            <DockPanel x:Name="SliderRow" Margin="0,6,0,0">
+            <TextBlock x:Name="PART_Description"
+                       FontSize="13"
+                       Foreground="#FF8B949E"
+                       TextWrapping="Wrap"
+                       Visibility="Collapsed" />
+            <DockPanel x:Name="SliderRow" Margin="0,4,0,0">
                 <CheckBox x:Name="PART_CheckBox"
                           DockPanel.Dock="Left"
                           VerticalAlignment="Center"
@@ -22,6 +27,7 @@
                            DockPanel.Dock="Left"
                            VerticalAlignment="Center"
                            FontSize="15"
+                           TextWrapping="Wrap"
                            Text="" />
 
                 <Button x:Name="PART_ResetButton"
@@ -30,7 +36,7 @@
                         VerticalAlignment="Center"
                         Margin="2,0,0,0"
                         Cursor="Hand"
-                        Visibility="Collapsed"
+                        Visibility="Hidden"
                         Click="OnResetClick"
                         ToolTip="Reset to default value">
                     <Button.Template>
@@ -49,7 +55,7 @@
 
                 <TextBox x:Name="PART_ValueTextBox"
                          DockPanel.Dock="Right"
-                         Width="72"
+                         MinWidth="72"
                          VerticalAlignment="Center"
                          FontSize="14"
                          TextAlignment="Right"
@@ -83,6 +89,8 @@
                     </TextBox.Style>
                 </TextBox>
 
+                <StackPanel x:Name="SliderColumn" VerticalAlignment="Center">
+                <Grid>
                 <Slider x:Name="PART_Slider"
                         VerticalAlignment="Center"
                         Height="36"
@@ -143,13 +151,30 @@
                         </ControlTemplate>
                     </Slider.Template>
                 </Slider>
+                <!-- Default-position marker (placed in code-behind) -->
+                <Canvas x:Name="PART_DefaultCanvas" IsHitTestVisible="False" Height="36" VerticalAlignment="Center">
+                    <Border x:Name="PART_DefaultMarker" Width="2" Height="20" Canvas.Top="8"
+                            Background="#B3E6EDF3" CornerRadius="1" Visibility="Collapsed" />
+                </Canvas>
+                </Grid>
+                <Grid x:Name="PART_EndsRow" Margin="4,0,4,0" Visibility="Collapsed">
+                    <TextBlock x:Name="PART_LowLabel" HorizontalAlignment="Left" FontSize="11.5"
+                               Foreground="#FF8B949E" TextWrapping="Wrap" MaxWidth="260" />
+                    <TextBlock x:Name="PART_HighLabel" HorizontalAlignment="Right" FontSize="11.5"
+                               Foreground="#FF8B949E" TextWrapping="Wrap" TextAlignment="Right" MaxWidth="260" />
+                </Grid>
+                </StackPanel>
             </DockPanel>
 
-            <TextBlock x:Name="PART_Description"
-                       FontSize="13"
-                       Foreground="#FF8B949E"
-                       TextWrapping="Wrap"
+            <TextBlock x:Name="PART_Meaning"
+                       FontSize="12"
+                       Foreground="#FFB0B8C2"
+                       TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis"
+                       Height="17"
+                       Margin="0,6,30,0"
                        Visibility="Collapsed" />
+
         </StackPanel>
     </Border>
 </UserControl>
