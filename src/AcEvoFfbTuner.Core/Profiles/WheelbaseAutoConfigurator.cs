@@ -67,7 +67,8 @@ public static class WheelbaseAutoConfigurator
 
         if (evoSettings != null && evoSettings.IsValid)
         {
-            profile.SteeringLockDegrees = evoSettings.RecommendedSteeringLock;
+            // Tuning slider + profile load both clamp lock to 180..1080.
+            profile.SteeringLockDegrees = Math.Clamp(evoSettings.RecommendedSteeringLock, 180, 1080);
             EvoSettingsDetector.ApplyToProfile(profile, evoSettings);
         }
 

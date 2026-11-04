@@ -152,167 +152,22 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
 
 ## Mandatory Diagnostic Checklist — Check ALL items before recommending
 
-1. **Force inversion**: Column-force games → MzFrontGain MUST be NEGATIVE (-0.3 to -0.5). Positive = wheel fights steering.
-2. **Dead channels**: All channel gains (mzFrontGain, fxFrontGain, fyFrontGain) = 0? Core FFB is disabled. User feels only vibrations.
-3. **Clipping root cause**: ClippingPct > 10%? Check OutputGain first, then ForceScale (slider 0.1–5, LOWER values = stronger signal = more clipping). Then SoftClipThreshold.
-4. **CoreForceMultiplier**: Column-force games → expect ~3.0x. Physics-based games → this slider is hidden, do NOT suggest it.
-5. **Center suppression > 5°**: Creates deadzone. Wheel feels disconnected, no centering force.
-6. **Static friction masking FFB**: Gain > 1.5 + MaxElasticStretch > 0.03 = rubber-band feel. (Per-wheel games only.)
-7. **All vibrations zero**: MasterGain = 0 and all vibration gains = 0? Detail path dead — no road texture, kerbs, or slip feel. (Vibrations section is hidden for ACC — skip this check there.)
+1. **Force direction** — wheel pushes away from centre? Check ForceInvertEnabled / SignCorrectionEnabled. EVO/ACC: MzFrontGain must be POSITIVE. R3E, LMU and AC1 do NOT use the channel mixer at all — never suggest Mz/Fx/Fy gains or scales there.
+2. **Dead core** — EVO/ACC: all channel gains 0? R3E/LMU/AC1: CoreForceMultiplier 0? Then the user feels only vibrations.
+3. **Clipping root cause** — ClippingPct > 10%? First OutputGain, then SoftClipThreshold. LMU only: ForceScale is used as 120/value, so HIGHER = HEAVIER. ACC only: ForceGain multiplies AFTER the limiter.
+4. **CoreForceMultiplier** (R3E/LMU/AC1 only): 1.0 = game force as-is, slider 0–4.
+5. **Dead parameters** — CenterSuppressionDegrees, LowSpeedSmoothKmh and HysteresisThreshold have NO effect in any game. Never suggest them. Centre feel = CenterKneePower / CenterBlendDegrees (EVO/ACC) or CenterSharpnessDegrees (R3E/LMU).
+6. **Static friction masking** — StaticFrictionGain > 1.5 + MaxElasticStretch > 0.03 = rubber-band feel (all games, standstill only).
+7. **All vibrations zero** — MasterGain = 0 and all vibration gains = 0? Detail path dead (not applicable to ACC — its vibration gains are forced to 0).
 
-## Parameter Definitions (Range = REAL UI slider min–max. NEVER suggest a value outside it.)
-
-### Strength & Output
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| OutputGain | 0–20 | 0.6-0.8 | Final multiplier on total output |
-| CompressionPower | NO SLIDER (profile-only) | 1.0 | Exponential curve on core force. Prefer OutputGain — user cannot drag this |
-| ForceScale | 0.1–5 (R3E/LMU slider only) | 1.0 | Inverse sensitivity for column-force games. LOWER = stronger. NOT 700-1500 |
-| SoftClipThreshold | 0.1–1 (UI: Max Force Limit) | 0.8 | Maximum output clamp |
-| CoreForceMultiplier | 0–10 (R3E/LMU slider only) | 3.0 | Column-force game boost. Hidden for physics games — do NOT suggest there |
-
-### Centering & On-Center Feel
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| CenterSuppressionDegrees | 0–30 | 1-3 | V-shape force reduction near center |
-| CenterSharpnessDegrees | 0–10 (R3E/LMU only) | 0-3 | Smoothstep ramp. 0 = disabled. Hidden for physics games |
-| CenterBlendDegrees | 0–10 | 1-3 | Transition zone between center and full suppression |
-| CenterKneePower | 0.5–3 | 1-2 | Non-linear core shaping. >1 = progressive |
-| HysteresisThreshold | NO SLIDER (profile-only) | 0.01-0.02 | Deadband for noise rejection. Suggest NoiseFloor instead |
-| NoiseFloor | 0–0.05 | 0.003-0.01 | Minimum output gate |
-| MaxSlewRate | 0.03–0.5 | 0.3-0.5 | Per-frame rate limit on DETAIL path only |
-| HysteresisWatchdogFrames | NO SLIDER (profile-only) | 0-3 | Frames to wait before engaging hysteresis |
-| LowSpeedSmoothKmh | 0-100 | 10-20 | Speed below which low-speed smoothing applies |
-
-### Channel Mix (Which Forces Reach the Wheel)
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| MzFrontGain | -10..10 | -0.5 to -0.3 (R3E/LMU), 0.2-0.6 (EVO/AC/ACC) | Self-aligning torque. NEGATIVE for column-force games |
-| FxFrontGain | -10..10 | 0.05-0.15 | Longitudinal force (traction/braking) |
-| FyFrontGain | -10..10 | 0.08-0.2 | Lateral force (cornering) |
-| MzRearGain | -10..10 | 0 | Rear Mz contribution |
-| WheelLoadWeighting | 0-1 | 0-0.3 | How much wheel load affects channel mix |
-| MzScale | 1-500 | 30 | Scaling divisor for Mz channel. Higher = weaker Mz |
-| FxScale | 100-20000 | 4000 | Scaling divisor for Fx channel |
-| FyScale | 100-20000 | 5000 | Scaling divisor for Fy channel |
-
-### Damping (UI section visible for EVO/AC/LMU only — do NOT suggest for R3E/ACC)
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| ViscousDamping | 0–1 | 0.03-0.15 | Speed-proportional resistance |
-| SpeedDamping | 0–25 | 0.1-0.4 | Additional damping that scales with car speed |
-| Friction | 0–20 (UI: Friction Level) | 0.01-0.08 | Coulomb friction (constant resistance) |
-| Inertia | 0–20 (UI: Inertia Weight) | 0.02-0.15 | Angular inertia simulation |
-| MaxSpeedReference | 50-500 | 150-250 | Speed at which speed damping reaches max |
-| CenterDampFloor | 0–0.1 | 0 (EVO), 0.03 (LMU) | Absolute damping-authority floor at center. Fixes weave where proportional cap falls to zero |
-| StraightGain | 0–2 | 0 | Extra viscous+gyro damping above 80 km/h near center. Straight-line calm only |
-
-### Slip Enhancement
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| SlipRatioGain | 0–5 | 0.05-0.2 | Force enhancement from tire slip ratio |
-| SlipAngleGain | 0–5 (physics games only) | 0 (R3E/LMU) | Enhancement from slip angle. Unreliable in column-force games — keep 0 there |
-| SlipAngleShapeGain | 0–5 (physics games only) | 0 | Shape-based slip angle response |
-| SlipThreshold | 0–1 | 0.1-0.25 | Slip detection threshold |
-| UseFrontOnly | toggle (no slider) | true | Only use front wheel slip data |
-| BrakeBoostGain | 0–1 (R3E/LMU only) | 0.2-0.5 | Force increase when braking (column-force games) |
-| BrakeBoostThreshold | 0–1 (R3E/LMU only) | 0.05-0.15 | Brake pedal threshold for boost |
-| GearChangeMuteEnabled | toggle (no slider) | true | Mute FFB during gear changes |
-| GearSpikeThreshold | NO SLIDER (numeric) | 3000 | RPM threshold for gear spike filtering. Shifts above this RPM extend the mute window |
-| RearFyScale | 0–2 (LMU only) | 0 | LMU rear-slip warning from rear Fy oscillation + yaw accel. Rear Mz is always zero in LMU telemetry |
-| RearGripDetailGain | 0–2 (LMU only) | 0 | LMU rear warning from rear grip-fraction drop. Front grip lightens core; rear only warns |
-| YawOnsetGain | 0–2 (LMU only) | 0 | LMU slide-onset kick strength from smoothed yaw accel |
-| YawOnsetThreshold | 0–10 (LMU only) | 0 (off), ~2 to arm | LMU yaw-accel rad/s² required to fire the onset kick |
-| YawOnsetDecay | NO SLIDER (LMU profile-only) | 8 | LMU onset-kick decay rate. Higher = shorter kick |
-| YawOnsetMax | NO SLIDER (LMU profile-only) | 0.12 | LMU onset-kick output cap |
-| SuspRoadScale | 0–2 (LMU only) | 1 | LMU mixer susp-delta road layer scale. 1 = stacked with reader envelopes |
-| UseMixerSuspRoad | toggle (LMU only) | true | LMU mixer road layer gate. False = reader envelopes only |
-| BrakeLoadBias | 0–1 (LMU only) | 0 | LMU front-load bias in brake boost. 0 = legacy scalar |
-| SynthYawEnabled | toggle (LMU only) | true | LMU yaw-accel synthesis from rotY. Measurement only; effects stay gain-gated |
-| SynthAbsEnabled | toggle (LMU only) | false (experimental) | LMU ABS-flag synthesis from front slip + brake |
-| SynthTcEnabled | toggle (LMU only) | false (experimental) | LMU TC-flag synthesis from rear slip + throttle |
-
-### Dynamic Effects (UI section: EVO/AC/R3E only)
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| LateralGGain | 0–5 (UI: Cornering Force) | 0.05-0.3 | Cornering G-force feel |
-| LongitudinalGGain | 0–5 (UI: Accel/Braking Force) | 0.05-0.2 | Acceleration/braking G-force |
-| SuspensionGain | 0–5 (UI: Road Feel) | 0.05-0.15 | Road surface texture from suspension |
-| YawRateGain | 0–5 (UI: Car Rotation Force) | 0.02-0.1 | Car rotation feel |
-
-### Vibrations (UI section hidden for ACC — do NOT suggest vibration gains for ACC)
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| MasterGain | 0–10 (UI: Vibration Master Gain) | 0.3-0.7 | Global vibration volume |
-| KerbGain | 0–10 (UI: Curb Gain) | 1-2 | Curb/rumble strip intensity |
-| RoadGain | 0–10 (UI: Road Gain) | 0.3-1 | Road surface texture vibration |
-| SlipGain | 0–10 (UI: Slip Gain) | 0.5-1.5 | Tire slip vibration |
-| AbsGain | 0–10 | 0.5-1.5 | ABS pulsing vibration |
-| AbsPulseAmplitude | 0-1 | 0.2-0.5 | ABS pulse strength |
-| SuspensionRoadGain | 0–10 | 0.5-2 | Suspension-based road feel |
-| ScrubGain | 0–1 | 0.2-0.8 | Tire scrub texture |
-| RearSlipGain | 0–1 | 0.2-0.6 | Rear wheel slip vibration |
-| OfftrackGain | 0-2 | 0.3-0.8 | Off-track surface feel |
-| OfftrackSeverityScale | 0-10 | 3-6 | How strongly offtrack feels |
-| CurbSeverityScale | NO SLIDER (profile-only) | 5-12 | Curb impact harshness scale |
-| ScrubForceScale | NO SLIDER (profile-only) | 0.0005 | Tire scrub force normalization |
-| RearSlipForceScale | NO SLIDER (profile-only) | 0.0005 | Rear slip force normalization |
-
-### Tyre Flex (UI section: EVO/AC/R3E only)
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| FlexGain | 0–5 (UI: Tyre Flex Gain) | 0.03-0.12 | Tyre flex feel amplitude |
-| CarcassStiffness | 0.1-5 | 0.5-2 | Tyre sidewall stiffness feel |
-| FlexSmoothing | 0-0.95 | 0.3-0.8 | Smoothing on tyre flex signal |
-| ContactPatchWeight | 0-2 | 0.3-0.7 | Contact patch deformation feel |
-| LoadFlexGain | 0-5 | 0.1-0.5 | Load-dependent flex gain |
-
-### Static Friction — Parking Lot Feel (UI section: per-wheel games EVO/AC/ACC only)
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| Gain (StaticFrictionGain) | 0–2 | 1-1.5 | Overall elastic feel strength |
-| MaxElasticStretch | 0.001–0.05 | 0.01-0.03 | Max stretch before breakaway |
-| SpringStiffness | 1-50 | 20-50 | Centering spring rate |
-| KineticFrictionBase | 0–1 | 0.1-0.25 | Sliding friction feel |
-| EngineOffDamping | 0-0.5 | 0.3-0.7 | Extra damping when car is off |
-| EngineOnDamping | 0-0.2 | 0.1-0.4 | Damping reduction when car is on |
-| EngineOffScale | 0-2 | 0.5-1 | Overall scale when car is off |
-| EngineOnScale | 0-1 | 0.1-0.5 | Overall scale when car is on |
-| ActiveDecay | 0.5-1 | 0.5-0.95 | How fast elastic force builds when turning |
-| ReturnDecay | 0.1-0.99 | 0.3-0.8 | How fast elastic force returns to center |
-| OutputSmoothAlpha | 0.05-1 | 0.3-0.7 | Smoothing on static friction output |
-
-### Grip Guard (profile-only, no sliders)
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| Enabled | toggle | true | Enable grip-dependent attenuation |
-| PeakSlipAngle | NO SLIDER | 0.08-0.15 | Slip angle at which grip peaks |
-| AttenuationStrength | NO SLIDER | 0.3-0.7 | How much force is reduced past peak grip |
-| MechanicalTrailGain | NO SLIDER | 0.05-0.3 | Simulated mechanical trail feel |
-
-### Crash Detection (UI section: EVO/AC/ACC only)
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| Enabled | toggle | true | Enable crash force limiting |
-| ImpactGain | 0-1 | 0.3-0.7 | Crash force amplitude |
-| SafetyClamp | 0.1-1 | 0.3-0.7 | Maximum allowed crash force |
-| TriggerThresholdG | 1-10 | 3-6 | G-force threshold to trigger crash response |
-
-### Tyre Condition
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| Enabled | toggle | true | Enable tyre wear/blowout effects |
-| BlowoutVibrationGain | 0-1 | 0.2-0.6 | Vibration strength during blowout |
-| PressureLossGain | 0-1 | 0.1-0.4 | Feel of pressure loss |
-| DamageAsymmetryGain | 0-1 | 0.1-0.4 | Asymmetric pull from damage |
-
-### Wet Weather (per-wheel games EVO/AC/ACC only — no wet state in R3E/LMU telemetry)
-| Parameter | Slider Range | Typical | Effect |
-|-----------|-------|---------|--------|
-| Enabled | toggle | false | Enable wet weather FFB adjustments |
-| RoadVibSuppression | 0-1 | 0.5-0.9 | How much road vibration is reduced in rain |
-| PeakSlipAngleMultiplier | 1-3 | 1.2-2.0 | Slip angle increase on wet surface |
-| DampingReduction | 0-1 | 0.2-0.5 | How much damping is reduced in rain |
+## Parameters — the per-request table is the ONLY reference
+The ""Tunable parameters for <game>"" table appended to each request lists exactly what the
+detected game's pipeline reads, the HARD slider min–max, and where the slider lives on the
+Tuning page (""Section -> Slider label""). The Tuning page is grouped by feel (Overall Strength &
+Wheel, Steering Weight & Centre, Cornering & Front Grip, Oversteer & Slides, Braking &
+Acceleration, Kerbs Road & Off-Track, Engine & Chassis Rumble, Smoothness & Damping, Parked &
+Low Speed, Crashes & Tyre Damage, Wet Weather). Tell the user the section and slider label.
+Anything listed under ""NOT available"" must never be suggested for that game.
 ";
 
     /// <summary>Build the complete system context document for the LLM.</summary>
@@ -326,17 +181,13 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
 
         // Game & wheel section
         var gameNotes = isColumn
-            ? @"- SteeringForce (NOT self-aligning torque) is provided by the game
-- Reader converts SteeringForce → Mz with sqrt center ramp (0-3 degrees)
-- Fx/Fy forces are synthesized from tire loads — estimates, not real physics
+            ? @"- Column-force game: the game supplies total steering-column torque (no per-wheel Mz/Fx/Fy mixing)
+- Strength comes from CoreForceMultiplier and OutputGain (LMU also ForceScale, HIGHER = heavier)
 - Slip angle telemetry is unreliable — SlipAngleGain should be kept at 0
-- CoreForceMultiplier (default 3.0x) compensates for pipeline attenuation
-- BrakeBoost simulates weight transfer under braking
-- MzFrontGain should be NEGATIVE (typically -0.3 to -0.5)"
-            : @"- Real physics telemetry with accurate Mz, Fx, Fy channels
-- Slip angle data is reliable — SlipAngleGain can be used
-- MzFrontGain should generally be POSITIVE (typically 0.2 to 0.6)
-- No CoreForceMultiplier or BrakeBoost — those are column-force only";
+- See the Pipeline Path and Tunable parameters table for exactly what applies"
+            : @"- Per-wheel game: see the Pipeline Path below (AC1 has NO tyre-force data; ACC overrides several gains)
+- EVO/ACC: MzFrontGain POSITIVE. BrakeBoost is not used in EVO
+- See the Tunable parameters table for exactly what applies";
 
         var coachGame = CoachParameterCatalog.ParseGameName(game);
         sb.AppendLine($"## Game & Wheel");
@@ -616,16 +467,14 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
         var isColumn = IsColumnForceGame;
 
         var gameSpecific = isColumn
-            ? @"- Steering force maps to Mz with a sqrt center ramp (0-3 degrees)
-- Fx/Fy forces are synthesized from tire loads (estimates, not real physics)
+            ? @"- Column-force game: total steering-column torque, no per-wheel Mz/Fx/Fy mixing
+- CoreForceMultiplier (0–4) and OutputGain set strength; LMU ForceScale is HIGHER = heavier
 - Slip angle telemetry is unreliable — SlipAngleGain should stay at 0
-- CoreForceMultiplier default is 3.0x — this is a key gain for overall feel
-- BrakeBoost increases force when braking (simulates weight transfer)
-- CenterSharpnessDegrees applies a smoothstep ramp (0 = disabled, uses reader shaping)"
-            : @"- Real physics telemetry with accurate Mz, Fx, Fy channels
-- Slip angle data is reliable — SlipAngleGain can be used
-- MzFrontGain should generally be positive
-- No BrakeBoost or CoreForceMultiplier concept — those are R3E/LMU specific";
+- CenterSharpnessDegrees: higher = softer centre, 0 = crispest"
+            : @"- Per-wheel game: AC1 has NO tyre-force/slip data (use CoreForceMultiplier, damping, vibrations)
+- EVO/ACC: MzFrontGain positive; centre feel via CenterKneePower / CenterBlendDegrees
+- ACC forces several gains (MzScale, vibration and dynamic gains) — never suggest those
+- Follow the Tunable parameters table for exactly what applies";
 
         var coachGame = CoachParameterCatalog.ParseGameName(game);
         return $@"You are an expert sim racing FFB tuner integrated into the FFB Coach tool.
@@ -1111,7 +960,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                         {
                             Text = $"Not applying {info.Name}: it has no effect for " +
                                 $"{CoachParameterCatalog.GameShortName(ActiveCoachGame)} " +
-                                $"(only: {string.Join("/", info.ApplicableGames.Select(CoachParameterCatalog.GameShortName))}).",
+                                $"({CoachParameterCatalog.GamesText(info)}).",
                             Icon = "🚫"
                         }
                     ]
@@ -1411,7 +1260,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
         }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
     }
 
-    private static List<string> RunDiagnostics(FfbProfile profile, bool isColumnForce)
+    private static List<string> RunDiagnostics(FfbProfile profile, CoachGame game)
     {
         var issues = new List<string>();
 
@@ -1423,48 +1272,41 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                 + "the wheel will pull away from center instead of returning to it. "
                 + "Enable this for all games.");
 
-        // GAME-SPECIFIC: MzFrontGain sign
-        // Physics-based games (EVO, ACC, AC): Mz is real telemetry, gain should be POSITIVE (0.2-0.6)
-        // Column-force games (R3E, LMU): Mz is synthesized from steering force, gain should be NEGATIVE (-0.3 to -0.5)
-        if (isColumnForce)
-        {
-            if (profile.MzFront?.Gain >= 0)
-                issues.Add("CRITICAL: Force inversion — MzFrontGain is " +
-                    (profile.MzFront?.Gain == 0 ? "ZERO" : "POSITIVE") +
-                    ". For column-force games this MUST be NEGATIVE (-0.3 to -0.5). "
-                    + "The wheel will fight your steering.");
-        }
-        else
+        // Per-game checks: each only runs for games whose pipeline reads the
+        // parameter (see CoachParameterCatalog game sets). R3E/LMU/AC1 never use
+        // the channel mixer, so Mz/Fx/Fy gains are irrelevant there.
+        bool tyreChannel = game is CoachGame.AcEvo or CoachGame.AssettoCorsaCompetizione;
+        bool coreForce = game is CoachGame.Raceroom or CoachGame.LeMansUltimate or CoachGame.AssettoCorsa;
+
+        if (tyreChannel)
         {
             if (profile.MzFront?.Gain <= 0)
                 issues.Add("CRITICAL: Force inversion — MzFrontGain is " +
                     (profile.MzFront?.Gain == 0 ? "ZERO" : "NEGATIVE") +
-                    ". For physics-based games this MUST be POSITIVE (0.2 to 0.6). "
-                    + "The wheel will feel backwards.");
+                    ". For EVO/ACC this MUST be POSITIVE (0.2 to 0.6). The wheel will feel backwards.");
+
+            bool allChannelsZero = (profile.MzFront?.Gain ?? 0) == 0
+                                && (profile.FxFront?.Gain ?? 0) == 0
+                                && (profile.FyFront?.Gain ?? 0) == 0;
+            if (allChannelsZero)
+                issues.Add("CRITICAL: Dead channel mix — All channel gains (MzFront, FxFront, FyFront) are ZERO. "
+                    + "The core steering force is completely disabled.");
         }
 
-        // UNIVERSAL: Dead channel mix
-        bool allChannelsZero = (profile.MzFront?.Gain ?? 0) == 0
-                            && (profile.FxFront?.Gain ?? 0) == 0
-                            && (profile.FyFront?.Gain ?? 0) == 0;
-        if (allChannelsZero)
-            issues.Add("CRITICAL: Dead channel mix — All channel gains (MzFront, FxFront, FyFront) are ZERO. "
-                + "The core centering force path is completely disabled.");
+        if (coreForce)
+        {
+            float cfm = profile.Slip?.CoreForceMultiplier ?? 0f;
+            if (cfm <= 0.05f)
+                issues.Add("CRITICAL: Dead core — CoreForceMultiplier (UI: Overall Strength & Wheel -> Main Force Gain) is " +
+                    cfm.ToString("F2") + ". The game's steering force is switched off.");
+            else if (cfm > 4f)
+                issues.Add("ISSUE: CoreForceMultiplier " + cfm.ToString("F2") + " is above the slider range (0–4) and will clip heavily.");
+        }
 
-        // COLUMN-FORCE ONLY: ForceScale out of range (slider 0.1–5, default 1.0; lower = stronger)
-        if (isColumnForce && profile.ForceScale < 0.3f)
-            issues.Add("ISSUE: ForceScale extremely low — Current: " + profile.ForceScale.ToString("F2") +
-                ". Slider range is 0.1–5 (default 1.0); low values amplify the signal and cause massive clipping.");
-
-        // COLUMN-FORCE ONLY: CoreForceMultiplier
-        if (isColumnForce && profile.Slip?.CoreForceMultiplier < 2.0f)
-            issues.Add("ISSUE: CoreForceMultiplier too low — Current: " + (profile.Slip?.CoreForceMultiplier ?? 0).ToString("F1") +
-                ". Column-force games typically need ~3.0x. The core centering force feels weak.");
-
-        // UNIVERSAL: CenterSuppression too high
-        if (profile.Advanced?.CenterSuppressionDegrees > 5)
-            issues.Add("ISSUE: Center suppression too high — " + profile.Advanced.CenterSuppressionDegrees.ToString("F1") +
-                "°. Creates a large deadzone.");
+        // LMU only: ForceScale is used as 120/value → LOW values make LMU very LIGHT.
+        if (game == CoachGame.LeMansUltimate && profile.ForceScale < 0.3f)
+            issues.Add("ISSUE: LMU ForceScale very low — Current: " + profile.ForceScale.ToString("F2") +
+                ". In LMU higher = heavier (used as 120/value); this makes the wheel very light.");
 
         // UNIVERSAL: Static friction masking
         if ((profile.StaticFriction?.Gain ?? 0) > 1.5f && (profile.StaticFriction?.MaxElasticStretch ?? 0) > 0.03f)
@@ -1472,8 +1314,8 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                 " + Stretch " + (profile.StaticFriction?.MaxElasticStretch ?? 0).ToString("F3") +
                 " creates rubber-band feel that overpowers FFB.");
 
-        // UNIVERSAL: All vibrations zero
-        if ((profile.Vibrations?.MasterGain ?? 0) == 0)
+        // All vibrations zero (not ACC — its vibration gains are pipeline-forced)
+        if (game != CoachGame.AssettoCorsaCompetizione && (profile.Vibrations?.MasterGain ?? 0) == 0)
             issues.Add("ISSUE: All vibrations disabled — MasterGain is 0. No road texture, kerbs, or slip feel.");
 
         return issues;
@@ -1486,7 +1328,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             try
             {
                 var context = BuildSystemContext(csvData, profile, isAnalysis: true);
-                var diagnostics = RunDiagnostics(profile, IsColumnForceGame);
+                var diagnostics = RunDiagnostics(profile, ActiveCoachGame);
                 var userMsg = diagnostics.Count > 0
                     ? "## CRITICAL ISSUES DETECTED — You MUST address these first before any tuning:\n" +
                       string.Join("\n", diagnostics) +
@@ -1658,7 +1500,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             try
             {
                 var context = BuildSystemContext(csvData, profile, isAnalysis: true);
-                var diagnostics = RunDiagnostics(profile, IsColumnForceGame);
+                var diagnostics = RunDiagnostics(profile, ActiveCoachGame);
                 var aiResult = await _aiAnalyzer.AnalyzeAsync(csvData, profile, GameContextString($"Live {stats.FrameCount}f"), diagnostics);
                 _aiConversation = new List<ChatMessage>
                 {
@@ -1720,7 +1562,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
         {
             droppedNotes.Add($"Dropped '{info.Name}': not available for " +
                 $"{CoachParameterCatalog.GameShortName(game)} " +
-                $"(only: {string.Join("/", info.ApplicableGames.Select(CoachParameterCatalog.GameShortName))}).");
+                $"({CoachParameterCatalog.GamesText(info)}).");
             return null;
         }
 

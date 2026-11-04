@@ -56,6 +56,6 @@ public static class EvoSettingsDetector
     {
         profile.OutputGain = settings.RecommendedOutputGain;
         profile.NormalizationScale = settings.RecommendedNormalizationScale;
-        profile.SteeringLockDegrees = settings.RecommendedSteeringLock;
+        profile.SteeringLockDegrees = Math.Clamp(settings.RecommendedSteeringLock, 180, 1080);
     }
 }

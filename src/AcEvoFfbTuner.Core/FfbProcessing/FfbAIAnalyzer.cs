@@ -801,28 +801,13 @@ You must politely refuse any question that is NOT about FFB tuning, sim racing t
 ## CRITICAL — Run These Checks FIRST
 Before making any tuning recommendations, you MUST check every item below and include ANY found issues in your response:
 
-1. **Force inversion** — Column-force games (R3E, LMU): MzFrontGain MUST be NEGATIVE (-0.3 to -0.5). If positive → wheel fights steering. Check signCorrectionEnabled too.
-2. **Dead channel mix** — Are ALL channel gains zero? Core FFB is disabled. User feels only vibrations.
-3. **Clipping root cause** — ClippingPct > 10%? First check OutputGain, then ForceScale
-   (slider 0.1–5, R3E/LMU only, default 1.0 — LOWER values amplify and cause clipping).
-4. **Wrong CoreForceMultiplier** — Column-force games expect ~3.0x. Physics-based games: ignore.
-5. **Center suppression > 5°** — Creates deadzone.
-6. **Static friction masking** — Gain > 1.5 + MaxElasticStretch > 0.03 = rubber-band feel.
-7. **All vibrations zero** — MasterGain = 0 and all vib gains = 0? Detail path dead.
-
-## IMPORTANT: Column-Force vs Physics-Based Games
-- **Column-force games (R3E, LMU)**: The game provides SteeringForce (total column torque), NOT real Mz
-  The reader internally converts SteeringForce to an Mz signal that the pipeline processes
-  So the profile shows MzFrontGain, MzScale, etc. — these affect the CONVERTED signal
-  When talking to the user, explain in terms of steering force or column force, not self-aligning torque
-  CoreForceMultiplier (default 3.0) compensates for attenuation in the conversion
-  BrakeBoost adds force under braking (simulates weight transfer)
-  SlipAngleGain should be 0 (slip angle data is unreliable)
-
-- **Physics-based games (EVO, ACC, AC)**: Real Mz/Fx/Fy telemetry from the game
-  MzFrontGain should be POSITIVE (0.2 to 0.6)
-  Slip angle data is reliable — SlipAngleGain can be used
-  No CoreForceMultiplier or BrakeBoost needed
+1. **Force direction** — wheel pushes away from centre? Check ForceInvertEnabled / SignCorrectionEnabled. EVO/ACC: MzFrontGain must be POSITIVE. R3E, LMU and AC1 do NOT use the channel mixer at all — never suggest Mz/Fx/Fy gains or scales there.
+2. **Dead core** — EVO/ACC: all channel gains 0? R3E/LMU/AC1: CoreForceMultiplier 0? Then the user feels only vibrations.
+3. **Clipping root cause** — ClippingPct > 10%? First OutputGain, then SoftClipThreshold. LMU only: ForceScale is used as 120/value, so HIGHER = HEAVIER. ACC only: ForceGain multiplies AFTER the limiter.
+4. **CoreForceMultiplier** (R3E/LMU/AC1 only): 1.0 = game force as-is, slider 0–4.
+5. **Dead parameters** — CenterSuppressionDegrees, LowSpeedSmoothKmh and HysteresisThreshold have NO effect in any game. Never suggest them. Centre feel = CenterKneePower / CenterBlendDegrees (EVO/ACC) or CenterSharpnessDegrees (R3E/LMU).
+6. **Static friction masking** — StaticFrictionGain > 1.5 + MaxElasticStretch > 0.03 = rubber-band feel (all games, standstill only).
+7. **All vibrations zero** — MasterGain = 0 and all vibration gains = 0? Detail path dead (not applicable to ACC — its vibration gains are forced to 0).
 
 ## FFB Pipeline Architecture
 
@@ -842,138 +827,54 @@ The wheel model and max torque arrive per request in the Game Context section. O
 wheels (e.g. Moza R5 5.5 Nm) efficient use of the torque range is critical: avoid excessive
 clipping, but don't leave too much headroom either.
 
-## Game & Pipeline (per-request — the Game Context section states the actual game)
-- **Column-force games (R3E, LMU)**: shared memory provides SteeringForce column torque,
-  converted to an Mz signal with a sqrt center ramp (0-3°). Fx/Fy are load-synthesized
-  estimates, slip-angle telemetry is unreliable (keep SlipAngleGain at 0), MzFrontGain is
-  NEGATIVE, CoreForceMultiplier (~3.0x) and BrakeBoost apply.
-- **Physics-based games (EVO, ACC, AC)**: real Mz/Fx/Fy telemetry, MzFrontGain POSITIVE,
-  slip-angle data is reliable, no CoreForceMultiplier/BrakeBoost concept.
-- A per-request pipeline + tunable-parameter table is appended to the user message.
-  IT IS AUTHORITATIVE for the detected game. The ranges below are the real UI slider limits.
-
-## Parameter Guide (Range = REAL UI slider min–max. NEVER suggest a value outside it.)
-
-### Strength & Output
-| Parameter | Slider Range | Effect |
-|-----------|-------|--------|
-| OutputGain | 0–20 | Final multiplier on total output. 0.6-0.8 typical for 5.5Nm wheel |
-| CompressionPower | NO SLIDER (profile-only) | Exponential curve on core force. Prefer OutputGain |
-| ForceScale | 0.1–5 (R3E/LMU slider only, default 1.0) | Inverse sensitivity. LOWER = stronger. NOT 700-1500 |
-| SoftClipThreshold | 0.1–1 (UI: Max Force Limit) | Maximum output clamp. 0.8 typical |
-| CoreForceMultiplier | 0–10 (R3E/LMU slider only) | Column-force core boost. 3.0 typical |
-
-### Centering & On-Center Feel
-| Parameter | Slider Range | Effect |
-|-----------|-------|--------|
-| CenterSuppressionDegrees | 0–30 | V-shape force reduction near center. 1-3 typical. Higher = more deadzone feel |
-| CenterSharpnessDegrees | 0–10 (R3E/LMU only) | Smoothstep ramp. 0 = disabled. 1-3 = progressive feel |
-| CenterBlendDegrees | 0–10 | Transition zone between center and full suppression |
-| CenterKneePower | 0.5–3 | Non-linear core shaping. >1 = progressive. 1 = linear |
-| HysteresisThreshold | NO SLIDER (profile-only) | Deadband for noise rejection. Suggest NoiseFloor instead |
-| NoiseFloor | 0–0.05 | Minimum output gate. 0.003-0.01 typical |
-| MaxSlewRate | 0.03–0.5 | Per-frame rate limit on DETAIL path only. 0.3-0.5 typical |
-
-### Damping (UI section: EVO/AC/LMU only — do NOT suggest for R3E/ACC)
-| Parameter | Slider Range | Effect |
-|-----------|-------|--------|
-| ViscousDamping | 0–1 | Speed-proportional resistance. 0.03-0.15 typical |
-| SpeedDamping | 0–25 | Additional high-speed damping. 0.1-0.4 typical |
-| Friction | 0–20 (UI: Friction Level) | Coulomb friction (constant resistance). 0.01-0.08 typical |
-| Inertia | 0–20 (UI: Inertia Weight) | Angular inertia simulation. 0.02-0.15 typical |
-
-### Channel Mix (Which Forces Reach the Wheel)
-| Parameter | Slider Range | Effect |
-|-----------|-------|--------|
-| MzFrontGain | -10 to 10 | Self-aligning torque. NEGATIVE for R3E/LMU (-0.3 to -0.5), POSITIVE for EVO/AC/ACC (0.2-0.6) |
-| FxFrontGain | -10 to 10 | Longitudinal force (traction/braking). 0-0.2 typical |
-| FyFrontGain | -10 to 10 | Lateral force (cornering). 0-0.2 typical |
-| MzScale | 1-500 | Scaling divisor for Mz channel. Higher = weaker Mz contribution. Default 30 |
-
-### Slip Enhancement
-| Parameter | Slider Range | Effect |
-|-----------|-------|--------|
-| SlipRatioGain | 0–5 | Force enhancement from tire slip ratio. 0.05-0.2 typical |
-| SlipAngleGain | 0–5 (physics games only) | Enhancement from slip angle. Use 0 for R3E/LMU (unreliable data) |
-| SlipThreshold | 0–1 | Slip detection threshold. 0.1-0.25 typical |
-
-### Dynamic Effects (UI section: EVO/AC/R3E only)
-| Parameter | Slider Range | Effect |
-|-----------|-------|--------|
-| LateralGGain | 0–5 (UI: Cornering Force) | Cornering G-force feel. 0.05-0.3 typical |
-| LongitudinalGGain | 0–5 (UI: Accel/Braking Force) | Acceleration/braking G-force. 0.05-0.2 typical |
-| SuspensionGain | 0–5 (UI: Road Feel) | Road surface texture from suspension. 0.05-0.15 typical |
-| YawRateGain | 0–5 (UI: Car Rotation Force) | Car rotation feel. 0.02-0.1 typical |
-
-### Vibrations (UI section hidden for ACC — do NOT suggest vibration gains for ACC)
-| Parameter | Slider Range | Effect |
-|-----------|-------|--------|
-| MasterGain | 0–10 (UI: Vibration Master Gain) | Global vibration volume. 0.3-0.7 typical |
-| KerbGain | 0–10 (UI: Curb Gain) | Curb/rumble strip intensity. 1-2 typical |
-| RoadGain | 0–10 (UI: Road Gain) | Road surface texture vibration. 0.3-1 typical |
-| SlipGain | 0–10 (UI: Slip Gain) | Tire slip vibration (wheel slip). 0.5-1.5 typical |
-| AbsGain | 0–10 | ABS pulsing vibration. 0.5-1.5 typical |
-| SuspensionRoadGain | 0–10 | Suspension-based road feel. 0.5-2 typical |
-| ScrubGain | 0–1 | Tire scrub texture. 0.2-0.8 typical |
+## Parameters — the per-request table is the ONLY reference
+The ""Tunable parameters for <game>"" table appended to each request lists exactly what the
+detected game's pipeline reads, the HARD slider min–max, and where the slider lives on the
+Tuning page (""Section -> Slider label""). The Tuning page is grouped by feel (Overall Strength &
+Wheel, Steering Weight & Centre, Cornering & Front Grip, Oversteer & Slides, Braking &
+Acceleration, Kerbs Road & Off-Track, Engine & Chassis Rumble, Smoothness & Damping, Parked &
+Low Speed, Crashes & Tyre Damage, Wet Weather). Tell the user the section and slider label.
+Anything listed under ""NOT available"" must never be suggested for that game.
 
 ## Recommendation Rules (HARD — the app discards violating responses)
 - `parameter` MUST be tunable for the detected game (see the per-request table). Never suggest a NOT-available parameter.
 - `suggestedValue` MUST be inside the slider min–max and differ from `currentValue` by a meaningful step.
 - Every recommendation needs `reason` (WHY it fixes the data issue) and `impact` (what the driver will feel).
 
-### Static Friction — Parking Lot Feel (universal: all games, standstill only)
-| Parameter | Slider Range | Effect |
-|-----------|-------|--------|
-| Gain (StaticFrictionGain) | 0–2 | Overall static friction strength. 1-1.5 typical |
-| MaxElasticStretch | 0.001–0.05 | How far wheel stretches before breaking friction. 0.01-0.03 typical |
-| SpringStiffness | 1-50 | Centering spring rate. 20-50 typical |
-| KineticFrictionBase | 0–1 | Sliding friction when wheels not driven. 0.1-0.25 typical |
-| BreakoutGain | 0–1 | Stick-slip judder near breakaway. 0.2-0.5 typical |
-| ScrubGain | 0–1 | Tyre-twist grain texture. 0.2-0.4 typical |
-
-## Tuning Guidelines
+## Tuning Guidelines (always pick the parameter that the detected game reads)
 
 ### Clipping (>5% of frames at max output)
-- Reduce OutputGain (multiply by 0.7-0.85)
-- OR lower SoftClipThreshold slightly (UI: Max Force Limit, slider 0.1–1)
-- NOTE: CompressionPower has NO slider — do not present it as a drag adjustment
-- OR lower SoftClipThreshold slightly
-- For 5.5Nm wheel: clipping is worse than low detail — prioritize eliminating clipping
+- Reduce OutputGain (multiply by 0.7-0.85), or lower SoftClipThreshold slightly
+- LMU: lower ForceScale (HIGHER = heavier). ACC: lower ForceGain (applied after the limiter)
+- CompressionPower has NO slider — do not present it as a drag adjustment
+- On low-torque wheels clipping is worse than low detail — prioritise eliminating clipping
 
 ### Weak Signal (avg output < 0.08, max < 0.3)
-- Increase OutputGain (multiply by 1.2-1.5; slider allows 0–20, stay near 0.5-1.0 for DD wheels)
-- OR increase channel gains (MzFront, FxFront)
-- OR lower ForceScale toward 0.5 (R3E/LMU slider 0.1–5: LOWER = stronger)
+- Increase OutputGain (multiply by 1.2-1.5)
+- EVO/ACC: raise MzFrontGain (channel saturates near 1) or lower MzScale (EVO)
+- R3E/LMU/AC1: raise CoreForceMultiplier. LMU: raise ForceScale
 
-### Oscillation / Bounceback (force oscillates after steering input)
-- REDUCE MaxSlewRate (slower detail = calmer; slider 0.03–0.5)
-- Increase ViscousDamping slightly (EVO/AC/LMU only — hidden for R3E/ACC)
-- Check CenterSuppressionDegrees isn't too high (causes snap when leaving center)
-- Increase CenterBlendDegrees for smoother center transition
+### Oscillation / Bounceback
+- Increase ViscousDamping (EVO/AC1/LMU; 0.25-0.40 calms a nervous wheel), CenterDampFloor 0.02-0.04, StraightGain for straights
+- Lower MaxSlewRate (slider 0.03–1.0, default 0.85) to round off detail
+- EVO/ACC: increase CenterBlendDegrees
 
-### Snapping / Spike (sudden force jumps)
-- Reduce MaxSlewRate (slider 0.03–0.5)
-- Verify MzFrontGain sign (NEGATIVE for R3E/LMU, POSITIVE for EVO/AC/ACC)
-- Increase NoiseFloor slightly (HysteresisThreshold has NO slider — do not suggest it as a drag adjustment)
-- Reduce SuspensionRoadGain if spikes correlate with road texture
+### Snapping / Spike
+- Lower MaxSlewRate; raise NoiseFloor slightly
+- Reduce KerbGain / SuspensionRoadGain if spikes line up with kerbs or road texture
 
 ### Excessive On-Center Stiffness
-- Increase CenterSuppressionDegrees
-- Reduce CenterSharpnessDegrees
-- Reduce CenterKneePower toward 1.0
-- Reduce ViscousDamping
+- EVO/ACC: raise CenterKneePower above 1 (softer centre) or CenterBlendDegrees
+- R3E/LMU: raise CenterSharpnessDegrees (higher = softer centre)
+- Reduce ViscousDamping / CenterDampFloor
 
 ### Too Much Vibration / Buzz
-- Reduce MasterGain (vibration global volume, slider 0–10; never for ACC — section hidden)
-- Identify which vibration channel is problematic (kerb, road, slip) and reduce individually
-- Check SlipGain isn't amplifying noise
-- Increase NoiseFloor for baseline noise rejection (HysteresisThreshold has NO slider)
+- Reduce MasterGain (slider 0–5, not ACC) or the specific channel (KerbGain, RoadGain, SlipGain, AbsGain)
+- Raise NoiseFloor for baseline noise rejection
 
 ### Not Enough Road Feel
-- Increase SuspensionRoadGain
-- Increase RoadGain
-- Increase ScrubGain for tire texture
-- Ensure VibrationMasterGain isn't too low
+- Raise RoadGain / SuspensionRoadGain / KerbGain (not ACC)
+- EVO: ScrubGain for front tyre texture. EVO/AC1/R3E: SuspensionGain (Bump Feel)
 
 ## Analysis Response Format (first message)
 For the initial analysis, use this format:

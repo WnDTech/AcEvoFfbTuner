@@ -39,22 +39,37 @@ public sealed record CoachParameterInfo(
 
 public static class CoachParameterCatalog
 {
+    // Game sets mirror the per-slider visibility gates in MainViewModel.Game.cs
+    // (feel-based Tuning page, 2026-11 consumer audit): a parameter is listed for a
+    // game ONLY if that game's pipeline actually reads it.
+    private static readonly CoachGame[] None = [];
     private static readonly CoachGame[] All = [
         CoachGame.AcEvo, CoachGame.Raceroom, CoachGame.AssettoCorsa,
         CoachGame.LeMansUltimate, CoachGame.AssettoCorsaCompetizione];
+    private static readonly CoachGame[] Evo = [CoachGame.AcEvo];
+    private static readonly CoachGame[] Lmu = [CoachGame.LeMansUltimate];
+    /// <summary>Channel mixer / LUT / centre knee+blend / auto-gain: EVO + ACC (AC1 reader zeroes tyre forces; R3E/LMU bypass the mixer).</summary>
+    private static readonly CoachGame[] TyreChannel = [CoachGame.AcEvo, CoachGame.AssettoCorsaCompetizione];
+    /// <summary>Slip enhancer: all but AC1 (no slip data).</summary>
+    private static readonly CoachGame[] SlipEnh = [
+        CoachGame.AcEvo, CoachGame.Raceroom, CoachGame.LeMansUltimate, CoachGame.AssettoCorsaCompetizione];
+    private static readonly CoachGame[] Column = [CoachGame.Raceroom, CoachGame.LeMansUltimate];
+    private static readonly CoachGame[] CoreForce = [CoachGame.Raceroom, CoachGame.LeMansUltimate, CoachGame.AssettoCorsa];
+    private static readonly CoachGame[] BrakeBoost = [
+        CoachGame.Raceroom, CoachGame.LeMansUltimate, CoachGame.AssettoCorsa, CoachGame.AssettoCorsaCompetizione];
+    private static readonly CoachGame[] NoAccVib = [
+        CoachGame.AcEvo, CoachGame.Raceroom, CoachGame.AssettoCorsa, CoachGame.LeMansUltimate];
+    private static readonly CoachGame[] RearSlip = [CoachGame.AcEvo, CoachGame.Raceroom, CoachGame.LeMansUltimate];
+    private static readonly CoachGame[] SlipVib = [CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.LeMansUltimate];
+    private static readonly CoachGame[] LoadFlex = [
+        CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.AssettoCorsaCompetizione, CoachGame.Raceroom];
+    private static readonly CoachGame[] ContactPatch = [CoachGame.AcEvo, CoachGame.AssettoCorsaCompetizione, CoachGame.Raceroom];
+    private static readonly CoachGame[] Damping = [CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.LeMansUltimate];
+    private static readonly CoachGame[] DampTuning = [
+        CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.LeMansUltimate, CoachGame.AssettoCorsaCompetizione];
+    private static readonly CoachGame[] Dynamic = [CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.Raceroom];
     private static readonly CoachGame[] Physics = [
         CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.AssettoCorsaCompetizione];
-    private static readonly CoachGame[] Column = [
-        CoachGame.Raceroom, CoachGame.LeMansUltimate];
-    private static readonly CoachGame[] NoAccVib = [
-        CoachGame.AcEvo, CoachGame.Raceroom, CoachGame.AssettoCorsa,
-        CoachGame.LeMansUltimate];
-    private static readonly CoachGame[] EvoAcR3e = [
-        CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.Raceroom];
-    private static readonly CoachGame[] EvoAcLmu = [
-        CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.LeMansUltimate];
-    private static readonly CoachGame[] EvoAcR3eDyn = [
-        CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.Raceroom];
 
     private static readonly Dictionary<string, CoachParameterInfo> ByName;
 
@@ -63,116 +78,124 @@ public static class CoachParameterCatalog
         var list = new List<CoachParameterInfo>
         {
             // ── Strength & output ──
-            E("OutputGain", 0f, 20f, All, "Output: final multiplier before limiter",
-                "clipping, weak", "Master output strength. Lower fixes clipping, higher fixes weak feel."),
-            E("SoftClipThreshold", 0.1f, 1f, All, "Output: soft limiter (UI: Max Force Limit)",
-                "clipping", "Force ceiling. Lowering adds headroom but caps peaks."),
-            E("ForceScale", 0.1f, 5f, Column, "Core: first gain stage (UI: COLUMN FORCE → Scale, R3E/LMU only)",
-                "clipping, weak", "Inverse sensitivity for column-force games. Higher = weaker forces. Default 1.0."),
+            E("OutputGain", 0f, 20f, All, "UI: Overall Strength & Wheel -> Output Gain",
+                "clipping, weak", "Final multiplier for every force. Lower fixes clipping, higher fixes weak feel."),
+            E("SoftClipThreshold", 0.1f, 1f, All, "UI: Overall Strength & Wheel -> Max Force Limit",
+                "clipping", "Soft-clip knee. Real ceiling is (1+T)/2. On ACC, ForceGain is applied after it."),
+            E("ForceScale", 0.1f, 200f, Lmu, "UI: Overall Strength & Wheel -> LMU Force Scale (LMU only)",
+                "clipping, weak", "LMU shaft-torque normaliser used as 120/value: HIGHER = HEAVIER. 120+ all behave the same. No effect in R3E."),
             E("CompressionPower", null, null, All, "Core: tanh curve (profile-only, no slider)",
                 "clipping", "Rounds off peaks. Profile-only — no UI slider; prefer OutputGain."),
-            E("CoreForceMultiplier", 0f, 10f, Column, "Core: column-force boost (UI: COLUMN FORCE → Gain, R3E/LMU only)",
-                "weak", "Boosts converted column force. ~3.0x typical for column-force games."),
+            E("CoreForceMultiplier", 0f, 4f, CoreForce, "UI: Overall Strength & Wheel -> Main Force Gain (R3E/LMU/AC)",
+                "weak, clipping", "Linear gain on the game column torque. 1.0 = game force as-is."),
             // ── Channel mix ──
-            E("MzFrontGain", -10f, 10f, All, "Core: channel mixer Mz front",
-                "weak, inversion", "Self-aligning torque. NEGATIVE for R3E/LMU, POSITIVE for EVO/AC/ACC."),
-            E("FxFrontGain", -10f, 10f, All, "Core: channel mixer Fx front",
-                "weak", "Longitudinal force (traction/braking)."),
-            E("FyFrontGain", -10f, 10f, All, "Core: channel mixer Fy front",
-                "weak", "Lateral force (cornering)."),
-            E("MzRearGain", -10f, 10f, All, "Core: channel mixer Mz rear",
-                "feel", "Rear Mz contribution. Usually 0."),
-            E("WheelLoadWeighting", 0f, 1f, All, "Core: channel mixer load weighting",
-                "feel", "How much wheel load modulates the channel mix."),
-            E("MzScale", 1f, 500f, All, "Core: Mz normalization divisor",
-                "clipping, weak", "Higher = weaker Mz. Default 30."),
-            E("FxScale", 100f, 20000f, All, "Core: Fx normalization divisor",
-                "clipping, weak", "Higher = weaker Fx. Default 4000."),
-            E("FyScale", 100f, 20000f, All, "Core: Fy normalization divisor",
-                "clipping, weak", "Higher = weaker Fy. Default 5000."),
+            E("MzFrontGain", -2f, 2f, TyreChannel, "UI: Steering Weight & Centre -> Self-Aligning Torque (EVO/ACC; ACC forces 0.5)",
+                "weak, inversion", "Main steering weight. POSITIVE. Channel saturates near +-1. R3E/LMU/AC do not use the channel mixer."),
+            E("FxFrontGain", -2f, 2f, TyreChannel, "UI: Braking & Acceleration -> Braking/Drive Force (Fx)",
+                "weak", "Front longitudinal force through the wheel."),
+            E("FyFrontGain", -2f, 2f, TyreChannel, "UI: Steering Weight & Centre -> Cornering Load (Fy)",
+                "weak", "Lateral cornering load, faded near centre by CenterBlendDegrees."),
+            E("MzRearGain", -2f, 2f, TyreChannel, "UI: Oversteer & Slides -> Rear Self-Aligning (Mz)",
+                "feel", "Rear Mz. Usually 0."),
+            E("WheelLoadWeighting", 0f, 1f, TyreChannel, "UI: Steering Weight & Centre -> Wheel Load Weighting",
+                "feel", "0 = simple average, 1 = follows axle load transfer."),
+            E("MzScale", 1f, 300f, Evo, "UI: Steering Weight & Centre -> Mz Scale (EVO; ACC forces 5)",
+                "clipping, weak", "Divisor: LOWER = HEAVIER. Below the car raw peak, auto-normalisation takes over."),
+            E("FxScale", 100f, 20000f, TyreChannel, "UI: Braking & Acceleration -> Fx Scale",
+                "clipping, weak", "Divisor: LOWER = stronger braking/accel feel."),
+            E("FyScale", 100f, 20000f, TyreChannel, "UI: Steering Weight & Centre -> Fy Scale",
+                "clipping, weak", "Divisor: LOWER = heavier cornering load."),
             // ── Damping (UI section visible for EVO/AC/LMU only) ──
-            E("ViscousDamping", 0f, 1f, EvoAcLmu, "Core: damping stage",
-                "oscillation", "Speed-proportional resistance. Raises stability, dulls detail."),
-            E("SpeedDamping", 0f, 25f, EvoAcLmu, "Core: damping stage",
-                "oscillation", "Extra high-speed damping."),
-            E("Friction", 0f, 20f, EvoAcLmu, "Core: damping stage (UI: Friction Level)",
-                "oscillation", "Constant resistance. Too much feels numb."),
-            E("Inertia", 0f, 20f, EvoAcLmu, "Core: damping stage (UI: Inertia Weight)",
-                "oscillation", "Angular inertia simulation."),
-            E("MaxSpeedReference", 50f, 500f, EvoAcLmu, "Core: damping reference (UI: Damping Speed Reference)",
-                "oscillation", "Speed at which speed damping reaches max."),
-            E("CenterDampFloor", 0f, 0.1f, EvoAcLmu, "Core: center damping floor",
-                "oscillation", "Absolute damping authority at center. Fixes weave."),
-            E("StraightGain", 0f, 2f, EvoAcLmu, "Core: straight-line damping",
-                "oscillation", "Extra damping above 80 km/h near center."),
+            E("ViscousDamping", 0f, 1f, Damping, "UI: Smoothness & Damping -> Damping",
+                "oscillation", "Resists fast wheel movement. 0.15 default, 0.25-0.40 calms a nervous wheel. Dulls detail."),
+            E("SpeedDamping", 0f, 2f, Damping, "UI: Smoothness & Damping -> Speed Damping",
+                "oscillation", "Speed-scaled damping. Total damping is capped, so above ~0.5 changes little."),
+            E("Friction", 0f, 2f, Damping, "UI: Smoothness & Damping -> Friction",
+                "oscillation", "Constant drag. Capped, above ~0.5 changes little. Too much feels numb."),
+            E("Inertia", 0f, 2f, DampTuning, "UI: Smoothness & Damping -> Inertia",
+                "oscillation", "Resists quick direction changes. Capped, above ~0.5 changes little."),
+            E("MaxSpeedReference", 50f, 500f, Damping, "UI: Smoothness & Damping -> Speed Damping Full At",
+                "oscillation", "Car speed where speed damping reaches full."),
+            E("CenterDampFloor", 0f, 0.1f, Damping, "UI: Steering Weight & Centre -> Centre Damping Floor",
+                "oscillation", "Damping authority at centre. Fixes on-centre weave. LMU uses 0.03."),
+            E("StraightGain", 0f, 2f, Damping, "UI: Steering Weight & Centre -> Straight Stability",
+                "oscillation", "Extra damping near centre above 80 km/h."),
             // ── Slip ──
-            E("SlipRatioGain", 0f, 5f, All, "Detail: slip enhancer",
-                "low_detail", "Force enhancement from tire slip ratio."),
-            E("SlipAngleGain", 0f, 5f, Physics, "Detail: slip enhancer (physics games only — unreliable in R3E/LMU)",
-                "low_detail", "Keep at 0 for R3E/LMU: slip-angle telemetry is unreliable there."),
-            E("SlipAngleShapeGain", 0f, 5f, Physics, "Detail: slip enhancer (physics games only)",
-                "low_detail", "Shape-based slip angle response."),
-            E("SlipThreshold", 0f, 1f, All, "Detail: slip enhancer gate",
-                "low_detail, noise", "Minimum slip before enhancement. Lower = more sensitive."),
-            E("BrakeBoostGain", 0f, 1f, Column, "Core: brake weight-transfer boost (column-force games)",
-                "feel", "Adds force under braking. No effect outside R3E/LMU pipeline path."),
-            E("BrakeBoostThreshold", 0f, 1f, Column, "Core: brake boost gate",
-                "feel", "Brake pedal threshold for boost."),
+            E("SlipRatioGain", 0f, 2f, SlipEnh, "UI: Braking & Acceleration -> Lock-up / Wheelspin Feel",
+                "low_detail", "Force add on lock-ups and wheelspin. Capped at ~30% of core force."),
+            E("SlipAngleGain", 0f, 2f, TyreChannel, "UI: Cornering & Front Grip -> Slip Angle Feel",
+                "low_detail", "Force add as tyres slide sideways. Keep 0 for R3E/LMU (slip-angle telemetry unreliable); AC1 has no slip data."),
+            E("SlipAngleShapeGain", 0f, 2f, TyreChannel, "UI: Cornering & Front Grip -> Peak Grip Bump",
+                "low_detail", "Peak-grip rise and drop-off (understeer cue)."),
+            E("SlipThreshold", 0f, 0.3f, SlipEnh, "UI: Cornering & Front Grip -> Slip Trigger Point",
+                "low_detail, noise", "Slip needed before slip effects fire. Above 0.3 never fires."),
+            E("BrakeBoostGain", 0f, 1f, BrakeBoost, "UI: Braking & Acceleration -> Brake Weight Boost (not EVO)",
+                "feel", "Extra steering weight under braking. Live in R3E; other games apply on profile save."),
+            E("BrakeBoostThreshold", 0f, 0.5f, BrakeBoost, "UI: Braking & Acceleration -> Boost Starts At",
+                "feel", "Brake pedal fraction where boost starts."),
             E("GearSpikeThreshold", null, null, All, "Core: gear-shift filter (numeric, no slider)",
                 "snap", "RPM gate for shift-spike mute."),
             E("SteeringAngleCompensationEnabled", null, null, [CoachGame.Raceroom], "Core: R3E high-steer boost toggle",
                 "feel", "Legacy +15% high-steer boost for the pre-Historic-Update fixed SAT drop. Off = feel the Historic Update's own dynamic SAT curve."),
             E("GripReleaseRate", 0.5f, 20f, [CoachGame.Raceroom], "Core: R3E grip reload limiter (profile-only)",
                 "snap", "Upward recovery rate of the grip scale after unloads. Lower = softer touchdown landings. No UI slider."),
+            E("KerbStrikeDecayMs", 3f, 100f, [CoachGame.Raceroom], "Core: R3E kerb-strike decay (profile-only)",
+                "feel", "Knock decay time in ms. Short = separate rigid hits per ridge; long = blur into wobble. No UI slider."),
+            E("BrakeShimmerGain", 0f, 3f, [CoachGame.Raceroom], "Core: R3E braking shimmer (profile-only)",
+                "feel", "Brake-gated tremble amplitude. 0 = steady weight only. No UI slider."),
+            E("CoreFloor", 0f, 0.3f, [CoachGame.Raceroom], "Core: R3E core floor (profile-only)",
+                "feel", "Minimum column-torque magnitude before grip scaling. Keeps tissue through center crossings. No UI slider."),
+            E("CenterDirectionBlend", 0.002f, 0.1f, [CoachGame.Raceroom], "Core: R3E center blend (profile-only)",
+                "feel", "Fraction of full lock over which centering direction ramps through zero. Wider = softer crossings. No UI slider."),
             // LMU-only slip extras
-            E("RearFyScale", 0f, 2f, [CoachGame.LeMansUltimate], "Detail: LMU rear-slip warning",
-                "low_detail", "LMU rear warning from rear Fy oscillation. No effect in other games."),
-            E("RearGripDetailGain", 0f, 2f, [CoachGame.LeMansUltimate], "Detail: LMU rear warning",
-                "low_detail", "LMU rear warning from grip-fraction drop."),
-            E("YawOnsetGain", 0f, 2f, [CoachGame.LeMansUltimate], "Detail: LMU slide-onset kick",
-                "low_detail", "LMU slide-onset kick strength."),
-            E("YawOnsetThreshold", 0f, 10f, [CoachGame.LeMansUltimate], "Detail: LMU onset gate",
-                "low_detail", "Yaw-accel threshold to fire the onset kick. 0 = off."),
+            E("RearFyScale", 0f, 1f, Lmu, "UI: Oversteer & Slides -> Rear Slip Texture (LMU)",
+                "low_detail", "LMU rear warning from rear Fy + yaw accel. Capped near 1."),
+            E("RearGripDetailGain", 0f, 1f, Lmu, "UI: Oversteer & Slides -> Rear Grip Drop (LMU)",
+                "low_detail", "LMU rear warning from rear grip drop."),
+            E("YawOnsetGain", 0f, 2f, Lmu, "UI: Oversteer & Slides -> Slide Onset Kick (LMU)",
+                "low_detail", "Slide-onset kick. Needs YawOnsetThreshold above 0."),
+            E("YawOnsetThreshold", 0f, 10f, Lmu, "UI: Oversteer & Slides -> Onset Threshold (LMU)",
+                "low_detail", "Yaw accel (rad/s2) to fire the kick. 0 = never. Start ~2."),
             E("YawOnsetDecay", null, null, [CoachGame.LeMansUltimate], "Detail: LMU onset decay (profile-only)",
                 "feel", "Onset-kick decay rate. No UI slider."),
             E("YawOnsetMax", null, null, [CoachGame.LeMansUltimate], "Detail: LMU onset cap (profile-only)",
                 "feel", "Onset-kick output cap. No UI slider."),
-            E("SuspRoadScale", 0f, 2f, [CoachGame.LeMansUltimate], "Detail: LMU road layer",
-                "low_detail", "LMU mixer susp-delta road layer scale."),
-            E("BrakeLoadBias", 0f, 1f, [CoachGame.LeMansUltimate], "Core: LMU brake bias",
-                "feel", "LMU front-load bias in brake boost. 0 = legacy scalar."),
+            E("SuspRoadScale", 0f, 2f, Lmu, "UI: Kerbs, Road & Off-Track -> Suspension Road Layer (LMU)",
+                "low_detail", "LMU susp-delta road layer scale."),
+            E("BrakeLoadBias", 0f, 1f, Lmu, "UI: Braking & Acceleration -> Front Load Brake Bias (LMU)",
+                "feel", "Blends real front load into brake boost."),
             // ── Dynamic effects (UI section: EVO/AC/R3E) ──
-            E("LateralGGain", 0f, 5f, EvoAcR3eDyn, "Detail: dynamic effects (UI: Cornering Force)",
-                "low_detail", "Cornering G-force feel."),
-            E("LongitudinalGGain", 0f, 5f, EvoAcR3eDyn, "Detail: dynamic effects (UI: Accel/Braking Force)",
-                "low_detail", "Acceleration/braking G-force."),
-            E("SuspensionGain", 0f, 5f, EvoAcR3eDyn, "Detail: dynamic effects (UI: Road Feel)",
-                "low_detail", "Road surface texture from suspension."),
-            E("YawRateGain", 0f, 5f, EvoAcR3eDyn, "Detail: dynamic effects (UI: Car Rotation Force)",
-                "low_detail", "Car rotation feel."),
+            E("LateralGGain", 0f, 2f, Dynamic, "UI: Cornering & Front Grip -> Lateral G Weight",
+                "low_detail", "Cornering G force add. Capped, above ~1 changes little."),
+            E("LongitudinalGGain", 0f, 2f, Dynamic, "UI: Braking & Acceleration -> Longitudinal G Weight",
+                "low_detail", "Braking/accel G force add. Capped."),
+            E("SuspensionGain", 0f, 2f, Dynamic, "UI: Kerbs, Road & Off-Track -> Bump Feel",
+                "low_detail", "Force from rapid suspension compression."),
+            E("YawRateGain", 0f, 2f, Dynamic, "UI: Oversteer & Slides -> Yaw Rate Force",
+                "low_detail", "Force from car rotation rate."),
             // ── Vibrations (UI section hidden for ACC) ──
-            E("MasterGain", 0f, 10f, NoAccVib, "Detail: vibration mixer master (UI: Vibration Master Gain)",
-                "buzz, low_detail", "Global vibration volume."),
-            E("KerbGain", 0f, 10f, NoAccVib, "Detail: vibration mixer (UI: Curb Gain)",
-                "buzz, low_detail", "Curb/rumble strip intensity."),
-            E("RoadGain", 0f, 10f, NoAccVib, "Detail: vibration mixer (UI: Road Gain)",
-                "buzz, low_detail", "Road surface texture vibration."),
-            E("SlipGain", 0f, 10f, NoAccVib, "Detail: vibration mixer (UI: Slip Gain)",
-                "buzz, low_detail", "Tire slip vibration."),
-            E("AbsGain", 0f, 10f, NoAccVib, "Detail: vibration mixer",
-                "buzz, low_detail", "ABS pulsing vibration."),
-            E("AbsPulseAmplitude", 0f, 1f, NoAccVib, "Detail: vibration mixer",
-                "buzz", "ABS pulse strength."),
-            E("SuspensionRoadGain", 0f, 10f, NoAccVib, "Detail: vibration mixer",
-                "buzz, low_detail", "Suspension-based road feel."),
-            E("ScrubGain", 0f, 1f, NoAccVib, "Detail: vibration mixer",
-                "buzz, low_detail", "Tire scrub texture."),
-            E("RearSlipGain", 0f, 1f, NoAccVib, "Detail: vibration mixer",
-                "buzz, low_detail", "Rear wheel slip vibration."),
-            E("OfftrackGain", 0f, 2f, NoAccVib, "Detail: vibration mixer",
-                "buzz, low_detail", "Off-track surface feel."),
-            E("OfftrackSeverityScale", 0f, 10f, NoAccVib, "Detail: vibration mixer",
-                "buzz", "How strongly offtrack feels."),
+            E("MasterGain", 0f, 5f, NoAccVib, "UI: Kerbs, Road & Off-Track -> Vibration Master",
+                "buzz, low_detail", "Volume for all vibrations."),
+            E("KerbGain", 0f, 5f, NoAccVib, "UI: Kerbs, Road & Off-Track -> Kerb Strikes",
+                "buzz, low_detail", "Kerb/rumble strip intensity."),
+            E("RoadGain", 0f, 5f, NoAccVib, "UI: Kerbs, Road & Off-Track -> Road Vibration",
+                "buzz, low_detail", "Road surface vibration."),
+            E("SlipGain", 0f, 5f, SlipVib, "UI: Cornering & Front Grip -> Tyre Slip Vibration",
+                "buzz, low_detail", "Tyre slip vibration. Zeroed by the R3E reader."),
+            E("AbsGain", 0f, 3f, NoAccVib, "UI: Braking & Acceleration -> ABS Vibration",
+                "buzz, low_detail", "ABS pulses. Above ~2 starts clipping."),
+            E("AbsPulseAmplitude", 0f, 1f, NoAccVib, "UI: Braking & Acceleration -> ABS Pulse Punch",
+                "buzz", "Sharpness of each ABS pulse."),
+            E("SuspensionRoadGain", 0f, 5f, NoAccVib, "UI: Kerbs, Road & Off-Track -> Suspension Road Texture",
+                "buzz, low_detail", "Suspension road texture in the main force."),
+            E("ScrubGain", 0f, 1f, Evo, "UI: Cornering & Front Grip -> Front Tyre Scrub (EVO)",
+                "buzz, low_detail", "Front scrub grain at the limit. EVO only (needs per-wheel Mz + slip)."),
+            E("RearSlipGain", 0f, 1f, RearSlip, "UI: Oversteer & Slides -> Rear Slip Warning",
+                "buzz, low_detail", "Rear slip rumble (early oversteer warning)."),
+            E("OfftrackGain", 0f, 2f, NoAccVib, "UI: Kerbs, Road & Off-Track -> Off-Track Rumble",
+                "buzz, low_detail", "Grass/gravel feel strength."),
+            E("OfftrackSeverityScale", 0f, 10f, NoAccVib, "UI: Kerbs, Road & Off-Track -> Off-Track Roughness",
+                "buzz", "How violent off-track texture is."),
             E("CurbSeverityScale", null, null, NoAccVib, "Detail: vibration mixer (profile-only, no slider)",
                 "buzz", "Curb impact harshness. No UI slider."),
             E("ScrubForceScale", null, null, NoAccVib, "Detail: vibration mixer (profile-only, no slider)",
@@ -180,67 +203,67 @@ public static class CoachParameterCatalog
             E("RearSlipForceScale", null, null, NoAccVib, "Detail: vibration mixer (profile-only, no slider)",
                 "buzz, low_detail", "Rear slip force normalization. No UI slider."),
             // ── Signal shaping ──
-            E("MaxSlewRate", 0.03f, 0.5f, All, "Detail: slew limiter (detail path only — core is zero-latency)",
-                "snap, oscillation", "Per-frame rate limit on DETAIL path only. Lower = smoother."),
-            E("CenterSuppressionDegrees", 0f, 30f, All, "Core: centering shaping",
-                "stiff_center, snap", "V-shape force reduction near center. >5° creates a deadzone."),
-            E("CenterSharpnessDegrees", 0f, 10f, Column, "Core: R3E/LMU smoothstep ramp (hidden for physics games)",
-                "stiff_center", "0 = disabled (reader shaping). 1-3 = progressive."),
-            E("CenterKneePower", 0.5f, 3f, All, "Core: centering shaping",
-                "stiff_center", "Non-linear core shaping. >1 = progressive."),
-            E("CenterBlendDegrees", 0f, 10f, All, "Core: centering shaping",
-                "stiff_center", "Transition zone between center and full force."),
-            E("HysteresisThreshold", null, null, All, "Core: noise deadband (profile-only, no slider)",
-                "noise, oscillation", "Deadband for noise rejection. No UI slider — use NoiseFloor slider instead."),
-            E("NoiseFloor", 0f, 0.05f, All, "Output: noise gate",
-                "noise", "Minimum output gate. Forces below this are silenced."),
+            E("MaxSlewRate", 0.03f, 1f, All, "UI: Smoothness & Damping -> Detail Sharpness (slew limit)",
+                "snap, oscillation", "Per-frame limit on DETAIL path only (core is zero-latency). Default 0.85. Lower = rounder."),
+            E("CenterSuppressionDegrees", null, null, None, "RESERVED - not read by any pipeline, no UI slider",
+                "stiff_center", "NO EFFECT in any game. Use CenterKneePower (EVO/ACC) or CenterSharpnessDegrees (R3E/LMU)."),
+            E("CenterSharpnessDegrees", 0f, 10f, Column, "UI: Steering Weight & Centre -> Centre Sharpness (R3E/LMU)",
+                "stiff_center", "Angle where centring reaches full. 0 = crispest, higher = softer centre."),
+            E("CenterKneePower", 1f, 3f, TyreChannel, "UI: Steering Weight & Centre -> Centre Softness (knee)",
+                "stiff_center", "1 = linear; above 1 = lighter centre, sharper build-up. Below 1 has no effect."),
+            E("CenterBlendDegrees", 0f, 10f, TyreChannel, "UI: Steering Weight & Centre -> Centre Blend",
+                "stiff_center", "Angle over which Fy fades in from centre."),
+            E("HysteresisThreshold", null, null, None, "RESERVED - not read by the pipelines, no UI slider",
+                "noise, oscillation", "NO EFFECT. Use NoiseFloor."),
+            E("NoiseFloor", 0f, 0.05f, All, "UI: Smoothness & Damping -> Noise Floor",
+                "noise", "Forces below this are silenced."),
             E("HysteresisWatchdogFrames", null, null, All, "Core: hysteresis timing (profile-only)",
                 "noise", "Frames before hysteresis engages. No UI slider."),
-            E("LowSpeedSmoothKmh", 0f, 100f, All, "Core/detail: low-speed smoothing gate",
-                "noise", "Speed below which extra smoothing applies."),
+            E("LowSpeedSmoothKmh", null, null, None, "Diagnostics only - no effect on output, no UI slider",
+                "noise", "NO EFFECT on the wheel in any game. Use ViscousDamping or CoreSmoothing."),
             // ── Tyre flex (UI section: EVO/AC/R3E) ──
-            E("FlexGain", 0f, 5f, EvoAcR3e, "Detail: tyre flex (UI: Tyre Flex Gain)",
-                "low_detail", "Tyre flex feel amplitude."),
-            E("CarcassStiffness", 0.1f, 5f, EvoAcR3e, "Detail: tyre flex",
-                "feel", "Tyre sidewall stiffness feel."),
-            E("FlexSmoothing", 0f, 0.95f, EvoAcR3e, "Detail: tyre flex",
-                "noise", "Smoothing on tyre flex signal."),
-            E("ContactPatchWeight", 0f, 2f, EvoAcR3e, "Detail: tyre flex",
-                "low_detail", "Contact patch deformation feel."),
-            E("LoadFlexGain", 0f, 5f, EvoAcR3e, "Detail: tyre flex",
-                "low_detail", "Load-dependent flex gain."),
+            E("FlexGain", 0f, 2f, Evo, "UI: Cornering & Front Grip -> Sidewall Flex (EVO)",
+                "low_detail", "Carcass flex texture. Only EVO supplies the contact data."),
+            E("CarcassStiffness", 0.1f, 3f, Evo, "UI: Cornering & Front Grip -> Carcass Stiffness (EVO)",
+                "feel", "Divisor: higher = stiffer tyre, less flex."),
+            E("FlexSmoothing", 0f, 0.9f, LoadFlex, "UI: Cornering & Front Grip -> Flex Smoothing",
+                "noise", "Smoothing on flex forces."),
+            E("ContactPatchWeight", 0f, 1f, ContactPatch, "UI: Cornering & Front Grip -> Weight Transfer Influence",
+                "low_detail", "Lateral load-transfer term in contact-patch feel."),
+            E("LoadFlexGain", 0f, 2f, LoadFlex, "UI: Cornering & Front Grip -> Contact Patch Feel",
+                "low_detail", "Contact-patch load texture."),
             // ── Static friction (UI section: per-wheel games only) ──
-            E("StaticFrictionGain", 0f, 2f, Physics, "Stationary friction (parking-lot feel, all games)",
+            E("StaticFrictionGain", 0f, 2f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Overall elastic feel strength."),
-            E("StaticFrictionMaxElasticStretch", 0.001f, 0.05f, Physics, "Stationary friction",
+            E("StaticFrictionMaxElasticStretch", 0.001f, 0.05f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Max stretch before breakaway."),
-            E("StaticFrictionSpringStiffness", 1f, 50f, Physics, "Stationary friction",
+            E("StaticFrictionSpringStiffness", 1f, 50f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Centering spring rate."),
-            E("StaticFrictionKineticFrictionBase", 0f, 1f, Physics, "Stationary friction",
+            E("StaticFrictionKineticFrictionBase", 0f, 1f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Sliding friction feel."),
-            E("StaticFrictionEngineOffDamping", 0f, 0.5f, Physics, "Stationary friction",
+            E("StaticFrictionEngineOffDamping", 0f, 0.5f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Extra damping when car is off."),
-            E("StaticFrictionEngineOnDamping", 0f, 0.2f, Physics, "Stationary friction",
+            E("StaticFrictionEngineOnDamping", 0f, 0.2f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Damping reduction when car is on."),
-            E("StaticFrictionEngineOffScale", 0f, 2f, Physics, "Stationary friction",
+            E("StaticFrictionEngineOffScale", 0f, 2f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Overall scale when car is off."),
-            E("StaticFrictionEngineOnScale", 0f, 1f, Physics, "Stationary friction",
+            E("StaticFrictionEngineOnScale", 0f, 1f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Overall scale when car is on."),
-            E("StaticFrictionActiveDecay", 0.5f, 1f, Physics, "Stationary friction",
+            E("StaticFrictionActiveDecay", 0.5f, 1f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "How fast elastic force builds when turning."),
-            E("StaticFrictionReturnDecay", 0.1f, 0.99f, Physics, "Stationary friction",
+            E("StaticFrictionReturnDecay", 0.1f, 0.99f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "How fast elastic force returns to center."),
-            E("StaticFrictionOutputSmoothAlpha", 0.05f, 1f, Physics, "Stationary friction",
+            E("StaticFrictionOutputSmoothAlpha", 0.05f, 1f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Smoothing on static friction output."),
-            E("StaticFrictionBreakoutGain", 0f, 1f, Physics, "Stationary friction",
+            E("StaticFrictionBreakoutGain", 0f, 1f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Stick-slip judder near breakaway."),
-            E("StaticFrictionBreakoutFrequencyHz", 20f, 70f, Physics, "Stationary friction",
+            E("StaticFrictionBreakoutFrequencyHz", 20f, 70f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Stick-slip judder frequency."),
-            E("StaticFrictionScrubGain", 0f, 1f, Physics, "Stationary friction",
+            E("StaticFrictionScrubGain", 0f, 1f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Tyre-twist grain texture."),
-            E("StaticFrictionLoadAsymmetryGain", 0f, 1f, Physics, "Stationary friction",
+            E("StaticFrictionLoadAsymmetryGain", 0f, 1f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Front load-asymmetry weight."),
-            E("StaticFrictionPressureSensitivity", 0f, 1f, Physics, "Stationary friction",
+            E("StaticFrictionPressureSensitivity", 0f, 1f, All, "UI: Parked & Low Speed (all games)",
                 "feel", "Tyre-pressure sensitivity."),
             // ── Grip guard / crash / tyre condition / wet ──
             E("GripGuardEnabled", null, null, All, "Core: grip guard (toggle, no slider)",
@@ -251,35 +274,35 @@ public static class CoachParameterCatalog
                 "feel", "Force reduction past peak grip. No UI slider."),
             E("GripGuardMechanicalTrailGain", null, null, All, "Core: grip guard (profile-only)",
                 "feel", "Simulated mechanical trail. No UI slider."),
-            E("CrashEnabled", null, null, Physics, "Core: crash limiter (toggle; UI section EVO/AC/ACC)",
-                "snap", "Crash force limiting toggle."),
-            E("CrashImpactGain", 0f, 1f, Physics, "Core: crash limiter",
-                "snap", "Crash force amplitude."),
-            E("CrashSafetyClamp", 0.1f, 1f, Physics, "Core: crash limiter",
-                "snap", "Maximum allowed crash force."),
-            E("CrashTriggerThresholdG", 1f, 10f, Physics, "Core: crash limiter gate",
-                "snap", "G-force threshold for crash response."),
-            E("TyreConditionEnabled", null, null, All, "Core: tyre condition (toggle)",
-                "feel", "Tyre wear/blowout effects toggle."),
-            E("BlowoutVibrationGain", 0f, 1f, All, "Detail: tyre condition vibration",
-                "buzz", "Vibration strength during blowout."),
-            E("PressureLossGain", 0f, 1f, All, "Core: tyre condition feel",
-                "feel", "Feel of pressure loss."),
-            E("DamageAsymmetryGain", 0f, 1f, All, "Core: tyre condition feel",
-                "feel", "Asymmetric pull from damage."),
-            E("WetWeatherEnabled", null, null, Physics, "Wet weather (toggle; per-wheel games only)",
-                "feel", "Wet-weather FFB adjustments. No effect in R3E/LMU."),
-            E("WetRoadVibSuppression", 0f, 1f, Physics, "Wet weather",
-                "buzz", "Road vibration reduction in rain."),
-            E("WetPeakSlipAngleMultiplier", 1f, 3f, Physics, "Wet weather",
-                "feel", "Slip angle increase on wet surface."),
-            E("WetDampingReduction", 0f, 1f, Physics, "Wet weather",
-                "feel", "Damping reduction in rain."),
+            E("CrashEnabled", null, null, Physics, "UI: Crashes & Tyre Damage -> Enable Crash Forces (toggle)",
+                "snap", "Crash kick toggle."),
+            E("CrashImpactGain", 0f, 1f, Physics, "UI: Crashes & Tyre Damage -> Impact Kick",
+                "snap", "Crash kick size."),
+            E("CrashSafetyClamp", 0.1f, 1f, Physics, "UI: Crashes & Tyre Damage -> Safety Clamp",
+                "snap", "Absolute cap on the kick. No effect above CrashImpactGain."),
+            E("CrashTriggerThresholdG", 1f, 10f, Physics, "UI: Crashes & Tyre Damage -> Trigger Threshold",
+                "snap", "G spike to count as a crash. Higher = fewer triggers."),
+            E("TyreConditionEnabled", null, null, Physics, "UI: Crashes & Tyre Damage -> Enable Tyre Condition (toggle)",
+                "feel", "Blowout / pressure loss / damage pull toggle."),
+            E("BlowoutVibrationGain", 0f, 1f, Physics, "UI: Crashes & Tyre Damage -> Blowout Shake",
+                "buzz", "Blowout shake."),
+            E("PressureLossGain", 0f, 1f, Physics, "UI: Crashes & Tyre Damage -> Pressure Loss Rumble",
+                "feel", "Pressure-loss rumble."),
+            E("DamageAsymmetryGain", 0f, 1f, Physics, "UI: Crashes & Tyre Damage -> Damage Pull",
+                "feel", "Pull toward the damaged side."),
+            E("WetWeatherEnabled", null, null, Physics, "UI: Wet Weather -> Enable (toggle)",
+                "feel", "Wet FFB adjustments. No effect in R3E/LMU."),
+            E("WetRoadVibSuppression", 0f, 1f, Physics, "UI: Wet Weather -> Road Detail Reduction",
+                "buzz", "Road vibration removed in rain."),
+            E("WetPeakSlipAngleMultiplier", 1f, 3f, TyreChannel, "UI: Wet Weather -> Wet Slip Curve Width",
+                "feel", "Only affects SlipAngleShapeGain."),
+            E("WetDampingReduction", 0f, 1f, TyreChannel, "UI: Wet Weather -> Damping Reduction",
+                "feel", "Speed damping reduction in rain."),
             // ── Toggles with no slider ──
             E("SignCorrectionEnabled", null, null, All, "Output: direction toggle (checkbox, no slider)",
                 "inversion", "Inverts FFB direction. Disabling flips the wheel backwards."),
-            E("UseFrontOnly", null, null, All, "Detail: slip source toggle",
-                "feel", "Only use front wheel slip data."),
+            E("UseFrontOnly", null, null, SlipEnh, "UI: Cornering & Front Grip -> Front Wheels Only (toggle)",
+                "feel", "Slip effects from front tyres only."),
             E("UseMixerSuspRoad", null, null, [CoachGame.LeMansUltimate], "Detail: LMU road layer toggle",
                 "low_detail", "LMU mixer road layer gate."),
             E("SynthYawEnabled", null, null, [CoachGame.LeMansUltimate], "Telemetry synthesis toggle",
@@ -318,6 +341,12 @@ public static class CoachParameterCatalog
 
     public static bool IsApplicable(CoachParameterInfo info, CoachGame game)
         => info.ApplicableGames.Contains(game);
+
+    /// <summary>"EVO/ACC", or a clear note when the parameter has no effect in any game.</summary>
+    public static string GamesText(CoachParameterInfo info) =>
+        info.ApplicableGames.Length == 0
+            ? "no effect in any game"
+            : "only: " + string.Join("/", info.ApplicableGames.Select(GameShortName));
 
     public static string GameShortName(CoachGame game) => game switch
     {
@@ -368,35 +397,18 @@ public static class CoachParameterCatalog
     public static string PipelinePathFor(CoachGame game) => game switch
     {
         CoachGame.Raceroom =>
-            "R3E pipeline (R3eFfbPipeline): game sends SteeringForce column torque → reader converts " +
-            "to Mz with sqrt center ramp (0-3°) → CORE path (channel mix → CoreForceMultiplier → " +
-            "ApplyCenteringOverride smoothstep → output gain) + DETAIL path (slip/dynamic/vibrations → " +
-            "slew limiter) → mix → soft clip → output. Fx/Fy are load-synthesized estimates, slip-angle " +
-            "telemetry is unreliable (keep SlipAngleGain at 0). BrakeBoost adds weight-transfer force.",
+            "R3E pipeline (R3eFfbPipeline): game SteeringForce column torque -> CoreForceMultiplier -> grip lightening (TyreGripScale) + BrakeBoost -> centering override (CenterSharpnessDegrees) -> output gain; DETAIL path (slip enhancer, dynamic effects, vibrations, LFE, R3E flatspot/surface/brake/TC effects -> MaxSlewRate). R3E does NOT use the channel mixer: Mz/Fx/Fy gains + scales, LUT, CenterKneePower, CenterBlendDegrees and AutoGain have no effect. Damping, crash, tyre condition and wet weather are not applied. Slip-angle telemetry is unreliable (keep SlipAngleGain 0); slip vibration is zeroed by the reader.",
         CoachGame.LeMansUltimate =>
-            "LMU pipeline (LmuFfbPipeline): column-force like R3E (CoreForceMultiplier default 3.0x, " +
-            "BrakeBoost, center override) PLUS LMU-only detail overrides: rear-slip warning " +
-            "(RearFyScale/RearGripDetailGain — rear Mz is always zero in LMU telemetry), slide-onset " +
-            "kick (YawOnset*) from synthesized yaw accel, and mixer road layer (SuspRoadScale). " +
-            "Slip-angle is a single bicycle value — keep SlipAngleGain at 0.",
+            "LMU pipeline (LmuFfbPipeline): shaft torque normalised by ForceScale (used as 120/value, HIGHER = HEAVIER) -> CoreForceMultiplier -> grip/lock fade (GripScaleGain) + BrakeBoost/BrakeLoadBias -> native torque sign (SelfSteerGain for slides) -> output gain; DETAIL: road texture (RoadTextureGain/Decay), SuspRoadScale, rear-slip warning (RearFyScale/RearGripDetailGain), slide-onset kick (YawOnset*), vibrations, LFE. Damping section applies (CenterDampFloor 0.03 typical). LMU does NOT use the channel mixer (Mz/Fx/Fy gains, scales, LUT, CenterKnee/Blend, AutoGain), crash, tyre condition or wet weather. Keep SlipAngleGain 0.",
         CoachGame.AcEvo =>
-            "EVO pipeline (FfbPipeline base): real physics Mz/Fx/Fy per wheel → CORE path " +
-            "(channel mix → LUT → damping incl. CenterDampFloor/StraightGain → output gain → " +
-            "centering → GripGuard → crash → tyre condition → noise gate, zero-latency, no slew) + " +
-            "DETAIL path (slip/dynamic/tyre-flex/vibrations/LFE → EQ → MaxSlewRate limiter) → mix → " +
-            "soft clip → output. MzFrontGain POSITIVE. All sections (damping, flex, crash, wet) apply.",
+            "EVO pipeline (FfbPipeline base): real per-wheel Mz/Fx/Fy -> channel mixer (gains, scales, WheelLoadWeighting) -> LUT/CenterKneePower -> damping -> output gain -> crash -> tyre condition -> noise gate (core is zero-latency); DETAIL: slip enhancer, dynamic effects, tyre flex, scrub/rear-slip/vibrations, LFE -> MaxSlewRate. MzFrontGain POSITIVE. BrakeBoost is NOT used in EVO. Every section applies.",
         CoachGame.AssettoCorsa =>
-            "AC pipeline (AcFfbPipeline): real physics Mz/Fx/Fy like EVO (MzFrontGain POSITIVE, " +
-            "slip-angle reliable). Damping, tyre-flex, crash, wet-weather and stationary-friction " +
-            "sections apply. No LMU rear-slip/yaw-onset overrides.",
+            "AC1 pipeline (AcFfbPipeline): the AC1 reader supplies NO tyre forces or slip (Mz/Fx/Fy/slip are zero), so channel gains/scales, slip enhancer, scrub, auto-gain and wet slip curve do nothing. Strength comes from the game FFB via CoreForceMultiplier and OutputGain. Damping, dynamic effects, vibrations (incl. slip vibration), LFE, crash, tyre condition, wet weather and stationary friction apply. CoreSmoothing/DetailSmoothing/BrakeBoost apply on profile save.",
         CoachGame.AssettoCorsaCompetizione =>
-            "ACC pipeline (AccFfbPipeline): real physics Mz/Fx/Fy (MzFrontGain POSITIVE). NOTE: the " +
-            "VIBRATIONS section is hidden for ACC and DYNAMIC effects are physics-driven — do NOT " +
-            "suggest vibration gains (MasterGain/KerbGain/RoadGain/...) for ACC; they have no UI " +
-            "slider in this game context. Crash, auto-gain and wet-weather sections apply.",
+            "ACC pipeline (AccFfbPipeline): base EVO pipeline with per-frame overrides: MzScale=5, MzFrontGain=0.5, vibration gains (except Master/AbsPulse/Offtrack) = 0, dynamic effects = 0, FlexGain = 0, viscous/friction = 0.01, speed damping = 0 -- do NOT suggest those. ForceGain then multiplies the whole output AFTER the force limiter (high values hard-clip). Fx/Fy channels, slip enhancer, crash, tyre condition, auto-gain and wet weather apply. Vibrations section is hidden.",
         _ =>
-            "Unknown game: only suggest game-agnostic core parameters (OutputGain, channel gains, " +
-            "center shaping) and ask the user which game they are driving.",
+            "Unknown game: only suggest parameters that work in every game (OutputGain, SoftClipThreshold, " +
+            "NoiseFloor, MaxSlewRate) and ask the user which game they are driving.",
     };
 
     /// <summary>
@@ -408,6 +420,10 @@ public static class CoachParameterCatalog
     {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine($"### Tunable parameters for {GameShortName(game)} (slider min–max are HARD limits)");
+        sb.AppendLine("When telling the user what to change, name the UI location exactly as given (\"Section -> Slider label\"). " +
+                      "The Tuning page is grouped by feel: Overall Strength & Wheel, Steering Weight & Centre, Cornering & Front Grip, " +
+                      "Oversteer & Slides, Braking & Acceleration, Kerbs Road & Off-Track, Engine & Chassis Rumble, Smoothness & Damping, " +
+                      "Parked & Low Speed, Crashes & Tyre Damage, Wet Weather.");
         foreach (var p in ByName.Values.OrderBy(p => p.Name))
         {
             if (!IsApplicable(p, game)) continue;
@@ -423,7 +439,7 @@ public static class CoachParameterCatalog
         {
             if (IsApplicable(p, game)) continue;
             any = true;
-            sb.AppendLine($"- {p.Name} (only: {string.Join("/", p.ApplicableGames.Select(GameShortName))}) — {p.Effect}");
+            sb.AppendLine($"- {p.Name} ({GamesText(p)}) — {p.Effect}");
         }
         if (!any) sb.AppendLine("- (none — all parameters apply)");
         return sb.ToString();
