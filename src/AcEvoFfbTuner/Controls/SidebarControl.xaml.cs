@@ -62,6 +62,9 @@ public partial class SidebarControl : UserControl
             SetTemplateLabelVisibility(NavLiveMapBtn, "WipBadge", Visibility.Collapsed);
             SetTemplateLabelVisibility(NavPipelineBtn, "WipBadge", Visibility.Collapsed);
             SetTemplateLabelVisibility(NavMapBtn, "WipBadge", Visibility.Collapsed);
+            SetTemplateLabelVisibility(NavTelemetryBtn, "WipBadge", Visibility.Collapsed);
+            SetTemplateLabelVisibility(NavOverlaysBtn, "WipBadge", Visibility.Collapsed);
+            WipHeader.Visibility = Visibility.Collapsed;
 
             if (CollapseBtn.Template.FindName("CollapseArrow", CollapseBtn) is System.Windows.Shapes.Path arrow)
                 arrow.Data = PathGeometry.Parse("M9,5 L16,12 L9,19");
@@ -81,6 +84,9 @@ public partial class SidebarControl : UserControl
             SetTemplateLabelVisibility(NavLiveMapBtn, "WipBadge", Visibility.Visible);
             SetTemplateLabelVisibility(NavPipelineBtn, "WipBadge", Visibility.Visible);
             SetTemplateLabelVisibility(NavMapBtn, "WipBadge", Visibility.Visible);
+            SetTemplateLabelVisibility(NavTelemetryBtn, "WipBadge", Visibility.Visible);
+            SetTemplateLabelVisibility(NavOverlaysBtn, "WipBadge", Visibility.Visible);
+            WipHeader.Visibility = Visibility.Visible;
 
             if (CollapseBtn.Template.FindName("CollapseArrow", CollapseBtn) is System.Windows.Shapes.Path arrow)
                 arrow.Data = PathGeometry.Parse("M15,19 L8,12 L15,5");
