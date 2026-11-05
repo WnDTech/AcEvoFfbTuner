@@ -429,7 +429,9 @@ public partial class ProfilesPage : UserControl
             FontSize = 13,
             Foreground = isActive ? BrushAccent : BrushForeground,
             FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal,
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            ToolTip = profile.Name
         };
         panel.Children.Add(nameText);
 

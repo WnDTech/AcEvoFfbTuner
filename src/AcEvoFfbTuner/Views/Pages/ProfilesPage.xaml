@@ -70,12 +70,12 @@
     </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="370" MinWidth="320" MaxWidth="440" />
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="2*" MinWidth="230" MaxWidth="400" />
+            <ColumnDefinition Width="3*" MinWidth="300" />
         </Grid.ColumnDefinitions>
 
         <!-- ═══ LEFT: COMPACT PROFILE NAV (click a section → details on the right) ═══ -->
-        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,16,12,20">
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="16,16,10,20">
             <StackPanel>
 
                 <TextBlock Text="P R O F I L E S" FontSize="12" FontWeight="Bold"
@@ -117,15 +117,15 @@
                                       SectionBrush="#FF56D4A0"
                                       Selectable="True">
                     <controls:SectionCard.SummaryContent>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock FontSize="13" Foreground="#FF8B949E">
+                        <WrapPanel Orientation="Horizontal">
+                            <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
                                 <Run Text="Save · Save As · Rename · Delete" Foreground="#FF56D4A0" />
                             </TextBlock>
                             <Border Background="#30363D" CornerRadius="3" Padding="6,1" Margin="8,0,0,0"
                                     Visibility="{Binding IsBuiltInProfileSelected, Converter={StaticResource BoolToVis}}">
                                 <TextBlock Text="BUILT-IN" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" />
                             </Border>
-                        </StackPanel>
+                        </WrapPanel>
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
 
@@ -172,7 +172,7 @@
         </ScrollViewer>
 
         <!-- ═══ RIGHT: SELECTED PROFILE SECTION ═══ -->
-        <Border Grid.Column="1" Margin="0,16,24,20"
+        <Border Grid.Column="1" Margin="0,16,16,20"
                 Background="{StaticResource BgPanel}"
                 BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
                 CornerRadius="10">
@@ -190,6 +190,9 @@
                         </DockPanel>
                         <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,12,0,16" />
                     </StackPanel>
+
+                    <!-- Detail panels share the header's 24px side margin -->
+                    <StackPanel Margin="24,0,24,24">
 
                     <!-- CURRENT PROFILE -->
                     <StackPanel x:Name="DtlCurrent">
@@ -233,13 +236,13 @@
 
                                 <TextBlock Text="Auto Setup" FontSize="14" Foreground="#FFE6EDF3" Margin="0,12,0,4" />
                                 <TextBlock Text="Generate a wheel-matched profile from the connected device." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,4" TextWrapping="Wrap" />
-                                <StackPanel Orientation="Horizontal">
-                                    <Button Content="Auto Setup from Wheel" Command="{Binding AutoSetupCommand}"
+                                <StackPanel>
+                                    <Button Content="Auto Setup from Wheel" HorizontalAlignment="Left" Command="{Binding AutoSetupCommand}"
                                             IsEnabled="{Binding IsAutoSetupAvailable}"
                                             Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}"
                                             ToolTip="Create a profile tuned to the connected wheelbase torque" />
                                     <TextBlock Text="{Binding AutoSetupStatus}" FontSize="12" Foreground="#FF8B949E"
-                                               VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" />
+                                               Margin="0,6,0,0" TextWrapping="Wrap" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -414,26 +417,26 @@
                                 <Border Background="#FF30363D" Height="1" Margin="0,0,0,4" />
 
                                 <!-- Row 2: Game filter pills -->
-                                <StackPanel Orientation="Horizontal" Margin="8,0,8,8">
+                                <WrapPanel Orientation="Horizontal" Margin="8,0,8,8">
                                     <RadioButton x:Name="GameFilterAll" Content="All Games" GroupName="GameFilter" IsChecked="True"
-                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Style="{StaticResource FilterPillStyle}" Margin="0,2,4,2"
                                                  Checked="OnGameFilterChanged" />
                                     <RadioButton x:Name="GameFilterAcEvo" Content="AC EVO" GroupName="GameFilter"
-                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Style="{StaticResource FilterPillStyle}" Margin="0,2,4,2"
                                                  Checked="OnGameFilterChanged" />
                                     <RadioButton x:Name="GameFilterRaceroom" Content="RaceRoom" GroupName="GameFilter"
-                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Style="{StaticResource FilterPillStyle}" Margin="0,2,4,2"
                                                  Checked="OnGameFilterChanged" />
                                     <RadioButton x:Name="GameFilterAssettoCorsa" Content="Assetto Corsa" GroupName="GameFilter"
-                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Style="{StaticResource FilterPillStyle}" Margin="0,2,4,2"
                                                  Checked="OnGameFilterChanged" />
                                     <RadioButton x:Name="GameFilterLeMansUltimate" Content="Le Mans Ultimate" GroupName="GameFilter"
-                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Style="{StaticResource FilterPillStyle}" Margin="0,2,4,2"
                                                  Checked="OnGameFilterChanged" />
                                     <RadioButton x:Name="GameFilterAcc" Content="ACC" GroupName="GameFilter"
-                                                 Style="{StaticResource FilterPillStyle}"
+                                                 Style="{StaticResource FilterPillStyle}" Margin="0,2,4,2"
                                                  Checked="OnGameFilterChanged" />
-                                </StackPanel>
+                                </WrapPanel>
                             </StackPanel>
                         </Border>
 
@@ -451,11 +454,11 @@
                             <StackPanel>
                                 <TextBlock Text="{Binding AbSlotAName, FallbackValue='A: (empty)'}" FontSize="13" Foreground="#FF4FC3F7" Margin="0,0,0,2" />
                                 <TextBlock Text="{Binding AbSlotBName, FallbackValue='B: (empty)'}" FontSize="13" Foreground="#FF4FC3F7" Margin="0,0,0,12" />
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <Button Content="Capture A" Command="{Binding CaptureAbSlotACommand}" Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}" Margin="0,0,6,0" ToolTip="Snapshot current settings into slot A" />
-                                    <Button Content="Capture B" Command="{Binding CaptureAbSlotBCommand}" Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}" Margin="0,0,6,0" ToolTip="Snapshot current settings into slot B" />
-                                    <Button Content="Toggle A/B" Command="{Binding ToggleAbSlotCommand}" Padding="10,4" FontSize="13" ToolTip="Switch live FFB between slot A and slot B" />
-                                </StackPanel>
+                                <WrapPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <Button Content="Capture A" Command="{Binding CaptureAbSlotACommand}" Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}" Margin="0,0,6,6" ToolTip="Snapshot current settings into slot A" />
+                                    <Button Content="Capture B" Command="{Binding CaptureAbSlotBCommand}" Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}" Margin="0,0,6,6" ToolTip="Snapshot current settings into slot B" />
+                                    <Button Content="Toggle A/B" Command="{Binding ToggleAbSlotCommand}" Padding="10,4" FontSize="13" ToolTip="Switch live FFB between slot A and slot B" Margin="0,0,0,6" />
+                                </WrapPanel>
                                 <TextBlock Text="{Binding AbActiveSlot, StringFormat='Active slot: {0}', FallbackValue='Active slot: —'}" FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,6" />
                                 <TextBox Text="{Binding AbDiffText, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
                                          FontFamily="Consolas" FontSize="12" MinHeight="120" MaxHeight="240"
@@ -471,6 +474,7 @@
                                          BorderThickness="1" BorderBrush="#FF30363D" Padding="8" />
                             </StackPanel>
                         </Border>
+                    </StackPanel>
                     </StackPanel>
 
                 </StackPanel>

@@ -4,6 +4,57 @@
              xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls"
              xmlns:converters="clr-namespace:AcEvoFfbTuner.Converters">
     <UserControl.Resources>
+        <!-- Underlined sub-tabs used by Pedals and Assetto Corsa Setup -->
+        <Style x:Key="SubTabStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#FF8B949E" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent" BorderThickness="0,0,0,2" Padding="14,8">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="#FFE6EDF3" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="HapticTabStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#FF8B949E" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" Background="#FF21262D" BorderBrush="#FF30363D" BorderThickness="1"
+                                CornerRadius="16" Padding="14,6">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FF8B949E" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#33FF9800" />
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FFFF9800" />
+                                <Setter Property="Foreground" Value="#FFFFB74D" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <converters:InverseBoolToVisibilityConverter x:Key="InvertBoolToVis" />
         <converters:NullToVisibilityConverter x:Key="NullToVis" />
@@ -12,12 +63,12 @@
     </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="370" MinWidth="320" MaxWidth="440" />
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="2*" MinWidth="230" MaxWidth="400" />
+            <ColumnDefinition Width="3*" MinWidth="300" />
         </Grid.ColumnDefinitions>
 
         <!-- ═══ LEFT: COMPACT DEVICE NAV (click a device → settings on the right) ═══ -->
-        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,16,12,20">
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="16,16,10,20">
             <StackPanel>
 
                 <TextBlock Text="D E V I C E S" FontSize="12" FontWeight="Bold"
@@ -50,13 +101,17 @@
                 </controls:SectionCard>
 
                 <!-- HAPTIC PAD -->
-                <controls:SectionCard Title="HAPTIC PAD"
+                <controls:SectionCard Title="SEAT HAPTICS (HF8)"
                                       Tag="Haptic"
                                       SectionBrush="#FFD2A8FF"
                                       Selectable="True">
                     <controls:SectionCard.SummaryContent>
-                        <TextBlock FontSize="13" Foreground="#FFD2A8FF" TextWrapping="Wrap"
-                                   Text="{Binding Hf8ConnectionStatus}" />
+                        <StackPanel>
+                            <TextBlock FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap"
+                                       Text="Seat and back vibration pad (NLR HF8) — not your pedals" />
+                            <TextBlock FontSize="13" Foreground="#FFD2A8FF" TextWrapping="Wrap" Margin="0,2,0,0"
+                                       Text="{Binding Hf8ConnectionStatus}" />
+                        </StackPanel>
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
 
@@ -81,8 +136,8 @@
                     <controls:SectionCard.SummaryContent>
                         <StackPanel>
                             <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
-                                <Run Text="Serial pedal haptics" />
-                                <Run Text="  ·  " /><Run Text="{Binding OsoyooIsConnected, Mode=OneWay, StringFormat='Connected: {0}'}" Foreground="#FF7EE787" />
+                                <Run Text="Input, calibration, pedal haptics" />
+                                <Run Text="  ·  " /><Run Text="{Binding MozaPhfIsConnected, Mode=OneWay, StringFormat='MOZA PHF: {0}'}" Foreground="#FF7EE787" />
                             </TextBlock>
                             <Border Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,4,0,0"
                                     HorizontalAlignment="Left">
@@ -93,14 +148,13 @@
                 </controls:SectionCard>
 
                 <!-- GAME CONFIG -->
-                <controls:SectionCard Title="GAME CONFIG"
+                <controls:SectionCard Title="ASSETTO CORSA SETUP"
                                        Tag="GameConfig"
                                        SectionBrush="#FF7EE787"
                                        Selectable="True">
                     <controls:SectionCard.SummaryContent>
                         <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
-                            <Run Text="Per-game wheel setup" />
-                            <Run Text="  ·  " /><Run Text="{Binding GameDisplayName, Mode=OneWay}" Foreground="#FF7EE787" />
+                            <Run Text="Virtual wheel (vJoy) for Assetto Corsa — original AC only" />
                         </TextBlock>
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
@@ -109,7 +163,7 @@
         </ScrollViewer>
 
         <!-- ═══ RIGHT: SELECTED DEVICE SETTINGS ═══ -->
-        <Border Grid.Column="1" Margin="0,16,24,20"
+        <Border Grid.Column="1" Margin="0,16,16,20"
                 Background="{StaticResource BgPanel}"
                 BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
                 CornerRadius="10">
@@ -175,7 +229,7 @@
                                           SelectedValue="{Binding LogitechProfileSlot, Mode=TwoWay}"
                                           SelectedValuePath="Key" DisplayMemberPath="Value"
                                           IsEnabled="{Binding LogitechHidppConnected}"
-                                          Width="260" Height="28" VerticalContentAlignment="Center"
+                                          MinWidth="160" MaxWidth="260" HorizontalAlignment="Stretch" Height="28" VerticalContentAlignment="Center"
                                           Background="#FF21262D" Foreground="#FFE6EDF3" BorderBrush="#3347A15C"
                                           Cursor="Hand" FontSize="12"
                                           ToolTip="Which wheel profile the app writes to. Onboard slots (1-5) store settings in the wheel and survive restarts; Desktop applies live but resets on wheel restart. Pick a slot you don't use for presets." />
@@ -248,7 +302,7 @@
                                            FontSize="12" FontWeight="Bold" Foreground="#FF47A1FF"
                                            VerticalAlignment="Center" Margin="8,0,0,0" Width="40" TextAlignment="Right" />
                             </Grid>
-                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <WrapPanel Orientation="Horizontal" Margin="0,10,0,0">
                                 <Button Content="TEST FORCE" Command="{Binding StartWheelFfbTestCommand}"
                                         Height="32" Padding="12,0"
                                         Background="#FF47A1FF" Foreground="White"
@@ -262,7 +316,7 @@
                                         Background="#FF21262D" Foreground="#FFE6EDF3"
                                         BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold"
                                         ToolTip="500ms 60Hz diagnostic vibration — verifies haptics path independently of telemetry" />
-                            </StackPanel>
+                            </WrapPanel>
                             <TextBlock Text="{Binding WheelFfbTestStatus}" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,8,0,0" />
                         </StackPanel>
@@ -325,7 +379,7 @@
                     </Border>
 
                     <!-- Two columns -->
-                    <Grid>
+                    <Grid controls:ResponsiveColumns.StackBelow="700">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="20" />
@@ -395,7 +449,7 @@
                                     <StackPanel>
                                         <TextBlock Text="Color Preset" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4" />
                                         <TextBlock Text="For wheels with per-LED RGB control" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8" />
-                                        <ComboBox SelectedIndex="{Binding LedColorSchemeIndex}" Width="240" FontSize="14" Padding="6,4" HorizontalAlignment="Left">
+                                        <ComboBox SelectedIndex="{Binding LedColorSchemeIndex}" MaxWidth="240" HorizontalAlignment="Stretch" FontSize="14" Padding="6,4">
                                             <ComboBoxItem Content="Traffic Light (Green/Yellow/Red)" />
                                             <ComboBoxItem Content="Blue Gradient" />
                                             <ComboBoxItem Content="Red Hot" />
@@ -414,7 +468,7 @@
                                     BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                                 <StackPanel>
                                     <TextBlock Text="Preset" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4" />
-                                    <ComboBox SelectedIndex="{Binding LedRpmPresetIndex}" Width="240" FontSize="14" Padding="6,4" HorizontalAlignment="Left" Margin="0,0,0,12">
+                                    <ComboBox SelectedIndex="{Binding LedRpmPresetIndex}" MaxWidth="240" FontSize="14" Padding="6,4" HorizontalAlignment="Left" Margin="0,0,0,12">
                                         <ComboBoxItem Content="Default (50-100%)" />
                                         <ComboBoxItem Content="Early (30-100%)" />
                                         <ComboBoxItem Content="Late (70-100%)" />
@@ -482,6 +536,8 @@
                 <StackPanel>
 
                     <!-- Connection Status -->
+                    <TextBlock Text="Vibration motors in your seat and back pad (NLR HF8 / HF8 Pro). Pedal vibration motors are set up under Pedals → Haptics."
+                               FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding Hf8ConnectionStatus}" FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4" TextWrapping="Wrap" />
                     <TextBlock Text="Map telemetry sources (suspension, slip, kerbs, G-force, engine) to individual seat and back motor zones."
                                FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
@@ -509,7 +565,7 @@
 
                     <!-- ROW 1: SEAT FRONT — M8 FL (left) | M7 FR (right) -->
                     <TextBlock Text="SEAT FRONT" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,6" />
-                    <Grid Margin="0,0,0,16">
+                    <Grid Margin="0,0,0,16" controls:ResponsiveColumns.StackBelow="640">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="12" />
@@ -635,7 +691,7 @@
 
                     <!-- ROW 2: SEAT REAR — M6 RL (left) | M5 RR (right) -->
                     <TextBlock Text="SEAT REAR" FontSize="12" FontWeight="Bold" Foreground="#FF56D4A0" Margin="0,0,0,6" />
-                    <Grid Margin="0,0,0,16">
+                    <Grid Margin="0,0,0,16" controls:ResponsiveColumns.StackBelow="640">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="12" />
@@ -761,7 +817,7 @@
 
                     <!-- ROW 3: BACK LOWER — M4 LL (left) | M3 LR (right) -->
                     <TextBlock Text="BACK LOWER" FontSize="12" FontWeight="Bold" Foreground="#FFE08040" Margin="0,0,0,6" />
-                    <Grid Margin="0,0,0,16">
+                    <Grid Margin="0,0,0,16" controls:ResponsiveColumns.StackBelow="640">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="12" />
@@ -887,7 +943,7 @@
 
                     <!-- ROW 4: BACK UPPER — M2 UL (left) | M1 UR (right) -->
                     <TextBlock Text="BACK UPPER" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,6" />
-                    <Grid Margin="0,0,0,16">
+                    <Grid Margin="0,0,0,16" controls:ResponsiveColumns.StackBelow="640">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="12" />
@@ -1052,25 +1108,18 @@
             <!-- ═══════════════════════════════════════════ -->
             <ScrollViewer x:Name="PedalPanel" VerticalScrollBarVisibility="Auto" Padding="24,20" Visibility="Collapsed">
                 <StackPanel>
-                    <!-- Pedals setup flow: 1 Input → 2 Calibrate → 3 Haptic hardware → 4 Tune -->
-                    <Border Background="#FF1E2227" CornerRadius="6" Padding="14,10" Margin="0,0,0,20"
-                            BorderThickness="1" BorderBrush="#3347A15C">
-                        <TextBlock FontSize="12" TextWrapping="Wrap">
-                            <Run Text="Setup flow:  " FontWeight="Bold" Foreground="#FF4CAF50" />
-                            <Run Text="1 Input" FontWeight="Bold" Foreground="#FF56D4A0" />
-                            <Run Text="  →  " Foreground="{StaticResource TextDimBrush}" />
-                            <Run Text="2 Calibrate" FontWeight="Bold" Foreground="#FF79C0FF" />
-                            <Run Text="  →  " Foreground="{StaticResource TextDimBrush}" />
-                            <Run Text="3 Haptic hardware" FontWeight="Bold" Foreground="#FF9800" />
-                            <Run Text="  →  " Foreground="{StaticResource TextDimBrush}" />
-                            <Run Text="4 Tune" FontWeight="Bold" Foreground="#FFE53935" />
-                            <Run Text="   — enable your pedals, check the live bars, calibrate, connect a haptic box, then tune the feel." Foreground="{StaticResource TextDimBrush}" />
-                        </TextBlock>
-                    </Border>
-
-                    <!-- ═══ STEP 1 — INPUT: enable + verify live ═══ -->
-                    <TextBlock Text="STEP 1 — PEDAL INPUT" FontSize="14" FontWeight="Bold" Foreground="#FF56D4A0" Margin="0,0,0,10" />
-                    <Grid Margin="0,0,0,20">
+                    <WrapPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <RadioButton GroupName="PedTabs" Tag="Ped_Input" Content="Input" IsChecked="True"
+                                     Checked="OnSubTabChecked" Style="{StaticResource SubTabStyle}" />
+                        <RadioButton GroupName="PedTabs" Tag="Ped_Calibrate" Content="Calibrate"
+                                     Checked="OnSubTabChecked" Style="{StaticResource SubTabStyle}" />
+                        <RadioButton GroupName="PedTabs" Tag="Ped_Haptics" Content="Haptics"
+                                     Checked="OnSubTabChecked" Style="{StaticResource SubTabStyle}" />
+                        <RadioButton GroupName="PedTabs" Tag="Ped_Tune" Content="Tune feel"
+                                     Checked="OnSubTabChecked" Style="{StaticResource SubTabStyle}" />
+                    </WrapPanel>
+                    <StackPanel x:Name="Ped_Input">
+                    <Grid Margin="0,0,0,20" controls:ResponsiveColumns.StackBelow="700">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="20" />
@@ -1122,14 +1171,14 @@
                                     <TextBlock Text="{Binding PedalLiveClutch, StringFormat=' {0:P0}'}" FontSize="13" Foreground="#FFFF9800" Margin="4,0,0,0" />
                                 </DockPanel>
 
-                                <TextBlock Text="Press the pedals — the bars should follow. If not, fix the axis mapping in Step 2."
+                                <TextBlock Text="Press the pedals — the bars should follow. If not, fix the axis mapping on the Calibrate tab."
                                            FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,8,0,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
                     </Grid>
 
-                    <!-- ═══ STEP 2 — CALIBRATE ═══ -->
-                    <TextBlock Text="STEP 2 — CALIBRATE" FontSize="14" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,10" />
+                    </StackPanel>
+                    <StackPanel x:Name="Ped_Calibrate" Visibility="Collapsed">
                     <!-- Calibration Section -->
                     <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16" Margin="0,0,0,20"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
@@ -1140,8 +1189,19 @@
                             <Border Background="#FF161B22" CornerRadius="6" Padding="12,10" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="PEDAL AXIS MAPPING" FontSize="11" FontWeight="Bold" Foreground="#FFFF9800" Margin="0,0,0,6" />
-                                    <TextBlock Text="Select which DirectInput axis each pedal uses. If the Step 1 bars don't match your pedals, change these here." FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <TextBlock Text="Select which DirectInput axis each pedal uses. If the Input tab bars don't match your pedals, change these here." FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                    <WrapPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Text="Pedal device:" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <ComboBox ItemsSource="{Binding PedalUsbDeviceNames}" SelectedIndex="{Binding PedalUsbDeviceIndex, Mode=TwoWay}"
+                                                  MinWidth="160" MaxWidth="260" Height="28" FontSize="12" Margin="0,0,8,6" />
+                                        <Button Content="Rescan" Command="{Binding RescanPedalUsbDevicesCommand}"
+                                                Height="28" Padding="10,0" Margin="0,0,8,6"
+                                                Background="#FF21262D" Foreground="#FFE6EDF3"
+                                                BorderThickness="0" Cursor="Hand" FontSize="12" />
+                                    </WrapPanel>
+                                    <TextBlock Text="Pedals plugged into the wheelbase are automatic — leave this on Auto. Pick a device only for separate USB pedals."
+                                               FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                    <WrapPanel Orientation="Horizontal" Margin="0,0,0,8">
                                         <Button Content="Find my pedals…" Command="{Binding OpenPedalDetectDialogCommand}"
                                                 Height="28" Padding="10,0"
                                                 Background="#FF21262D" Foreground="#FFE6EDF3"
@@ -1150,8 +1210,8 @@
                                         <TextBlock Text="{Binding PedalDetectStatus}" FontSize="11" Foreground="#FF7EE787"
                                                    VerticalAlignment="Center" TextWrapping="Wrap" Margin="10,0,0,0"
                                                    Visibility="{Binding PedalDetectStatus, Converter={StaticResource NotEmptyToVis}}" />
-                                    </StackPanel>
-                                    <Grid>
+                                    </WrapPanel>
+                                    <Grid controls:ResponsiveColumns.StackBelow="460">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="12" />
@@ -1178,7 +1238,7 @@
                                 </StackPanel>
                             </Border>
 
-                            <Grid>
+                            <Grid controls:ResponsiveColumns.StackBelow="700">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="20" />
@@ -1247,115 +1307,32 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- ═══ STEP 3 — HAPTIC HARDWARE (pick one or both) ═══ -->
-                    <TextBlock Text="STEP 3 — HAPTIC HARDWARE" FontSize="14" FontWeight="Bold" Foreground="#FF9800" Margin="0,0,0,4" />
-                    <TextBlock Text="Pick one or both — the telemetry feed drives all connected hardware. Test each box below before driving."
+                    </StackPanel>
+                    <StackPanel x:Name="Ped_Haptics" Visibility="Collapsed">
+                    <TextBlock Text="Only if your pedals have vibration motors (seat pad: see Seat Haptics). Skip this otherwise. Choose the hardware you have, connect it and run a test. If you own both, each keeps running once connected — the switch only changes which one you are setting up."
                                FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
-                    <Grid Margin="0,0,0,20">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="20" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                    <!-- Osoyoo Serial Pedal Haptic Device -->
-                    <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16"
-                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                        <StackPanel>
-                            <DockPanel VerticalAlignment="Center" Margin="0,0,0,12">
-                                <Ellipse Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center"
-                                         Fill="#FF4CAF50"
+                    <WrapPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <RadioButton x:Name="HapticTabMoza" GroupName="PedalHapticHw" Checked="OnPedalHapticTabChanged"
+                                     Style="{StaticResource HapticTabStyle}" Margin="0,0,8,6">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="8" Height="8" Fill="#FF4CAF50" Margin="0,0,8,0" VerticalAlignment="Center"
+                                         Opacity="{Binding MozaPhfIsConnected, Converter={StaticResource BoolToOpacity}}" />
+                                <TextBlock Text="MOZA PHF modules" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="HapticTabSerial" GroupName="PedalHapticHw" Checked="OnPedalHapticTabChanged"
+                                     Style="{StaticResource HapticTabStyle}" Margin="0,0,8,6">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="8" Height="8" Fill="#FF4CAF50" Margin="0,0,8,0" VerticalAlignment="Center"
                                          Opacity="{Binding OsoyooIsConnected, Converter={StaticResource BoolToOpacity}}" />
-                                <TextBlock Text="SERIAL HAPTIC BOX" FontSize="16" FontWeight="Bold" Foreground="#FF9800" VerticalAlignment="Center" />
-                            </DockPanel>
-                            <TextBlock Text="Connect an Osoyoo Arduino Uno (or compatible serial device) for pedal vibration feedback."
-                                       FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
-                            <TextBlock Text="Note: COM ports are for this vibration box only — your USB pedals connect as a DirectInput device (Step 1) and need no COM port."
-                                       FontSize="11" Foreground="#FFFF9800" TextWrapping="Wrap" Margin="0,0,0,12" />
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-
-                                <TextBlock Grid.Column="0" Text="COM Port:" FontSize="13" Foreground="{StaticResource TextDimBrush}"
-                                           VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <ComboBox Grid.Column="1" ItemsSource="{Binding OsoyooAvailablePorts}"
-                                          SelectedItem="{Binding OsoyooSelectedPort, Mode=TwoWay}"
-                                          MinWidth="120" Height="30" VerticalAlignment="Center"
-                                          Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}" />
-
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
-                                    <Button Content="⟳" Command="{Binding RefreshOsoyooPortsCommand}"
-                                            Width="30" Height="30" Padding="0"
-                                            Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}"
-                                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
-                                            Cursor="Hand" FontSize="16" ToolTip="Refresh COM ports" />
-
-                                    <Button Content="Connect" Command="{Binding ConnectOsoyooCommand}"
-                                            Visibility="{Binding OsoyooIsConnected, Converter={StaticResource InvertBoolToVis}}"
-                                            Width="90" Height="30" Margin="6,0,0,0" Padding="8,0"
-                                            Background="#FF9800" Foreground="#FF1A1D24"
-                                            BorderThickness="0" Cursor="Hand" FontSize="13" FontWeight="SemiBold" />
-
-                                    <Button Content="Disconnect" Command="{Binding DisconnectOsoyooCommand}"
-                                            Visibility="{Binding OsoyooIsConnected, Converter={StaticResource BoolToVis}}"
-                                            Width="90" Height="30" Margin="6,0,0,0" Padding="8,0"
-                                            Background="#FF5252" Foreground="White"
-                                            BorderThickness="0" Cursor="Hand" FontSize="13" FontWeight="SemiBold" />
-                                </StackPanel>
-                            </Grid>
-
-                            <TextBlock Text="{Binding OsoyooConnectionStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
-                                       Margin="0,8,0,0" TextWrapping="Wrap" />
-
-                            <!-- Motor Test Panel -->
-                            <Border Background="#FF1E2227" CornerRadius="6" Padding="14,12" Margin="0,14,0,0"
-                                    BorderThickness="1" BorderBrush="#3347A15C">
-                                <StackPanel>
-                                    <DockPanel Margin="0,0,0,8">
-                                        <TextBlock Text="MOTOR TEST" FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" VerticalAlignment="Center" />
-                                        <TextBlock Text="Telemetry feed is paused during tests" FontSize="11"
-                                                   Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                    </DockPanel>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="Intensity:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
-                                                   VerticalAlignment="Center" Margin="0,0,8,0" />
-                                        <Slider Grid.Column="1" Minimum="0" Maximum="255" TickFrequency="5"
-                                                Value="{Binding OsoyooTestIntensity, Mode=TwoWay}"
-                                                VerticalAlignment="Center" Height="26" />
-                                        <TextBlock Grid.Column="2" Text="{Binding OsoyooTestIntensity, StringFormat='{}{0}'}"
-                                                   FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50"
-                                                   VerticalAlignment="Center" Margin="8,0,0,0" Width="36" TextAlignment="Right" />
-                                    </Grid>
-                                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                        <Button Content="TEST BRAKE" Command="{Binding OsoyooTestBrakeCommand}"
-                                                Height="32" Padding="12,0"
-                                                Background="#FFE53935" Foreground="White"
-                                                BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
-                                        <Button Content="TEST GAS" Command="{Binding OsoyooTestGasCommand}"
-                                                Height="32" Padding="12,0" Margin="8,0,0,0"
-                                                Background="#FF4CAF50" Foreground="White"
-                                                BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
-                                        <Button Content="STOP" Command="{Binding OsoyooStopTestCommand}"
-                                                Height="32" Padding="12,0" Margin="8,0,0,0"
-                                                Background="#FF525252" Foreground="White"
-                                                BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </Border>
+                                <TextBlock Text="DIY serial box (Arduino)" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+                    </WrapPanel>
+                    <StackPanel Margin="0,0,0,20">
 
                     <!-- MOZA PHF Pedal Haptic Feedback (RS102 kit + RS103 modules) -->
-                    <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16"
+                    <Border x:Name="MozaHapticCard" Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
                             <DockPanel VerticalAlignment="Center" Margin="0,0,0,12">
@@ -1371,14 +1348,14 @@
                                        FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
                             <TextBlock Text="Tick the pedals that have a physical module fitted (kit = 1 module, each RS103 adds one). Unfitted ports stay silent."
                                        FontSize="11" Foreground="#FFFF9800" TextWrapping="Wrap" Margin="0,0,0,12" />
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <WrapPanel Orientation="Horizontal" Margin="0,0,0,12">
                                 <CheckBox Content="Brake module" IsChecked="{Binding MozaPhfBrakeModule, Mode=TwoWay}"
                                           Foreground="{StaticResource TextBrush}" FontSize="13" Margin="0,0,16,0" VerticalAlignment="Center" />
                                 <CheckBox Content="Throttle module" IsChecked="{Binding MozaPhfThrottleModule, Mode=TwoWay}"
                                           Foreground="{StaticResource TextBrush}" FontSize="13" Margin="0,0,16,0" VerticalAlignment="Center" />
                                 <CheckBox Content="Clutch module" IsChecked="{Binding MozaPhfClutchModule, Mode=TwoWay}"
                                           Foreground="{StaticResource TextBrush}" FontSize="13" VerticalAlignment="Center" />
-                            </StackPanel>
+                            </WrapPanel>
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -1454,7 +1431,7 @@
                                                    FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50"
                                                    VerticalAlignment="Center" Margin="8,0,0,0" Width="44" TextAlignment="Right" />
                                     </Grid>
-                                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                    <WrapPanel Orientation="Horizontal" Margin="0,10,0,0">
                                         <Button Content="TEST BRAKE" Command="{Binding MozaPhfTestBrakeCommand}"
                                                 Height="32" Padding="12,0"
                                                 Background="#FFE53935" Foreground="White"
@@ -1471,23 +1448,120 @@
                                                 Height="32" Padding="12,0" Margin="8,0,0,0"
                                                 Background="#FF525252" Foreground="White"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
-                                    </StackPanel>
+                                    </WrapPanel>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
                     </Border>
-                    </Grid>
+                    <!-- Osoyoo Serial Pedal Haptic Device -->
+                    <Border x:Name="SerialHapticCard" Visibility="Collapsed" Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                        <StackPanel>
+                            <DockPanel VerticalAlignment="Center" Margin="0,0,0,12">
+                                <Ellipse Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center"
+                                         Fill="#FF4CAF50"
+                                         Opacity="{Binding OsoyooIsConnected, Converter={StaticResource BoolToOpacity}}" />
+                                <TextBlock Text="DIY SERIAL HAPTIC BOX" FontSize="16" FontWeight="Bold" Foreground="#FF9800" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBlock Text="Home-built pedal vibration box: an Osoyoo Arduino Uno (or compatible serial device) driving a brake and a gas motor. No clutch."
+                                       FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <TextBlock Text="Note: COM ports are for this vibration box only — your USB pedals connect as a DirectInput device (Input tab) and need no COM port."
+                                       FontSize="11" Foreground="#FFFF9800" TextWrapping="Wrap" Margin="0,0,0,12" />
 
-                    <!-- ═══ STEP 4 — TUNE THE FEEL ═══ -->
-                    <TextBlock Text="STEP 4 — TUNE THE FEEL" FontSize="14" FontWeight="Bold" Foreground="#FFE53935" Margin="0,0,0,10" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" Text="COM Port:" FontSize="13" Foreground="{StaticResource TextDimBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding OsoyooAvailablePorts}"
+                                          SelectedItem="{Binding OsoyooSelectedPort, Mode=TwoWay}"
+                                          MinWidth="120" Height="30" VerticalAlignment="Center"
+                                          Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}" />
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                                    <Button Content="⟳" Command="{Binding RefreshOsoyooPortsCommand}"
+                                            Width="30" Height="30" Padding="0"
+                                            Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}"
+                                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
+                                            Cursor="Hand" FontSize="16" ToolTip="Refresh COM ports" />
+
+                                    <Button Content="Connect" Command="{Binding ConnectOsoyooCommand}"
+                                            Visibility="{Binding OsoyooIsConnected, Converter={StaticResource InvertBoolToVis}}"
+                                            Width="90" Height="30" Margin="6,0,0,0" Padding="8,0"
+                                            Background="#FF9800" Foreground="#FF1A1D24"
+                                            BorderThickness="0" Cursor="Hand" FontSize="13" FontWeight="SemiBold" />
+
+                                    <Button Content="Disconnect" Command="{Binding DisconnectOsoyooCommand}"
+                                            Visibility="{Binding OsoyooIsConnected, Converter={StaticResource BoolToVis}}"
+                                            Width="90" Height="30" Margin="6,0,0,0" Padding="8,0"
+                                            Background="#FF5252" Foreground="White"
+                                            BorderThickness="0" Cursor="Hand" FontSize="13" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="{Binding OsoyooConnectionStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                       Margin="0,8,0,0" TextWrapping="Wrap" />
+
+                            <!-- Motor Test Panel -->
+                            <Border Background="#FF1E2227" CornerRadius="6" Padding="14,12" Margin="0,14,0,0"
+                                    BorderThickness="1" BorderBrush="#3347A15C">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,8">
+                                        <TextBlock Text="MOTOR TEST" FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" VerticalAlignment="Center" />
+                                        <TextBlock Text="Telemetry feed is paused during tests" FontSize="11"
+                                                   Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Intensity:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <Slider Grid.Column="1" Minimum="0" Maximum="255" TickFrequency="5"
+                                                Value="{Binding OsoyooTestIntensity, Mode=TwoWay}"
+                                                VerticalAlignment="Center" Height="26" />
+                                        <TextBlock Grid.Column="2" Text="{Binding OsoyooTestIntensity, StringFormat='{}{0}'}"
+                                                   FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0" Width="36" TextAlignment="Right" />
+                                    </Grid>
+                                    <WrapPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                        <Button Content="TEST BRAKE" Command="{Binding OsoyooTestBrakeCommand}"
+                                                Height="32" Padding="12,0"
+                                                Background="#FFE53935" Foreground="White"
+                                                BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
+                                        <Button Content="TEST GAS" Command="{Binding OsoyooTestGasCommand}"
+                                                Height="32" Padding="12,0" Margin="8,0,0,0"
+                                                Background="#FF4CAF50" Foreground="White"
+                                                BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
+                                        <Button Content="STOP" Command="{Binding OsoyooStopTestCommand}"
+                                                Height="32" Padding="12,0" Margin="8,0,0,0"
+                                                Background="#FF525252" Foreground="White"
+                                                BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                    </StackPanel>
+
+                    </StackPanel>
+                    <StackPanel x:Name="Ped_Tune" Visibility="Collapsed">
+                    <TextBlock Text="How strong each pedal effect feels. Applies to every connected pedal haptic box — connect yours on the Haptics tab first."
+                               FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
                     <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16" Margin="0,0,0,20"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
-                            <TextBlock Text="EFFECT ROUTING (all hardware)" FontSize="11" FontWeight="Bold" Foreground="#FFE53935" Margin="0,0,0,4" />
+                            <TextBlock Text="HOW STRONG EACH EFFECT IS (every connected pedal haptic box)" FontSize="11" FontWeight="Bold" Foreground="#FFE53935" Margin="0,0,0,4" />
                             <TextBlock Text="Each signal routes through its pedal column, then the master gain scales the whole channel (0-2x)."
                                        FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
 
-                            <Grid>
+                            <Grid controls:ResponsiveColumns.StackBelow="700">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="16" />
@@ -1541,49 +1615,50 @@
                                                FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
                                 </StackPanel>
                             </Grid>
+                            <!-- PHF Effect Frequencies (0-100 Hz per module spec) -->
+                            <Border x:Name="PhfFrequencyBox" Background="#FF1E2227" CornerRadius="6" Padding="14,12" Margin="0,16,0,0"
+                                    BorderThickness="1" BorderBrush="#3347A15C">
+                                <StackPanel>
+                                    <TextBlock Text="MOZA PHF — VIBRATION PITCH PER EFFECT" FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" Margin="0,0,0,8" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="52" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="ABS" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                        <Slider Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfAbsFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
+                                        <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding MozaPhfAbsFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="TC" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                        <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfTcFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
+                                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding MozaPhfTcFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Curb" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                        <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfCurbFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
+                                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding MozaPhfCurbFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Road" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                        <Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfRoadFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
+                                        <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding MozaPhfRoadFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Scrub" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                        <Slider Grid.Row="4" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfScrubFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
+                                        <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding MozaPhfScrubFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Engine RPM" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                        <Slider Grid.Row="5" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfRpmFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
+                                        <TextBlock Grid.Row="5" Grid.Column="2" Text="{Binding MozaPhfRpmFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 
-                    <!-- PHF Effect Frequencies (0-100 Hz per module spec) -->
-                    <Border Background="#FF1E2227" CornerRadius="6" Padding="14,12" Margin="0,0,0,20"
-                            BorderThickness="1" BorderBrush="#3347A15C">
-                        <StackPanel>
-                            <TextBlock Text="PHF EFFECT FREQUENCIES (pitch per effect — PHF hardware only)" FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" Margin="0,0,0,8" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="90" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="52" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="ABS" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
-                                <Slider Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfAbsFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
-                                <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding MozaPhfAbsFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="TC" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
-                                <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfTcFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
-                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding MozaPhfTcFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Curb" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
-                                <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfCurbFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
-                                <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding MozaPhfCurbFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Road" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
-                                <Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfRoadFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
-                                <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding MozaPhfRoadFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Scrub" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
-                                <Slider Grid.Row="4" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfScrubFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
-                                <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding MozaPhfScrubFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Engine RPM" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
-                                <Slider Grid.Row="5" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding MozaPhfRpmFreq, Mode=TwoWay}" VerticalAlignment="Center" Height="24" />
-                                <TextBlock Grid.Row="5" Grid.Column="2" Text="{Binding MozaPhfRpmFreq, StringFormat='{}{0}Hz'}" FontSize="11" Foreground="#FF4CAF50" VerticalAlignment="Center" Margin="8,0,0,0" />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
+                    </StackPanel>
                 </StackPanel>
             </ScrollViewer>
 
@@ -1671,8 +1746,17 @@
             <ScrollViewer x:Name="GameConfigPanel" VerticalScrollBarVisibility="Auto" Padding="24,20" Visibility="Collapsed">
                 <StackPanel>
 
-                    <TextBlock Text="Assetto Corsa needs the one-time setup below — game doesn't need to be running. Every other game works by selecting it and driving."
-                               FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
+                    <TextBlock Text="Only for Assetto Corsa (the original game). AC won't share your wheel with this app, so the app gives AC a virtual wheel (vJoy) and keeps the real one for force feedback. AC EVO, ACC, RaceRoom and Le Mans Ultimate need none of this."
+                               FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap" />
+
+                    <!-- Not on AC: say so up front -->
+                    <Border Background="#1A79C0FF" BorderBrush="#6679C0FF" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,16"
+                            Visibility="{Binding IsAssettoCorsa, Converter={StaticResource InvertBoolToVis}}">
+                        <TextBlock FontSize="13" Foreground="#FFE6EDF3" TextWrapping="Wrap">
+                            <Run Text="{Binding GameDisplayName, Mode=OneWay, FallbackValue='This game'}" FontWeight="Bold" Foreground="#FF79C0FF" />
+                            <Run Text=" is selected — nothing to set up here. You can still prepare Assetto Corsa below; the game doesn't need to be running." />
+                        </TextBlock>
+                    </Border>
 
                     <!-- Assetto Corsa: three things, done once, in order.
                          Always visible on purpose: driver install and axis
@@ -1682,15 +1766,26 @@
                             BorderThickness="1" BorderBrush="#3347A15C">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
-                                <TextBlock Text="ASSETTO CORSA — DO ONCE, IN ORDER" FontSize="12" FontWeight="Bold" Foreground="#FF7EE787" VerticalAlignment="Center" />
+                                <TextBlock Text="ONE-TIME SETUP — WORK THROUGH THE TABS LEFT TO RIGHT" FontSize="12" FontWeight="Bold" Foreground="#FF7EE787" VerticalAlignment="Center" />
                                 <TextBlock Text="{Binding GameDisplayName}" FontSize="11"
                                            Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
                             <TextBlock FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10"
                                        Text="The game and this app can't share your wheel, so the app makes a virtual wheel for the game. Your real wheel stays plugged into the app for its force." />
 
-                            <TextBlock Text="1. Install the virtual wheel" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
-                            <StackPanel Orientation="Horizontal" Margin="18,0,0,0">
+                            <WrapPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                <RadioButton GroupName="AcTabs" Tag="Ac_Driver" Content="1  Driver" IsChecked="True"
+                                             Checked="OnSubTabChecked" Style="{StaticResource SubTabStyle}" />
+                                <RadioButton GroupName="AcTabs" Tag="Ac_Pedals" Content="2  Pedals"
+                                             Checked="OnSubTabChecked" Style="{StaticResource SubTabStyle}" />
+                                <RadioButton GroupName="AcTabs" Tag="Ac_Buttons" Content="3  Buttons"
+                                             Checked="OnSubTabChecked" Style="{StaticResource SubTabStyle}" />
+                                <RadioButton GroupName="AcTabs" Tag="Ac_Apply" Content="4  Apply to AC"
+                                             Checked="OnSubTabChecked" Style="{StaticResource SubTabStyle}" />
+                            </WrapPanel>
+                            <StackPanel x:Name="Ac_Driver">
+                            <TextBlock Text="Install the virtual wheel (vJoy driver)" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                            <WrapPanel Orientation="Horizontal" Margin="18,0,0,0">
                                 <Button Content="Install driver" Command="{Binding InstallVJoyDriverCommand}"
                                         Height="30" Padding="12,0"
                                         Background="#FF21262D" Foreground="#FFE6EDF3"
@@ -1712,19 +1807,21 @@
                                         </Run.Style>
                                     </Run>
                                 </TextBlock>
-                            </StackPanel>
+                            </WrapPanel>
                             <TextBlock Text="{Binding VJoyDriverStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
                                        TextWrapping="Wrap" Margin="18,4,0,10"
                                        Visibility="{Binding VJoyDriverStatus, Converter={StaticResource NotEmptyToVis}}" />
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                                 <CheckBox IsChecked="{Binding AcVJoyBridgeEnabled, Mode=TwoWay}" VerticalAlignment="Center"
-                                          Content="2. Send my wheel and pedals to the game" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Cursor="Hand" />
+                                          Content="Send my wheel and pedals to the game" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Cursor="Hand" />
                             </StackPanel>
                             <TextBlock Text="{Binding VJoyBridgeStatus}" FontSize="12" Foreground="#FF7EE787"
                                        TextWrapping="Wrap" Margin="18,0,0,10" />
 
-                            <TextBlock Text="3. Pedals — press each one, all three bars should move:" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                            </StackPanel>
+                            <StackPanel x:Name="Ac_Pedals" Visibility="Collapsed">
+                            <TextBlock Text="Press each pedal — all three bars should move:" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
                             <StackPanel Margin="18,0,0,0">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                                     <TextBlock Text="Gas" Width="52" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
@@ -1745,41 +1842,18 @@
                                     <Run Text="Reading from: " /><Run Text="{Binding SetupPedalSource, Mode=OneWay}" FontWeight="Bold" />
                                     <Run Text="  (your min/max/deadzone from Devices → Pedals apply here too)" />
                                 </TextBlock>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                                    <TextBlock Text="Separate USB pedals:" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                    <ComboBox ItemsSource="{Binding PedalUsbDeviceNames}" SelectedIndex="{Binding PedalUsbDeviceIndex, Mode=TwoWay}"
-                                              Width="220" Height="28" FontSize="12" />
-                                    <Button Content="Rescan" Command="{Binding RescanPedalUsbDevicesCommand}"
-                                            Height="28" Padding="10,0" Margin="8,0,0,0"
-                                            Background="#FF21262D" Foreground="#FFE6EDF3"
-                                            BorderThickness="0" Cursor="Hand" FontSize="12" />
-                                </StackPanel>
-                                <TextBlock Text="Pedals plugged into the wheelbase are automatic — leave this on Auto." FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,6" />
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
-                                    <Button Content="Find my pedals…" Command="{Binding OpenPedalDetectDialogCommand}"
-                                            Height="28" Padding="10,0"
-                                            Background="#FF21262D" Foreground="#FFE6EDF3"
-                                            BorderThickness="0" Cursor="Hand" FontSize="12"
-                                            ToolTip="Opens pedal setup: big live bars plus per-pedal Detect, Undo and Clear." />
-                                </StackPanel>
-                                <TextBlock Text="{Binding PedalDetectStatus}" FontSize="12" Foreground="#FF7EE787"
-                                           TextWrapping="Wrap" Margin="0,4,0,10"
-                                           Visibility="{Binding PedalDetectStatus, Converter={StaticResource NotEmptyToVis}}" />
-                            </StackPanel>
-
-                            <TextBlock Text="4. Tell Assetto Corsa to use the virtual wheel (game must be closed):" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
-                            <StackPanel Orientation="Horizontal" Margin="18,0,0,0">
-                                <Button Content="Point Assetto Corsa at the virtual wheel" Command="{Binding WriteAcVJoyBindingsCommand}"
-                                        Height="30" Padding="12,0"
+                                <TextBlock Text="Bars not moving? Pick your pedal device and map the axes in Pedals." FontSize="11"
+                                           Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,6" />
+                                <Button Content="Open Pedals settings" Click="OnOpenPedalsSection" HorizontalAlignment="Left"
+                                        Height="28" Padding="10,0" Margin="0,0,0,10"
                                         Background="#FF21262D" Foreground="#FFE6EDF3"
-                                        BorderThickness="0" Cursor="Hand" FontSize="12"
-                                        ToolTip="Switches steering, pedals and your assigned button tasks in the game's settings file to the virtual wheel. Keyboard lines and everything else untouched; a backup is kept." />
+                                        BorderThickness="0" Cursor="Hand" FontSize="12" />
                             </StackPanel>
-                            <TextBlock Text="{Binding VJoyBindStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
-                                       TextWrapping="Wrap" Margin="18,4,0,10" />
 
-                            <TextBlock Text="5. Wheel buttons (gears, pits, lights…) — press to assign each task, then run step 4 again to push them to the game:" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
-                            <StackPanel Orientation="Horizontal" Margin="18,0,0,4">
+                            </StackPanel>
+                            <StackPanel x:Name="Ac_Buttons" Visibility="Collapsed">
+                            <TextBlock Text="Wheel buttons (gears, pits, lights…): press to assign each task, then push them to the game on the Apply to AC tab." FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" TextWrapping="Wrap" />
+                            <WrapPanel Orientation="Horizontal" Margin="18,0,0,4">
                                 <TextBlock Text="{Binding VJoyButtonsText}" FontSize="11" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" TextWrapping="Wrap" />
                                 <Button Content="Match buttons to wheel" Command="{Binding MatchVJoyButtonsCommand}"
                                         Height="26" Padding="10,0" Margin="8,0,0,0"
@@ -1796,7 +1870,7 @@
                                         Background="#FF21262D" Foreground="#FFE6EDF3"
                                         BorderThickness="0" Cursor="Hand" FontSize="11"
                                         ToolTip="Repairs a scrambled map: every vJoy slot follows its own wheel button again. Task list is kept." />
-                            </StackPanel>
+                            </WrapPanel>
                             <TextBlock Margin="18,0,0,4" FontSize="11" Foreground="{StaticResource TextDimBrush}">
                                 <Run Text="Last wheel press: " /><Run Text="{Binding LastWheelButtonText, Mode=OneWay}" FontWeight="Bold" Foreground="#FFE6EDF3" />
                             </TextBlock>
@@ -1824,22 +1898,25 @@
                                        TextWrapping="Wrap" Margin="18,4,0,10"
                                        Visibility="{Binding VJoyTaskCapturePrompt, Converter={StaticResource NotEmptyToVis}}" />
 
+                            </StackPanel>
+                            <StackPanel x:Name="Ac_Apply" Visibility="Collapsed">
+                            <TextBlock Text="Point Assetto Corsa's controls at the virtual wheel (close the game first):" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="18,0,0,0">
+                                <Button Content="Point Assetto Corsa at the virtual wheel" Command="{Binding WriteAcVJoyBindingsCommand}"
+                                        Height="30" Padding="12,0"
+                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        BorderThickness="0" Cursor="Hand" FontSize="12"
+                                        ToolTip="Switches steering, pedals and your assigned button tasks in the game's settings file to the virtual wheel. Keyboard lines and everything else untouched; a backup is kept." />
+                            </StackPanel>
+                            <TextBlock Text="{Binding VJoyBindStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                       TextWrapping="Wrap" Margin="18,4,0,10" />
+
                             <TextBlock FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,0"
                                        Text="Then in the game's controls screen (stock options or Content Manager) check 'vJoy Device' owns steering, gas, brake, clutch and your tasks — and leave the game's force sliders at 100%. Its output goes nowhere, but this app reads the game's torque signal, which needs the gain up. After that, just drive." />
+                            </StackPanel>
                         </StackPanel>
                     </Border>
 
-                    <!-- Every other game: nothing to configure -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
-                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
-                            Visibility="{Binding IsAssettoCorsa, Converter={StaticResource InvertBoolToVis}}">
-                        <StackPanel>
-                            <TextBlock FontSize="13" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap">
-                                <Run Text="{Binding GameDisplayName, Mode=OneWay, FallbackValue='This game'}" FontWeight="Bold" Foreground="#FFE6EDF3" />
-                                <Run Text=" needs no extra setup — the app drives your wheel directly. Select the game and drive." />
-                            </TextBlock>
-                        </StackPanel>
-                    </Border>
 
                 </StackPanel>
             </ScrollViewer>

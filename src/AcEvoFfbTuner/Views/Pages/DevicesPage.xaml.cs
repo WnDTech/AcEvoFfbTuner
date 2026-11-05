@@ -79,12 +79,86 @@ public partial class DevicesPage : UserControl
         if (tag == "Led")
             UpdateLedPreview();
 
+        if (tag == "Pedals")
+            SelectDefaultPedalHapticTab();
+
         // Entering Game Config re-checks the vJoy driver + bridge state, so an
         // install done outside this view (setup component, manual download,
         // reboot) is reflected immediately.
         if (tag == "GameConfig" && DataContext is MainViewModel vm)
         {
             try { vm.RefreshGameConfigState(); } catch { }
+        }
+    }
+
+    // ── Pedals step 3: one haptic hardware card at a time ──────────────
+    private bool _pedalTabChosenByUser;
+
+    /// <summary>
+    /// Opens on whichever pedal haptic box is already connected (serial box if
+    /// only that one is), otherwise MOZA PHF. A manual pick sticks for the session.
+    /// </summary>
+    private void SelectDefaultPedalHapticTab()
+    {
+        if (_pedalTabChosenByUser || HapticTabMoza == null) return;
+        bool serialOnly = DataContext is MainViewModel vm && vm.OsoyooIsConnected && !vm.MozaPhfIsConnected;
+        (serialOnly ? HapticTabSerial : HapticTabMoza).IsChecked = true;
+        _pedalTabChosenByUser = false;
+    }
+
+    private void OnPedalHapticTabChanged(object sender, RoutedEventArgs e)
+    {
+        if (MozaHapticCard == null || SerialHapticCard == null) return;
+        bool moza = HapticTabMoza.IsChecked == true;
+        MozaHapticCard.Visibility = moza ? Visibility.Visible : Visibility.Collapsed;
+        SerialHapticCard.Visibility = moza ? Visibility.Collapsed : Visibility.Visible;
+        // Vibration pitch per effect is a MOZA PHF setting only.
+        if (PhfFrequencyBox != null)
+            PhfFrequencyBox.Visibility = moza ? Visibility.Visible : Visibility.Collapsed;
+        if (IsLoaded && (sender as RadioButton)?.IsMouseOver == true)
+            _pedalTabChosenByUser = true;
+    }
+
+    private void OnOpenPedalsSection(object sender, RoutedEventArgs e)
+    {
+        ShowSection("Pedals");
+        SelectSubTab("PedTabs", "Ped_Calibrate");
+    }
+
+    // ── Sub-tabs (Pedals, Assetto Corsa Setup) ─────────────────────────
+    // Each RadioButton's Tag names the panel it shows; panels sharing the
+    // tag prefix ("Ped_", "Ac_") are hidden when another tab is picked.
+    private static readonly string[] SubTabPanels =
+    {
+        "Ped_Input", "Ped_Calibrate", "Ped_Haptics", "Ped_Tune",
+        "Ac_Driver", "Ac_Pedals", "Ac_Buttons", "Ac_Apply",
+    };
+
+    private void OnSubTabChecked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton rb || rb.Tag is not string target) return;
+        string prefix = target[..(target.IndexOf('_') + 1)];
+        foreach (var name in SubTabPanels)
+        {
+            if (!name.StartsWith(prefix)) continue;
+            if (FindName(name) is FrameworkElement panel)
+                panel.Visibility = name == target ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    private void SelectSubTab(string group, string target)
+    {
+        foreach (var rb in FindRadios(this))
+            if (rb.GroupName == group && rb.Tag as string == target) { rb.IsChecked = true; return; }
+    }
+
+    private static IEnumerable<RadioButton> FindRadios(DependencyObject parent)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(parent))
+        {
+            if (child is RadioButton rb) yield return rb;
+            if (child is DependencyObject d)
+                foreach (var nested in FindRadios(d)) yield return nested;
         }
     }
 
