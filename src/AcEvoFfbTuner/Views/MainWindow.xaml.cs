@@ -27,6 +27,27 @@ public partial class MainWindow : Window
     private DispatcherTimer? _focusSuppressTimer;
     private DispatcherTimer? _foregroundWatcher;
     private uint _lastForegroundPid;
+    // True only while THIS window's focus logic owns SuppressOutput (the wheel
+    // FFB test also sets it — never clear that one from here).
+    private bool _focusSuppressActive;
+    private static readonly uint OwnPid = (uint)Environment.ProcessId;
+
+    private static bool IsOwnProcessForeground()
+    {
+        var fg = GetForegroundWindow();
+        if (fg == IntPtr.Zero) return false;
+        GetWindowThreadProcessId(fg, out uint pid);
+        return pid == OwnPid;
+    }
+
+    private void ReleaseFocusSuppression(string reason)
+    {
+        if (!_focusSuppressActive) return;
+        _focusSuppressActive = false;
+        if (App.ViewModel?.TelemetryLoop is { } loop)
+            loop.SuppressOutput = false;
+        LogFocusChange($"SUPPRESS OFF — {reason}");
+    }
 
     public void ShowToast(string title, string message, int durationMs = 4000)
     {
@@ -108,6 +129,12 @@ public partial class MainWindow : Window
                 uint pid = 0;
                 if (fg != IntPtr.Zero)
                     GetWindowThreadProcessId(fg, out pid);
+                // Self-heal: a game can take the foreground without this window
+                // ever receiving Deactivated (R3E track load, 2026-11-08 focus log:
+                // "ACTIVATED — foreground window: RRRE64"), which left wheel force
+                // suppressed until the user clicked off the game and back.
+                if (_focusSuppressActive && pid != OwnPid)
+                    ReleaseFocusSuppression($"foreground is {DescribeForegroundWindow(fg)}");
                 if (pid == _lastForegroundPid) return;
                 _lastForegroundPid = pid;
                 LogFocusChange($"FG-CHANGE: {DescribeForegroundWindow(fg)}");
@@ -125,8 +152,20 @@ public partial class MainWindow : Window
         _focusSuppressTimer.Tick += (_, _) =>
         {
             _focusSuppressTimer?.Stop();
+            // Activated can fire while ANOTHER process owns the foreground
+            // (the game re-creating its window during a track load). Only
+            // suppress when the user is really in this app.
+            if (!IsOwnProcessForeground())
+            {
+                LogFocusChange($"SUPPRESS SKIPPED — foreground is {DescribeForegroundWindow(GetForegroundWindow())}");
+                return;
+            }
             if (App.ViewModel?.TelemetryLoop is { } loop)
+            {
                 loop.SuppressOutput = true;
+                _focusSuppressActive = true;
+                LogFocusChange("SUPPRESS ON — app is foreground");
+            }
         };
         _focusSuppressTimer.Start();
     }
@@ -136,8 +175,7 @@ public partial class MainWindow : Window
         LogFocusChange($"DEACTIVATED — foreground window: {DescribeForegroundWindow(GetForegroundWindow())}");
         _focusSuppressTimer?.Stop();
         _focusSuppressTimer = null;
-        if (App.ViewModel?.TelemetryLoop is { } loop)
-            loop.SuppressOutput = false;
+        ReleaseFocusSuppression("window deactivated");
     }
 
     private static void LogFocusChange(string reason)

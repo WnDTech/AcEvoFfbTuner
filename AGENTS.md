@@ -328,7 +328,7 @@ official SDK and this app's own telemetry logs — do not guess or copy from mem
 
 ### Shared memory layout facts
 
-- MMF name: ``, version `R3E_VERSION_MAJOR = 3`, `R3E_VERSION_MINOR = 6` (SDK updated 2026-10-27;
+- MMF name: `$R3E`, version `R3E_VERSION_MAJOR = 3`, `R3E_VERSION_MINOR = 6` (SDK updated 2026-10-27;
   verified live 2026-11-08). 3.6 repurposed reserved slots (driver `StartGroup/StartPhase/FormationSlot`,
   event `StartMode/StartGroupCount`) and APPENDED a start-procedure block after `all_drivers_data_1` —
   our struct layout is unchanged. **3.6 has NO contact-patch fields** (Historic Update tyre model is only
@@ -471,8 +471,9 @@ tc / abs / esp / countersteer / cornering:
   in-game FFB settings. **`steering_force_percentage`** — per API 3.6 docs: the in-game FFB OUTPUT before
   the max-force clamp, **±1.0 = device full scale, beyond = clipping**, includes car FFB multiplier + user
   FFB settings, same sign as `steering_force`. Verified live 2026-11-08: fixed ratio (−198 → −0.031).
-  It is NOT 0–100 — never divide by 100. The app drives the core from its magnitude with
-  direction from steer input.
+  It is NOT 0–100 — never divide by 100. The app drives the core from its SIGNED value
+  (`−steering_force_percentage`, `UseNativeTorqueSign`, default on); legacy mode uses its
+  magnitude with direction from steer input.
 - `engine_torque` (current engine torque), `current_downforce` (N), `voltage`,
   `ers_level`, `power_mgu_h`, `power_mgu_k`, `torque_mgu_k` (currently unused).
 - Suspension (radians/meters/m/s): `suspension_deflection[4]`,
