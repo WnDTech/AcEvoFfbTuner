@@ -59,9 +59,11 @@ public sealed class TrackOsmRelationService : IDisposable
         _http = new HttpClient();
         _http.DefaultRequestHeaders.Add("User-Agent", "AcEvoFfbTuner/1.0 (relation-fetcher)");
         _http.DefaultRequestHeaders.Add("Accept", "application/json");
-        // Queries carry [timeout:25]; 30 s client-side keeps a dead mirror from
-        // stalling the failover chain for 45 s each.
-        _http.Timeout = TimeSpan.FromSeconds(30);
+        // Queries carry [timeout:25] server-side, but a busy overpass-api.de queues requests:
+        // verified 2026-11-08 it answered in 30–43 s (a 30 s client timeout dropped every
+        // answer). Mirrors are hedged in parallel (HedgeDelay), so a dead one no longer
+        // stalls the chain — the long timeout only lets a slow-but-alive server finish.
+        _http.Timeout = TimeSpan.FromSeconds(90);
         Directory.CreateDirectory(CacheDir);
     }
 
@@ -269,7 +271,7 @@ public sealed class TrackOsmRelationService : IDisposable
         }
         catch (TaskCanceledException)
         {
-            Log($"Timeout for {trackName} via {url} (30s)");
+            Log($"Timeout for {trackName} via {url} ({_http.Timeout.TotalSeconds:F0}s)");
             return new MirrorResult(null, new TimeoutException($"Overpass timeout via {url}"));
         }
         catch (HttpRequestException ex)
@@ -299,7 +301,7 @@ public sealed class TrackOsmRelationService : IDisposable
     }
 
     /// <summary>Append a line to trackdata_relation.log (used by the other track-data tiers).</summary>
-    internal static void AppendLog(string msg) => StaticLog(msg);
+    public static void AppendLog(string msg) => StaticLog(msg);
 
     public void SaveCache(string trackName, TrackDetailedInfo info, string? config = null)
     {
@@ -457,10 +459,10 @@ public sealed class TrackOsmRelationService : IDisposable
     /// relation lists — Bahrain's "Outer Circuit" links belong to no relation. Null on failure.
     /// </summary>
     public async Task<List<TrackNetworkLoops.Way>?> FetchRacewayNetworkAsync(string trackName,
-        double centerLat, double centerLon, double radiusM)
+        double centerLat, double centerLon, double radiusM, bool namedOnly = false)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return null;
-        var rateKey = "network|" + trackName;
+        var rateKey = (namedOnly ? "names|" : "network|") + trackName;
         lock (_rateLock)
         {
             if (_lastFetchByTrack.TryGetValue(rateKey, out var last)
@@ -473,7 +475,7 @@ public sealed class TrackOsmRelationService : IDisposable
         }
 
         var query = FormattableString.Invariant(
-            $"[out:json][timeout:25];\nway[\"highway\"=\"raceway\"](around:{radiusM:F0},{centerLat:F6},{centerLon:F6});\nout body geom;");
+            $"[out:json][timeout:25];\nway[\"highway\"=\"raceway\"]{(namedOnly ? "[\"name\"]" : "")}(around:{radiusM:F0},{centerLat:F6},{centerLon:F6});\nout body geom;");
         Log($"Raceway network fetch: {trackName} within {radiusM:F0} m of ({centerLat:F3}, {centerLon:F3})");
         var (json, _, lastError) = await PostHedgedAsync(query, trackName);
         if (json == null)
@@ -1229,7 +1231,8 @@ public sealed class TrackOsmRelationService : IDisposable
                         Number = cornerNumber,
                         Name = name,
                         Latitude = pts[mid].Latitude,
-                        Longitude = pts[mid].Longitude
+                        Longitude = pts[mid].Longitude,
+                        Path = pts
                     });
                 }
             }

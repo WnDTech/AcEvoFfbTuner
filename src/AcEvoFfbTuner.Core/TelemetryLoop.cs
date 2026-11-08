@@ -31,6 +31,7 @@ public sealed class TelemetryLoop : IDisposable
 
     public readonly TrackMapBuilder MapBuilder = new();
     public readonly TrackPositionDetector PositionDetector = new();
+    public readonly DriverCoach Coach = new() { Store = new CoachLapStore() };
     public readonly TrackForceHeatmap ForceHeatmap = new();
     public readonly LapDataRecorder LapRecorder = new();
     public readonly TrackDiagnosticHeatmap DiagnosticHeatmap = new();
@@ -282,7 +283,7 @@ public sealed class TelemetryLoop : IDisposable
         if (data == null) return "";
         int nullIdx = Array.IndexOf(data, (byte)0);
         int len = nullIdx >= 0 ? nullIdx : data.Length;
-        return System.Text.Encoding.ASCII.GetString(data, 0, len).Trim();
+        return System.Text.Encoding.UTF8.GetString(data, 0, len).Trim().TrimEnd('�');
     }
 
     public FfbRawData? LatestRaw
@@ -1158,6 +1159,11 @@ public sealed class TelemetryLoop : IDisposable
             var pos = PositionDetector.GetPosition(raw.CarX, raw.CarZ);
             if (pos.IsValid && raw.SpeedKmh > 5f)
             {
+                // Driver Coach: lap timing + inputs per waypoint (telemetry only, no FFB effect).
+                Coach.Update(PositionDetector.Map, raw.CurrentLap, pos.NearestWaypointIndex,
+                    raw.SpeedKmh, raw.BrakeInput, raw.GasInput, raw.IsInPitLane, _lastDetectedCarModel,
+                    raw.SteerAngle, raw.LocalAngularVel is { Length: > 1 } av ? av[1] : 0f);
+
                 var processed = LatestProcessed;
                 if (processed != null)
                 {
@@ -1217,6 +1223,7 @@ public sealed class TelemetryLoop : IDisposable
 
     private int _diagLastLapNumber = -1;
     private int _diagEventLogCount;
+    private string? _diagLastCornerLabel;
 
     private void UpdateDiagnostics(FfbRawData raw, FfbProcessedData processed, TrackPositionResult pos)
     {
@@ -1283,13 +1290,21 @@ public sealed class TelemetryLoop : IDisposable
                 processed.PostDynamicForce,
                 _pipeline.VibrationMixer.RoadForceModulation);
 
+            // Name where each event happened on the real circuit: the corner, or the
+            // straight after the last corner passed.
+            if (pos.CurrentCorner != null) _diagLastCornerLabel = pos.CurrentCorner.Label;
+            string? location = pos.CurrentCorner != null
+                ? _diagLastCornerLabel
+                : _diagLastCornerLabel != null ? $"after {_diagLastCornerLabel}" : null;
+
             foreach (var evt in events)
             {
+                evt.Location = location;
                 DiagnosticHeatmap.RecordEvent(evt);
                 _diagEventLogCount++;
                 if (_diagEventLogCount <= 20)
                 {
-                    LogDiag($"EVENT #{_diagEventLogCount}: {evt.EventType} @ {evt.CornerName ?? "straight"} " +
+                    LogDiag($"EVENT #{_diagEventLogCount}: {evt.EventType} @ {evt.Location ?? evt.CornerName ?? "straight"} " +
                             $"cls={evt.Classification} ΔF={evt.ForceDelta:F4} F={evt.OutputForce:F4} " +
                             $"steer={evt.SteerAngle:F3} spd={evt.SpeedKmh:F0} inCorner={evt.InCorner}");
                 }

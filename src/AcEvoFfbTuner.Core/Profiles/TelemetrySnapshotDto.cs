@@ -467,7 +467,7 @@ public sealed class GraphicsSnapshotDto
         if (data == null) return "";
         int nullIdx = Array.IndexOf(data, (byte)0);
         int len = nullIdx >= 0 ? nullIdx : data.Length;
-        return System.Text.Encoding.ASCII.GetString(data, 0, len).Trim();
+        return System.Text.Encoding.UTF8.GetString(data, 0, len).Trim().TrimEnd('�');
     }
 }
 
@@ -574,7 +574,7 @@ public sealed class StaticSnapshotDto
         if (data == null) return "";
         int nullIdx = Array.IndexOf(data, (byte)0);
         int len = nullIdx >= 0 ? nullIdx : data.Length;
-        return System.Text.Encoding.ASCII.GetString(data, 0, len).Trim();
+        return System.Text.Encoding.UTF8.GetString(data, 0, len).Trim().TrimEnd('�');
     }
 }
 
@@ -634,7 +634,7 @@ public sealed class TyreStateDto
         if (data == null) return "";
         int nullIdx = Array.IndexOf(data, (byte)0);
         int len = nullIdx >= 0 ? nullIdx : data.Length;
-        return System.Text.Encoding.ASCII.GetString(data, 0, len).Trim();
+        return System.Text.Encoding.UTF8.GetString(data, 0, len).Trim().TrimEnd('�');
     }
 }
 
@@ -827,7 +827,7 @@ public sealed class SessionStateDto
         if (data == null) return "";
         int nullIdx = Array.IndexOf(data, (byte)0);
         int len = nullIdx >= 0 ? nullIdx : data.Length;
-        return System.Text.Encoding.ASCII.GetString(data, 0, len).Trim();
+        return System.Text.Encoding.UTF8.GetString(data, 0, len).Trim().TrimEnd('�');
     }
 }
 
@@ -866,7 +866,7 @@ public sealed class TimingStateDto
         if (data == null) return "";
         int nullIdx = Array.IndexOf(data, (byte)0);
         int len = nullIdx >= 0 ? nullIdx : data.Length;
-        return System.Text.Encoding.ASCII.GetString(data, 0, len).Trim();
+        return System.Text.Encoding.UTF8.GetString(data, 0, len).Trim().TrimEnd('�');
     }
 }
 

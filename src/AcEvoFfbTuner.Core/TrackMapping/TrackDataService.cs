@@ -76,6 +76,7 @@ public class TrackDataService : IDisposable
                 _currentTrackData = cached;
                 TrackDataUpdated?.Invoke(cached);
                 StatusMessage?.Invoke($"Loaded cached track data ({cached.DataSource})");
+                await EnrichNamesAsync(trackName, config, cached);
                 return;
             }
         }
@@ -88,11 +89,44 @@ public class TrackDataService : IDisposable
             _currentTrackData = data;
             StatusMessage?.Invoke($"Loaded track data from {data.DataSource} ({data.Corners.Count} corners)");
             TrackDataUpdated?.Invoke(data);
+            await EnrichNamesAsync(trackName, config, data);
         }
         else
         {
             _currentTrackData = null;
             StatusMessage?.Invoke("No track data found for this track");
+        }
+    }
+
+    // One name lookup per track per session: a venue with no named ways must not re-query Overpass
+    // every time the page reloads the layout.
+    // A failed lookup (Overpass down/slow) is retried after NameRetry, in the background.
+    private readonly HashSet<string> _namesTried = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan NameRetry = TimeSpan.FromMinutes(3);
+    private const int MaxNameAttempts = 5;
+
+    private async Task EnrichNamesAsync(string trackName, string? config, TrackDetailedInfo data, int attempt = 1)
+    {
+        var key = TrackMapKeys.BuildKey(trackName, config);
+        if (attempt == 1 && !_namesTried.Add(key)) return;
+        bool? result;
+        try { result = await _provider.EnrichCornerNamesAsync(trackName, config, data); }
+        catch (Exception) { result = null; }
+
+        if (result == true && ReferenceEquals(_currentTrackData, data))
+        {
+            StatusMessage?.Invoke($"Added {data.Corners.Count} corner names");
+            TrackDataUpdated?.Invoke(data);
+        }
+        else if (result == null && attempt < MaxNameAttempts)
+        {
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(NameRetry);
+                // Only while this track is still the current one and the cache was not replaced.
+                if (ReferenceEquals(_currentTrackData, data) && _namesTried.Contains(key))
+                    await EnrichNamesAsync(trackName, config, data, attempt + 1);
+            });
         }
     }
 
@@ -104,6 +138,7 @@ public class TrackDataService : IDisposable
         string? config = null, double officialLengthM = 0,
         Func<double>? liveOfficialLength = null)
     {
+        _namesTried.Remove(TrackMapKeys.BuildKey(trackName, config));
         return LoadTrackDataAsync(trackName, null, centerLat, centerLon, forceRefresh: true, config: config,
             officialLengthM: officialLengthM, liveOfficialLength: liveOfficialLength);
     }

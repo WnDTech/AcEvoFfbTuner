@@ -146,13 +146,20 @@ public partial class LiveTrackMapPage : UserControl
         int sectorNumber = 0, int lapCount = 0,
         WaypointForceSample[]? forceHeatmap = null,
         TrackMap? currentMap = null,
-        IReadOnlyList<CarPosition>? cars = null)
+        IReadOnlyList<CarPosition>? cars = null,
+        bool showHeatmap = false,
+        WaypointDiagnosticSample[]? diagnosticHeatmap = null,
+        bool showDiagnostics = false,
+        string? devInfo = null)
     {
         if (!_satelliteInitialized) return;
 
         CapturePathSample(carX, carZ, npos, speedKmh, trackName);
 
-        if (Visibility != Visibility.Visible) return;
+        // Track intelligence (layout load, stored geo-fit, fitting, corner naming) runs on EVERY
+        // page: the CORNER readout and FFB event locations use the names. Only rendering below
+        // is gated on this page being visible — gating everything here meant corners were only
+        // named after the user opened the Live Map (2026-11-08).
 
         // Cache the TrackMap for GameToGps calibration
         if (currentMap != null && currentMap != _currentTrackMap)
@@ -227,6 +234,9 @@ public partial class LiveTrackMapPage : UserControl
         }
 
         MaybeStartGeoFit();
+        TryApplyCornerNames(currentMap);
+
+        if (Visibility != Visibility.Visible) return; // ── rendering only from here ──
 
         double carLat = 0, carLon = 0;
         double carHeading = _lastCompass; // compass radians: 0 = north, clockwise
@@ -320,6 +330,8 @@ public partial class LiveTrackMapPage : UserControl
         }
 
         UpdateOpponents(cars, layoutReady);
+        UpdateFfbOverlays(currentMap, forceHeatmap, showHeatmap, diagnosticHeatmap, showDiagnostics, layoutReady);
+        UpdateCoachMarkers();
 
         if (hasPosition)
         {
@@ -342,7 +354,8 @@ public partial class LiveTrackMapPage : UserControl
                     $"gps=({carLat:F5}, {carLon:F5})  path={_pathTotalM / 1000:F2} km  " +
                     $"src={(_currentOsmData != null ? DataSourceLabelText(_currentOsmData.DataSource) : "none")}  " +
                     $"layout={_currentOsmData?.TrackLayout?.Count ?? 0} pts  corners={_currentOsmData?.Corners.Count ?? 0}  " +
-                    $"pit={(_currentOsmData?.Pit != null ? "yes" : "no")}  last: {_lastStatusMessage}";
+                    $"pit={(_currentOsmData?.Pit != null ? "yes" : "no")}  last: {_lastStatusMessage}" +
+                    (string.IsNullOrEmpty(devInfo) ? "" : $"\n{devInfo}");
         if (DiagPanel.Visibility == Visibility.Visible) DiagText.Text = _diagText;
 
         int gameSector = DataContext is MainViewModel gvm ? gvm.GameSectorIndex : sectorNumber;
@@ -355,6 +368,144 @@ public partial class LiveTrackMapPage : UserControl
             _lastPanelTicks = now;
             UpdatePanels(cars);
         }
+    }
+
+    // ── Real corner names on the recorded corners ───────────────────────────
+    // The recorded TrackMap's corners (T1..Tn, which drive the CORNER readout and the FFB event
+    // locations) get their RealName from the downloaded named corners by POSITION, through the
+    // geo-fit. Re-run when the fit, the named corners or the recorded corners change.
+
+    private string _cornerNameSignature = "";
+    private List<TrackPoint>? _lastFittedLayout;
+
+    private static List<TrackCornerInfo> DrawnCorners(TrackDetailedInfo data) =>
+        data.Corners.Where(c => CornerNaming.IsCornerName(c.Name, data.TrackName)).ToList();
+
+    // Stable corners built from the downloaded layout (see StableCorners). Re-installed on the
+    // recorded map whenever its own re-analysis replaces them.
+    private List<TrackCorner>? _stableCorners;
+
+    private void TryApplyCornerNames(TrackMap? builderMap)
+    {
+        // Corners go on the map the position detector reads (it can lag the builder's map).
+        var map = (DataContext as MainViewModel)?.PositionMap ?? builderMap;
+        if (map == null || map.Waypoints.Count < 50) return;
+        var layout = _currentOsmData?.TrackLayout;
+        var named = _currentOsmData?.Corners ?? new List<TrackCornerInfo>();
+        var fit = _geoFit;
+        if (fit == null || layout is not { Count: >= 10 }) return; // needs the exact world→GPS fit
+
+        static int Id(object o) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(o);
+        string sig = $"{Id(map)}|{Id(map.Waypoints)}|{map.Waypoints.Count}|{Id(layout)}|{Id(named)}|{named.Count}|{Id(fit)}";
+        if (sig != _cornerNameSignature)
+        {
+            _cornerNameSignature = sig;
+            (double lat, double lon)? Project(float x, float z)
+            {
+                var g = fit.WorldToGps(x, z);
+                return IsValidGps(g.lat, g.lon) ? g : null;
+            }
+
+            int detected = map.Corners.Count;
+            _stableCorners = StableCorners.Build(layout, map, Project);
+            var target = _stableCorners ?? map.Corners; // fall back to the recorded corners
+            int n = CornerNaming.Apply(target, map.Waypoints, named, Project, _currentOsmData?.TrackName);
+            TrackOsmRelationService.AppendLog($"[Names] {_currentOsmData?.TrackName}: " +
+                (_stableCorners != null ? $"{_stableCorners.Count} stable corners (layout) vs {detected} detected" : $"{detected} detected corners (no stable set)") +
+                $", {n} named [{string.Join(", ", target.Select(c => c.Label))}]");
+            if (DataContext is MainViewModel vm1) vm1.NotifyCornerNameChanged();
+        }
+
+        if (_stableCorners != null && !ReferenceEquals(map.Corners, _stableCorners))
+        {
+            map.Corners = _stableCorners; // atomic swap; the telemetry thread reads the list read-only
+            if (DataContext is MainViewModel vm2) vm2.NotifyCornerNameChanged();
+        }
+    }
+
+    // ── Driver Coach: braking points of the last lap (orange) and the best lap (white) ──
+
+    private string _coachMarkerSig = "";
+
+    private void UpdateCoachMarkers()
+    {
+        var vm = DataContext as MainViewModel;
+        var report = vm?.ShowCoach == true ? vm.CoachReport : null;
+        var map = vm?.PositionMap;
+        var fit = _geoFit;
+        string sig = report == null || map == null || fit == null ? "off"
+            : $"{report.GetHashCode()}|{map.GetHashCode()}|{fit.GetHashCode()}";
+        if (sig == _coachMarkerSig) return;
+        _coachMarkerSig = sig;
+
+        var markers = new List<(double lat, double lon, uint argb, string label)>();
+        if (report != null && map != null && fit != null)
+        {
+            void Add(int wp, uint argb, string label)
+            {
+                if (wp < 0 || wp >= map.Waypoints.Count) return;
+                var (lat, lon) = fit.WorldToGps(map.Waypoints[wp].X, map.Waypoints[wp].Z);
+                if (IsValidGps(lat, lon)) markers.Add((lat, lon, argb, label));
+            }
+            foreach (var c in report.Corners)
+            {
+                Add(c.BestBrakeWaypoint, 0xFFFFFFFF, "");
+                // Label the last lap's marker only where it differs noticeably from the best.
+                bool differs = !float.IsNaN(c.BrakePointM) && !float.IsNaN(c.BestBrakePointM)
+                               && Math.Abs(c.BrakePointM - c.BestBrakePointM) > 8f;
+                Add(c.BrakeWaypoint, 0xFFFF9F43, differs ? $"{c.BrakePointM - c.BestBrakePointM:+0;-0} m" : "");
+            }
+        }
+        MapCtrl.UpdateCoachMarkers(markers);
+    }
+
+    // ── FFB layers (heatmap + diagnostics, merged from the old Track Map page) ──
+
+    private long _lastFfbOverlayTicks;
+    private bool _ffbOverlayShown;
+
+    /// <summary>
+    /// Draws the FFB heatmap / event markers on the real circuit. Refreshed ~1 Hz — the
+    /// heatmaps accumulate slowly and rebuilding hundreds of features at 30 Hz is waste.
+    /// Points are projected through the geo-fit (exact); without one, through the game→GPS
+    /// reference, snapped to the downloaded layout so the colours sit on the drawn track.
+    /// </summary>
+    private void UpdateFfbOverlays(TrackMap? map, WaypointForceSample[]? forceHeatmap, bool showHeatmap,
+        WaypointDiagnosticSample[]? diagnosticHeatmap, bool showDiagnostics, bool layoutReady)
+    {
+        bool want = showHeatmap || showDiagnostics;
+        FfbCard.Visibility = want ? Visibility.Visible : Visibility.Collapsed;
+        if (!want)
+        {
+            if (_ffbOverlayShown)
+            {
+                MapCtrl.UpdateLiveFfbOverlays(null, null, false, null, false, (_, _) => null);
+                _ffbOverlayShown = false;
+            }
+            return;
+        }
+
+        long now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (_ffbOverlayShown && now - _lastFfbOverlayTicks < System.Diagnostics.Stopwatch.Frequency) return;
+        _lastFfbOverlayTicks = now;
+        _ffbOverlayShown = true;
+
+        var fit = _geoFit;
+        var sat = _satelliteService;
+        bool snap = layoutReady && _osmEn.Length > 2;
+        MapCtrl.UpdateLiveFfbOverlays(map, forceHeatmap, showHeatmap, diagnosticHeatmap, showDiagnostics, (x, z) =>
+        {
+            double lat, lon;
+            if (fit != null) (lat, lon) = fit.WorldToGps(x, z);
+            else if (sat != null && sat.HasGeoData && !IsLmu()) (lat, lon) = sat.GameToGps(x, z);
+            else return null;
+            if (!IsValidGps(lat, lon)) return null;
+            if (!snap) return (lat, lon);
+            var (e, n) = _osmProj.ToLocal(lat, lon);
+            var (se, sn, _, dist) = NearestOnLayout(e, n);
+            if (dist > SnapMaxM * 2) return fit != null ? (lat, lon) : null;
+            return _osmProj.ToGps(se, sn);
+        });
     }
 
     // ── Header, status, legend and field panel ───────────────────────────────
@@ -374,6 +525,17 @@ public partial class LiveTrackMapPage : UserControl
         }
 
         SpeedValue.Text = speedKmh > 0.5f ? $"{speedKmh:F0} km/h" : "0 km/h";
+        if (DataContext is MainViewModel dvm && dvm.LiveDeltaS is float delta)
+        {
+            DeltaValue.Text = $"{delta:+0.00;-0.00;0.00}";
+            DeltaValue.SetResourceReference(TextBlock.ForegroundProperty,
+                delta > 0.02f ? "RedBrush" : delta < -0.02f ? "GreenBrush" : "TextBrush");
+        }
+        else if (DeltaValue.Text != "--")
+        {
+            DeltaValue.Text = "--";
+            DeltaValue.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+        }
         SectorValue.Text = gameSector > 0 ? $"S{gameSector}" : "--";
         LapValue.Text = lapCount > 0 ? lapCount.ToString() : "--";
         if (DataContext is MainViewModel vm)
@@ -730,7 +892,7 @@ public partial class LiveTrackMapPage : UserControl
     private void RedrawLayoutMarkers()
     {
         if (_currentOsmData?.TrackLayout == null) return;
-        MapCtrl.SetGpsTrackOutline(_currentOsmData.TrackLayout, _currentOsmData.Corners, _currentOsmData.SectorBoundaries);
+        MapCtrl.SetGpsTrackOutline(_currentOsmData.TrackLayout, DrawnCorners(_currentOsmData), _currentOsmData.SectorBoundaries);
         if (_currentOsmData.Pit != null) MapCtrl.AddPitMarkers(_currentOsmData.Pit);
         if (_currentOsmData.StartFinish != null) MapCtrl.AddStartFinishMarker(_currentOsmData.StartFinish);
     }
@@ -1150,7 +1312,7 @@ public partial class LiveTrackMapPage : UserControl
                 }
                 catch { }
 
-                MapCtrl.SetGpsTrackOutline(data.TrackLayout, data.Corners, data.SectorBoundaries);
+                MapCtrl.SetGpsTrackOutline(data.TrackLayout, DrawnCorners(data), data.SectorBoundaries);
 
                 if (data.Pit != null)
                     MapCtrl.AddPitMarkers(data.Pit);
@@ -1174,9 +1336,15 @@ public partial class LiveTrackMapPage : UserControl
                     }
                 }
 
-                // Every new layout (including a corrected one) re-fits the view.
-                _fitPending = true;
-                TryFitPending();
+                // Every new layout (including a corrected one) re-fits the view; a names-only
+                // update of the same layout keeps the user's zoom.
+                if (!ReferenceEquals(data.TrackLayout, _lastFittedLayout))
+                {
+                    _lastFittedLayout = data.TrackLayout;
+                    _fitPending = true;
+                    TryFitPending();
+                }
+                _cornerNameSignature = ""; // names may have changed — re-match recorded corners
             }
             else
             {
@@ -1190,7 +1358,7 @@ public partial class LiveTrackMapPage : UserControl
         _layoutLoadFailed = true;
         ShowLoading("No layout available",
             $"Neither OpenStreetMap nor Open Racetrack DB has a layout matching {_lastLoadedTrack ?? "this circuit"}. " +
-            "Your car is still tracked on the Track Map page once a lap is recorded.");
+            "FFB Heatmap and Diagnostics still record while you drive; they appear here once a layout is aligned.");
         // Show the venue, not the whole world, when its location is known.
         if (!string.IsNullOrEmpty(_lastLoadedTrack) && TrackDatabase.LookupTrackLocation(_lastLoadedTrack) is { } venue)
             MapCtrl.CenterOnGps(venue.lat, venue.lon, 15);

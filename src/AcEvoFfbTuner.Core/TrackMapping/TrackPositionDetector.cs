@@ -13,8 +13,10 @@ public sealed class TrackPositionDetector
     public void SetMap(TrackMap map)
     {
         _map = map;
-        _lastNearestIndex = 0;
     }
+
+    /// <summary>The map whose corners drive CurrentCorner (stable corners are installed here).</summary>
+    public TrackMap? Map => _map;
 
     public void ClearMap()
     {
@@ -111,15 +113,18 @@ public sealed class TrackPositionDetector
     {
         var waypoints = _map!.Waypoints;
         int count = waypoints.Count;
+        int last = Math.Clamp(_lastNearestIndex, 0, count - 1);
 
-        int searchStart = Math.Max(0, _lastNearestIndex - SearchWindow);
-        int searchEnd = Math.Min(count - 1, _lastNearestIndex + SearchWindow);
-
+        // The lap is a loop: the window WRAPS past the last waypoint. The old clamped window
+        // (and its edge-only fallback) stuck at index count-1 once the car crossed the seam —
+        // the detector froze there for the whole next lap (no corners, heatmap or coach data
+        // after lap 1; Silverstone 2026-11-08).
         float bestDist = float.MaxValue;
-        int bestIdx = _lastNearestIndex;
-
-        for (int i = searchStart; i <= searchEnd; i++)
+        int bestIdx = last;
+        int window = Math.Min(SearchWindow, count / 2);
+        for (int k = -window; k <= window; k++)
         {
+            int i = ((last + k) % count + count) % count;
             float d = waypoints[i].DistanceTo2D(x, z);
             if (d < bestDist)
             {
@@ -128,22 +133,13 @@ public sealed class TrackPositionDetector
             }
         }
 
-        if (bestIdx == searchStart && searchStart > 0)
+        // Window edge hit, or the car is far from every windowed point (teleport, reset,
+        // realign to a wrong spot): re-acquire with a full scan.
+        int fromLast = ((bestIdx - last) % count + count) % count;
+        bool atEdge = fromLast == window || fromLast == count - window;
+        if (atEdge || bestDist > ReacquireM)
         {
-            for (int i = 0; i < searchStart; i++)
-            {
-                float d = waypoints[i].DistanceTo2D(x, z);
-                if (d < bestDist)
-                {
-                    bestDist = d;
-                    bestIdx = i;
-                }
-            }
-        }
-
-        if (bestIdx == searchEnd && searchEnd < count - 1)
-        {
-            for (int i = searchEnd + 1; i < count; i++)
+            for (int i = 0; i < count; i++)
             {
                 float d = waypoints[i].DistanceTo2D(x, z);
                 if (d < bestDist)
@@ -156,6 +152,9 @@ public sealed class TrackPositionDetector
 
         return bestIdx;
     }
+
+    /// <summary>Farther than this from the windowed best → full re-scan.</summary>
+    private const float ReacquireM = 50f;
 }
 
 public sealed class TrackPositionResult

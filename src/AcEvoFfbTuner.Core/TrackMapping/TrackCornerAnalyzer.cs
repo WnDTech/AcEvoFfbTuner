@@ -23,6 +23,8 @@ public sealed class TrackCorner
     public string? RealName { get; set; }
 
     public string DisplayName => $"T{CornerNumber}";
+    /// <summary>"T5 Les Combes" when the downloaded layout named the corner, else "T5".</summary>
+    public string Label => string.IsNullOrWhiteSpace(RealName) ? DisplayName : $"{DisplayName} {RealName}";
     public string TypeName => Type.ToString();
 }
 

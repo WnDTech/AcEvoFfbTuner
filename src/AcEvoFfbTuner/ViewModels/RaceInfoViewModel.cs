@@ -171,7 +171,7 @@ public sealed partial class RaceInfoViewModel : ObservableObject
         if (data == null || data.Length == 0) return "";
         int nullIdx = Array.IndexOf(data, (byte)0);
         int len = nullIdx >= 0 ? nullIdx : data.Length;
-        return Encoding.ASCII.GetString(data, 0, len).Trim();
+        return Encoding.UTF8.GetString(data, 0, len).Trim().TrimEnd('�');
     }
 
     public void UpdateFrom(SPageFilePhysicsEvo p, SPageFileGraphicEvo g)

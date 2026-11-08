@@ -330,7 +330,11 @@ public partial class MainWindow : Window
                 isOnTrack, hasMap, npos, lvm.DetectedTrackName,
                 trackLatitude, trackLongitude, trackRotation,
                 lvm.CurrentSectorNumber, lvm.CompletedLapCount,
-                showHeatmap ? forceHeatmap : null, currentMap, cars);
+                forceHeatmap, currentMap, cars,
+                showHeatmap, diagnosticHeatmap, showDiagnostics,
+                $"map: {(isRecording ? "recording" : hasMap ? "ready" : "none")}  waypoints={waypointCount}  " +
+                $"length={trackLengthM:F0} m  progress={trackProgress:P0}  offCentre={distanceFromCenter:F1} m  " +
+                $"onTrack={isOnTrack}  world=({carX:F1}, {carZ:F1})");
         }
     }
 

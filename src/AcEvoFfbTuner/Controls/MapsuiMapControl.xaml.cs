@@ -38,6 +38,8 @@ public partial class MapsuiMapControl : UserControl
     private MemoryLayer _opponentLayer;
     private MemoryLayer _cornerLayer;
     private MemoryLayer _diagLayer;
+    private MemoryLayer _ffbHeatLayer;
+    private MemoryLayer _coachLayer;
 
     private bool _isCalibrating;
     private float _baseLat, _baseLon, _baseRot;
@@ -67,11 +69,18 @@ public partial class MapsuiMapControl : UserControl
         _gpsOutlineLayer = new MemoryLayer("GPS Outline") { Features = [] };
         _map.Layers.Add(_gpsOutlineLayer);
 
+        // Live Map FFB heatmap: own layer so it never replaces the downloaded outline.
+        _ffbHeatLayer = new MemoryLayer("FFB Heatmap") { Features = [] };
+        _map.Layers.Add(_ffbHeatLayer);
+
         _cornerLayer = new MemoryLayer("Corners") { Features = [] };
         _map.Layers.Add(_cornerLayer);
 
         _diagLayer = new MemoryLayer("Diagnostics") { Features = [] };
         _map.Layers.Add(_diagLayer);
+
+        _coachLayer = new MemoryLayer("Coach") { Features = [] };
+        _map.Layers.Add(_coachLayer);
 
         // Opponents below the player's car so the player dot always draws on top.
         _opponentLayer = new MemoryLayer("Opponents") { Features = [] };
@@ -996,6 +1005,110 @@ public partial class MapsuiMapControl : UserControl
         {
             RebuildTrackLayer();
         }
+    }
+
+    /// <summary>
+    /// Live Map FFB overlays: force/clipping heatmap along the driven line and FFB event
+    /// markers (expected / notable / suspicious). <paramref name="project"/> maps world
+    /// (X, Z) to GPS — the Live Map passes its geo-fit so markers sit on the real circuit.
+    /// Returns null from <paramref name="project"/> to skip a point.
+    /// </summary>
+    public void UpdateLiveFfbOverlays(TrackMap? map,
+        WaypointForceSample[]? forceHeatmap, bool showHeatmap,
+        WaypointDiagnosticSample[]? diagnosticHeatmap, bool showDiagnostics,
+        Func<float, float, (double lat, double lon)?> project)
+    {
+        var heat = new List<IFeature>();
+        var diag = new List<IFeature>();
+        int n = map?.Waypoints.Count ?? 0;
+
+        if (map != null && showHeatmap && forceHeatmap != null && forceHeatmap.Length == n && n > 1)
+        {
+            int step = Math.Max(1, n / 400);
+            for (int i = 0; i < n; i += step)
+            {
+                var sample = forceHeatmap[i];
+                if (sample == null || sample.SampleCount == 0) continue;
+                int next = Math.Min(i + step, n - 1);
+                if (next == i) break;
+                var a = project(map.Waypoints[i].X, map.Waypoints[i].Z);
+                var b = project(map.Waypoints[next].X, map.Waypoints[next].Z);
+                if (a == null || b == null) continue;
+                var m1 = ToMercator(a.Value.lon, a.Value.lat);
+                var m2 = ToMercator(b.Value.lon, b.Value.lat);
+                var seg = new GeometryFeature
+                {
+                    Geometry = new LineString(new[] { new Coordinate(m1.X, m1.Y), new Coordinate(m2.X, m2.Y) })
+                };
+                seg.Styles.Add(new VectorStyle { Line = new Pen { Color = ForceColor(sample.OutputForce, sample.IsClipping), Width = 6 } });
+                heat.Add(seg);
+            }
+        }
+
+        if (map != null && showDiagnostics && diagnosticHeatmap != null && diagnosticHeatmap.Length == n && n > 1)
+        {
+            int step = Math.Max(1, n / 200);
+            for (int i = 0; i < n; i += step)
+            {
+                var d = diagnosticHeatmap[i];
+                if (d == null || d.TotalEventCount == 0) continue;
+                var p = project(map.Waypoints[i].X, map.Waypoints[i].Z);
+                if (p == null) continue;
+                var merc = ToMercator(p.Value.lon, p.Value.lat);
+                Color c; double scale;
+                if (d.SuspiciousCount > 0) { c = Color.FromRgba(0xFF, 0x30, 0x30, 0xE8); scale = Math.Min(0.35 + d.SuspiciousCount * 0.08, 0.8); }
+                else if (d.ExpectedCount > 0) { c = Color.FromRgba(0x00, 0xE6, 0x76, 0xD0); scale = Math.Min(0.25 + d.ExpectedCount * 0.04, 0.6); }
+                else { c = Color.FromRgba(0xFF, 0xD6, 0x00, 0xD8); scale = 0.25; }
+                var f = new PointFeature(merc.X, merc.Y);
+                f.Styles.Add(new SymbolStyle
+                {
+                    SymbolType = SymbolType.Ellipse,
+                    SymbolScale = scale,
+                    Fill = new Brush { Color = c },
+                    Outline = new Pen { Color = Color.FromRgba(0, 0, 0, 0xA0), Width = 1 }
+                });
+                diag.Add(f);
+            }
+        }
+
+        _ffbHeatLayer.Features = heat;
+        _ffbHeatLayer.FeaturesWereModified();
+        _diagLayer.Features = diag;
+        _diagLayer.FeaturesWereModified();
+        MapCtrl.Refresh();
+    }
+
+    /// <summary>Driver Coach braking-point markers: (lat, lon, ARGB fill, label drawn beside it).</summary>
+    public void UpdateCoachMarkers(IReadOnlyList<(double lat, double lon, uint argb, string label)> markers)
+    {
+        var features = new List<IFeature>();
+        foreach (var m in markers)
+        {
+            var merc = ToMercator(m.lon, m.lat);
+            var f = new PointFeature(merc.X, merc.Y);
+            var c = Color.FromRgba((int)((m.argb >> 16) & 0xFF), (int)((m.argb >> 8) & 0xFF), (int)(m.argb & 0xFF), (int)(m.argb >> 24));
+            f.Styles.Add(new SymbolStyle
+            {
+                SymbolType = SymbolType.Rectangle,
+                SymbolScale = 0.45,
+                Fill = new Brush { Color = c },
+                Outline = new Pen { Color = Color.FromRgba(0, 0, 0, 0xC0), Width = 1.5 },
+            });
+            if (!string.IsNullOrEmpty(m.label))
+                f.Styles.Add(new LabelStyle
+                {
+                    Text = m.label,
+                    ForeColor = c,
+                    BackColor = new Brush { Color = Color.FromRgba(0x10, 0x14, 0x18, 0xC8) },
+                    Offset = new Offset { X = 0, Y = -16 },
+                    Font = new Font { Size = 10 },
+                    Halo = new Pen { Color = Color.FromRgba(0x00, 0x00, 0x00, 0xFF), Width = 1 },
+                });
+            features.Add(f);
+        }
+        _coachLayer.Features = features;
+        _coachLayer.FeaturesWereModified();
+        MapCtrl.Refresh();
     }
 
     private static Color ForceColor(float force, bool isClipping)

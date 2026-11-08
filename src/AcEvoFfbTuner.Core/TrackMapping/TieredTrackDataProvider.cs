@@ -35,6 +35,35 @@ public sealed class TieredTrackDataProvider : IDisposable
     /// <summary>
     /// Load from the relation cache (or embedded seed pack) without fetching.
     /// </summary>
+    /// <summary>
+    /// Adds corner names to a layout that has none (Open Racetrack DB / network loops, or an OSM
+    /// relation fetched during an Overpass outage fallback): the venue's named raceway ways that run
+    /// along the layout. Saves the enriched data to the cache. Returns true when names were added.
+    /// </summary>
+    /// <returns>null when the lookup failed (network) and is worth retrying; false when there is
+    /// nothing to add; true when names were added.</returns>
+    public async Task<bool?> EnrichCornerNamesAsync(string trackName, string? config, TrackDetailedInfo data)
+    {
+        if (data.TrackLayout is not { Count: >= 10 } layout) return false;
+        if (data.Corners.Any(c => CornerNaming.IsCornerName(c.Name, trackName))) return false;
+
+        double cLat = layout.Average(p => p.Latitude), cLon = layout.Average(p => p.Longitude);
+        double radius = layout.Max(p => TrackNameMatcher.DistanceM(cLat, cLon, p.Latitude, p.Longitude)) + 300;
+        List<TrackNetworkLoops.Way>? ways;
+        try { ways = await _relationService.FetchRacewayNetworkAsync(trackName, cLat, cLon, radius, namedOnly: true); }
+        catch (Exception ex) { StaticLog($"Corner-name fetch failed for {trackName}: {ex.Message}"); return null; }
+        if (ways == null) return null;      // all mirrors failed / rate-limited — retry later
+        if (ways.Count == 0) return false;  // the venue has no named raceway ways
+
+        var corners = CornerNaming.FromWays(ways, layout, trackName);
+        TrackOsmRelationService.AppendLog($"[Names] {trackName}: {corners.Count} named corner(s) from {ways.Count} raceway ways"
+            + (corners.Count > 0 ? $" [{string.Join(", ", corners.Select(c => c.Name))}]" : ""));
+        if (corners.Count == 0) return false;
+        data.Corners = corners;
+        _relationService.SaveCache(trackName, data, config);
+        return true;
+    }
+
     public TrackDetailedInfo? LoadBestCached(string trackName, string? config = null)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return null;

@@ -1349,13 +1349,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private string _lapComparison = "";
 
     [ObservableProperty]
-    private bool _showForceHeatmap = true;
+    private bool _showForceHeatmap;
 
     [ObservableProperty]
     private bool _showTrackEdges;
 
     [ObservableProperty]
-    private bool _showDiagnostics = true;
+    private bool _showDiagnostics;
 
     [ObservableProperty]
     private string _diagnosticSummary = "";
@@ -1371,6 +1371,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _diagnosticCoverage = "";
+
+    /// <summary>Worst places on the circuit by FFB events ("T5 Les Combes: 2 suspicious, 3 clip").</summary>
+    [ObservableProperty]
+    private string _problemCornersText = "";
 
     public ObservableCollection<FfbRecommendation> Recommendations { get; } = new();
 
@@ -2242,6 +2246,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             sb.AppendLine($"Events: {summary.TotalEvents} | Corner: {summary.CornerEventPct:F0}% | Suspicious: {summary.SuspiciousPct:F0}% | Verdict: {summary.Verdict}");
             sb.AppendLine($"Snap causes (ALL): Mz={summary.SnapCauseMz} Fx={summary.SnapCauseFx} Fy={summary.SnapCauseFy} Slew={summary.SnapCauseSlew} | Expected: {summary.ExpectedSnapCount}");
             sb.AppendLine($"Snap causes (SUSPICIOUS only): Mz={summary.SuspiciousSnapCauseMz} Fx={summary.SuspiciousSnapCauseFx} Fy={summary.SuspiciousSnapCauseFy} Slew={summary.SuspiciousSnapCauseSlew}");
+            var worst = _telemetryLoop.DiagnosticHeatmap.GetWorstLocations(3);
+            if (worst.Count > 0)
+                sb.AppendLine("Where: " + string.Join("  |  ", worst.Select(w => w.Describe())));
             sb.AppendLine();
             foreach (var r in recs)
                 sb.AppendLine(r.DevModeText);

@@ -7,6 +7,7 @@
              FontFamily="Segoe UI"
              UseLayoutRounding="True">
     <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <Style x:Key="MapToolToggle" TargetType="ToggleButton" BasedOn="{StaticResource {x:Type ToggleButton}}">
             <Setter Property="Padding" Value="11,4" />
             <Setter Property="FontSize" Value="12" />
@@ -41,6 +42,8 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -84,6 +87,15 @@
                     <ToggleButton x:Name="FieldToggle" Content="Field" IsChecked="True" Style="{StaticResource MapToolToggle}"
                                   Checked="OnFieldToggled" Unchecked="OnFieldToggled"
                                   ToolTip="Standings panel" />
+                    <ToggleButton x:Name="FfbHeatToggle" Content="FFB Heatmap" Style="{StaticResource MapToolToggle}"
+                                  IsChecked="{Binding ShowForceHeatmap}"
+                                  ToolTip="Colour the driven line by wheel force: blue light, green/yellow working, red clipping" />
+                    <ToggleButton x:Name="FfbDiagToggle" Content="FFB Diagnostics" Style="{StaticResource MapToolToggle}"
+                                  IsChecked="{Binding ShowDiagnostics}"
+                                  ToolTip="FFB event markers (snaps, oscillation, clipping), verdict and profile recommendations" />
+                    <ToggleButton x:Name="CoachToggle" Content="Driver Coach" Style="{StaticResource MapToolToggle}"
+                                  IsChecked="{Binding ShowCoach}"
+                                  ToolTip="Each lap vs your best lap, corner by corner: time lost, braking point, apex and exit speed. Braking points on the map (white = best lap, orange = last lap)." />
                     <ToggleButton x:Name="FollowToggle" Content="Follow" Style="{StaticResource MapToolToggle}"
                                   ToolTip="Keep your car centred" />
                     <Button x:Name="FitBtn" Content="Fit track" Style="{StaticResource MapToolButton}" Click="OnFitClick"
@@ -101,6 +113,12 @@
                         <StackPanel>
                             <TextBlock Text="LAP" Style="{StaticResource StatLabel}" />
                             <TextBlock x:Name="LapValue" Text="--" Style="{StaticResource StatValue}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource StatTile}" ToolTip="Live gap to your best lap at this point (Driver Coach). Green = ahead, red = behind.">
+                        <StackPanel>
+                            <TextBlock Text="DELTA" Style="{StaticResource StatLabel}" />
+                            <TextBlock x:Name="DeltaValue" Text="--" Style="{StaticResource StatValue}" FontFamily="Consolas" />
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource StatTile}">
@@ -170,6 +188,57 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                    </Border>
+
+                    <!-- FFB layers (from the former Track Map page) -->
+                    <Border x:Name="FfbCard" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10"
+                            Padding="12,8" CornerRadius="6" Background="#E0101418" MaxWidth="340"
+                            Visibility="Collapsed">
+                        <StackPanel>
+                            <StackPanel Visibility="{Binding ShowForceHeatmap, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
+                                <TextBlock Text="FFB HEATMAP" FontSize="11" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Rectangle Width="18" Height="5" Fill="#FF0033FF" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="light" FontSize="11" Foreground="#FFB0B8C0" Margin="0,0,10,0" />
+                                    <Rectangle Width="18" Height="5" Fill="#FF00E600" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="working" FontSize="11" Foreground="#FFB0B8C0" Margin="0,0,10,0" />
+                                    <Rectangle Width="18" Height="5" Fill="#FFFF0000" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="clipping" FontSize="11" Foreground="#FFB0B8C0" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Visibility="{Binding ShowDiagnostics, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="FFB DIAGNOSTICS" FontSize="11" FontWeight="Bold" Foreground="#FF00E676" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <Ellipse Width="9" Height="9" Fill="#FF00E676" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="expected" FontSize="11" Foreground="#FFB0B8C0" Margin="0,0,10,0" />
+                                    <Ellipse Width="9" Height="9" Fill="#FFFFD600" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="notable" FontSize="11" Foreground="#FFB0B8C0" Margin="0,0,10,0" />
+                                    <Ellipse Width="9" Height="9" Fill="#FFFF3030" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="suspicious" FontSize="11" Foreground="#FFB0B8C0" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding DiagnosticCoverage}" FontSize="11" Foreground="#FF00BCD4" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding DiagnosticSummary}" FontSize="11" Foreground="#FFB0B8C0" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                <TextBlock Text="{Binding DiagnosticVerdict}" FontSize="12" Foreground="#FFF0883E" FontWeight="Bold" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                <TextBlock Text="{Binding LastEventInfo}" FontSize="11" Foreground="#FFFF8A65" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                <TextBlock Text="WORST PLACES" FontSize="10" FontWeight="Bold" Foreground="#FF8B949E" Margin="0,6,0,2" />
+                                <TextBlock Text="{Binding ProblemCornersText, TargetNullValue='', FallbackValue=''}" FontSize="11"
+                                           Foreground="#FFE6EDF3" TextWrapping="Wrap" />
+                                <TextBlock FontSize="11" Foreground="#FF8B949E" Text="No events yet — keep driving.">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ProblemCornersText}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="Red on a straight = check FFB settings; green at corners = normal." FontSize="10"
+                                           Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </StackPanel>
                     </Border>
 
                     <!-- Loading / empty state -->
@@ -247,8 +316,78 @@
             </Border>
         </Grid>
 
+        <!-- ═══ FFB recommendations (FFB Diagnostics layer) ═══ -->
+        <Border x:Name="RecommendationsPanel" Grid.Row="2" Margin="0,10,0,0" Padding="12,8"
+                Background="{DynamicResource BgCard}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                Visibility="{Binding ShowDiagnostics, Converter={StaticResource BoolToVis}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Apply Profile Changes" Command="{Binding ApplyRecommendationsCommand}"
+                        Style="{StaticResource MapToolButton}" VerticalAlignment="Top"
+                        ToolTip="Applies the recommendations to the active profile" />
+                <StackPanel>
+                    <TextBlock Text="FFB RECOMMENDATIONS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                    <TextBox IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource TextBrush}"
+                             FontFamily="Consolas" FontSize="12" Text="{Binding RecommendationsText, Mode=OneWay}"
+                             TextWrapping="Wrap" MaxHeight="90" VerticalScrollBarVisibility="Auto" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ═══ Driver Coach: last lap vs best lap, worst corners first ═══ -->
+        <Border x:Name="CoachPanel" Grid.Row="3" Margin="0,10,0,0" Padding="12,8"
+                Background="{DynamicResource BgCard}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                Visibility="{Binding ShowCoach, Converter={StaticResource BoolToVis}}">
+            <DockPanel>
+                <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                    <TextBlock Text="DRIVER COACH" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Rectangle Width="9" Height="9" Fill="#FFFFFFFF" Margin="0,0,4,0" VerticalAlignment="Center" />
+                        <TextBlock Text="best lap brake" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,10,0" />
+                        <Rectangle Width="9" Height="9" Fill="#FFFF9F43" Margin="0,0,4,0" VerticalAlignment="Center" />
+                        <TextBlock Text="last lap brake" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
+                    </StackPanel>
+                </Grid>
+                <TextBlock DockPanel.Dock="Top" Text="{Binding CoachHeader}" FontSize="13" FontWeight="SemiBold"
+                           TextWrapping="Wrap" Margin="0,0,0,6" />
+                <ScrollViewer MaxHeight="190" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding CoachRows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,2,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="190" />
+                                        <ColumnDefinition Width="64" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1" Text="{Binding DeltaText}" FontSize="12" FontWeight="Bold"
+                                               FontFamily="Consolas" Foreground="{Binding DeltaColor}" />
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Top">
+                                        <TextBlock Text="{Binding Advice}" FontSize="12" TextWrapping="Wrap">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <!-- An empty advice line must not push the figures down. -->
+                                                        <DataTrigger Binding="{Binding Advice}" Value="">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="{DynamicResource TextDimBrush}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
         <!-- ═══ Diagnostics (click the status pill) ═══ -->
-        <Border x:Name="DiagPanel" Grid.Row="2" Visibility="Collapsed" Margin="0,10,0,0"
+        <Border x:Name="DiagPanel" Grid.Row="4" Visibility="Collapsed" Margin="0,10,0,0"
                 Background="{DynamicResource BgPanel}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                 CornerRadius="6" Padding="10,6">
             <TextBlock x:Name="DiagText" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextDimBrush}"

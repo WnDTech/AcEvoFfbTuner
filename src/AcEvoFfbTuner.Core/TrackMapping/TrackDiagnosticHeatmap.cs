@@ -76,6 +76,7 @@ public sealed class TrackDiagnosticHeatmap
         lock (_lock)
         {
             _waypointCount = waypointCount;
+            _byLocation.Clear();
             _samples = new WaypointDiagnosticSample[waypointCount];
             for (int i = 0; i < waypointCount; i++)
                 _samples[i] = new WaypointDiagnosticSample();
@@ -166,6 +167,38 @@ public sealed class TrackDiagnosticHeatmap
                 case FfbEventType.Clipping: _lapClipTotal++; break;
                 case FfbEventType.ForceDirectionAnomaly: _lapAnomalyTotal++; break;
             }
+
+            if (!string.IsNullOrEmpty(evt.Location))
+            {
+                if (!_byLocation.TryGetValue(evt.Location, out var loc))
+                    _byLocation[evt.Location] = loc = new LocationFfbStats { Location = evt.Location };
+                switch (evt.EventType)
+                {
+                    case FfbEventType.Snap: loc.Snaps++; break;
+                    case FfbEventType.OscillationCluster: loc.Oscillations++; break;
+                    case FfbEventType.Clipping: loc.Clips++; break;
+                    case FfbEventType.ForceDirectionAnomaly: loc.Anomalies++; break;
+                }
+                if (evt.Classification == FfbEventClassification.Suspicious) loc.Suspicious++;
+                else if (evt.Classification == FfbEventClassification.ExpectedDynamics) loc.Expected++;
+            }
+        }
+    }
+
+    // Session tally per named place (corner / straight after it); reset with the map.
+    private readonly Dictionary<string, LocationFfbStats> _byLocation = new();
+
+    /// <summary>The worst places on the circuit by FFB events, most severe first.</summary>
+    public List<LocationFfbStats> GetWorstLocations(int max = 5)
+    {
+        lock (_lock)
+        {
+            return _byLocation.Values
+                .Where(l => l.Total > 0)
+                .OrderByDescending(l => l.Severity)
+                .Take(max)
+                .Select(l => l.Clone())
+                .ToList();
         }
     }
 
@@ -310,6 +343,7 @@ public sealed class TrackDiagnosticHeatmap
                 for (int i = 0; i < _waypointCount; i++)
                     _samples[i] = new WaypointDiagnosticSample();
             }
+            _byLocation.Clear();
             _lapSnapTotal = 0;
             _lapOscTotal = 0;
             _lapClipTotal = 0;

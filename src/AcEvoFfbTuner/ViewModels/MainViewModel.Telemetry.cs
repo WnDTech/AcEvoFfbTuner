@@ -152,7 +152,13 @@ public sealed partial class MainViewModel
         }
 
         var mapKey = TrackMapKeys.BuildKey(trackName, config);
-        if (!_telemetryLoop.MapBuilder.HasCompleteMap && !string.IsNullOrEmpty(trackName) && !_mapClearedByUser && _lastAutoLoadedTrack != mapKey)
+        // Reload on a new track, AND whenever the loop dropped the map (it resets on every
+        // session → LIVE transition, restart and packet reset). Gating on the track key alone
+        // discarded the saved map for the rest of the stint — no corners, names or heatmaps
+        // until a fresh lap was recorded (Silverstone 16:58:56, 2026-11-08).
+        bool mapDropped = !_telemetryLoop.PositionDetector.HasMap;
+        if (!_telemetryLoop.MapBuilder.HasCompleteMap && !string.IsNullOrEmpty(trackName) && !_mapClearedByUser
+            && (_lastAutoLoadedTrack != mapKey || mapDropped))
         {
             var savedMap = TrackMap.Load(trackName, config);
             if (savedMap != null && savedMap.Waypoints.Count >= 10)
@@ -562,7 +568,19 @@ public sealed partial class MainViewModel
             var lastEvt = _telemetryLoop.EventDetector.LastEvent;
             if (lastEvt != null)
             {
-                LastEventInfo = $"{lastEvt.EventType} @ {lastEvt.CornerName ?? "straight"} ({lastEvt.Classification}) ΔF={lastEvt.ForceDelta:F3}";
+                LastEventInfo = $"{lastEvt.EventType} @ {lastEvt.Location ?? lastEvt.CornerName ?? "straight"} ({lastEvt.Classification}) ΔF={lastEvt.ForceDelta:F3}";
+            }
+
+            var worst = _telemetryLoop.DiagnosticHeatmap.GetWorstLocations(5);
+            ProblemCornersText = worst.Count == 0 ? "" : string.Join("\n", worst.Select(w => w.Describe()));
+
+            var coachReport = _telemetryLoop.Coach.LatestReport;
+            var coachBest = _telemetryLoop.Coach.BestLap;
+            if (!ReferenceEquals(coachReport, _shownCoachReport) || !ReferenceEquals(coachBest, _shownCoachBest))
+            {
+                _shownCoachReport = coachReport;
+                _shownCoachBest = coachBest;
+                RefreshCoach(coachReport);
             }
 
             if (Application.Current?.MainWindow is MainWindow mw2)
@@ -1039,7 +1057,8 @@ public sealed partial class MainViewModel
             var pages = Enum.GetValues<NavPage>();
             int idx = Array.IndexOf(pages, startPage);
             DefaultStartPageIndex = idx >= 0 && idx < pages.Length ? idx : 0;
-            CurrentPage = startPage;
+            // Track Map was merged into Live Map (its nav entry is hidden).
+            CurrentPage = startPage == NavPage.TrackMap ? NavPage.LiveTrackMap : startPage;
         }
         else
         {
@@ -1099,6 +1118,9 @@ public sealed partial class MainViewModel
             return _lastCurrentCorner?.RealName;
         }
     }
+
+    /// <summary>The map the position detector uses — its corners drive the CORNER readout and FFB event locations.</summary>
+    public TrackMap? PositionMap => _telemetryLoop.PositionDetector.Map;
 
     public void NotifyCornerNameChanged()
     {

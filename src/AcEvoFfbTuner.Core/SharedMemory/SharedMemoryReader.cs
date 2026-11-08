@@ -687,7 +687,7 @@ public sealed class SharedMemoryReader : ISharedMemoryReader, ICarPositionSource
             string trackName = StaticFieldReader.GetTrack(buffer);
             if (!string.IsNullOrEmpty(trackName))
             {
-                var trackBytes = System.Text.Encoding.ASCII.GetBytes(trackName);
+                var trackBytes = System.Text.Encoding.UTF8.GetBytes(trackName);
                 Array.Clear(staticData.Track, 0, staticData.Track.Length);
                 Array.Copy(trackBytes, staticData.Track, Math.Min(trackBytes.Length, staticData.Track.Length));
             }
@@ -695,7 +695,7 @@ public sealed class SharedMemoryReader : ISharedMemoryReader, ICarPositionSource
             string trackConfig = StaticFieldReader.GetTrackConfiguration(buffer);
             if (!string.IsNullOrEmpty(trackConfig))
             {
-                var configBytes = System.Text.Encoding.ASCII.GetBytes(trackConfig);
+                var configBytes = System.Text.Encoding.UTF8.GetBytes(trackConfig);
                 Array.Clear(staticData.TrackConfiguration, 0, staticData.TrackConfiguration.Length);
                 Array.Copy(configBytes, staticData.TrackConfiguration, Math.Min(configBytes.Length, staticData.TrackConfiguration.Length));
             }
@@ -703,7 +703,7 @@ public sealed class SharedMemoryReader : ISharedMemoryReader, ICarPositionSource
             string sessionName = StaticFieldReader.GetSessionName(buffer);
             if (!string.IsNullOrEmpty(sessionName))
             {
-                var sessBytes = System.Text.Encoding.ASCII.GetBytes(sessionName);
+                var sessBytes = System.Text.Encoding.UTF8.GetBytes(sessionName);
                 Array.Clear(staticData.SessionName, 0, staticData.SessionName.Length);
                 Array.Copy(sessBytes, staticData.SessionName, Math.Min(sessBytes.Length, staticData.SessionName.Length));
             }
@@ -711,7 +711,7 @@ public sealed class SharedMemoryReader : ISharedMemoryReader, ICarPositionSource
             string nation = StaticFieldReader.GetNation(buffer);
             if (!string.IsNullOrEmpty(nation))
             {
-                var natBytes = System.Text.Encoding.ASCII.GetBytes(nation);
+                var natBytes = System.Text.Encoding.UTF8.GetBytes(nation);
                 Array.Clear(staticData.Nation, 0, staticData.Nation.Length);
                 Array.Copy(natBytes, staticData.Nation, Math.Min(natBytes.Length, staticData.Nation.Length));
             }
@@ -800,7 +800,7 @@ public sealed class SharedMemoryReader : ISharedMemoryReader, ICarPositionSource
         int end = Math.Min(offset + len, buffer.Length);
         int nullIdx = offset;
         while (nullIdx < end && buffer[nullIdx] != 0) nullIdx++;
-        return System.Text.Encoding.ASCII.GetString(buffer, offset, nullIdx - offset);
+        return System.Text.Encoding.UTF8.GetString(buffer, offset, nullIdx - offset);
     }
 
     private static void ScanForCoordinates(System.Text.StringBuilder sb, byte[] buffer, string label)

@@ -193,7 +193,7 @@ public sealed class RaceInfoProcessor
         if (data == null || data.Length == 0) return "";
         int nullIdx = Array.IndexOf(data, (byte)0);
         int len = nullIdx >= 0 ? nullIdx : data.Length;
-        return System.Text.Encoding.ASCII.GetString(data, 0, len).Trim();
+        return System.Text.Encoding.UTF8.GetString(data, 0, len).Trim().TrimEnd('�');
     }
 }
 

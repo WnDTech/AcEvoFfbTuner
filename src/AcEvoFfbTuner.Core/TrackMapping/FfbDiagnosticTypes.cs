@@ -42,6 +42,9 @@ public sealed class FfbDiagnosticEvent
     public float SlipRatioFront { get; set; }
     public bool InCorner { get; set; }
     public string? CornerName { get; set; }
+    /// <summary>Where on the circuit: the corner label ("T5 Les Combes") or, on a straight,
+    /// "after T5 Les Combes". Null until a corner has been passed.</summary>
+    public string? Location { get; set; }
     public int WaypointIndex { get; set; }
     public double TimestampS { get; set; }
 
@@ -115,6 +118,34 @@ public sealed class WaypointDiagnosticSample
 
     public FfbEventClassification WorstClassification { get; set; }
     public int TotalEventCount => SnapCount + OscillationCount + ClippingCount + ForceAnomalyCount;
+}
+
+/// <summary>FFB events tallied for one named place on the circuit (corner or the straight after it).</summary>
+public sealed class LocationFfbStats
+{
+    public string Location { get; set; } = "";
+    public int Snaps { get; set; }
+    public int Oscillations { get; set; }
+    public int Clips { get; set; }
+    public int Anomalies { get; set; }
+    public int Suspicious { get; set; }
+    public int Expected { get; set; }
+    public int Total => Snaps + Oscillations + Clips + Anomalies;
+    /// <summary>Ranking weight: suspicious events matter most, clipping next.</summary>
+    public int Severity => Suspicious * 3 + Clips * 2 + Total;
+
+    public string Describe()
+    {
+        var parts = new List<string>();
+        if (Suspicious > 0) parts.Add($"{Suspicious} suspicious");
+        if (Clips > 0) parts.Add($"{Clips} clip");
+        if (Snaps > 0) parts.Add($"{Snaps} snap");
+        if (Oscillations > 0) parts.Add($"{Oscillations} osc");
+        if (Anomalies > 0) parts.Add($"{Anomalies} anomaly");
+        return $"{Location}: {string.Join(", ", parts)}";
+    }
+
+    public LocationFfbStats Clone() => (LocationFfbStats)MemberwiseClone();
 }
 
 public sealed class DiagnosticLapSummary

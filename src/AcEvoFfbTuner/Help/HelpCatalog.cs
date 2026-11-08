@@ -541,7 +541,7 @@ public static class HelpCatalog
                 S("What this page does",
                     P("An experimental live map page that shows your position on an OpenStreetMap/satellite view of the track, with live speed, sector, corner, lap, position and pit state readouts."),
                     P("The OSM status bar shows data loading state; Refresh Data reloads the track data. Data quality depends on the track being present in OpenStreetMap — some tracks are incomplete."),
-                    Note("Work in progress", "This page is marked WIP in the sidebar — expect rough edges. The Track Map page is the full-featured recording and diagnostics tool."))
+                    P("FFB Heatmap and FFB Diagnostics (header toggles, off by default) draw the force map and FFB event markers on the real circuit, with the verdict, coverage and profile Recommendations — the tools that used to live on the Track Map page."))
             ),
 
             A("Overlays (OBS)", "Browser-source overlays for streaming and monitoring",

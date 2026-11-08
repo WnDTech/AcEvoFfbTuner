@@ -58,7 +58,7 @@ public static class StaticFieldReader
         int end = Math.Min(offset + maxLen, buf.Length);
         int nullIdx = offset;
         while (nullIdx < end && buf[nullIdx] != 0) nullIdx++;
-        return System.Text.Encoding.ASCII.GetString(buf, offset, nullIdx - offset);
+        return System.Text.Encoding.UTF8.GetString(buf, offset, nullIdx - offset);
     }
 
     private static int ReadI32(byte[] buf, int offset)

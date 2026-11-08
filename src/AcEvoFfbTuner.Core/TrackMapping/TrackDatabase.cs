@@ -26,6 +26,9 @@ public class TrackCornerInfo
     public string Name { get; set; } = "";
     public double Latitude { get; set; }
     public double Longitude { get; set; }
+    /// <summary>Geometry of the named way (OSM), when known — lets a recorded corner be matched
+    /// to the stretch it actually runs on. Null in caches written before 2026-11-08.</summary>
+    public List<TrackPoint>? Path { get; set; }
 }
 
 public class TrackPoint
