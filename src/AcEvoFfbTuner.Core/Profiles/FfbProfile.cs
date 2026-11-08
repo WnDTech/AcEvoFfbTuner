@@ -184,8 +184,14 @@ public sealed class FfbProfile
             r3e.DetailSmoothing = Slip.DetailSmoothing;
             r3e.SteeringAngleCompensationEnabled = Slip.SteeringAngleCompensationEnabled;
             r3e.GripReleaseRate = Slip.GripReleaseRate;
+            r3e.KerbStrikeDecayMs = Slip.KerbStrikeDecayMs;
+            r3e.BrakeShimmerGain = Slip.BrakeShimmerGain;
+            r3e.CoreFloor = Slip.CoreFloor;
+            r3e.CenterDirectionBlend = Slip.CenterDirectionBlend;
+            r3e.RoadCompressionGain = Slip.RoadCompressionGain;
+            r3e.UseNativeTorqueSign = Slip.UseNativeTorqueSign;
+            r3e.BumpTwistGain = Slip.BumpTwistGain;
         }
-
         if (pipeline is AcFfbPipeline ac)
         {
             ac.GearChangeMuteEnabled = Slip.GearChangeMuteEnabled;
@@ -234,6 +240,7 @@ public sealed class FfbProfile
             lmu.UseNativeTorqueSign = Slip.UseNativeTorqueSign;
             lmu.SelfSteerGain = Slip.SelfSteerGain;
             lmu.RoadTextureGain = Slip.RoadTextureGain;
+            lmu.RoadTextureDecayMs = Slip.RoadTextureDecayMs;
             lmu.BrakeLoadBias = Slip.BrakeLoadBias;
             lmu.SynthYawEnabled = Slip.SynthYawEnabled;
             lmu.SynthAbsEnabled = Slip.SynthAbsEnabled;
@@ -490,6 +497,12 @@ public sealed class FfbProfile
             DetailSmoothing = r3ePipe?.DetailSmoothing ?? lmuPipe?.DetailSmoothing ?? acPipe?.DetailSmoothing ?? prevSlip.DetailSmoothing,
             SteeringAngleCompensationEnabled = r3ePipe != null ? r3ePipe.SteeringAngleCompensationEnabled : prevSlip.SteeringAngleCompensationEnabled,
             GripReleaseRate = r3ePipe?.GripReleaseRate ?? prevSlip.GripReleaseRate,
+            KerbStrikeDecayMs = r3ePipe?.KerbStrikeDecayMs ?? prevSlip.KerbStrikeDecayMs,
+            BrakeShimmerGain = r3ePipe?.BrakeShimmerGain ?? prevSlip.BrakeShimmerGain,
+            CoreFloor = r3ePipe?.CoreFloor ?? prevSlip.CoreFloor,
+            CenterDirectionBlend = r3ePipe?.CenterDirectionBlend ?? prevSlip.CenterDirectionBlend,
+            RoadCompressionGain = r3ePipe?.RoadCompressionGain ?? prevSlip.RoadCompressionGain,
+            BumpTwistGain = r3ePipe?.BumpTwistGain ?? prevSlip.BumpTwistGain,
             GripScaleGain = lmuPipe?.GripScaleGain ?? prevSlip.GripScaleGain,
             TyreTempGain = lmuPipe?.TyreTempGain ?? prevSlip.TyreTempGain,
             RearGripDetailGain = lmuPipe?.RearGripDetailGain ?? prevSlip.RearGripDetailGain,
@@ -506,9 +519,11 @@ public sealed class FfbProfile
             YawOnsetMax = lmuPipe?.YawOnsetMax ?? prevSlip.YawOnsetMax,
             SuspRoadScale = lmuPipe?.SuspRoadScale ?? prevSlip.SuspRoadScale,
             UseMixerSuspRoad = lmuPipe != null ? lmuPipe.UseMixerSuspRoad : prevSlip.UseMixerSuspRoad,
-            UseNativeTorqueSign = lmuPipe != null ? lmuPipe.UseNativeTorqueSign : prevSlip.UseNativeTorqueSign,
+            // Shared key: LMU and R3E both read it (profiles are per-game).
+            UseNativeTorqueSign = lmuPipe != null ? lmuPipe.UseNativeTorqueSign : r3ePipe != null ? r3ePipe.UseNativeTorqueSign : prevSlip.UseNativeTorqueSign,
             SelfSteerGain = lmuPipe?.SelfSteerGain ?? prevSlip.SelfSteerGain,
             RoadTextureGain = lmuPipe?.RoadTextureGain ?? prevSlip.RoadTextureGain,
+            RoadTextureDecayMs = lmuPipe?.RoadTextureDecayMs ?? prevSlip.RoadTextureDecayMs,
             BrakeLoadBias = lmuPipe?.BrakeLoadBias ?? prevSlip.BrakeLoadBias,
             SynthYawEnabled = lmuPipe != null ? lmuPipe.SynthYawEnabled : prevSlip.SynthYawEnabled,
             SynthAbsEnabled = lmuPipe != null ? lmuPipe.SynthAbsEnabled : prevSlip.SynthAbsEnabled,
@@ -1322,7 +1337,7 @@ public sealed class SlipConfig
     // Plan C5: mixer susp-road scale/gate (1/true = current stacking).
     public float SuspRoadScale { get; set; } = 1f;
     public bool UseMixerSuspRoad { get; set; } = true;
-    // LMU only: core direction from the game's signed torque (true) or the
+    // LMU + R3E: core direction from the game's signed torque (true) or the
     // legacy steer-derived centring sign (false, A/B only). Missing key in
     // older profiles deserializes to true = the fix.
     public bool UseNativeTorqueSign { get; set; } = true;
@@ -1330,6 +1345,8 @@ public sealed class SlipConfig
     public float SelfSteerGain { get; set; } = 0.5f;
     // LMU only: zero-mean kerb/bump/slip texture in the steering force.
     public float RoadTextureGain { get; set; } = 1f;
+    // LMU only: texture knock decay in ms (short = rigid, long = soft).
+    public float RoadTextureDecayMs { get; set; } = 15f;
     // Plan C6: brake load bias (0 = legacy scalar only).
     public float BrakeLoadBias { get; set; } = 0f;
     // Plan C1: synthesis gates (yaw on; ABS/TC off until tuned).
@@ -1353,10 +1370,29 @@ public sealed class SlipConfig
     // R3E only: grip reload limiter, grip-scale units/sec of upward recovery.
     // 3.0 ≈ full recovery in ~0.3 s. Missing key deserializes to 3.0.
     public float GripReleaseRate { get; set; } = 3.0f;
+    // R3E only: kerb-strike knock decay in ms (15 = separate rigid hits,
+    // higher = blur). Missing key deserializes to 15.
+    public float KerbStrikeDecayMs { get; set; } = 15f;
+    // R3E only: braking shimmer gain (0-3, default 1). 0 = steady weight
+    // only. Missing key deserializes to 1.
+    public float BrakeShimmerGain { get; set; } = 1.0f;
+    // R3E only: core floor (0-0.3, default 0.05). Minimum column-torque
+    // magnitude before grip scaling. Missing key deserializes to 0.05.
+    public float CoreFloor { get; set; } = 0.05f;
+    // R3E only: center direction blend as fraction of full lock (default
+    // 0.01). Smooth ramp through zero instead of a sign step. Missing key
+    // deserializes to 0.01. (Replaces CenterDirectionBlendDeg, whose wheel-
+    // degree math was dimensionally wrong for R3E's road-wheel lock units;
+    // a stale Deg key in old files is ignored.)
+    public float CenterDirectionBlend { get; set; } = 0.01f;
+    // R3E only: road compression weight (0-2, default 1) and bump twist
+    // (0-2, default 0.5). Missing keys deserialize to the defaults.
+    public float RoadCompressionGain { get; set; } = 1.0f;
+    public float BumpTwistGain { get; set; } = 0.5f;
 
     private static float S(float v) => float.IsNaN(v) ? 0f : float.IsPositiveInfinity(v) ? float.MaxValue : float.IsNegativeInfinity(v) ? float.MinValue : v;
     public void SanitizeFloats() { SlipRatioGain = S(SlipRatioGain); SlipAngleGain = S(SlipAngleGain); SlipAngleShapeGain = S(SlipAngleShapeGain); SlipThreshold = S(SlipThreshold); GearSpikeThreshold = S(GearSpikeThreshold); BrakeBoostGain = S(BrakeBoostGain); BrakeBoostThreshold = S(BrakeBoostThreshold); CoreForceMultiplier = S(CoreForceMultiplier); GripScaleGain = S(GripScaleGain); TyreTempGain = S(TyreTempGain); ForceGain = S(ForceGain); TyreGripScale = S(TyreGripScale); FlatspotGain = S(FlatspotGain); SurfaceFeelGain = S(SurfaceFeelGain); EngineTorqueLfeMod = S(EngineTorqueLfeMod); BrakePressureGain = S(BrakePressureGain); TcFeelGain = S(TcFeelGain); CoreSmoothing = S(CoreSmoothing); DetailSmoothing =
-S(DetailSmoothing); GripReleaseRate = Math.Max(0.5f, Math.Min(20f, S(GripReleaseRate))); RearGripDetailGain = S(RearGripDetailGain); SelfSteerGain = S(SelfSteerGain); RoadTextureGain = S(RoadTextureGain); AutoMinPeak = S(AutoMinPeak); AutoTarget = S(AutoTarget); DcBlockCutoffHz = S(DcBlockCutoffHz); RearFyScale = S(RearFyScale); RearSlipAngleThreshold = S(RearSlipAngleThreshold); RearYawThreshold = S(RearYawThreshold); RearMaxOutput = S(RearMaxOutput); YawOnsetGain = S(YawOnsetGain); YawOnsetThreshold = S(YawOnsetThreshold); YawOnsetDecay = S(YawOnsetDecay); YawOnsetMax = S(YawOnsetMax); SuspRoadScale = S(SuspRoadScale); BrakeLoadBias = S(BrakeLoadBias); LockupSlipThreshold = S(LockupSlipThreshold); SpinSlipThreshold = S(SpinSlipThreshold); }
+S(DetailSmoothing); GripReleaseRate = Math.Max(0.5f, Math.Min(20f, S(GripReleaseRate))); KerbStrikeDecayMs = Math.Max(3f, Math.Min(100f, S(KerbStrikeDecayMs))); BrakeShimmerGain = Math.Max(0f, Math.Min(3f, S(BrakeShimmerGain))); CoreFloor = Math.Max(0f, Math.Min(0.3f, S(CoreFloor))); CenterDirectionBlend = Math.Max(0.002f, Math.Min(0.1f, S(CenterDirectionBlend))); RoadCompressionGain = Math.Max(0f, Math.Min(2f, S(RoadCompressionGain))); BumpTwistGain = Math.Max(0f, Math.Min(2f, S(BumpTwistGain))); RearGripDetailGain = S(RearGripDetailGain); SelfSteerGain = S(SelfSteerGain); RoadTextureGain = S(RoadTextureGain); RoadTextureDecayMs = S(RoadTextureDecayMs); AutoMinPeak = S(AutoMinPeak); AutoTarget = S(AutoTarget); DcBlockCutoffHz = S(DcBlockCutoffHz); RearFyScale = S(RearFyScale); RearSlipAngleThreshold = S(RearSlipAngleThreshold); RearYawThreshold = S(RearYawThreshold); RearMaxOutput = S(RearMaxOutput); YawOnsetGain = S(YawOnsetGain); YawOnsetThreshold = S(YawOnsetThreshold); YawOnsetDecay = S(YawOnsetDecay); YawOnsetMax = S(YawOnsetMax); SuspRoadScale = S(SuspRoadScale); BrakeLoadBias = S(BrakeLoadBias); LockupSlipThreshold = S(LockupSlipThreshold); SpinSlipThreshold = S(SpinSlipThreshold); }
 }
 
 public sealed class DynamicConfig

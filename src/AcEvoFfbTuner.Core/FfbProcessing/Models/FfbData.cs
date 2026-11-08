@@ -80,6 +80,11 @@ public sealed class FfbRawData
     public float[] TyreTemp { get; set; } = new float[4];
     public float EngineTorque { get; set; }
     public float[] TireFlatspot { get; set; } = new float[4];
+    /// <summary>R3E only: full physical wheel rotation in degrees (steer_wheel_range_degrees). 0 = unknown / other games.</summary>
+    public float SteerWheelRangeDeg { get; set; }
+    /// <summary>R3E only (diagnostics): raw steering_force (column force, game units) and steering_force_percentage (in-game FFB output, ±1 full scale) with their native signs.</summary>
+    public float R3eSteeringForce { get; set; }
+    public float R3eSteeringForcePct { get; set; }
     public float GapAhead { get; set; }
     public float GapBehind { get; set; }
     public int RacePosition { get; set; }
@@ -178,6 +183,8 @@ public sealed class FfbProcessedData
     public float DiagLfe { get; set; }
     public float DiagAbsMod { get; set; }
     public float DiagRoadMod { get; set; }
+    /// <summary>R3E road compression weight factor (1 = none). 0 for other games.</summary>
+    public float DiagRoadCompWeight { get; set; }
     public float DiagFrontRatio { get; set; }
     public float DiagRearRatio { get; set; }
     public float DiagEngageThr { get; set; }

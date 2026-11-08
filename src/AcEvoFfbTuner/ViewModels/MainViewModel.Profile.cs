@@ -34,9 +34,38 @@ public sealed partial class MainViewModel
         _appSettings.Save();
     }
 
+    // Guard for the reload-and-reselect below: the nested selection change
+    // must apply (not reload again), so the flag wraps only the reselect.
+    private bool _applyingFreshProfile;
+
     partial void OnSelectedProfileChanged(FfbProfile? value)
     {
         if (value == null) return;
+        if (!_applyingFreshProfile)
+        {
+            // Reload from disk so hand-edits apply on reselect without an
+            // app restart. Swap the UI selection onto the fresh object so
+            // later saves serialize it (never a stale cached copy); the
+            // nested change event applies it and terminates (one level).
+            var fresh = _profileManager.ReloadProfileFromDisk(value.Name);
+            if (fresh != null)
+            {
+                _applyingFreshProfile = true;
+                try
+                {
+                    RefreshProfiles();
+                    var item = Profiles.FirstOrDefault(p =>
+                        string.Equals(p.Name, fresh.Name, StringComparison.OrdinalIgnoreCase));
+                    if (item != null && !ReferenceEquals(item, value))
+                    {
+                        SelectedProfile = item;
+                        return;
+                    }
+                    value = item ?? fresh;
+                }
+                finally { _applyingFreshProfile = false; }
+            }
+        }
         _profileManager.SetActiveProfile(value);
         value.ApplyToPipeline(_pipeline);
         value.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
@@ -606,6 +635,12 @@ public sealed partial class MainViewModel
         DetailSmoothing = profile.Slip.DetailSmoothing;
         SteeringAngleCompensationEnabled = profile.Slip.SteeringAngleCompensationEnabled;
         GripReleaseRate = profile.Slip.GripReleaseRate;
+        KerbStrikeDecayMs = profile.Slip.KerbStrikeDecayMs;
+        BrakeShimmerGain = profile.Slip.BrakeShimmerGain;
+        CoreFloor = profile.Slip.CoreFloor;
+        CenterDirectionBlend = profile.Slip.CenterDirectionBlend;
+        RoadCompressionGain = profile.Slip.RoadCompressionGain;
+        BumpTwistGain = profile.Slip.BumpTwistGain;
         BrakeBoostGain = profile.Slip.BrakeBoostGain;
         BrakeBoostThreshold = profile.Slip.BrakeBoostThreshold;
         ForceGain = profile.Slip.ForceGain;
@@ -621,6 +656,7 @@ public sealed partial class MainViewModel
         UseNativeTorqueSign = profile.Slip.UseNativeTorqueSign;
         SelfSteerGain = profile.Slip.SelfSteerGain;
         RoadTextureGain = profile.Slip.RoadTextureGain;
+        RoadTextureDecayMs = profile.Slip.RoadTextureDecayMs;
         SynthAbsEnabled = profile.Slip.SynthAbsEnabled;
         SynthTcEnabled = profile.Slip.SynthTcEnabled;
         SteerVelocityReference = profile.Advanced.SteerVelocityReference;
@@ -883,6 +919,13 @@ public sealed partial class MainViewModel
             DetailSmoothing = r3eSync.DetailSmoothing;
             SteeringAngleCompensationEnabled = r3eSync.SteeringAngleCompensationEnabled;
             GripReleaseRate = r3eSync.GripReleaseRate;
+            KerbStrikeDecayMs = r3eSync.KerbStrikeDecayMs;
+            BrakeShimmerGain = r3eSync.BrakeShimmerGain;
+            CoreFloor = r3eSync.CoreFloor;
+            CenterDirectionBlend = r3eSync.CenterDirectionBlend;
+            RoadCompressionGain = r3eSync.RoadCompressionGain;
+            UseNativeTorqueSign = r3eSync.UseNativeTorqueSign;
+            BumpTwistGain = r3eSync.BumpTwistGain;
             BrakeBoostGain = r3eSync.BrakeBoostGain;
             BrakeBoostThreshold = r3eSync.BrakeBoostThreshold;
         }
@@ -902,6 +945,7 @@ public sealed partial class MainViewModel
             UseNativeTorqueSign = lmuSync.UseNativeTorqueSign;
             SelfSteerGain = lmuSync.SelfSteerGain;
             RoadTextureGain = lmuSync.RoadTextureGain;
+            RoadTextureDecayMs = lmuSync.RoadTextureDecayMs;
             SynthAbsEnabled = lmuSync.SynthAbsEnabled;
             SynthTcEnabled = lmuSync.SynthTcEnabled;
             CoreSmoothing = lmuSync.CoreSmoothing;
@@ -1138,6 +1182,13 @@ public sealed partial class MainViewModel
             r3eLoad.DetailSmoothing = DetailSmoothing;
             r3eLoad.SteeringAngleCompensationEnabled = SteeringAngleCompensationEnabled;
             r3eLoad.GripReleaseRate = GripReleaseRate;
+            r3eLoad.KerbStrikeDecayMs = KerbStrikeDecayMs;
+            r3eLoad.BrakeShimmerGain = BrakeShimmerGain;
+            r3eLoad.CoreFloor = CoreFloor;
+            r3eLoad.CenterDirectionBlend = CenterDirectionBlend;
+            r3eLoad.RoadCompressionGain = RoadCompressionGain;
+            r3eLoad.UseNativeTorqueSign = UseNativeTorqueSign;
+            r3eLoad.BumpTwistGain = BumpTwistGain;
             r3eLoad.BrakeBoostGain = BrakeBoostGain;
             r3eLoad.BrakeBoostThreshold = BrakeBoostThreshold;
         }
@@ -1158,6 +1209,7 @@ public sealed partial class MainViewModel
             lmuLoad.UseNativeTorqueSign = UseNativeTorqueSign;
             lmuLoad.SelfSteerGain = SelfSteerGain;
             lmuLoad.RoadTextureGain = RoadTextureGain;
+            lmuLoad.RoadTextureDecayMs = RoadTextureDecayMs;
             lmuLoad.SynthAbsEnabled = SynthAbsEnabled;
             lmuLoad.SynthTcEnabled = SynthTcEnabled;
             lmuLoad.CoreSmoothing = CoreSmoothing;
@@ -1309,3 +1361,4 @@ public sealed partial class MainViewModel
         PushLedConfig();
     }
 }
+

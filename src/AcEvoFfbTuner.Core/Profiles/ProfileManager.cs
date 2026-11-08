@@ -65,6 +65,38 @@ public sealed class ProfileManager
         profile.ApplyToPipeline(pipeline);
     }
 
+    /// <summary>
+    /// Re-read a profile from disk by name (hand-edits and external changes
+    /// apply on reselect without restarting the app). Runs the same migrate
+    /// step as startup load, swaps the cached entry so later selects/saves
+    /// stay consistent, and returns the fresh copy. Returns null on any
+    /// failure (missing/renamed/locked file, bad JSON) — callers fall back
+    /// to the cached object. No writes, no exceptions escape.
+    /// </summary>
+    public FfbProfile? ReloadProfileFromDisk(string name)
+    {
+        try
+        {
+            string path = GetProfileFilePath(name);
+            if (!File.Exists(path))
+                return null;
+            var profile = JsonSerializer.Deserialize<FfbProfile>(File.ReadAllText(path), JsonOptions);
+            if (profile == null)
+                return null;
+            profile.Migrate();
+            int idx = _profiles.FindIndex(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (idx >= 0)
+                _profiles[idx] = profile;
+            else
+                _profiles.Add(profile);
+            return profile;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public FfbProfile SaveProfileFromPipeline(FfbPipeline pipeline, string name)
     {
         var existing = _profiles.FirstOrDefault(p => p.Name == name);

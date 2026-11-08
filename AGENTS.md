@@ -328,7 +328,12 @@ official SDK and this app's own telemetry logs — do not guess or copy from mem
 
 ### Shared memory layout facts
 
-- MMF name: `$R3E`, version `R3E_VERSION_MAJOR = 3`, `R3E_VERSION_MINOR = 5`.
+- MMF name: ``, version `R3E_VERSION_MAJOR = 3`, `R3E_VERSION_MINOR = 6` (SDK updated 2026-10-27;
+  verified live 2026-11-08). 3.6 repurposed reserved slots (driver `StartGroup/StartPhase/FormationSlot`,
+  event `StartMode/StartGroupCount`) and APPENDED a start-procedure block after `all_drivers_data_1` —
+  our struct layout is unchanged. **3.6 has NO contact-patch fields** (Historic Update tyre model is only
+  visible through `steering_force`/`tire_grip`/`tire_load`). Re-check the SDK commit log before
+  claiming a field does or doesn't exist.
 - Struct is `#pragma pack(push, 1)` — all fields tightly packed, NO padding.
 - `R3E_NUM_DRIVERS_MAX = 128` — `all_drivers_data_1[128]` at end of struct.
 - Header fields: `version_major`, `version_minor`, `all_drivers_offset` (offset to
@@ -462,9 +467,12 @@ tc / abs / esp / countersteer / cornering:
   (vec3_f64, m/s, m/s²), `orientation`, `rotation`, `angular_acceleration`,
   `angular_velocity`, `local_angular_velocity` (rad/s).
 - `local_g_force` (driver g-force local to car).
-- **`steering_force`** and **`steering_force_percentage`** (r3e_float64) — total
-  steering force through the steering bars; the FFB app derives centering force
-  from `SteeringForcePercentage` (0-100%) with direction from steer input.
+- **`steering_force`** (r3e_float64) — raw total force through the steering bars, independent of
+  in-game FFB settings. **`steering_force_percentage`** — per API 3.6 docs: the in-game FFB OUTPUT before
+  the max-force clamp, **±1.0 = device full scale, beyond = clipping**, includes car FFB multiplier + user
+  FFB settings, same sign as `steering_force`. Verified live 2026-11-08: fixed ratio (−198 → −0.031).
+  It is NOT 0–100 — never divide by 100. The app drives the core from its magnitude with
+  direction from steer input.
 - `engine_torque` (current engine torque), `current_downforce` (N), `voltage`,
   `ers_level`, `power_mgu_h`, `power_mgu_k`, `torque_mgu_k` (currently unused).
 - Suspension (radians/meters/m/s): `suspension_deflection[4]`,
@@ -494,7 +502,7 @@ tc / abs / esp / countersteer / cornering:
 
 ### Per-wheel fields (R3eTireData<T>)
 
-- `TireRps` (rad/s), `TireSpeed` (m/s), `TireGrip` (0.0–1.0), `TireLoad` (N),
+- `TireRps` (rad/s), `TireSpeed` (m/s — **NEGATIVE for forward rolling**, verified live 2026-11-08; use magnitude for slip ratio), `TireGrip` (0.0–1.0), `TireLoad` (N),
   `TirePressure` (KPa), `TireWear` (0.0–1.0), `TireFlatspot` (0 false / 1 true per wheel),
   `BrakePressure` (N — EMPIRICALLY VERIFIED 2026-08-01 logs: SDK header claims kN but the
   shipped game sends Newtons, e.g. 3653 N ≈ 3.65 kN under braking; normalize by ~5000 N,

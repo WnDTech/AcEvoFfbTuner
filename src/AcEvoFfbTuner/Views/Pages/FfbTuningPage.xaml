@@ -405,6 +405,13 @@
                                     <TextBlock Text="On = legacy +15% high-steer boost. Off = feel the Historic Update's own SAT curve (recommended)." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
+                            <DockPanel Margin="0,0,0,10" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}">
+                                <CheckBox DockPanel.Dock="Left" IsChecked="{Binding UseNativeTorqueSign}" VerticalAlignment="Top" Margin="0,3,12,0" />
+                                <StackPanel>
+                                    <TextBlock Text="Game Torque Direction (RaceRoom)" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock Text="On = use the game's own torque direction (real self-steer, camber and crown through centre). Off = legacy: force always points back toward centre (uses Core Floor + Direction Blend)." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </DockPanel>
                             <TextBlock Text="Around centre" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <controls:LabeledSlider Value="{Binding CenterKneePower, Mode=TwoWay}" Minimum="1" Maximum="3" TickFrequency="0.01"
                                 Label="Centre Softness (knee)" StringFormat="{}{0:F2}" LabelAbove="True"
@@ -763,6 +770,18 @@
                                 LowLabel="Smooth" HighLabel="Bumpy"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.SuspensionRoadGain}"
                                 SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                            <controls:LabeledSlider Value="{Binding RoadCompressionGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                Label="Road Compression (RaceRoom)" StringFormat="{}{0:F2}" LabelAbove="True"
+                                Description="Crests and compressions make the steering heavier, dips make it lighter — always in the direction you are already steering. 1 = ±25% weight."
+                                LowLabel="Off" HighLabel="Heavy crests"
+                                DefaultValue="1"
+                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                            <controls:LabeledSlider Value="{Binding BumpTwistGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
+                                Label="Bump Twist (RaceRoom)" StringFormat="{}{0:F2}" LabelAbove="True"
+                                Description="Steering kick when one front wheel hits a bump harder than the other. Smooth tarmac stays silent."
+                                LowLabel="Off" HighLabel="Strong kicks"
+                                DefaultValue="0.5"
+                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding RoadFeel, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Bump Feel" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Force from rapid suspension compression (bumps, kerbs, crests)."

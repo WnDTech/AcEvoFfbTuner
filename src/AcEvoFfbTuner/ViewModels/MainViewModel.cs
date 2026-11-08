@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
@@ -407,6 +407,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private float _roadTextureGain = 1f;
 
     [ObservableProperty]
+    private float _roadTextureDecayMs = 15f;
+
+    [ObservableProperty]
     private bool _synthAbsEnabled = false;
 
     [ObservableProperty]
@@ -554,6 +557,24 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private float _gripReleaseRate = 3.0f;
+
+    [ObservableProperty]
+    private float _kerbStrikeDecayMs = 15f;
+
+    [ObservableProperty]
+    private float _brakeShimmerGain = 1.0f;
+
+    [ObservableProperty]
+    private float _coreFloor = 0.05f;
+
+    [ObservableProperty]
+    private float _centerDirectionBlend = 0.01f;
+
+    [ObservableProperty]
+    private float _roadCompressionGain = 1.0f;
+
+    [ObservableProperty]
+    private float _bumpTwistGain = 0.5f;
 
     [ObservableProperty]
     private float _brakeBoostGain = 0.15f;

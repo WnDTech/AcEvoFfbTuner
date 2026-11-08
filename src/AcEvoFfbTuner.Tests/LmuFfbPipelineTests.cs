@@ -141,6 +141,23 @@ public class LmuFfbPipelineTests
     }
 
     [Fact]
+    public void TextureSharpness_ShorterDecay_KnockEndsSooner()
+    {
+        // Same kerb step; a 15 ms decay must leave far less tail than 60 ms
+        // a short while later (rigid separate hits vs blurred wobble).
+        float Tail(float decayMs)
+        {
+            var p = new LmuFfbPipeline { DetailSmoothing = 0f, RoadTextureDecayMs = decayMs };
+            _raw.KerbVibration = 0f; _raw.SlipVibrations = 0f;
+            var b = RunDetail(p, _raw, 100)[^1];
+            _raw.KerbVibration = 0.4f;
+            var on = RunDetail(p, _raw, 40);
+            return Math.Abs(on[^1] - b) / Math.Max(Math.Abs(on[0] - b), 1e-6f);
+        }
+        Tail(15f).Should().BeLessThan(Tail(60f) * 0.5f);
+    }
+
+    [Fact]
     public void LegacySign_Oversteer_CentresAgainstCountersteer()
     {
         // Documents the defect the native mode fixes.

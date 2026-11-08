@@ -173,6 +173,8 @@ public sealed partial class MainViewModel
     {
         if (_pipeline is LmuFfbPipeline lmu)
             lmu.UseNativeTorqueSign = value;
+        else if (_pipeline is R3eFfbPipeline r3e)
+            r3e.UseNativeTorqueSign = value;
     }
     partial void OnSelfSteerGainChanged(float value)
     {
@@ -183,6 +185,11 @@ public sealed partial class MainViewModel
     {
         if (_pipeline is LmuFfbPipeline lmu)
             lmu.RoadTextureGain = value;
+    }
+    partial void OnRoadTextureDecayMsChanged(float value)
+    {
+        if (_pipeline is LmuFfbPipeline lmu)
+            lmu.RoadTextureDecayMs = value;
     }
     partial void OnSynthAbsEnabledChanged(bool value)
     {
@@ -298,6 +305,36 @@ public sealed partial class MainViewModel
     {
         if (_pipeline is R3eFfbPipeline r3e)
             r3e.GripReleaseRate = value;
+    }
+    partial void OnKerbStrikeDecayMsChanged(float value)
+    {
+        if (_pipeline is R3eFfbPipeline r3e)
+            r3e.KerbStrikeDecayMs = value;
+    }
+    partial void OnBrakeShimmerGainChanged(float value)
+    {
+        if (_pipeline is R3eFfbPipeline r3e)
+            r3e.BrakeShimmerGain = value;
+    }
+    partial void OnCoreFloorChanged(float value)
+    {
+        if (_pipeline is R3eFfbPipeline r3e)
+            r3e.CoreFloor = value;
+    }
+    partial void OnCenterDirectionBlendChanged(float value)
+    {
+        if (_pipeline is R3eFfbPipeline r3e)
+            r3e.CenterDirectionBlend = value;
+    }
+    partial void OnRoadCompressionGainChanged(float value)
+    {
+        if (_pipeline is R3eFfbPipeline r3e)
+            r3e.RoadCompressionGain = value;
+    }
+    partial void OnBumpTwistGainChanged(float value)
+    {
+        if (_pipeline is R3eFfbPipeline r3e)
+            r3e.BumpTwistGain = value;
     }
     partial void OnForceGainChanged(float value)
     {

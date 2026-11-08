@@ -7,78 +7,55 @@ namespace AcEvoFfbTuner.Tests;
 
 public class MozaPhfProviderTests
 {
-    private static MozaPhfConfig FullKitConfig() => new()
-    {
-        ModuleMask = 0b111,
-        ReportId = 0x00,
-        ReportLength = 64
-    };
+    private static byte[] Hex(string h) =>
+        Enumerable.Range(0, h.Length / 2).Select(i => Convert.ToByte(h.Substring(i * 2, 2), 16)).ToArray();
 
+    // Frames below are verbatim from the 2026-11-06 USB capture of real
+    // PHF effects (and hardware-verified to vibrate when sent by the app).
     [Fact]
-    public void BuildReport_UpdateCommandAndChannelEncoding()
+    public void BuildFrame_MatchesCapturedBrakeTc()
     {
-        var cfg = FullKitConfig();
-
-        var report = MozaPhfProvider.BuildReport(cfg,
-            (0.5f, 30), (1.0f, 18), (0.0f, 40));
-
-        report.Length.Should().Be(64);
-        report[0].Should().Be(0x00);
-        report[1].Should().Be(0x01); // update command
-        // Brake at offset 2: 100% / 18Hz
-        report[2].Should().Be(100);
-        report[3].Should().Be(18);
-        // Throttle at offset 4: 50% / 30Hz
-        report[4].Should().Be(50);
-        report[5].Should().Be(30);
-        // Clutch at offset 6: 0 / fitted so freq still written
-        report[6].Should().Be(0);
-        report[7].Should().Be(40);
+        MozaPhfProvider.BuildFrame(0x02, MozaPhfProvider.EffectTc, true, 200, 50, 0x7FFF)
+            .Should().Equal(Hex("7e0b4d12010102000100c800327fff72"));
     }
 
     [Fact]
-    public void BuildReport_UnfittedModule_ForcedToZero()
+    public void BuildFrame_MatchesCapturedBrakeRoadTexture()
     {
-        // RS102 kit with the single module on the brake only.
-        var cfg = FullKitConfig();
-        cfg.SetModule(MozaPhfChannel.Throttle, false);
-        cfg.SetModule(MozaPhfChannel.Clutch, false);
-
-        var report = MozaPhfProvider.BuildReport(cfg,
-            (1.0f, 30), (1.0f, 18), (1.0f, 40));
-
-        report[2].Should().Be(100); // brake driven
-        report[4].Should().Be(0);   // throttle silenced
-        report[5].Should().Be(0);
-        report[6].Should().Be(0);   // clutch silenced
-        report[7].Should().Be(0);
+        MozaPhfProvider.BuildFrame(0x02, MozaPhfProvider.EffectRoad, true, 100, 100, 0x7FFF)
+            .Should().Equal(Hex("7e0b4d120101020801006400647fff48"));
     }
 
     [Fact]
-    public void BuildReport_ClampsIntensityAndFrequency()
+    public void BuildFrame_MatchesCapturedThrottleGearShiftGain()
     {
-        var cfg = FullKitConfig();
-
-        var report = MozaPhfProvider.BuildReport(cfg,
-            (2.5f, 250), (-1f, -20), (0.756f, 100));
-
-        report[4].Should().Be(100); // intensity clamped
-        report[5].Should().Be(100); // freq clamped
-        report[2].Should().Be(0);   // negative intensity clamped
-        report[3].Should().Be(0);
-        report[6].Should().Be(76);  // 0.756 * 100 rounded
+        MozaPhfProvider.BuildFrame(0x01, MozaPhfProvider.EffectGearShift, true, 200, 100, 0xCCCC)
+            .Should().Equal(Hex("7e0b4d12010101060100c80064cccc").Concat(new[] {
+                MozaPhfProvider.Checksum(Hex("7e0b4d12010101060100c80064cccc"), 15) }));
     }
 
     [Fact]
-    public void BuildStopReport_StopCommandAllZero()
+    public void BuildFrame_StopFrameCarriesZeros()
     {
-        var cfg = FullKitConfig();
+        var f = MozaPhfProvider.BuildFrame(0x02, MozaPhfProvider.EffectTc, false, 200, 50, 0x7FFF);
+        f.Skip(8).Take(7).All(b => b == 0).Should().BeTrue();
+        f[15].Should().Be(MozaPhfProvider.Checksum(f, 15));
+    }
 
-        var report = MozaPhfProvider.BuildStopReport(cfg);
+    [Fact]
+    public void BuildFrame_ClampsFrequencyAndCarriesAmplitude()
+    {
+        var f = MozaPhfProvider.BuildFrame(0x02, MozaPhfProvider.EffectRoad, true, 100, 250, 0xABCD);
+        f[12].Should().Be(100);
+        f[13].Should().Be(0xAB);
+        f[14].Should().Be(0xCD);
+    }
 
-        report.Length.Should().Be(64);
-        report[1].Should().Be(0x00);
-        report.Skip(2).All(b => b == 0).Should().BeTrue();
+    [Fact]
+    public void Checksum_MatchesMozaPing()
+    {
+        // 7E 00 00 12 -> 9D (captured keep-alive)
+        MozaPhfProvider.Checksum([0x7E, 0x00, 0x00, 0x12], 4).Should().Be(0x9D);
     }
 
     [Fact]

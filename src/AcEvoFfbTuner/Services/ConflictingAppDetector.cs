@@ -36,6 +36,8 @@ public static class ConflictingAppDetector
         ("simhub.desktop", "SimHub", "Can send haptic/FFB effects to wheel devices that interfere with this app's output."),
         ("crewchief", "Crew Chief", "May send DirectInput vibration effects to the wheel that conflict with this app's FFB."),
         ("crewchief.v4", "Crew Chief", "May send DirectInput vibration effects to the wheel that conflict with this app's FFB."),
+        ("ffbhub", "FFB-HUB", "Telemetry-based FFB app that takes exclusive DirectInput control — only one FFB app can drive the wheel at a time."),
+        ("lmuffb", "FFB-HUB (LMUFFB)", "Telemetry-based FFB app that takes exclusive DirectInput control — only one FFB app can drive the wheel at a time."),
     };
 
     private static string[]? _cachedProcessNames;

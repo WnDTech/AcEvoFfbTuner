@@ -13,6 +13,84 @@ namespace AcEvoFfbTuner.ViewModels;
 /// driven through the single control-box HID device — the module checkboxes
 /// below record which ports are physically fitted.
 /// </summary>
+/// <summary>One PHF effect's strength (0-200 %) and frequency (0-100 Hz),
+/// backed by getter/setter delegates into the PHF config.</summary>
+public sealed class PhfEffectRow : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
+{
+    private readonly Func<int> _getStrength, _getFrequency;
+    private readonly Action<int> _setStrength, _setFrequency;
+
+    private readonly Func<int> _getRoute;
+    private readonly Action<int> _setRoute;
+
+    public PhfEffectRow(string name, string hint,
+        Func<int> getStrength, Action<int> setStrength,
+        Func<int> getFrequency, Action<int> setFrequency,
+        Func<int> getRoute, Action<int> setRoute)
+    {
+        Name = name; Hint = hint;
+        _getStrength = getStrength; _setStrength = setStrength;
+        _getFrequency = getFrequency; _setFrequency = setFrequency;
+        _getRoute = getRoute; _setRoute = setRoute;
+    }
+
+    public string Name { get; }
+
+    /// <summary>Short note on how routing behaves for this effect (may be empty).</summary>
+    public string Hint { get; }
+    public bool HasHint => !string.IsNullOrEmpty(Hint);
+
+    // Route bits match MozaPhfConfig.ModuleMask: 1 throttle, 2 brake, 4 clutch.
+    public bool OnBrake { get => (_getRoute() & 0b010) != 0; set => SetBit(0b010, value); }
+    public bool OnThrottle { get => (_getRoute() & 0b001) != 0; set => SetBit(0b001, value); }
+    public bool OnClutch { get => (_getRoute() & 0b100) != 0; set => SetBit(0b100, value); }
+    public bool IsOff => _getRoute() == 0;
+
+    private void SetBit(int bit, bool on)
+    {
+        int mask = _getRoute();
+        int next = on ? mask | bit : mask & ~bit;
+        if (next == mask) return;
+        _setRoute(next);
+        OnPropertyChanged(nameof(OnBrake));
+        OnPropertyChanged(nameof(OnThrottle));
+        OnPropertyChanged(nameof(OnClutch));
+        OnPropertyChanged(nameof(IsOff));
+    }
+
+    public void RefreshRoute()
+    {
+        OnPropertyChanged(nameof(OnBrake));
+        OnPropertyChanged(nameof(OnThrottle));
+        OnPropertyChanged(nameof(OnClutch));
+        OnPropertyChanged(nameof(IsOff));
+    }
+
+    public int Strength
+    {
+        get => _getStrength();
+        set
+        {
+            value = Math.Clamp(value, 0, 200);
+            if (value == _getStrength()) return;
+            _setStrength(value);
+            OnPropertyChanged();
+        }
+    }
+
+    public int Frequency
+    {
+        get => _getFrequency();
+        set
+        {
+            value = Math.Clamp(value, 1, 100);
+            if (value == _getFrequency()) return;
+            _setFrequency(value);
+            OnPropertyChanged();
+        }
+    }
+}
+
 public sealed partial class MainViewModel
 {
     private MozaPhfProvider? _mozaPhf;
@@ -148,6 +226,58 @@ public sealed partial class MainViewModel
         set { if (SetProperty(ref _mozaPhfRpmFreq, value)) SaveMozaPhfConfig(); }
     }
 
+    /// <summary>One row per PHF effect: strength (%) + frequency (Hz).
+    /// Built once in InitMozaPhfCommands.</summary>
+    public ObservableCollection<PhfEffectRow> MozaPhfEffects { get; } = [];
+
+    private void BuildMozaPhfEffectRows()
+    {
+        var cfg = MozaPhfConfigManager.Instance.Config;
+        void Save() => SaveMozaPhfConfig();
+
+        PhfEffectRow Row(string key, string name, string hint,
+            Func<int> getS, Action<int> setS, Func<int> getF, Action<int> setF) =>
+            new(name, hint, getS, v => { setS(v); Save(); }, getF, setF,
+                () => cfg.GetRoute(key), m => { cfg.SetRoute(key, m); Save(); });
+
+        MozaPhfEffects.Clear();
+        MozaPhfEffects.Add(Row(PhfEffectKeys.Abs, "ABS", "",
+            () => cfg.AbsStrength, v => cfg.AbsStrength = v,
+            () => MozaPhfAbsFreq, v => MozaPhfAbsFreq = v));
+        MozaPhfEffects.Add(Row(PhfEffectKeys.Lockup, "Wheel lockup", "",
+            () => cfg.LockupStrength, v => cfg.LockupStrength = v,
+            () => cfg.LockupFrequency, v => { cfg.LockupFrequency = v; Save(); }));
+        MozaPhfEffects.Add(Row(PhfEffectKeys.BrakePressure, "Brake pressure", "",
+            () => cfg.BrakePressureStrength, v => cfg.BrakePressureStrength = v,
+            () => cfg.BrakePressureFrequency, v => { cfg.BrakePressureFrequency = v; Save(); }));
+        MozaPhfEffects.Add(Row(PhfEffectKeys.Road, "Road texture", "",
+            () => cfg.RoadStrength, v => cfg.RoadStrength = v,
+            () => MozaPhfRoadFreq, v => MozaPhfRoadFreq = v));
+        MozaPhfEffects.Add(Row(PhfEffectKeys.Kerbs, "Kerbs",
+            "Brake + Throttle: left kerbs on the brake, right on the throttle.",
+            () => cfg.CurbStrength, v => cfg.CurbStrength = v,
+            () => MozaPhfCurbFreq, v => MozaPhfCurbFreq = v));
+        MozaPhfEffects.Add(Row(PhfEffectKeys.Tc, "Traction control", "",
+            () => cfg.TcStrength, v => cfg.TcStrength = v,
+            () => MozaPhfTcFreq, v => MozaPhfTcFreq = v));
+        MozaPhfEffects.Add(Row(PhfEffectKeys.Wheelspin, "Wheelspin", "",
+            () => cfg.WheelspinStrength, v => cfg.WheelspinStrength = v,
+            () => cfg.WheelspinFrequency, v => { cfg.WheelspinFrequency = v; Save(); }));
+        MozaPhfEffects.Add(Row(PhfEffectKeys.ThrottlePosition, "Throttle position", "",
+            () => cfg.ThrottlePositionStrength, v => cfg.ThrottlePositionStrength = v,
+            () => cfg.ThrottlePositionFrequency, v => { cfg.ThrottlePositionFrequency = v; Save(); }));
+        MozaPhfEffects.Add(Row(PhfEffectKeys.Engine, "Engine RPM",
+            "On the clutch it follows clutch position.",
+            () => cfg.EngineStrength, v => cfg.EngineStrength = v,
+            () => MozaPhfRpmFreq, v => MozaPhfRpmFreq = v));
+        MozaPhfEffects.Add(Row(PhfEffectKeys.Shift, "Gear shift", "",
+            () => cfg.ShiftStrength, v => cfg.ShiftStrength = v,
+            () => cfg.ShiftFrequency, v => { cfg.ShiftFrequency = v; Save(); }));
+        MozaPhfEffects.Add(Row(PhfEffectKeys.Scrub, "Scrub / corner slip", "",
+            () => cfg.ScrubStrength, v => cfg.ScrubStrength = v,
+            () => MozaPhfScrubFreq, v => MozaPhfScrubFreq = v));
+    }
+
     public ICommand RefreshMozaPhfCommand { get; private set; } = null!;
     public ICommand ConnectMozaPhfCommand { get; private set; } = null!;
     public ICommand DisconnectMozaPhfCommand { get; private set; } = null!;
@@ -155,6 +285,8 @@ public sealed partial class MainViewModel
     public ICommand MozaPhfTestGasCommand { get; private set; } = null!;
     public ICommand MozaPhfTestClutchCommand { get; private set; } = null!;
     public ICommand MozaPhfStopTestCommand { get; private set; } = null!;
+    public ICommand MozaPhfResetStrengthsCommand { get; private set; } = null!;
+    public ICommand MozaPhfResetRoutesCommand { get; private set; } = null!;
 
     private void InitMozaPhfCommands()
     {
@@ -165,9 +297,27 @@ public sealed partial class MainViewModel
         MozaPhfTestGasCommand = new RelayCommand(OnMozaPhfTestGas);
         MozaPhfTestClutchCommand = new RelayCommand(OnMozaPhfTestClutch);
         MozaPhfStopTestCommand = new RelayCommand(OnMozaPhfStopTest);
+        MozaPhfResetStrengthsCommand = new RelayCommand(ResetMozaPhfStrengths);
+        MozaPhfResetRoutesCommand = new RelayCommand(ResetMozaPhfRoutes);
 
         LoadMozaPhfConfigToUi();
+        BuildMozaPhfEffectRows();
         OnRefreshMozaPhf();
+        TryAutoConnectMozaPhf();
+    }
+
+    /// <summary>The PHF box enumerates as one USB device with several
+    /// interfaces (game-controller collection, vendor control collection,
+    /// CDC serial). Only the vendor collection (flagged ★ = has output
+    /// reports) accepts commands — connect to it automatically so users never
+    /// pick between entries.</summary>
+    private void TryAutoConnectMozaPhf()
+    {
+        if (!MozaPhfEnabled || MozaPhfIsConnected) return;
+        int idx = _mozaPhfCandidates.FindIndex(c => c.LikelyPhf);
+        if (idx < 0) return;
+        MozaPhfSelectedDevice = MozaPhfAvailableDevices[idx];
+        OnConnectMozaPhf();
     }
 
     private MozaPhfConfig CurrentMozaPhfConfig()
@@ -237,6 +387,8 @@ public sealed partial class MainViewModel
 
         if (MozaPhfProvider.IsPitHouseRunning() && !MozaPhfIsConnected)
             MozaPhfStatus += " WARNING: Pit House is running.";
+
+        TryAutoConnectMozaPhf();
     }
 
     private void OnConnectMozaPhf()
@@ -327,6 +479,20 @@ public sealed partial class MainViewModel
         _mozaPhf?.StopAll();
         MozaPhfTestActive = false;
         MozaPhfStatus = MozaPhfIsConnected ? "Motor test stopped" : MozaPhfStatus;
+    }
+
+    /// <summary>Restore every PHF effect to 100% strength.</summary>
+    private void ResetMozaPhfStrengths()
+    {
+        foreach (var r in MozaPhfEffects) r.Strength = 100;
+    }
+
+    /// <summary>Restore every PHF effect to its default pedal(s).</summary>
+    private void ResetMozaPhfRoutes()
+    {
+        MozaPhfConfigManager.Instance.Config.EffectRoutes.Clear();
+        SaveMozaPhfConfig();
+        foreach (var r in MozaPhfEffects) r.RefreshRoute();
     }
 
     /// <summary>Called from the telemetry tick. Intensities are 0..1.</summary>

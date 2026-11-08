@@ -570,6 +570,9 @@ public sealed class TelemetryLoop : IDisposable
                         raw.DisplayAccG = r3e.LocalAccelG;
                         raw.EngineTorque = r3e.EngineTorque;
                         raw.TireFlatspot = r3e.TireFlatspot;
+                        raw.SteerWheelRangeDeg = r3e.SteerWheelRangeDegrees;
+                        raw.R3eSteeringForce = r3e.RawSteeringForce;
+                        raw.R3eSteeringForcePct = r3e.RawSteeringForcePct;
                         raw.TireOnMtrl = r3e.TireOnMtrl;
                         raw.BrakePressure = r3e.BrakePressure;
                         raw.TractionControlPercent = r3e.TractionControlPercent;

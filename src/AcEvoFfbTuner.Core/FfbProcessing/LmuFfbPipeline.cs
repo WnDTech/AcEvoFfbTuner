@@ -120,7 +120,12 @@ public sealed class LmuFfbPipeline : FfbPipeline
     // (verified 2026-10-19: detail RMS 0.07 / 0.16 on kerbs before the
     // envelope was removed, 0.017 / 0.042 after). 0 = off.
     public float RoadTextureGain { get; set; } = 1f;
-    private const float TextureTauSec = 0.04f;
+    // Knock decay time (ms). Short = each rumble-strip ridge is a separate,
+    // rigid hit; long = hits blur into a wobble. LMU delivers ~73 fresh
+    // frames/s (~14 ms apart, measured 2026-10-24), so the old fixed 40 ms
+    // (really ~64 ms — see real-dt note below) overlapped successive hits.
+    public float RoadTextureDecayMs { get; set; } = 15f;
+    private long _textureLastTicks;
     private const float TextureMax = 0.3f;
     private float _textureEnvLp;
 
@@ -342,7 +347,15 @@ public sealed class LmuFfbPipeline : FfbPipeline
                          + raw.SlipVibrations * VibrationMixer.SlipGain
                          + raw.RoadVibrations * VibrationMixer.RoadGain)
                          * VibrationMixer.MasterGain * texSpeedFade;
-        float texAlpha = 1f - MathF.Exp(-PhysicsDt / TextureTauSec);
+        // Real elapsed time, not PhysicsDt: the loop runs ~156 ticks/s, not
+        // the assumed 250 (measured 2026-10-24 from diagnostic TORQ sends),
+        // which stretched every knock by ~1.6x.
+        long texNow = System.Diagnostics.Stopwatch.GetTimestamp();
+        float texDt = _textureLastTicks == 0 ? PhysicsDt
+            : Math.Clamp((float)(texNow - _textureLastTicks) / System.Diagnostics.Stopwatch.Frequency, 0.001f, 0.05f);
+        _textureLastTicks = texNow;
+        float texTau = Math.Clamp(RoadTextureDecayMs, 3f, 100f) * 0.001f;
+        float texAlpha = 1f - MathF.Exp(-texDt / texTau);
         _textureEnvLp += (texSource - _textureEnvLp) * texAlpha;
         float texture = TextureMax * MathF.Tanh((texSource - _textureEnvLp) * RoadTextureGain / TextureMax);
         if (raw.SpeedKmh < 0.5f) { _textureEnvLp = texSource; texture = 0f; }
@@ -619,6 +632,7 @@ public sealed class LmuFfbPipeline : FfbPipeline
     {
         _prevDetailOutput = 0f;
         _textureEnvLp = 0f;
+        _textureLastTicks = 0;
         _dcBlockSmooth = 0f;
         _prevSmoothedCore = 0f;
         _prevSmoothedDetail = 0f;
@@ -637,6 +651,7 @@ public sealed class LmuFfbPipeline : FfbPipeline
         base.Reset();
         _prevDetailOutput = 0f;
         _textureEnvLp = 0f;
+        _textureLastTicks = 0;
         _dcBlockSmooth = 0f;
         _prevSmoothedCore = 0f;
         _prevSmoothedDetail = 0f;

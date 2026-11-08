@@ -110,6 +110,43 @@ public sealed class R3eFfbPipeline : FfbPipeline
     /// </summary>
     public float GripReleaseRate { get; set; } = 3.0f;
 
+    /// <summary>
+    /// Front TireGrip below which Grip Loss Lightening engages (default 0.2).
+    /// Above it = normal cornering in the Historic Update tyre model (grip
+    /// 0.3-0.97 with slip far below peak) → no extra cut. R3E-only.
+    /// </summary>
+    public float GripKnee { get; set; } = 0.2f;
+
+    /// <summary>
+    /// Kerb-strike transient shaper: knock decay time in ms (mirror of LMU
+    /// RoadTextureDecayMs, Oct-2026). Novelty detector on the kerb channel —
+    /// strike onsets (unpredicted jumps) pass at full amplitude while
+    /// sustained wash follows the envelope and fades. Short = separate rigid
+    /// hits per ridge; long = blur into wobble. 15 ms default. R3E-only;
+    /// zero impact on EVO/LMU/AC/ACC.
+    /// </summary>
+    public float KerbStrikeDecayMs { get; set; } = 15f;
+
+    /// <summary>
+    /// Braking shimmer gain (0-3, default 1). Scales the brake-gated
+    /// oscillation amplitude. 0 = off (steady weight only). R3E-only.
+    /// </summary>
+    public float BrakeShimmerGain { get; set; } = 1.0f;
+
+    /// <summary>
+    /// Shape one kerb-channel sample: fast-attack novelty detector with
+    /// exponential-decay envelope. Fixed unity gain and tanh bound (peak
+    /// strikes pass at source scale, slams soft-clip) — only the decay time
+    /// is tunable (see KerbStrikeDecayMs).
+    /// </summary>
+    private float ShapeKerbStrike(float source, float dt)
+    {
+        float tau = Math.Clamp(KerbStrikeDecayMs, 3f, 100f) * 0.001f;
+        float alpha = 1f - MathF.Exp(-dt / tau);
+        _kbEnvLp += (source - _kbEnvLp) * alpha;
+        return MathF.Tanh(source - _kbEnvLp);
+    }
+
     private readonly R3eHf8SignalMapper _r3eHf8Mapper = new();
 
     public override Hf8SignalMapper Hf8SignalMapper => _r3eHf8Mapper;
@@ -118,6 +155,141 @@ public sealed class R3eFfbPipeline : FfbPipeline
     private float _prevSmoothedCore;
     private float _prevSmoothedDetail;
     private float _smGripScale = 1f;
+    private float _kbEnvLp;
+
+    /// <summary>
+    /// Core floor (0-0.3, default 0.05): minimum column-torque magnitude
+    /// before grip scaling. The game torque collapses through zero whenever
+    /// its sign transitions opposite to steer (measured 0.007 median at every
+    /// center crossing, 2026-11-04 weave snapshot) — without a floor the
+    /// force river runs dry mid-crossing (the felt notch). Applies BEFORE
+    /// grip scaling so genuine unloads still fade deeply; speed fade still
+    /// zeroes standstill downstream. R3E-only.
+    /// </summary>
+    public float CoreFloor { get; set; } = 0.05f;
+
+    /// <summary>
+    /// Center direction blend as a fraction of full lock (default 0.01):
+    /// the centering direction ramps smoothly through zero instead of
+    /// flipping sign in one tick (a 2M step = the felt center notch on every
+    /// crossing). Fraction-of-lock is unit-clean and car-independent, unlike
+    /// wheel degrees: R3E's SteerLockDegrees reports ROAD-wheel lock
+    /// (~16-20 for GT3, verified 2026-11-04 by fitting the gain-vs-steer
+    /// curve), so a degrees-based blend attenuated everything below ~0.3
+    /// steer. Direction still follows steer (the verified 28/28
+    /// convention) — only the zero instant is softened, like a real car's
+    /// continuous torque build. R3E-only.
+    /// </summary>
+    public float CenterDirectionBlend { get; set; } = 0.01f;
+
+    /// <summary>
+    /// Road compression weight (0-2, default 1). Front heave (FL+FR
+    /// suspension deflection) above its slow baseline makes the CORE force
+    /// heavier; extension makes it lighter — multiplicative, so it always
+    /// follows the steer direction and is zero at center. Gain 1 = ±25%
+    /// at ±25 mm of transient compression. Replaces the mixer's
+    /// suspension-delta road modulation for R3E, which pushed by
+    /// compression sign regardless of steering (2026-11-07 Lakeview
+    /// snapshots: ±0.3 saturated 14.7% of frames, 230 frames fighting
+    /// the core). R3E-only.
+    /// </summary>
+    public float RoadCompressionGain { get; set; } = 1.0f;
+
+    /// <summary>
+    /// Drive the core from the game's own signed torque (−SteeringForcePercentage)
+    /// instead of |torque| × steer direction. Default true. false = legacy
+    /// synthesised direction (CoreFloor + CenterDirectionBlend apply only then).
+    /// R3E-only.
+    /// </summary>
+    public bool UseNativeTorqueSign { get; set; } = true;
+
+    /// <summary>
+    /// Bump twist (0-2, default 0.5). Signed steering kick from UNEVEN
+    /// front compression (FL vs FR roll velocity) — a one-side hit tugs
+    /// the wheel toward that side. Deadband 0.05 m/s keeps smooth tarmac
+    /// silent. Gain 1 = up to 0.08 output. R3E-only.
+    /// </summary>
+    public float BumpTwistGain { get; set; } = 0.5f;
+
+    private float _heaveBase = float.NaN;
+    private float _prevRoll = float.NaN;
+    private float _smRollVel;
+    private float _smCompWeight = 1f;
+
+    /// <summary>Diagnostics: last road compression weight factor and twist.</summary>
+    public float DiagRoadCompressionWeight { get; private set; } = 1f;
+    public float DiagBumpTwist { get; private set; }
+
+    /// <summary>
+    /// Front heave → core weight factor. Deflection is meters, positive =
+    /// compressed (verified 2026-11-07 Lakeview: fronts 0..0.12 m, crests
+    /// track tyre load at r=0.67 via heave velocity).
+    /// </summary>
+    private float ComputeRoadCompressionWeight(FfbRawData raw, float dt)
+    {
+        var s = raw.SuspensionTravel;
+        if (RoadCompressionGain <= 0.001f || s == null || s.Length < 2 || raw.SpeedKmh < 5f)
+        {
+            _heaveBase = float.NaN;
+            _smCompWeight = 1f;
+            return 1f;
+        }
+        float heave = (s[0] + s[1]) * 0.5f;
+        if (float.IsNaN(_heaveBase)) _heaveBase = heave;
+        // Slow baseline (τ 0.6 s) tracks aero squat / static ride height,
+        // so only transient compression from road features is felt.
+        _heaveBase += (heave - _heaveBase) * (1f - MathF.Exp(-dt / 0.6f));
+        float dev = Math.Clamp((heave - _heaveBase) / 0.025f, -1f, 1f);
+        float target = 1f + 0.25f * Math.Clamp(RoadCompressionGain, 0f, 2f) * dev;
+        // Light smoothing (τ 15 ms) removes tick-level flutter.
+        _smCompWeight += (target - _smCompWeight) * (1f - MathF.Exp(-dt / 0.015f));
+        return _smCompWeight;
+    }
+
+    /// <summary>
+    /// Uneven front hit → signed twist. Positive output pushes LEFT on this
+    /// device (see direction note in Process), and a left-front compression
+    /// (FL−FR rising) tugs the wheel left — hence +rollVel → +output.
+    /// </summary>
+    private float ComputeBumpTwist(FfbRawData raw, float dt)
+    {
+        var s = raw.SuspensionTravel;
+        if (BumpTwistGain <= 0.001f || s == null || s.Length < 2 || raw.SpeedKmh < 5f)
+        {
+            _prevRoll = float.NaN;
+            _smRollVel = 0f;
+            return 0f;
+        }
+        float roll = s[0] - s[1];
+        float vel = float.IsNaN(_prevRoll) ? 0f : (roll - _prevRoll) / Math.Max(dt, 1e-4f);
+        _prevRoll = roll;
+        _smRollVel += (vel - _smRollVel) * (1f - MathF.Exp(-dt / 0.012f));
+        float mag = Math.Abs(_smRollVel) - 0.05f;
+        if (mag <= 0f) return 0f;
+        float speedScale = Math.Clamp(raw.SpeedKmh / 100f, 0.2f, 1.5f);
+        return Math.Sign(_smRollVel) * Math.Clamp(mag / 0.5f, 0f, 1f) * 0.08f
+               * Math.Clamp(BumpTwistGain, 0f, 2f) * speedScale * MasterGain;
+    }
+
+    /// <summary>Brake-shimmer oscillator phase (18 Hz ABS-cycle territory).</summary>
+    private float _shimmerPhase;
+
+    /// <summary>
+    /// Continuous steering-direction factor in [-1, 1]: smoothstep ramp over
+    /// CenterDirectionBlend fraction of full lock, exactly 0 at exactly 0
+    /// steer. Replaces the hard sign() step (and any hold-and-release
+    /// deadbanding, which stick-slips the same way).
+    /// </summary>
+    private float SteerDirectionFactor(float steerAngle)
+    {
+        // LINEAR, not smoothstep: smoothstep has zero slope at 0 (limp dead
+        // center) and peak slope mid-ramp (the felt click). 2026-11-08
+        // Lakeview snapshots: force 0.01→0.14 inside ±0.004 steer then a
+        // plateau to 0.19 at 0.015 — a detent. Linear = constant on-center
+        // spring rate from exactly 0, still continuous through zero.
+        float t = Math.Clamp(Math.Abs(steerAngle) / Math.Max(CenterDirectionBlend, 0.002f), 0f, 1f);
+        return Math.Sign(steerAngle) * t;
+    }
 
     public override bool GearShiftFilterEnabled
     {
@@ -165,9 +337,33 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // frames opposite-signed). Do NOT change without re-verifying on
         // hardware. The reader's Mz synth (-absForce * steerSign) is
         // diagnostics-only and does not feed this path.
-        // At exactly 0° steer → sign = 0 → no centering force.
-        float steerSign = raw.SteerAngle > 0f ? 1f : raw.SteerAngle < 0f ? -1f : 0f;
+        // Direction is a SMOOTH ramp through zero (SteerDirectionFactor), not
+        // a sign() step: a hard flip at exactly 0° steps the full force in
+        // one tick on every crossing (the center notch), and hold-and-release
+        // deadbanding stick-slips the same way. Real steering builds torque
+        // continuously — so do we.
+        float dirFactor = SteerDirectionFactor(raw.SteerAngle);
         float magnitude = Math.Abs(steeringForce);
+
+        // Native torque sign (default): the game's own signed column torque,
+        // negated into this device's convention. SteeringForcePercentage
+        // points AWAY from steer when centering (94% of |steer|>0.02 frames,
+        // 2026-11-08 Lakeview), so −F == +sign(steer)·|F| in corners — the
+        // verified August convention — while through center and under
+        // camber/crown self-steer the real physics sign passes instead of a
+        // synthesised spring (65 frames where the game pushed away from center
+        // and we sent the opposite). −F is continuous through zero, so no
+        // direction blend or floor is needed in this mode.
+        float coreDirection;
+        if (UseNativeTorqueSign)
+        {
+            coreDirection = -Math.Sign(steeringForce);
+        }
+        else
+        {
+            coreDirection = dirFactor;
+            magnitude = Math.Max(magnitude, Math.Max(0f, CoreFloor));
+        }
 
         // Real tick interval from game simulation ticks. The pipeline runs
         // once per new game tick (~400 Hz for R3E) — NOT at 60 Hz. The old
@@ -203,7 +399,16 @@ public sealed class R3eFfbPipeline : FfbPipeline
         if (TyreGripScale > 0.001f && raw.TyreGrip != null && raw.TyreGrip.Length >= 2)
         {
             float avgFrontGrip = (raw.TyreGrip[0] + raw.TyreGrip[1]) * 0.5f;
-            float target = 0.25f + (1f - 0.25f) * Math.Clamp(avgFrontGrip, 0f, 1f);
+            // Knee (2026-11-08 Lakeview): Historic Update TireGrip falls with
+            // cornering EFFORT, not loss — 0.97 straight → 0.58 at 0.08-0.15
+            // steer → 0.48 beyond, at only 0.03-0.04 rad slip (≈2°, far below
+            // the ~5° GT3 peak). The game torque already carries the new
+            // contact model's understeer lightening; scaling it by grip again
+            // cut 27-40% from every real corner (double-count = weak mid-
+            // corner). Only below GripKnee (crests/airborne: grip reads 0.00 at
+            // 160+ km/h) does the fade engage, down to the 0.25 floor.
+            float gripT = Math.Clamp(avgFrontGrip / Math.Max(GripKnee, 0.01f), 0f, 1f);
+            float target = 0.25f + (1f - 0.25f) * gripT;
             target = 1f + (target - 1f) * TyreGripScale;
             // Release limiter (Nordschleife 2026-10-21: touchdown punches of
             // 0.3–0.8 from the simultaneous RawFF+grip+load step-back).
@@ -225,7 +430,7 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // R3E's SteeringForcePercentage is already a 0-1 normalized signal
         // (unlike EVO's raw Mz which has arbitrary units requiring scaling).
         // Dividing by ForceScale (=700-1500 for EVO) would kill the signal.
-        float coreNorm = magnitude * steerSign * MasterGain;
+        float coreNorm = magnitude * coreDirection * MasterGain;
 
         // Centering override (smoothstep at small steer angles)
         float corePostCenter = ApplyCenteringOverride(coreNorm, raw);
@@ -258,11 +463,19 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // interact with the smoothstep at small angles)
         coreOutput *= brakeBoost;
 
+        // Road compression weight: front heave crests load the wheel up in
+        // whatever direction it is already steering (never against it).
+        float compWeight = ComputeRoadCompressionWeight(raw, deltaTime);
+        coreOutput *= compWeight;
+        DiagRoadCompressionWeight = compWeight;
+
         // Additive brake heaviness in the centering direction: the wheel
-        // gets heavier as weight transfers to the front. Zero when the core
-        // is zero (straight line — nothing to resist).
+        // gets heavier as weight transfers to the front. Follows the ramped
+        // direction factor (not the core sign): at center the factor fades to
+        // zero instead of flickering with a near-zero core, so no phantom
+        // pull develops straight-line braking.
         if (brakeHeaviness > 0f)
-            coreOutput += Math.Sign(coreOutput) * brakeHeaviness;
+            coreOutput += dirFactor * brakeHeaviness;
 
         // Speed fade: zero below 0.5 km/h, ramp to full at 5 km/h
         if (raw.SpeedKmh < 0.5f)
@@ -295,13 +508,41 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // DETAIL PATH — Texture effects only
         // ═════════════════════════════════════════════════════════════════
 
+        // Center detail fade: scale texture with steer authority so detail
+        // can never dominate (and flip the sign of) a near-zero core while
+        // crossing center. Full detail at |steer| >= 0.015 (~7 deg wheel);
+        // linear fade below. Both half-cycles scale equally, so bipolar
+        // character is preserved (no half-wave rectification rocking), and
+        // corner behavior (|steer| above threshold) is identical. Verified
+        // 2026-11-04 weave snapshot: detail swung +-0.05..0.08 against a
+        // +-0.01..0.03 core through every crossing, including wrong-sign
+        // frames that snapped back the next frame (the felt notch).
+        // Safety/event signals (ABS mod, rear-slip mod, brake shimmer) are
+        // deliberately EXEMPT — warnings must always pass at full strength.
+        float centerFade = Math.Clamp(Math.Abs(raw.SteerAngle) / 0.015f, 0f, 1f);
+
         // deltaTime was computed above (ahead of the grip block, which needs
         // it for the release limiter); _prevSynthTickId already advanced.
         float detailForce = 0f;
 
-        // Vibration mixer (road, curb, slip, ABS, scrub, rear slip, offtrack)
+        // Vibration mixer (road, curb, slip, ABS, scrub, rear slip, offtrack).
+        // The kerb channel runs through the strike shaper first: onsets pass
+        // at full amplitude, sustained wash fades by decay. Swap in/out around
+        // Mix so snapshots, HF8 and pedal haptics keep seeing the raw
+        // synthesized channel (the swap is invisible outside this method —
+        // _latestRaw is published after the restore, and road-force
+        // modulation is already computed inside Mix from the shaped value).
+        // RoadVibrations (tyre-speed deltas) is zeroed for the FORCE mix:
+        // it tracks throttle/wheelspin, not road (r=0.10 vs heave,
+        // 2026-11-07). Restored after so HF8/pedal haptics still see it.
+        float rawKerb = raw.KerbVibration;
+        float rawRoadVib = raw.RoadVibrations;
+        raw.KerbVibration = ShapeKerbStrike(rawKerb, deltaTime);
+        raw.RoadVibrations = 0f;
         float vibration = VibrationMixer.Mix(raw);
-        vibration *= gripScale;
+        raw.KerbVibration = rawKerb;
+        raw.RoadVibrations = rawRoadVib;
+        vibration *= gripScale * centerFade;
         detailForce += vibration;
         float diagVibMixer = vibration;
 
@@ -316,15 +557,15 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // double-counts the core force into the detail path (verified 2026-09-20
         // snapshot: detail avg 0.08 vs core avg 0.05 on a 150 km/h straight).
         float r3eSlipAdd = SlipEnhancer.Apply(coreOutput, raw) - coreOutput;
-        detailForce += r3eSlipAdd;
-        float diagSlipEnh = r3eSlipAdd;
+        detailForce += r3eSlipAdd * centerFade;
+        float diagSlipEnh = r3eSlipAdd * centerFade;
 
         float r3eDynAdd = DynamicEffects.Apply(0f, raw);
-        detailForce += r3eDynAdd;
+        detailForce += r3eDynAdd * centerFade;
 
         float r3eFlexAdd = TyreFlex.Apply(0f, raw);
-        detailForce += r3eFlexAdd;
-        float stageDynFlex = r3eDynAdd + r3eFlexAdd;
+        detailForce += r3eFlexAdd * centerFade;
+        float stageDynFlex = (r3eDynAdd + r3eFlexAdd) * centerFade;
 
         // ABS force modulation
         float stageSubMods = 0f;
@@ -339,8 +580,12 @@ public sealed class R3eFfbPipeline : FfbPipeline
             stageSubMods += absMod * sign;
         }
 
-        // Road force modulation
-        float roadMod = VibrationMixer.RoadForceModulation;
+        // Road force: the mixer's RoadForceModulation is NOT used for R3E
+        // (compression-signed push, ignores steer — see RoadCompressionGain).
+        // It is still computed inside Mix for HF8/pedal haptics. In its
+        // place: bump twist from uneven front compression.
+        float roadMod = ComputeBumpTwist(raw, deltaTime);
+        DiagBumpTwist = roadMod;
         if (Math.Abs(roadMod) > 0.001f)
         {
             detailForce += roadMod;
@@ -363,8 +608,13 @@ public sealed class R3eFfbPipeline : FfbPipeline
             stageSubMods += offtrackMod;
         }
 
-        // LFE (engine RPM / suspension) modulated by engine torque
+        // LFE (engine RPM / suspension) modulated by engine torque.
+        // Faded at center like all texture: engine drone otherwise dominates
+        // the near-zero core through crossings (measured loudest center
+        // channel, 2026-11-04: p50 0.05). Flatspot below stays exempt —
+        // a warning, like ABS.
         float lfe = LfeGenerator.Generate(raw);
+        float lfeScaled = 0f;
         if (Math.Abs(lfe) > 0.001f)
         {
             float torqueFactor = 1f;
@@ -373,8 +623,9 @@ public sealed class R3eFfbPipeline : FfbPipeline
                 float torqueNorm = Math.Clamp(raw.EngineTorque / 500f, 0f, 1f);
                 torqueFactor = 1f - EngineTorqueLfeMod + torqueNorm * EngineTorqueLfeMod;
             }
-            detailForce += lfe * torqueFactor;
-            stageSubMods += lfe * torqueFactor;
+            lfeScaled = lfe * torqueFactor * centerFade;
+            detailForce += lfeScaled;
+            stageSubMods += lfeScaled;
         }
 
         // Flatspot vibration: per-wheel sharp pulse at rotation rate.
@@ -469,9 +720,16 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // that no real car has — and R3E's SlipRatio = (tireSpeed-carSpeed)/carSpeed
         // is noisy at low speed, causing false trigger. The SlipEnhancer above
         // (grip-limit force shaping) is the correct signal for R3E slip feel.
+        // Braking gets its own shimmer instead (below): real cars tremble
+        // under firm braking (pad judder, disc unevenness, tyre patter at the
+        // ABS cycle) while R3E's column torque carries none of it (verified:
+        // zero oscillatory content in 315 firm-braking snapshot frames,
+        // 2026-11-04). Strictly brake-gated so cornering slides keep their
+        // SlipEnhancer shaping.
         // float slipVibOut = SynthesizeSlipVibration(raw, deltaTime);
         // detailForce += slipVibOut;
-        float slipVibOut = 0f;
+        float slipVibOut = SynthesizeBrakeShimmer(raw, deltaTime);
+        detailForce += slipVibOut;
 
         // Detail EMA smoothing: alpha is inverted so slider = 0 is none, higher = smoother.
         // alpha = 1 - DetailSmoothing: at 0 → alpha=1 (raw), at 0.6 → alpha=0.4, at 0.9 → alpha=0.1
@@ -540,12 +798,13 @@ public sealed class R3eFfbPipeline : FfbPipeline
             ChannelFyFront = raw.Fy[0] + raw.Fy[1],
             DiagSlipVib = slipVibOut,
             DiagVibMixer = diagVibMixer,
-            DiagDynEffects = r3eDynAdd,
-            DiagTyreFlex = r3eFlexAdd,
+            DiagDynEffects = r3eDynAdd * centerFade,
+            DiagTyreFlex = r3eFlexAdd * centerFade,
             DiagSlipEnhancer = diagSlipEnh,
-            DiagLfe = lfe,
+            DiagLfe = lfeScaled,
             DiagAbsMod = absMod,
-            DiagRoadMod = roadMod
+            DiagRoadMod = roadMod,
+            DiagRoadCompWeight = compWeight
         };
     }
 
@@ -569,12 +828,20 @@ public sealed class R3eFfbPipeline : FfbPipeline
     {
         if (CenterSharpnessDegrees > 0.001f)
         {
-            float lockHalf = Math.Abs(raw.SteerDegrees) * 0.5f;
-            if (lockHalf < 1f) lockHalf = 450f;
+            // Wheel degrees = SteerInputRaw (-1..1) × half the PHYSICAL
+            // wheel range. NOT raw.SteerDegrees: for R3E that is
+            // SteerLockDegrees = ROAD-wheel lock (~18° GT3), which made
+            // 0.5° "wheel" span ±0.055 steer ≈ ±25° of real wheel — core
+            // read ~0 below 0.01 steer and only 50% at 0.025 (2026-11-07
+            // Lakeview snapshot: the limp center).
+            float lockHalf = raw.SteerWheelRangeDeg > 100f
+                ? raw.SteerWheelRangeDeg * 0.5f
+                : 450f;
             float absSteerDeg = Math.Abs(raw.SteerAngle) * lockHalf;
+            // Linear (see SteerDirectionFactor): smoothstep's flat start made
+            // the slider move the click rather than remove it.
             float t = Math.Clamp(absSteerDeg / CenterSharpnessDegrees, 0f, 1f);
-            float ramp = t * t * (3f - 2f * t);
-            return coreOutput * ramp;
+            return coreOutput * t;
         }
         return coreOutput;
     }
@@ -628,6 +895,21 @@ public sealed class R3eFfbPipeline : FfbPipeline
     /// oscillation that dominated the profiler chart (verified 2026-09-20).
     /// Amplitude scales with speed: no vibration without wheel rotation.
     /// </summary>
+    private float SynthesizeBrakeShimmer(FfbRawData raw, float deltaTime)
+    {
+        // Gated shimmer only — see call-site note. Bipolar zero-mean 18 Hz +
+        // 2nd partial (ABS-cycle territory): alternates the force left/right
+        // like a real trembling brake zone. Capped small: this is patter, not
+        // lockup buzz (their lockup runs gain 2.0; ours stays subtle).
+        if (raw.BrakeInput < 0.25f || raw.SpeedKmh < 60f) return 0f;
+        float amp = Math.Min((raw.BrakeInput - 0.25f) * 0.5f * Math.Max(0f, BrakeShimmerGain), 0.06f);
+        if (amp <= 0.0005f) return 0f;
+        _shimmerPhase += 18f * deltaTime * MathF.PI * 2f;
+        if (_shimmerPhase > MathF.PI * 200f) _shimmerPhase -= MathF.PI * 200f;
+        float speedFade = Math.Clamp((raw.SpeedKmh - 60f) / 60f, 0f, 1f); // full by 120
+        return amp * speedFade * (MathF.Sin(_shimmerPhase) + 0.35f * MathF.Sin(_shimmerPhase * 2f + 1.3f)) / 1.35f;
+    }
+
     private float SynthesizeSlipVibration(FfbRawData raw, float deltaTime)
     {
         // Hard gate: slip vibration is a high-speed tyre deformation
@@ -821,6 +1103,8 @@ public sealed class R3eFfbPipeline : FfbPipeline
         _frontSlipSmooth = 0f;
         _rearSlipSmooth = 0f;
         _smGripScale = 1f;
+        _kbEnvLp = 0f;
+        _shimmerPhase = 0f;
         _prevSynthTickId = -1;
     }
 }

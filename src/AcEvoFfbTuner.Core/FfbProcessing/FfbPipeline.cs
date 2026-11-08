@@ -94,6 +94,10 @@ public class FfbPipeline
     /// higher = softer/progressive. Default 3.0° matches reader smooth zone.
     /// 0 = disabled (reader-only shaping, maximum crispness).
     /// RaceRoom uses this via ApplyCenteringOverride.
+    /// WARNING: R3E SteerLockDegrees reports ROAD-wheel lock (~16-20 for GT3,
+    /// verified 2026-11-04), not steering-wheel degrees — any degree-based
+    /// math on it is dimensionally wrong unless converted. See R3E
+    /// CenterDirectionBlend (fraction-based) for the safe pattern.
     /// </summary>
     public float CenterSharpnessDegrees { get; set; } = 3.0f;
 

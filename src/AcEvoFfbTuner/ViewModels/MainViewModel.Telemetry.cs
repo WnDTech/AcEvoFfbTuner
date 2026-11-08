@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using AcEvoFfbTuner.Core;
 using AcEvoFfbTuner.Core.Config;
 using AcEvoFfbTuner.Core.DirectInput;
+using AcEvoFfbTuner.Core.PedalHaptics;
 using AcEvoFfbTuner.Core.FfbProcessing;
 using AcEvoFfbTuner.Core.FfbProcessing.Models;
 using AcEvoFfbTuner.Core.FfbProviders;
@@ -26,6 +27,7 @@ namespace AcEvoFfbTuner.ViewModels;
 public sealed partial class MainViewModel
 {
     private long _hapticFrameTicks;
+    private readonly AcEvoFfbTuner.Core.PedalHaptics.KerbSideSplitter _kerbSplitter = new();
     private int _lastPedalGear;
     private int _shiftPulseFramesRemaining;
     private int _tcDiagCounter;
@@ -617,10 +619,22 @@ public sealed partial class MainViewModel
             double finalBrakeForce = 0;
             double finalThrottleForce = 0;
 
-            // ── MOZA PHF dominant-effect tracking (for per-channel frequency) ──
-            bool phfAbsFired = false, phfTcFired = false, phfShiftFired = false;
-            float phfCurbLeft = 0f, phfCurbRight = 0f, phfScrub = 0f;
-            float phfRoad = 0f, phfRpmBuzz = 0f;
+            bool phfShiftFired = false;
+            float phfRpmBuzz = 0f;
+
+            // PHF effects are computed SEPARATELY from the Osoyoo forces, one
+            // value per effect, then routed to pedals by the user's per-effect
+            // pedal selection (PhfRouter). The PHF module generates its own
+            // vibration at the commanded frequency, so effects are CONTINUOUS
+            // strengths — no frame-toggled on/off pulses (those flood the box
+            // with changed frames and restart its effect) and no DC-motor
+            // min-duty floor.
+            double phfAbs = 0, phfLockup = 0, phfPressure = 0, phfRoadV = 0;
+            double phfKerbL = 0, phfKerbR = 0, phfTc = 0, phfSpin = 0;
+            double phfPos = 0, phfEngine = 0, phfShiftV = 0, phfScrubV = 0;
+            // Per-effect PHF strength (percent → multiplier; 100% = unchanged).
+            var phfStr = MozaPhfConfigManager.Instance.Config;
+            static double Pct(int p) => Math.Clamp(p, 0, 200) / 100.0;
 
             if (raw != null)
             {
@@ -633,13 +647,23 @@ public sealed partial class MainViewModel
                 // deadzone is low and the per-side scale (x6) brings kerbs into
                 // usable range. Falls back to the shared kerb value for both
                 // pedals when a game has no per-side data.
-                float curbLeftRaw = raw.KerbVibrationLeft > 0f ? raw.KerbVibrationLeft : raw.KerbVibration;
-                float curbRightRaw = raw.KerbVibrationRight > 0f ? raw.KerbVibrationRight : raw.KerbVibration;
+                float curbLeftRaw, curbRightRaw;
+                if (raw.KerbVibrationLeft > 0f || raw.KerbVibrationRight > 0f)
+                {
+                    // R3E: reader synthesizes real per-side kerb values.
+                    curbLeftRaw = raw.KerbVibrationLeft;
+                    curbRightRaw = raw.KerbVibrationRight;
+                }
+                else
+                {
+                    // EVO / ACC / AC / LMU report ONE shared kerb value. Split it by
+                    // which side's suspension is actually moving (per-wheel travel,
+                    // order FL,FR,RL,RR in every reader): a left-side kerb moves the
+                    // left wheels, so it lands on the brake, not the throttle.
+                    (curbLeftRaw, curbRightRaw) = _kerbSplitter.Split(raw.KerbVibration, raw.SuspensionTravel);
+                }
                 float curbLeft = curbLeftRaw > 0.03f ? curbLeftRaw : 0f;
                 float curbRight = curbRightRaw > 0.03f ? curbRightRaw : 0f;
-                phfCurbLeft = curbLeft;
-                phfCurbRight = curbRight;
-                phfRoad = Math.Clamp(raw.RoadVibrations, 0f, 1f);
 
                 // Curb diagnostics — every 30 frames in R3E, so we can see the actual
                 // synthesized kerb values vs the deadzone when driving over curbs.
@@ -656,23 +680,36 @@ public sealed partial class MainViewModel
                 // ── BRAKE CHANNEL ──
                 if (brakeInput > 0.05f && absActive)
                 {
-                    // ABS square-wave pulse → PedalAbsBrakeGain.
+                    float slipSeverity = Math.Clamp((peakFrontSlip - 0.10f) * 6.0f, 0.4f, 1.0f);
+                    // PHF: continuous ABS strength — the module pulses at MozaPhfAbsFreq itself.
+                    phfAbs = 255 * slipSeverity * PedalAbsBrakeGain * Pct(phfStr.AbsStrength);
+
+                    // Osoyoo: ABS square-wave pulse → PedalAbsBrakeGain.
                     // 1 frame ON / 1 frame OFF at ~30 Hz tick = ~15 Hz pulse —
                     // matches the real ABS hydraulic pump frequency (15-20 Hz)
                     // and stays clearly pulsed, not a constant hum.
                     if (_hapticFrameTicks % 2 == 0)
-                    {
-                        float slipSeverity = Math.Clamp((peakFrontSlip - 0.10f) * 6.0f, 0.4f, 1.0f);
                         finalBrakeForce = 255 * slipSeverity * PedalAbsBrakeGain;
-                        phfAbsFired = true;
-                    }
+                }
+                else if (brakeInput > 0.05f && !IsRaceroom && peakFrontSlip > 0.15f)
+                {
+                    // PHF only: front wheel LOCKUP with no ABS (car has none, or it
+                    // is switched off). Uses wheel-speed slip ratio (real data in
+                    // EVO/AC/ACC/LMU). R3E excluded: its synthesized slip ratio reads
+                    // 2.0-9.8 on straights (see TC note below) and would fire constantly.
+                    float lockSeverity = Math.Clamp((peakFrontSlip - 0.15f) * 4.0f, 0.3f, 1.0f);
+                    phfLockup = 255 * lockSeverity * PedalAbsBrakeGain * Pct(phfStr.LockupStrength);
                 }
                 // Brake pressure hum → PedalBrakePressureGain
-                finalBrakeForce += brakeInput * 255f * 0.35f * PedalBrakePressureGain;
+                double brakePressure = brakeInput * 255f * 0.35f * PedalBrakePressureGain;
                 // Road texture → PedalRoadBrakeGain
-                finalBrakeForce += Math.Clamp(raw.RoadVibrations, 0f, 1f) * 255f * 0.25f * PedalRoadBrakeGain;
+                double brakeRoad = Math.Clamp(raw.RoadVibrations, 0f, 1f) * 255f * 0.25f * PedalRoadBrakeGain;
                 // LEFT-side curb bumps → PedalCurbBothGain (brake pedal)
-                finalBrakeForce += curbLeft * 255f * PedalCurbBothGain;
+                double brakeCurb = curbLeft * 255f * PedalCurbBothGain;
+                finalBrakeForce += brakePressure + brakeRoad + brakeCurb;
+                phfPressure = brakePressure * Pct(phfStr.BrakePressureStrength);
+                phfRoadV = brakeRoad * Pct(phfStr.RoadStrength);
+                phfKerbL = brakeCurb * Pct(phfStr.CurbStrength);
 
                 // ── THROTTLE CHANNEL ──
                 if (throttleInput > 0.02f)
@@ -692,7 +729,6 @@ public sealed partial class MainViewModel
 
                     if (tcActive)
                     {
-                        phfTcFired = true;
                         // Ignition-cut chatter → PedalTcGasGain.
                         // R3E: scale intensity by TractionControlPercent when it has a
                         // meaningful value (stuck at 100.0 in the shipped build → 1.0).
@@ -701,6 +737,8 @@ public sealed partial class MainViewModel
                             : 1f;
                         if (_hapticFrameTicks % 3 != 0)
                             finalThrottleForce = 230 * magnitude * PedalTcGasGain;
+                        // PHF: continuous — the module chatters at MozaPhfTcFreq itself.
+                        phfTc = 230 * magnitude * PedalTcGasGain * Pct(phfStr.TcStrength);
 
                         if (IsRaceroom && _tcDiagCounter++ % 30 == 0)
                             LogPedalDiag($"TC ACTIVE: AidTc={raw.AidSettingsTc} Pct={raw.TractionControlPercent:F1} slipRear={peakRearSlip:F3} force={finalThrottleForce:F0}");
@@ -722,11 +760,23 @@ public sealed partial class MainViewModel
                         finalThrottleForce = 255 * slipDelta * PedalTcGasGain;
                     }
 
-                    // 30% baseline accelerator feel tied to raw throttle position
-                    finalThrottleForce += throttleInput * 76.5 * PedalThrottlePositionGain;
+                    // PHF: WHEELSPIN for every game with real slip ratio (EVO/AC/
+                    // ACC/LMU) when no TC cut is reported — covers cars without
+                    // TC or with it switched off. R3E excluded (garbage slip ratio;
+                    // its TcActiveGfx flag above is authoritative).
+                    if (!tcActive && !IsRaceroom && peakRearSlip > 0.10f)
+                    {
+                        float spin = Math.Clamp((peakRearSlip - 0.10f) * 8.0f, 0f, 1f);
+                        phfSpin = 255 * spin * PedalTcGasGain * Pct(phfStr.WheelspinStrength);
+                    }
 
-                    // Engine texture: RPM buzz scales with revs + throttle
-                    finalThrottleForce += raw.RpmPercent * throttleInput * 40f * PedalEngineRpmGain;
+                    // 30% baseline accelerator feel tied to raw throttle position
+                    // + engine texture: RPM buzz scales with revs + throttle
+                    double gasPosition = throttleInput * 76.5 * PedalThrottlePositionGain;
+                    double gasEngine = raw.RpmPercent * throttleInput * 40f * PedalEngineRpmGain;
+                    finalThrottleForce += gasPosition + gasEngine;
+                    phfPos = gasPosition * Pct(phfStr.ThrottlePositionStrength);
+                    phfEngine = gasEngine * Pct(phfStr.EngineStrength);
 
                     // Gear-shift pulse: sharp kick on upshift (throttle-cut moment)
                     if (raw.Gear != _lastPedalGear && raw.Gear > _lastPedalGear)
@@ -738,6 +788,7 @@ public sealed partial class MainViewModel
                     {
                         _shiftPulseFramesRemaining--;
                         finalThrottleForce += 60f;
+                        phfShiftV = 60f * Pct(phfStr.ShiftStrength);
                         phfShiftFired = true;
                     }
                 }
@@ -752,30 +803,22 @@ public sealed partial class MainViewModel
                 // Scrub deadzone: only real corner slip passes, baseline noise is cut.
                 float scrubRaw = Math.Clamp(raw.SlipVibrations, 0f, 1f);
                 float scrubValue = scrubRaw > 0.15f ? scrubRaw : 0f;
-                phfScrub = scrubValue;
                 phfRpmBuzz = raw.RpmPercent * throttleInput;
                 // Scrub / corner slip → PedalScrubGasGain
-                finalThrottleForce += scrubValue * 255f * 0.25f * PedalScrubGasGain;
-                // RIGHT-side curb bumps → PedalCurbBothGain (gas pedal)
-                finalThrottleForce += curbRight * 255f * PedalCurbBothGain;
-            }
-
-            // ── CLUTCH CHANNEL (MOZA PHF only — Osoyoo firmware drives brake+gas) ──
-            // Gear-shift kick + engine-RPM texture scaled by clutch position + curbs.
-            double finalClutchForce = 0;
-            if (raw != null)
-            {
-                if (phfShiftFired) finalClutchForce += 90;
-                finalClutchForce += phfRpmBuzz * clutchPosInput * 40.0 * PedalEngineRpmGain;
-                finalClutchForce += (phfCurbLeft + phfCurbRight) * 255.0 * 0.15 * PedalCurbBothGain;
+                // + RIGHT-side curb bumps → PedalCurbBothGain (gas pedal)
+                double gasScrub = scrubValue * 255f * 0.25f * PedalScrubGasGain;
+                double gasCurb = curbRight * 255f * PedalCurbBothGain;
+                finalThrottleForce += gasScrub + gasCurb;
+                phfScrubV = gasScrub * Pct(phfStr.ScrubStrength);
+                phfKerbR = gasCurb * Pct(phfStr.CurbStrength);
             }
 
             // ── OUTPUT STAGE: hard zero-clamp speed gate ──
-            if (raw?.SpeedKmh < 5.0f)
+            bool parked = raw?.SpeedKmh < 5.0f;
+            if (parked)
             {
                 finalBrakeForce = 0;
                 finalThrottleForce = 0;
-                finalClutchForce = 0;
             }
 
             byte brakeByte = (byte)Math.Clamp(finalBrakeForce * PedalMasterBrakeGain, 0, 255);
@@ -792,28 +835,39 @@ public sealed partial class MainViewModel
             if (osoyooActive)
                 _osyooDevice!.SendHapticPacket(brakeByte, throttleByte);
 
-            // ── MOZA PHF drive — same forces as intensity 0..1 + dominant
-            // effect frequency per channel (PHF modules do 0-100 Hz / 0-100%).
+            // ── MOZA PHF drive — every effect routed to the pedals the user
+            // selected for it (Tune tab). Per pedal: summed strength, frequency
+            // from its strongest effect, then that pedal's master gain.
             if (phfActive)
             {
-                int brakeHz = phfAbsFired ? MozaPhfAbsFreq
-                    : phfCurbLeft > 0f ? MozaPhfCurbFreq
-                    : phfRoad > 0.05f ? MozaPhfRoadFreq
-                    : MozaPhfConfigManager.Instance.Config.BrakePressureFrequency;
-                int gasHz = phfTcFired ? MozaPhfTcFreq
-                    : phfShiftFired ? MozaPhfConfigManager.Instance.Config.ShiftFrequency
-                    : phfCurbRight > 0f ? MozaPhfCurbFreq
-                    : phfScrub > 0f ? MozaPhfScrubFreq
-                    : phfRpmBuzz > 0.02f ? MozaPhfRpmFreq
-                    : MozaPhfTcFreq;
-                int clutchHz = phfShiftFired ? MozaPhfConfigManager.Instance.Config.ShiftFrequency
-                    : MozaPhfRpmFreq;
+                var c = MozaPhfConfigManager.Instance.Config;
+                // Engine on the clutch scales with clutch position (not throttle);
+                // the gear-shift kick is stronger on the clutch.
+                double engineClutch = raw == null ? 0
+                    : raw.RpmPercent * clutchPosInput * 40.0 * PedalEngineRpmGain * Pct(c.EngineStrength);
+                double shiftClutch = phfShiftFired ? 90.0 * Pct(c.ShiftStrength) : 0;
+
+                var effects = new[]
+                {
+                    new PhfRouter.Effect(PhfEffectKeys.Abs, phfAbs, c.AbsFrequency),
+                    new PhfRouter.Effect(PhfEffectKeys.Lockup, phfLockup, c.LockupFrequency),
+                    new PhfRouter.Effect(PhfEffectKeys.BrakePressure, phfPressure, c.BrakePressureFrequency),
+                    new PhfRouter.Effect(PhfEffectKeys.Road, phfRoadV, c.RoadFrequency),
+                    new PhfRouter.Effect(PhfEffectKeys.Kerbs, 0, c.CurbFrequency, Left: phfKerbL, Right: phfKerbR),
+                    new PhfRouter.Effect(PhfEffectKeys.Tc, phfTc, c.TcFrequency),
+                    new PhfRouter.Effect(PhfEffectKeys.Wheelspin, phfSpin, c.WheelspinFrequency),
+                    new PhfRouter.Effect(PhfEffectKeys.ThrottlePosition, phfPos, c.ThrottlePositionFrequency),
+                    new PhfRouter.Effect(PhfEffectKeys.Engine, phfEngine, c.RpmFrequency, ClutchValue: engineClutch),
+                    new PhfRouter.Effect(PhfEffectKeys.Shift, phfShiftV, c.ShiftFrequency, ClutchValue: shiftClutch),
+                    new PhfRouter.Effect(PhfEffectKeys.Scrub, phfScrubV, c.ScrubFrequency),
+                };
+                var mix = PhfRouter.Route(effects, c.GetRoute, c.ThrottlePositionFrequency);
+                if (parked) { mix.Brake = mix.Throttle = mix.Clutch = 0; }
 
                 DriveMozaPhf(
-                    brakeByte / 255f, brakeHz,
-                    throttleByte / 255f, gasHz,
-                    (float)Math.Clamp(finalClutchForce * PedalMasterClutchGain / 255.0, 0, 1),
-                    clutchHz);
+                    (float)Math.Clamp(mix.Brake * PedalMasterBrakeGain / 255.0, 0, 1), mix.BrakeHz,
+                    (float)Math.Clamp(mix.Throttle * PedalMasterGasGain / 255.0, 0, 1), mix.ThrottleHz,
+                    (float)Math.Clamp(mix.Clutch * PedalMasterClutchGain / 255.0, 0, 1), mix.ClutchHz);
             }
         }
 

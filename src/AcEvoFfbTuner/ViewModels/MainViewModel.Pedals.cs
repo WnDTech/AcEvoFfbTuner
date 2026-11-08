@@ -578,30 +578,72 @@ public sealed partial class MainViewModel
         PedalDetectStatus = $"{pedal} cleared back to {def}.";
     }
 
+    // Suppresses auto-save while gains are being loaded from disk.
+    private bool _loadingHapticGains;
+
+    /// <summary>Loads the Tune-tab haptic gains from the pedal config FILE
+    /// (they used to live only in memory and reset every launch), then
+    /// mirrors them into the live server's route config.</summary>
     private void LoadHapticRouteConfig()
     {
-        var routeCfg = _telemetryLoop?.LiveServer?.HapticRouteConfig;
-        if (routeCfg == null) return;
-
-        PedalMasterBrakeGain = routeCfg.BrakeHapticGain;
-        PedalMasterGasGain = routeCfg.GasHapticGain;
-        PedalMasterClutchGain = routeCfg.ClutchHapticGain;
-
-        // Map route list entries to observable properties
-        for (int i = 0; i < routeCfg.Routes.Count; i++)
+        var g = PedalConfigManager.Instance.Config.HapticGains ?? new PedalHapticGains();
+        _loadingHapticGains = true;
+        try
         {
-            var r = routeCfg.Routes[i];
-            switch (r.Signal)
-            {
-                case "abs":   PedalAbsBrakeGain = r.Gain; break;
-                case "tc":    PedalTcGasGain = r.Gain; break;
-                case "curb":  PedalCurbBothGain = r.Gain; break;
-                case "road":  PedalRoadBrakeGain = r.Gain; break;
-                case "scrub": PedalScrubGasGain = r.Gain; break;
-            }
+            PedalMasterBrakeGain = g.MasterBrake;
+            PedalMasterGasGain = g.MasterGas;
+            PedalMasterClutchGain = g.MasterClutch;
+            PedalAbsBrakeGain = g.AbsBrake;
+            PedalTcGasGain = g.TcGas;
+            PedalCurbBothGain = g.CurbBoth;
+            PedalRoadBrakeGain = g.RoadBrake;
+            PedalScrubGasGain = g.ScrubGas;
+            PedalBrakePressureGain = g.BrakePressure;
+            PedalThrottlePositionGain = g.ThrottlePosition;
+            PedalEngineRpmGain = g.EngineRpm;
         }
-        PedalBrakePressureGain = 1.0f;
+        finally { _loadingHapticGains = false; }
+        SaveHapticRouteConfig();
     }
+
+    /// <summary>Writes the Tune-tab haptic gains to the pedal config file.
+    /// Called on every slider change, so nothing is lost on restart.</summary>
+    private void SaveHapticGains()
+    {
+        if (_loadingHapticGains) return;
+        try
+        {
+            var config = PedalConfigManager.Instance.Config;
+            config.HapticGains ??= new PedalHapticGains();
+            var g = config.HapticGains;
+            g.MasterBrake = PedalMasterBrakeGain;
+            g.MasterGas = PedalMasterGasGain;
+            g.MasterClutch = PedalMasterClutchGain;
+            g.AbsBrake = PedalAbsBrakeGain;
+            g.TcGas = PedalTcGasGain;
+            g.CurbBoth = PedalCurbBothGain;
+            g.RoadBrake = PedalRoadBrakeGain;
+            g.ScrubGas = PedalScrubGasGain;
+            g.BrakePressure = PedalBrakePressureGain;
+            g.ThrottlePosition = PedalThrottlePositionGain;
+            g.EngineRpm = PedalEngineRpmGain;
+            PedalConfigManager.Instance.Save(config);
+        }
+        catch { }
+        SaveHapticRouteConfig();
+    }
+
+    partial void OnPedalMasterBrakeGainChanged(float value) => SaveHapticGains();
+    partial void OnPedalMasterGasGainChanged(float value) => SaveHapticGains();
+    partial void OnPedalMasterClutchGainChanged(float value) => SaveHapticGains();
+    partial void OnPedalAbsBrakeGainChanged(float value) => SaveHapticGains();
+    partial void OnPedalTcGasGainChanged(float value) => SaveHapticGains();
+    partial void OnPedalCurbBothGainChanged(float value) => SaveHapticGains();
+    partial void OnPedalRoadBrakeGainChanged(float value) => SaveHapticGains();
+    partial void OnPedalScrubGasGainChanged(float value) => SaveHapticGains();
+    partial void OnPedalBrakePressureGainChanged(float value) => SaveHapticGains();
+    partial void OnPedalThrottlePositionGainChanged(float value) => SaveHapticGains();
+    partial void OnPedalEngineRpmGainChanged(float value) => SaveHapticGains();
 
     private void SaveHapticRouteConfig()
     {

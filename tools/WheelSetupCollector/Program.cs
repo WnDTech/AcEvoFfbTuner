@@ -39,6 +39,12 @@ internal static class Program
             return;
         }
 
+        if (args.Contains("--phf"))
+        {
+            Application.Run(new PhfCaptureForm());
+            return;
+        }
+
         if (args.Contains("--list-usb"))
         {
             // Debug: dump the capture-point list the UI would show.
@@ -246,9 +252,13 @@ internal static class Program
                 ? $"Capturing on {alive} USB hub(s) — DRIVE THE GAME NOW"
                 : "Capture could not start — no USB hub opened");
 
+            var stopFlag = Path.Combine(dir, "stop.flag");
             for (int s = 1; s <= seconds; s++)
             {
                 Thread.Sleep(1000);
+                // Open-ended captures (PHF effect mode) end early when the UI
+                // drops a stop flag.
+                if (File.Exists(stopFlag)) break;
                 int aliveNow = procs.Count(p => !p.HasExited);
                 WriteStatus(dir, aliveNow > 0
                     ? $"Capturing on {aliveNow} USB hub(s) — {s}/{seconds} s — DRIVE THE GAME NOW"

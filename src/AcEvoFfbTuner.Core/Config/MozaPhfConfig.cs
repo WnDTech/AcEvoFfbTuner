@@ -40,6 +40,44 @@ public sealed class MozaPhfConfig
     public int RpmFrequency { get; set; } = 80;
     public int ShiftFrequency { get; set; } = 55;
     public int ClutchFrequency { get; set; } = 40;
+    public int LockupFrequency { get; set; } = 50;
+    public int WheelspinFrequency { get; set; } = 35;
+    public int ThrottlePositionFrequency { get; set; } = 30;
+
+    /// <summary>Per-effect strength in percent (0-200, 100 = unchanged).
+    /// PHF-only: multiplies that effect's contribution before the pedal's
+    /// master gain. The Osoyoo pedals do not read these.</summary>
+    public int AbsStrength { get; set; } = 100;
+    public int LockupStrength { get; set; } = 100;
+    public int BrakePressureStrength { get; set; } = 100;
+    public int RoadStrength { get; set; } = 100;
+    public int CurbStrength { get; set; } = 100;
+    public int TcStrength { get; set; } = 100;
+    public int WheelspinStrength { get; set; } = 100;
+    public int ThrottlePositionStrength { get; set; } = 100;
+    public int EngineStrength { get; set; } = 100;
+    public int ShiftStrength { get; set; } = 100;
+    public int ScrubStrength { get; set; } = 100;
+
+    /// <summary>Which pedals each PHF effect plays on. Bitmask matching
+    /// <see cref="ModuleMask"/>: 1 = throttle, 2 = brake, 4 = clutch.
+    /// Keys are <see cref="PhfEffectKeys"/>. Missing keys fall back to
+    /// <see cref="DefaultRoute"/>, so older saved configs keep working.</summary>
+    public Dictionary<string, int> EffectRoutes { get; set; } = new();
+
+    public int GetRoute(string effectKey) =>
+        EffectRoutes.TryGetValue(effectKey, out var m) ? m : DefaultRoute(effectKey);
+
+    public void SetRoute(string effectKey, int mask) => EffectRoutes[effectKey] = mask & 0b111;
+
+    public static int DefaultRoute(string effectKey) => effectKey switch
+    {
+        PhfEffectKeys.Abs or PhfEffectKeys.Lockup or PhfEffectKeys.BrakePressure
+            or PhfEffectKeys.Road => 0b010,
+        PhfEffectKeys.Kerbs => 0b011,
+        PhfEffectKeys.Engine or PhfEffectKeys.Shift => 0b101,
+        _ => 0b001 // TC, wheelspin, throttle position, scrub
+    };
 
     public bool HasModule(MozaPhfChannel channel) =>
         (ModuleMask & (1 << (int)channel)) != 0;
@@ -51,6 +89,22 @@ public sealed class MozaPhfConfig
         else
             ModuleMask &= ~(1 << (int)channel);
     }
+}
+
+/// <summary>Stable keys for PHF effects (used for routing).</summary>
+public static class PhfEffectKeys
+{
+    public const string Abs = "Abs";
+    public const string Lockup = "Lockup";
+    public const string BrakePressure = "BrakePressure";
+    public const string Road = "Road";
+    public const string Kerbs = "Kerbs";
+    public const string Tc = "Tc";
+    public const string Wheelspin = "Wheelspin";
+    public const string ThrottlePosition = "ThrottlePosition";
+    public const string Engine = "Engine";
+    public const string Shift = "Shift";
+    public const string Scrub = "Scrub";
 }
 
 public enum MozaPhfChannel

@@ -94,7 +94,10 @@ public struct R3ePlayerData
     public R3eVector3d AngularVelocity;
     public R3eVector3d LocalAngularVelocity;
     public R3eVector3d GForce;
+    // Total steering force through the steering bars (raw, independent of in-game FFB settings).
     public double SteeringForce;
+    // API 3.6 doc: in-game FFB OUTPUT before the max-force clamp (±1 = device full scale,
+    // beyond = clipping). Includes car FFB multiplier + user FFB settings. Same sign as SteeringForce.
     public double SteeringForcePercentage;
     public double EngineTorque;
     public double CurrentDownforce;
@@ -263,9 +266,10 @@ public struct R3eDriverData
     public int PenaltyReason;
     public int EngineState;
     public R3eVector3f Orientation;
-    public float Unused1;
-    public float Unused2;
-    public float Unused3;
+    // API 3.6 (2026-10-27): were reserved Unused1..3 (same 4-byte slots).
+    public int StartGroup;      // 0-based, -1 = N/A
+    public int StartPhase;      // -1 N/A, 0 waiting, 1 corridor, 2 green
+    public int FormationSlot;   // 0 = group leader, -1 = N/A
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -320,8 +324,9 @@ public struct R3eShared
     public float SessionTimeDuration;
     public float SessionTimeRemaining;
     public int MaxIncidentPoints;
-    public float EventUnused1;
-    public float EventUnused2;
+    // API 3.6: were EventUnused1/2.
+    public int StartMode;       // -1 N/A, 0 standing, 1 rolling, 2 formation
+    public int StartGroupCount; // -1 N/A
 
     //////////////////////////////////////////////////////////////////////////
     // Pit

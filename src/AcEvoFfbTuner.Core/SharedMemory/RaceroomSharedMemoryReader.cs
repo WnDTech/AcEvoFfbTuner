@@ -64,6 +64,12 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
 
     public float EngineTorque => _mmf != null ? (float)_lastData.Player.EngineTorque : 0f;
 
+    /// <summary>Full physical wheel rotation (deg). SteerInputRaw (-1..1) spans this range.</summary>
+    public float RawSteeringForce => _mmf != null ? (float)_lastData.Player.SteeringForce : 0f;
+    public float RawSteeringForcePct => _mmf != null ? (float)_lastData.Player.SteeringForcePercentage : 0f;
+
+    public float SteerWheelRangeDegrees => _mmf != null ? _lastData.SteerWheelRangeDegrees : 0f;
+
     public float[] TireFlatspot => _mmf != null
         ? new[] {
             _lastData.TireFlatspot.FrontLeft == 1 ? 1f : 0f,
@@ -541,10 +547,17 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
     /// value is clearly in percent units so either scale maps correctly
     /// instead of pinning the output at the clip.
     /// </summary>
-    private static float NormalizeSteeringForce(float v)
+    /// <summary>
+    /// SteeringForcePercentage is defined by API 3.6 as the in-game FFB output
+    /// on a ±1 device-full-scale basis, exceeding ±1 when the game clips
+    /// (verified live 2026-11-08: −0.031 for SteeringForce −198, a fixed
+    /// 1/6390 ratio). The old "|v| &gt; 2 → v/100" guess turned genuine heavy
+    /// clipping (e.g. 2.5) into 0.025 — the force collapsed exactly when it
+    /// was strongest. Only non-finite values are rejected now.
+    /// </summary>
+    internal static float NormalizeSteeringForce(float v)
     {
-        if (v > 2f || v < -2f) return v / 100f;
-        return v;
+        return float.IsFinite(v) ? v : 0f;
     }
 
     /// <summary>
@@ -567,10 +580,21 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
         td.RearRight < 0 ? 0f : td.RearRight
     };
 
-    private static float CalculateSlipRatio(float tireSpeedMs, float carSpeedMs)
+    /// <summary>
+    /// Longitudinal slip ratio: (|wheel surface speed| − car speed) / car speed.
+    /// R3E reports TireSpeed NEGATIVE for forward rolling (verified live
+    /// 2026-11-07: car 0.38 m/s → TireSpeed −0.38 on all four wheels,
+    /// TireRps likewise negative), while CarSpeed is a positive magnitude.
+    /// The old signed formula read (−v − v)/v = −2.0 permanently, pinning
+    /// the slip enhancer at its clamp in one direction regardless of steer
+    /// (−0.11..−0.13 on both sides, 2026-11-07 Lakeview snapshot) — the
+    /// one-sided weight and off-center notch. Magnitude makes it
+    /// convention-free: lockup → −1, free rolling → 0, wheelspin → &gt;0.
+    /// </summary>
+    internal static float CalculateSlipRatio(float tireSpeedMs, float carSpeedMs)
     {
         if (carSpeedMs <= 0f) return 0f;
-        return (tireSpeedMs - carSpeedMs) / carSpeedMs;
+        return (Math.Abs(tireSpeedMs) - carSpeedMs) / carSpeedMs;
     }
 
     private float SynthesizeRoadVibration()
