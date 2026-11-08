@@ -50,6 +50,33 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.29.0-beta.3",
+            Date = new DateTime(2026, 11, 8),
+            Title = "RaceRoom: native torque, no centre notch, stronger corners",
+            Features =
+            [
+                "RaceRoom: the main force now follows the game's own torque direction, so centre feel, camber pull and self-steer come straight from the physics (toggle: Game Torque Direction)",
+                "RaceRoom: road compression — crests make the steering heavier and dips lighter in the direction you are steering, plus a small kick when one front wheel hits a bump harder (Road Compression and Bump Twist sliders)",
+                "RaceRoom: shared memory API 3.6 support, with new snapshot columns for the game's raw steering force, FFB output and road compression weight",
+            ],
+            Improvements =
+            [
+                "RaceRoom: Grip Loss Lightening only engages when the front tyres are genuinely unloaded — the Historic Update tyre model reports lower grip in normal corners, which was cutting 27-40% of the force in every corner",
+                "RaceRoom: Center Sharpness now measures real steering-wheel degrees and builds force evenly from the centre",
+                "FFB Tuning page reorganised by feel, with fixed slider ranges and better readability; FFB Coach follows the same ranges",
+                "Profiles and Devices pages: responsive layout, with new Pedals and AC setup tabs; work-in-progress pages grouped under a WIP heading in the sidebar",
+                "MOZA pedal haptics: kerb hits split by side (left to brake, right to throttle) and a new PHF router",
+            ],
+            Fixes =
+            [
+                "RaceRoom: removed the notch in the dead centre of the wheel",
+                "RaceRoom: slip ratio was read with the wrong sign, which pushed the wheel one way at all times — right turns felt about 40% lighter than left turns",
+                "RaceRoom: the force collapsed instead of clipping when the in-game FFB went past full scale",
+                "RaceRoom: the old suspension road force could push against your steering on crests",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.29.0-beta.2",
             Date = new DateTime(2026, 10, 22),
             Title = "Direct beta downloads from Discord",

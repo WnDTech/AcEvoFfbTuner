@@ -63,8 +63,9 @@ Each game's pipeline extends the base with game-specific force shaping:
 - **Brake Weight-Transfer Boost** — Scales Mz proportionally when braking, simulating increased front tyre grip from weight transfer
 - **DC Blocker** — Removes turn-correlated bias from suspension EMAs that would push the wheel off-center during cornering
 - **Dynamic Suppression** — Prevents the detail channel from reversing the core centering direction at small steer angles
-- **V-Shape Centre Suppression** — Quadratic force fade near steering centre for smooth, natural self-centering
-- **Historic Update support** — Steering Angle Compensation toggle for the rebuilt dynamic SAT curve, grip release limiter that spreads touchdown landings, and grip floor rescaled for the new tyre model
+- **Native Game Torque** — Core force follows RaceRoom's own signed steering torque (shared memory API 3.6), so centre feel, camber pull and self-steer come from the physics; linear centre ramp measured in real steering-wheel degrees
+- **Historic Update support** — Steering Angle Compensation toggle for the rebuilt dynamic SAT curve, grip release limiter that spreads touchdown landings, and Grip Loss Lightening that only engages when the fronts are genuinely unloaded
+- **Road Compression & Bump Twist** — Front heave loads the wheel up in the direction you're steering; uneven front hits give a small steering kick
 
 **Assetto Corsa (`AcFfbPipeline`):**
 - **AC-Specific Mixer Scales** — Overrides channel mixer gains (Mz, Fx, Fy) tuned for AC's synthesized force data
