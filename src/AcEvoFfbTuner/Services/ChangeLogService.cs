@@ -50,6 +50,38 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.29.0-beta.4",
+            Date = new DateTime(2026, 11, 8),
+            Title = "Live Map + Driver Coach",
+            Features =
+            [
+                "Live Map is now the one map: the Track Map's FFB Heatmap and FFB Diagnostics are switchable layers drawn on the real circuit, with the verdict, coverage and profile recommendations (Apply Profile Changes) on the same page",
+                "Real corner names: corners are named from OpenStreetMap by their position on the circuit (e.g. T3 Copse, T7 Michael-Schumacher-S), cached for next time, and shown in the CORNER readout and FFB diagnostics on every page",
+                "Stable corner numbering: corners come from the downloaded track layout and are numbered from the start/finish line, so T-numbers no longer shift between laps or sessions",
+                "FFB diagnostics say where: events are tagged with the corner (or \"after T5 …\" on a straight), with a Worst Places list and a \"Where\" line in the recommendations",
+                "Driver Coach (Live Map toggle): every clean lap compared with your best, corner by corner, worst first: time lost, braking point, minimum and exit speed, throttle point, plus braking-point markers on the map (white = best lap, orange = last lap)",
+                "Personal bests are saved per track, layout and car, so the coach compares you with your real PB from the first clean lap",
+                "Live DELTA tile: running gap to your best lap while you drive (green ahead, red behind)",
+                "Grip hints: understeer (more steering than your best lap for the same line) and oversteer caught with countersteer (on entry, mid-corner or on power), with how many of the last 4 laps it happened",
+                "Devices: system-wide sim hardware detection with live hot-plug: wheelbases, pedals, haptics, shifters, handbrakes and button boxes powered on after launch are picked up (Rescan on the Devices page)",
+            ],
+            Improvements =
+            [
+                "Track work (layout download, geo-fit, corner naming) now runs on every page, not only while the Live Map is open",
+                "Slow OpenStreetMap servers no longer time out the track download (waits up to 90 s), and a failed corner-name lookup retries in the background",
+                "The Live Map's map labels show only real corners (no straights, pit lanes or venue names), and adding names to a loaded layout keeps your zoom",
+                "Wheelbase auto-connect survives Windows changing the device ID (falls back to USB ID, then product name); Disconnect now stops auto-connect instead of forgetting the wheel",
+            ],
+            Fixes =
+            [
+                "Track names with special characters (Nürburgring) were read as \"N??rburgring\" and matched no circuit layout",
+                "The saved track map was dropped on every session reset (pit exit, restart), losing corners, names and heatmaps until a new lap was recorded",
+                "Track position froze at the start/finish line from the second lap on, stopping the CORNER readout, FFB heatmap and diagnostics for the rest of the lap",
+                "Wheel force could stay off after a game took focus while the app window was still marked active",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.29.0-beta.3",
             Date = new DateTime(2026, 11, 8),
             Title = "RaceRoom: native torque, no centre notch, stronger corners",

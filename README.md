@@ -192,6 +192,9 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 - Force heatmap and diagnostic heatmap overlay (snap events, oscillations, clipping, anomalies)
 - Popout overlay window for second-screen use during track creation
 - **Live Map page** — every car on OSM satellite tiles (LMU, R3E, AC EVO, ACC), placed by a shape fit of your driven lap to the real circuit; class-coloured discs with race position and per-car flag rings, class legend and Field standings panel
+- **FFB layers on the Live Map** — FFB Heatmap and FFB Diagnostics drawn on the real circuit, with corner-tagged events, a Worst Places list and one-click profile recommendations
+- **Real corner names** — matched by position from OpenStreetMap and cached; stable corner numbering from the start/finish line
+- **Driver Coach** — every clean lap vs your best, corner by corner (time lost, braking point, apex/exit speed, throttle point), braking markers on the map, saved personal bests per track/layout/car, live delta, and understeer/oversteer grip hints
 - **Track-network layouts** — variants no map source publishes (e.g. LMU Bahrain Outer) are assembled from OpenStreetMap track sections and confirmed against your recorded lap
 - Generates actionable tuning recommendations with one-click apply
 
