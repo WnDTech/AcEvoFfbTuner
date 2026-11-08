@@ -7,5 +7,8 @@ public enum DeviceCategory
     Pedals,
     HapticPad,
     ButtonBox,
-    Game
+    Game,
+    Shifter,
+    Handbrake,
+    OtherController
 }

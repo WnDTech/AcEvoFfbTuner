@@ -16,6 +16,14 @@ public sealed class AppSettings
     public bool AutoConnect { get; set; }
     public bool AutoStart { get; set; }
     public string? LastConnectedDeviceInstanceId { get; set; }
+    /// <summary>Fallback identity of the last wheelbase when its DirectInput
+    /// instance GUID changes (new USB port, driver reinstall, Windows update).</summary>
+    public string? LastConnectedDeviceProductName { get; set; }
+    /// <summary>(PID &lt;&lt; 16) | VID of the last connected wheelbase, 0 = unknown.</summary>
+    public uint LastConnectedDeviceVidPid { get; set; }
+    /// <summary>True after the user pressed Disconnect — auto-connect then
+    /// stays off until they connect a wheelbase again.</summary>
+    public bool WheelbaseUserDisconnected { get; set; }
     public bool PerCarAutoLoadEnabled { get; set; } = true;
     public string DefaultStartPage { get; set; } = "Home";
     public bool TooltipsEnabled { get; set; } = true;

@@ -93,6 +93,84 @@ public sealed class DeviceRegistry : INotifyPropertyChanged
         }
     }
 
+    // ── System-wide hardware scan ────────────────────────────────────────
+    private List<RaceHardwareItem> _hardware = [];
+    private int _scanGuard;
+
+    /// <summary>Every sim device found by the last <see cref="ScanHardware"/>.</summary>
+    public IReadOnlyList<RaceHardwareItem> Hardware
+    {
+        get { lock (_dispatcherLock) return [.. _hardware]; }
+    }
+
+    public event EventHandler? HardwareScanned;
+
+    /// <summary>
+    /// Runs a full HID scan and updates <see cref="Hardware"/>. Fills the
+    /// Pedals / HapticPad category slots from the scan only when nothing else
+    /// (DirectInput pedal source, HF8 controller) owns them — the connected
+    /// wheelbase slot is never touched here (it reflects the live connection).
+    /// Safe to call from any thread; overlapping calls are dropped.
+    /// </summary>
+    public bool ScanHardware(IReadOnlySet<uint>? ffbVidPids = null)
+    {
+        if (Interlocked.CompareExchange(ref _scanGuard, 1, 0) != 0)
+            return false;
+        try
+        {
+            var found = RaceHardwareScanner.Scan(ffbVidPids);
+            lock (_dispatcherLock) _hardware = found;
+
+            ApplyScanSlot(DeviceCategory.Pedals, found);
+            ApplyScanSlot(DeviceCategory.HapticPad, found);
+            ApplyScanSlot(DeviceCategory.Shifter, found);
+            ApplyScanSlot(DeviceCategory.Handbrake, found);
+            ApplyScanSlot(DeviceCategory.ButtonBox, found);
+
+            OnPropertyChanged(nameof(Hardware));
+            HardwareScanned?.Invoke(this, EventArgs.Empty);
+            return true;
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _scanGuard, 0);
+        }
+    }
+
+    private void ApplyScanSlot(DeviceCategory cat, List<RaceHardwareItem> found)
+    {
+        var items = found.Where(h => h.Category == cat).ToList();
+        DetectedDevice? existing;
+        lock (_dispatcherLock) existing = _devices.FirstOrDefault(d => d.Category == cat);
+
+        // A slot filled by a live source (not a scan / not a placeholder) wins.
+        bool ownedByLiveSource = existing != null
+            && existing.State == DeviceConnectionState.Connected
+            && !existing.DeviceId.StartsWith("scan_", StringComparison.Ordinal);
+        if (ownedByLiveSource) return;
+
+        if (items.Count == 0)
+        {
+            if (existing != null && existing.DeviceId.StartsWith("scan_", StringComparison.Ordinal))
+                SetDisconnected(cat);
+            return;
+        }
+
+        var first = items[0];
+        string display = items.Count == 1 ? first.ProductName : $"{first.ProductName} (+{items.Count - 1})";
+        AddOrUpdate(new DetectedDevice
+        {
+            Category = cat,
+            DeviceId = $"scan_{cat}_{first.Key}",
+            ProductName = first.ProductName,
+            VendorName = first.VendorName,
+            Vendor = first.WheelVendor,
+            State = DeviceConnectionState.Connected,
+            DisplayName = display,
+            Capabilities = DeviceCapabilities.Empty
+        });
+    }
+
     private IPlatformDeviceDetector? _currentDetector;
     private IFFBProvider? _currentProvider;
 

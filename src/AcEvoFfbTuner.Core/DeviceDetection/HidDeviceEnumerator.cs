@@ -176,6 +176,145 @@ internal static class HidDeviceEnumerator
         return results;
     }
 
+    [DllImport("hid.dll", CharSet = CharSet.Auto)]
+    private static extern bool HidD_GetManufacturerString(IntPtr dev, byte[] buf, int len);
+
+    /// <summary>
+    /// Enumerates EVERY present HID collection system-wide. Devices are opened
+    /// with zero access rights (attribute/caps/string queries only), which
+    /// succeeds even for devices another app holds exclusively (DirectInput
+    /// exclusive mode, vendor software). One physical device usually exposes
+    /// several collections — callers group by VID/PID.
+    /// </summary>
+    public static List<HidDeviceInfo> EnumerateAll()
+    {
+        var results = new List<HidDeviceInfo>();
+        var hidGuid = new Guid(0x4D1E55B2, 0xF16F, 0x11CF, 0x88, 0xCB, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30);
+        IntPtr hInfo = SetupDiGetClassDevs(ref hidGuid, IntPtr.Zero, IntPtr.Zero, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+        if (hInfo == InvalidHandle) return results;
+
+        try
+        {
+            uint index = 0;
+            var iface = new SpDeviceInterfaceData { cbSize = Marshal.SizeOf<SpDeviceInterfaceData>() };
+
+            while (SetupDiEnumDeviceInterfaces(hInfo, IntPtr.Zero, ref hidGuid, index++, ref iface))
+            {
+                SetupDiGetDeviceInterfaceDetail(hInfo, ref iface, IntPtr.Zero, 0, out int size, IntPtr.Zero);
+                if (size <= 0) continue;
+                IntPtr buf = Marshal.AllocHGlobal(size);
+                try
+                {
+                    Marshal.WriteInt32(buf, IntPtr.Size == 8 ? 8 : 6);
+                    if (!SetupDiGetDeviceInterfaceDetail(hInfo, ref iface, buf, size, out _, IntPtr.Zero))
+                        continue;
+
+                    string path = Marshal.PtrToStringUni(buf + 4)!;
+                    IntPtr hDev = CreateFile(path, 0, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+                    if (hDev == InvalidHandle) continue;
+
+                    try
+                    {
+                        if (!HidD_GetAttributes(hDev, out var attrs))
+                            continue;
+
+                        ushort usagePage = 0, usage = 0, inLen = 0, outLen = 0, featLen = 0;
+                        if (HidD_GetPreparsedData(hDev, out var preparsed))
+                        {
+                            if (HidP_GetCaps(preparsed, out var caps))
+                            {
+                                usagePage = caps.UsagePage;
+                                usage = caps.Usage;
+                                inLen = caps.InputReportByteLength;
+                                outLen = caps.OutputReportByteLength;
+                                featLen = caps.FeatureReportByteLength;
+                            }
+                            HidD_FreePreparsedData(ref preparsed);
+                        }
+
+                        results.Add(new HidDeviceInfo
+                        {
+                            DevicePath = path,
+                            VendorId = attrs.Vid,
+                            ProductId = attrs.Pid,
+                            ProductString = GetHidProductString(hDev),
+                            ManufacturerString = GetHidManufacturerString(hDev),
+                            UsagePage = usagePage,
+                            Usage = usage,
+                            InputReportByteLength = inLen,
+                            OutputReportByteLength = outLen,
+                            FeatureReportByteLength = featLen
+                        });
+                    }
+                    finally
+                    {
+                        CloseHandle(hDev);
+                    }
+                }
+                finally
+                {
+                    Marshal.FreeHGlobal(buf);
+                }
+            }
+        }
+        finally
+        {
+            SetupDiDestroyDeviceInfoList(hInfo);
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Cheap change detector: hashes the set of present HID interface paths
+    /// WITHOUT opening any device (no I/O to the hardware). Used by the
+    /// hot-plug poller as a fallback when WM_DEVICECHANGE is missed.
+    /// </summary>
+    public static int GetPresentFingerprint()
+    {
+        var hidGuid = new Guid(0x4D1E55B2, 0xF16F, 0x11CF, 0x88, 0xCB, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30);
+        IntPtr hInfo = SetupDiGetClassDevs(ref hidGuid, IntPtr.Zero, IntPtr.Zero, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+        if (hInfo == InvalidHandle) return 0;
+        var paths = new List<string>();
+        try
+        {
+            uint index = 0;
+            var iface = new SpDeviceInterfaceData { cbSize = Marshal.SizeOf<SpDeviceInterfaceData>() };
+            while (SetupDiEnumDeviceInterfaces(hInfo, IntPtr.Zero, ref hidGuid, index++, ref iface))
+            {
+                SetupDiGetDeviceInterfaceDetail(hInfo, ref iface, IntPtr.Zero, 0, out int size, IntPtr.Zero);
+                if (size <= 0) continue;
+                IntPtr buf = Marshal.AllocHGlobal(size);
+                try
+                {
+                    Marshal.WriteInt32(buf, IntPtr.Size == 8 ? 8 : 6);
+                    if (SetupDiGetDeviceInterfaceDetail(hInfo, ref iface, buf, size, out _, IntPtr.Zero))
+                        paths.Add(Marshal.PtrToStringUni(buf + 4)!.ToLowerInvariant());
+                }
+                finally { Marshal.FreeHGlobal(buf); }
+            }
+        }
+        finally { SetupDiDestroyDeviceInfoList(hInfo); }
+
+        paths.Sort(StringComparer.Ordinal);
+        var hc = new HashCode();
+        foreach (var p in paths) hc.Add(p, StringComparer.Ordinal);
+        hc.Add(paths.Count);
+        return hc.ToHashCode();
+    }
+
+    private static string GetHidManufacturerString(IntPtr hDev)
+    {
+        try
+        {
+            var buf = new byte[256];
+            if (HidD_GetManufacturerString(hDev, buf, buf.Length))
+                return Encoding.Unicode.GetString(buf).TrimEnd('\0').Trim();
+        }
+        catch { }
+        return "";
+    }
+
     private static string GetHidProductString(IntPtr hDev)
     {
         try

@@ -1073,17 +1073,12 @@ public sealed partial class MainViewModel
 
     public void ApplyStartupActions()
     {
-        if (AutoConnect && !string.IsNullOrEmpty(_appSettings.LastConnectedDeviceInstanceId)
-            && Guid.TryParse(_appSettings.LastConnectedDeviceInstanceId, out var deviceGuid))
-        {
-            var match = AvailableDevices.FirstOrDefault(d =>
-                d.DeviceInstance != null && d.DeviceInstance.InstanceGuid == deviceGuid);
-            if (match != null)
-            {
-                SelectedDevice = match;
-                ConnectDevice();
-            }
-        }
+        // Saved GUID → USB VID/PID → product name → best FFB device. The old
+        // GUID-only match silently skipped auto-connect whenever Windows gave
+        // the wheel a new instance GUID (different USB port, driver update).
+        if (!TryAutoConnectWheelbase("startup"))
+            PreselectBestWheelbase();
+        QueueHardwareScan();
 
         if (AutoStart && IsDeviceConnected)
         {

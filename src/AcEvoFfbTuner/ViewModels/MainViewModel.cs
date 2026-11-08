@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
@@ -1897,16 +1897,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             }
         });
 
-        HotPlugMonitor.DeviceArrived += (_, _) =>
-        {
-            if (_deviceManager.IsDeviceAcquired)
-                RefreshDeviceRegistry();
-        };
-        HotPlugMonitor.DeviceRemoved += (_, _) =>
-        {
-            if (_deviceManager.IsDeviceAcquired)
-                RefreshDeviceRegistry();
-        };
+        HotPlugMonitor.DevicesChanged += (_, arrived) => OnHardwareChanged(arrived);
 
         _deviceRegistry.RegistryRefreshed += (_, _) => Application.Current?.Dispatcher.BeginInvoke(() =>
         {
@@ -3647,6 +3638,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             DeviceStatuses[2].Name = "Wheelbase-integrated pedals";
             DeviceStatuses[2].TooltipText = "Wheelbase-integrated pedals\nConnected\nReads from wheelbase DI handle";
+        }
+        else if (_deviceRegistry.Pedals is { State: DeviceConnectionState.Connected } scannedPedals)
+        {
+            // Found by the system-wide HID scan but not (yet) opened as a pedal input source.
+            DeviceStatuses[2].IsConnected = true;
+            DeviceStatuses[2].Name = scannedPedals.DisplayName;
+            DeviceStatuses[2].TooltipText = $"{scannedPedals.DisplayName}\nDetected on USB\n{scannedPedals.VendorName}";
         }
         else
         {

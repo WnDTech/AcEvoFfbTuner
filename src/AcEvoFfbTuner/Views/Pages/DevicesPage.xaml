@@ -229,6 +229,45 @@
                         <Run Text="   |   " /><Run Text="{Binding SupportsPeriodicEffects, Mode=OneWay, StringFormat='Periodic effects: {0}'}" />
                     </TextBlock>
 
+                    <!-- System-wide sim hardware scan (RaceHardwareScanner) -->
+                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="#3347A1FF">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,6">
+                                <Button DockPanel.Dock="Right" Content="Rescan" Command="{Binding RescanHardwareCommand}"
+                                        Height="28" Padding="12,0" Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        BorderThickness="0" Cursor="Hand" FontSize="12"
+                                        ToolTip="Scan USB for wheelbases, pedals, haptics, shifters, handbrakes and button boxes" />
+                                <TextBlock Text="DETECTED SIM HARDWARE" FontSize="12" FontWeight="Bold" Foreground="#FF47A1FF" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding HardwareScanSummary}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                       TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <ItemsControl ItemsSource="{Binding DetectedHardware}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="96" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding CategoryLabel}" FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="#FF47A1FF" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" FontSize="12" Foreground="#FFE6EDF3" TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center">
+                                                <Run Text="{Binding ProductName, Mode=OneWay}" />
+                                                <Run Text="{Binding VendorName, Mode=OneWay, StringFormat='  ({0})'}" Foreground="{StaticResource TextDimBrush}" />
+                                            </TextBlock>
+                                            <TextBlock Grid.Column="2" Text="{Binding VidPid}" FontSize="11" Margin="8,0,0,0"
+                                                       Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center"
+                                                       ToolTip="{Binding Reason}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Logitech HID++ direct wheel settings (no G HUB) -->
                     <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
                             BorderThickness="1" BorderBrush="#33FF9800"

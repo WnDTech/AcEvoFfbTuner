@@ -169,7 +169,7 @@ public sealed partial class MainViewModel
                 AddSystemLog("WARNING: Logitech G HUB not running — force feedback will NOT work. Start G HUB and reconnect.");
             UpdateLedCapabilities();
             PushLedConfig();
-            _appSettings.LastConnectedDeviceInstanceId = SelectedDevice.DeviceInstance.InstanceGuid.ToString();
+            RememberConnectedWheelbase(SelectedDevice);
             _appSettings.Save();
             AddSystemLog($"Device connected: {SelectedDevice.ProductName}");
             _voiceService.Speak("Wheelbase connected");
@@ -192,7 +192,9 @@ public sealed partial class MainViewModel
         DeviceName = "No device";
         ResetLedCapabilities();
         DisconnectLogitechHidpp();
-        _appSettings.LastConnectedDeviceInstanceId = null;
+        // Keep the wheelbase identity (GUID / VID-PID / name) so the next
+        // manual connect still preselects it; just stop auto-connecting.
+        _appSettings.WheelbaseUserDisconnected = true;
         _appSettings.Save();
         AddSystemLog("Device disconnected");
         _voiceService.Speak("Wheelbase disconnected");
