@@ -112,6 +112,26 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
     /// </summary>
     public float YawAcceleration => _mmf != null ? (float)_lastData.Player.AngularAcceleration.Y : 0f;
 
+    /// <summary>Player car class name (r3e-data.json), "" when unavailable.
+    /// Used by TelemetryLoop for class-matched profile auto-load.</summary>
+    public string VehicleClass => _mmf != null ? R3eClassNames.Get(_lastData.VehicleInfo.ClassId) : "";
+
+    private static int _carNameModelId = -1;
+    private static byte[] _carNameBytes = new byte[33];
+
+    private static byte[] CarNameBytes(int modelId)
+    {
+        if (modelId != _carNameModelId)
+        {
+            var b = new byte[33];
+            var src = System.Text.Encoding.UTF8.GetBytes(R3eClassNames.GetCar(modelId));
+            Array.Copy(src, b, Math.Min(src.Length, 32));
+            _carNameBytes = b;
+            _carNameModelId = modelId;
+        }
+        return _carNameBytes;
+    }
+
     public bool TryConnect()
     {
         if (_mmf != null) return true;
@@ -439,7 +459,9 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
                 CarLocation = d.GameInMenus != 0 ? AcEvoCarLocation.AcevoPitbox : AcEvoCarLocation.AcevoTrack,
                 CarCoordinates = new StructVector3[60],
                 UseSingleCompound = false,
-                CarModel = new byte[33],
+                // Shared memory only has numeric ids — names come from the
+                // game's r3e-data.json (same lookup the class names use).
+                CarModel = CarNameBytes(d.VehicleInfo.ModelId),
                 DriverName = new byte[33],
                 DriverSurname = new byte[33],
                 PerformanceModeName = new byte[33],

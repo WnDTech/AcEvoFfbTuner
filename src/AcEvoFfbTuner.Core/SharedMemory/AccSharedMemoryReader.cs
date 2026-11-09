@@ -182,6 +182,7 @@ public sealed class AccSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
                 _lastGraphics = acc;
 
                 graphics = MapGraphics(acc);
+                graphics.CarModel = (byte[])_cachedCarModel.Clone();
                 return true;
             }
             finally { handle.Free(); }
@@ -196,11 +197,16 @@ public sealed class AccSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
     // ACC never reported a usable track name — the Live Map could not find any ACC venue.
     internal const int StaticSmVersionOffset = 0;      // wchar smVersion[15]
     internal const int StaticAcVersionOffset = 30;     // wchar acVersion[15]
+    internal const int StaticCarModelOffset = 68;      // wchar carModel[33]
     internal const int StaticTrackOffset = 134;        // wchar track[33]
     internal const int StaticMaxRpmOffset = 412;       // int maxRpm
     internal const int StaticTrackSplineOffset = 520;  // float trackSPlineLength — documented unused in ACC; kept when sane
     internal const int StaticTrackConfigOffset = 524;  // wchar trackConfiguration[33] — same
     private const int StaticReadBytes = StaticTrackConfigOffset + 33 * 2;
+
+    // Car model lives only on the static page; cached here and stamped onto
+    // graphics so TelemetryLoop's per-game car detection sees it.
+    private byte[] _cachedCarModel = new byte[33];
 
     public bool TryReadStatic(out SPageFileStaticEvo staticData)
     {
@@ -223,6 +229,9 @@ public sealed class AccSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
                 TrackConfiguration = ReadWideString(buffer, StaticTrackConfigOffset, 33),
                 TrackLengthM = spline > 500f && spline < 30000f ? spline : 0f,
             };
+
+            var car = ReadWideString(buffer, StaticCarModelOffset, 33);
+            if (car[0] != 0) _cachedCarModel = car;
 
             int maxRpm = ReadInt(buffer, StaticMaxRpmOffset);
             if (maxRpm > 0)

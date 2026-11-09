@@ -417,10 +417,10 @@
                                     Click="OnOpenTestingGuide" Padding="10,6" FontSize="13"
                                     Background="#FF21262D" Foreground="#FFE6EDF3" BorderThickness="0" Margin="0,0,6,0"
                                     ToolTip="Open the FFB testing guide overlay" />
-                            <Button Content="Calibration" x:Name="OpenCalBtn"
-                                    Click="OnOpenCalibrationWizard" Padding="10,6" FontSize="13"
+                            <Button Content="Setup Wizard" x:Name="OpenCalBtn"
+                                    Click="OnOpenSetupWizard" Padding="10,6" FontSize="13"
                                     Background="#FF21262D" Foreground="#FFE6EDF3" BorderThickness="0"
-                                    ToolTip="Open the wheel calibration wizard" />
+                                    ToolTip="Open the guided Setup Wizard (wheel, accessories, strength, profile)" />
                         </StackPanel>
 
                         <Border Background="#FF161B22" CornerRadius="8" BorderThickness="1" BorderBrush="#FF30363D" Margin="0,0,0,20">

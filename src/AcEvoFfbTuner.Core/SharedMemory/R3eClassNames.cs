@@ -12,7 +12,17 @@ namespace AcEvoFfbTuner.Core.SharedMemory;
 public static partial class R3eClassNames
 {
     private static readonly Lazy<IReadOnlyDictionary<int, string>> _names =
-        new(Load, LazyThreadSafetyMode.ExecutionAndPublication);
+        new(() => Load("classes"), LazyThreadSafetyMode.ExecutionAndPublication);
+    private static readonly Lazy<IReadOnlyDictionary<int, string>> _cars =
+        new(() => Load("cars"), LazyThreadSafetyMode.ExecutionAndPublication);
+
+    /// <summary>Car model id (driver_info.model_id) → car name from the same file's
+    /// "cars" table, e.g. "BMW M4 GT3". "Car {id}" when the file is missing.</summary>
+    public static string GetCar(int modelId)
+    {
+        if (modelId <= 0) return "";
+        return _cars.Value.TryGetValue(modelId, out var n) ? n : $"Car {modelId}";
+    }
 
     public static string Get(int classId)
     {
@@ -20,7 +30,7 @@ public static partial class R3eClassNames
         return _names.Value.TryGetValue(classId, out var n) ? n : $"Class {classId}";
     }
 
-    private static IReadOnlyDictionary<int, string> Load()
+    private static IReadOnlyDictionary<int, string> Load(string table)
     {
         var result = new Dictionary<int, string>();
         try
@@ -28,8 +38,8 @@ public static partial class R3eClassNames
             var file = FindDataFile();
             if (file == null) return result;
             using var doc = JsonDocument.Parse(File.ReadAllText(file));
-            if (!doc.RootElement.TryGetProperty("classes", out var classes)) return result;
-            foreach (var c in classes.EnumerateObject())
+            if (!doc.RootElement.TryGetProperty(table, out var entries)) return result;
+            foreach (var c in entries.EnumerateObject())
             {
                 if (c.Value.TryGetProperty("Id", out var id) && c.Value.TryGetProperty("Name", out var name)
                     && id.TryGetInt32(out var i) && name.GetString() is { Length: > 0 } s)

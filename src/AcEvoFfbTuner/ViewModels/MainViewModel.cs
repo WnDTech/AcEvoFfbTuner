@@ -1034,36 +1034,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
+        string? error = BeginManualTestForce(WheelFfbTestIntensity, out bool viaTrueForce);
+        if (error != null)
+        {
+            WheelFfbTestStatus = error;
+            return;
+        }
         WheelFfbTestActive = true;
-        _telemetryLoop.SuppressOutput = true;
-
-        // On the RS50/G PRO the TrueForce stream overrides DirectInput, so the
-        // test must go through the stream to validate the path the app uses
-        // while driving (a DI-only test would pass but prove nothing).
-        if (_telemetryLoop.ActiveProvider is LogitechTrueForceProvider tf)
-        {
-            // Lazy-engage: if the loop isn't running the session is in standby —
-            // start it for the test, and OnStopWheelFfbTest releases it again.
-            if (!_telemetryLoop.IsRunning) tf.Engage();
-            tf.UpdateTorque(WheelFfbTestIntensity);
-            AddSystemLog($"WHEEL FFB TEST: sending {WheelFfbTestIntensity * 100:F0}% via TrueForce stream — hold the wheel!");
-            WheelFfbTestStatus = $"Sending {WheelFfbTestIntensity * 100:F0}% through the TrueForce stream — you should feel the wheel pull. Auto-stops in 3s.";
-        }
-        else
-        {
-            // The DI gate only applies to DI-force wheels: TrueForce wheels are
-            // input-only at the DI layer (no periodic effects), but their force
-            // rides the stream — the gate above must not block the stream test.
-            if (!_deviceManager.SupportsPeriodicEffects)
-            {
-                WheelFfbTestActive = false;
-                WheelFfbTestStatus = "Device reports no force feedback support";
-                return;
-            }
-            _deviceManager.SendConstantForce(WheelFfbTestIntensity);
-            AddSystemLog($"WHEEL FFB TEST: sending {WheelFfbTestIntensity * 100:F0}% force — hold the wheel!");
-            WheelFfbTestStatus = $"Sending {WheelFfbTestIntensity * 100:F0}% force — you should feel the wheel pull. Auto-stops in 3s.";
-        }
+        AddSystemLog($"WHEEL FFB TEST: sending {WheelFfbTestIntensity * 100:F0}% force{(viaTrueForce ? " via TrueForce stream" : "")} — hold the wheel!");
+        WheelFfbTestStatus = viaTrueForce
+            ? $"Sending {WheelFfbTestIntensity * 100:F0}% through the TrueForce stream — you should feel the wheel pull. Auto-stops in 3s."
+            : $"Sending {WheelFfbTestIntensity * 100:F0}% force — you should feel the wheel pull. Auto-stops in 3s.";
 
         _wheelFfbTestTimer?.Stop();
         _wheelFfbTestTimer = new System.Windows.Threading.DispatcherTimer
@@ -1080,16 +1061,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _wheelFfbTestTimer = null;
         if (WheelFfbTestActive)
         {
-            if (_telemetryLoop.ActiveProvider is LogitechTrueForceProvider tf)
-            {
-                tf.UpdateTorque(0f);
-                // Release the session back to standby unless the telemetry
-                // loop is running (it re-engages via Start and needs the stream).
-                if (!_telemetryLoop.IsRunning) tf.Disengage();
-            }
-            else
-                _deviceManager?.SendConstantForce(0f);
-            _telemetryLoop.SuppressOutput = false;
+            EndManualTestForce();
             WheelFfbTestActive = false;
             WheelFfbTestStatus = "Test stopped — telemetry output restored";
             AddSystemLog("WHEEL FFB TEST: stopped, force zeroed");

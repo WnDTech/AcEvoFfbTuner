@@ -234,15 +234,12 @@
                                             ToolTip="Fill from detected track name" />
                                 </Grid>
 
-                                <TextBlock Text="Auto Setup" FontSize="14" Foreground="#FFE6EDF3" Margin="0,12,0,4" />
-                                <TextBlock Text="Generate a wheel-matched profile from the connected device." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,4" TextWrapping="Wrap" />
+                                <TextBlock Text="New profile from scratch" FontSize="14" Foreground="#FFE6EDF3" Margin="0,12,0,4" />
+                                <TextBlock Text="The Setup Wizard builds a wheel-matched profile for this game, sets up accessories and saves it with the right auto-load scope." FontSize="12" Foreground="#FF8B949E" Margin="0,0,0,4" TextWrapping="Wrap" />
                                 <StackPanel>
-                                    <Button Content="Auto Setup from Wheel" HorizontalAlignment="Left" Command="{Binding AutoSetupCommand}"
-                                            IsEnabled="{Binding IsAutoSetupAvailable}"
+                                    <Button Content="Open Setup Wizard" HorizontalAlignment="Left" Command="{Binding AutoSetupCommand}"
                                             Padding="10,4" FontSize="13" Style="{StaticResource OutlinedButton}"
-                                            ToolTip="Create a profile tuned to the connected wheelbase torque" />
-                                    <TextBlock Text="{Binding AutoSetupStatus}" FontSize="12" Foreground="#FF8B949E"
-                                               Margin="0,6,0,0" TextWrapping="Wrap" />
+                                            ToolTip="Guided setup: game, wheelbase + direction test, accessories, strength, save" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>

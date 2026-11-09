@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -17,7 +17,6 @@ public partial class MainWindow : Window
     private TestingGuideOverlay? _guideOverlay;
     private ProfilerOverlay? _profilerOverlay;
     private TrackMapPopout? _trackMapPopout;
-    private CalibrationWizardOverlay? _calibrationWizard;
     private Hf8MotorTestPopup? _hf8MotorTest;
     private CompactTunerWindow? _compactTuner;
     private SetupWizardOverlay? _setupWizard;
@@ -104,7 +103,7 @@ public partial class MainWindow : Window
         TelemetryPageCtrl.ProfilerOverlayRequested += OnProfilerOverlayRequested;
         TrackMapPageCtrl.TrackMapPopoutRequested += OnTrackMapPopoutRequested;
         SettingsPageCtrl.TestingGuideRequested += OnTestingGuideRequested;
-        SettingsPageCtrl.CalibrationWizardRequested += OnCalibrationWizardRequested;
+        SettingsPageCtrl.SetupWizardRequested += OnSetupWizardRequested;
         DevicesPageCtrl.Hf8MotorTestRequested += OnHf8MotorTestRequested;
         HomePageCtrl.SetupWizardRequested += OnSetupWizardRequested;
 
@@ -265,21 +264,15 @@ public partial class MainWindow : Window
         _guideOverlay?.Close();
         _profilerOverlay?.Close();
         _trackMapPopout?.Close();
-        _calibrationWizard?.Close();
         _setupWizard?.Close();
         _wheelCenterOverlay?.Close();
         _compactTuner?.Close();
         Application.Current.Shutdown();
     }
 
-    public void UpdateCalibrationWizard(float speedKmh, float mainForce, bool isClipping)
+    public void UpdateSetupWizard(float speedKmh, float coreForce, bool isClipping)
     {
-        _calibrationWizard?.UpdateLiveValues(speedKmh, mainForce, isClipping);
-    }
-
-    public void UpdateSetupWizard(float speedKmh, float mainForce, float steerAngle, bool isClipping, float mzFront, float brake, float gas)
-    {
-        _setupWizard?.UpdateLiveValues(speedKmh, mainForce, steerAngle, isClipping, mzFront, brake, gas);
+        _setupWizard?.UpdateLiveValues(speedKmh, coreForce, isClipping);
     }
 
     public void UpdateWheelCenter(float physicalNormalized, float angleDegrees)
@@ -403,50 +396,14 @@ public partial class MainWindow : Window
         OnTrackMapPopoutRequested(sender, e);
     }
 
-    private void OnCalibrationWizardRequested(object? sender, EventArgs e)
-    {
-        OpenCalibrationWizard();
-    }
-
-    private void OpenCalibrationWizard(object sender, RoutedEventArgs e)
-    {
-        OpenCalibrationWizard();
-    }
-
-    private void OpenCalibrationWizard()
-    {
-        if (_calibrationWizard != null)
-        {
-            _calibrationWizard.Activate();
-            return;
-        }
-
-        if (DataContext is not ViewModels.MainViewModel vm) return;
-
-        _calibrationWizard = new CalibrationWizardOverlay(
-            vm.Pipeline,
-            vm.DeviceManager,
-            vm.TelemetryLoop,
-            () =>
-            {
-                // The wizard writes the pipeline directly, bypassing the VM
-                // sliders — pull pipeline state back into the VM first so the
-                // save below persists the wizard's tuning instead of stale values.
-                vm.SyncVmFromPipeline();
-                vm.SaveCurrentProfileCommand.Execute(null);
-            });
-
-        _calibrationWizard.InitializeSlidersFromPipeline();
-        _calibrationWizard.Closed += (_, _) => _calibrationWizard = null;
-        _calibrationWizard.Show();
-    }
-
     private void OnSetupWizardRequested(object? sender, EventArgs e)
     {
         OpenSetupWizard();
     }
 
-    private void OpenSetupWizard()
+    /// <summary>Opens the single Setup Wizard (Home card, Settings button,
+    /// Profiles "Setup Wizard" button all land here).</summary>
+    public void OpenSetupWizard()
     {
         if (_setupWizard != null)
         {
@@ -458,20 +415,10 @@ public partial class MainWindow : Window
 
         try
         {
-            var wizLog = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner", "wiz_dbg.log");
-            File.AppendAllText(wizLog, $"[{DateTime.Now:HH:mm:ss.fff}] Creating wizard...\n");
-            var wizard = new SetupWizardOverlay(
-                vm.Pipeline,
-                vm.DeviceManager,
-                vm.TelemetryLoop,
-                vm,
-                (name, scope) => vm.WizardSaveProfile(name, scope));
-
-            File.AppendAllText(wizLog, $"[{DateTime.Now:HH:mm:ss.fff}] Wizard created, showing...\n");
+            var wizard = new SetupWizardOverlay(vm, vm.DeviceManager);
             wizard.Closed += (_, _) => _setupWizard = null;
-            wizard.Show();
-            File.AppendAllText(wizLog, $"[{DateTime.Now:HH:mm:ss.fff}] Show() returned\n");
             _setupWizard = wizard;
+            wizard.Show();
         }
         catch (Exception ex)
         {

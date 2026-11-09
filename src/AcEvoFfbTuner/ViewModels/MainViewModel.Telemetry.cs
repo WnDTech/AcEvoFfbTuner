@@ -445,8 +445,7 @@ public sealed partial class MainViewModel
                     lockDeg, processed.PeakHold, processed.ClipRate,
                     processed);
 
-                mw.UpdateCalibrationWizard(raw.SpeedKmh, processed.MainForce, processed.IsClipping);
-                mw.UpdateSetupWizard(raw.SpeedKmh, processed.MainForce, raw.SteerAngle, processed.IsClipping, processed.ChannelMzFront, raw.BrakeInput, raw.GasInput);
+                mw.UpdateSetupWizard(raw.SpeedKmh, processed.PostOutputGainForce, processed.IsClipping);
 
                 bool r3eAi = _telemetryLoop.IsR3eAiControlled;
                 if (r3eAi)

@@ -22,7 +22,7 @@ public partial class SettingsPage : UserControl
     private readonly Dictionary<string, FrameworkElement> _panels = new();
 
     public event EventHandler? TestingGuideRequested;
-    public event EventHandler? CalibrationWizardRequested;
+    public event EventHandler? SetupWizardRequested;
 
     public SettingsPage()
     {
@@ -143,9 +143,9 @@ public partial class SettingsPage : UserControl
         TestingGuideRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    private void OnOpenCalibrationWizard(object sender, RoutedEventArgs e)
+    private void OnOpenSetupWizard(object sender, RoutedEventArgs e)
     {
-        CalibrationWizardRequested?.Invoke(this, EventArgs.Empty);
+        SetupWizardRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnOpenLogFolder(object sender, RoutedEventArgs e)

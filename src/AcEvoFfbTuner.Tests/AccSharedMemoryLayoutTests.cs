@@ -13,6 +13,7 @@ public class AccSharedMemoryLayoutTests
     public void StaticOffsets_MatchTheKunosLayoutSharedWithAc1()
     {
         // ACC's static page is AC1's layout up to trackConfiguration (wchar_t strings).
+        AccSharedMemoryReader.StaticCarModelOffset.Should().Be((int)Marshal.OffsetOf<SPageFileStaticAC>(nameof(SPageFileStaticAC.CarModel)));
         AccSharedMemoryReader.StaticTrackOffset.Should().Be((int)Marshal.OffsetOf<SPageFileStaticAC>(nameof(SPageFileStaticAC.Track)));
         AccSharedMemoryReader.StaticMaxRpmOffset.Should().Be((int)Marshal.OffsetOf<SPageFileStaticAC>(nameof(SPageFileStaticAC.MaxRpm)));
         AccSharedMemoryReader.StaticTrackSplineOffset.Should().Be((int)Marshal.OffsetOf<SPageFileStaticAC>(nameof(SPageFileStaticAC.TrackSplineLength)));

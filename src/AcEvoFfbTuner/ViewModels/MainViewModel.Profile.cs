@@ -66,6 +66,14 @@ public sealed partial class MainViewModel
                 finally { _applyingFreshProfile = false; }
             }
         }
+        ApplyProfileCore(value);
+    }
+
+    /// <summary>Activates a profile: pipeline, static friction, VM values,
+    /// lap attribution and MOZA motor settings. Shared by selection and the
+    /// Setup Wizard's cancel-restore.</summary>
+    private void ApplyProfileCore(FfbProfile value)
+    {
         _profileManager.SetActiveProfile(value);
         value.ApplyToPipeline(_pipeline);
         value.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
@@ -213,44 +221,17 @@ public sealed partial class MainViewModel
             var profile = _profileManager.SaveProfileFromPipeline(_pipeline, dialog.Result!);
             profile.CarMatch = ProfileCarMatch;
             profile.TrackMatch = ProfileTrackMatch;
-            profile.GameMatch = GameDisplayName;
             profile.Scope = SelectedProfile?.Scope ?? ProfileScope.General;
+            // Auto-load compares GameMatch to the lowercase SupportedGame key
+            // (e.g. "lemansultimate"), never the display name. General
+            // profiles must leave it empty or they match nothing.
+            profile.GameMatch = profile.Scope == ProfileScope.General ? "" : CurrentGameMatchKey;
             SaveNonPipelineSettings(profile);
             _profileManager.SaveProfile(profile);
             _profileManager.SetActiveProfile(profile);
             RefreshProfiles();
             SelectedProfile = profile;
         }
-    }
-
-    public void WizardSaveProfile(string name, ProfileScope scope)
-    {
-        PushValuesToPipeline();
-
-        var profile = _profileManager.SaveProfileFromPipeline(_pipeline, name);
-        profile.Scope = scope;
-        profile.GameMatch = GameDisplayName;
-
-        switch (scope)
-        {
-            case ProfileScope.PerCar:
-                profile.CarMatch = DetectedCarModel ?? "";
-                break;
-            case ProfileScope.PerTrack:
-                profile.TrackMatch = DetectedTrackName ?? "";
-                break;
-            case ProfileScope.PerCarAndTrack:
-                profile.CarMatch = DetectedCarModel ?? "";
-                profile.TrackMatch = DetectedTrackName ?? "";
-                break;
-        }
-
-        SaveNonPipelineSettings(profile);
-        _profileManager.SaveProfile(profile);
-        _profileManager.SetActiveProfile(profile);
-        RefreshProfiles();
-        SelectedProfile = profile;
-        StatusText = $"Setup profile '{name}' saved and active";
     }
 
     private string GetNextProfileName(string baseName)

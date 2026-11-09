@@ -690,7 +690,12 @@ public sealed class TelemetryLoop : IDisposable
                         // resolve after the name — a class change re-fires
                         // detection so class-matched profiles still load.
                         // Always "" for non-LMU readers (zero impact).
-                        string carClass = (_reader as LmuSharedMemoryReader)?.VehicleClass ?? "";
+                        string carClass = _reader switch
+                        {
+                            LmuSharedMemoryReader lmuReader => lmuReader.VehicleClass ?? "",
+                            RaceroomSharedMemoryReader r3eReader => r3eReader.VehicleClass,
+                            _ => ""
+                        };
                         if (!string.IsNullOrEmpty(gfxCarModel)
                             && (gfxCarModel != _lastDetectedCarModel || carClass != _lastDetectedCarClass))
                         {

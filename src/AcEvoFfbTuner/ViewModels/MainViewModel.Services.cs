@@ -262,55 +262,13 @@ public sealed partial class MainViewModel
         }
     }
 
+    /// <summary>Profiles page "Open Setup Wizard" — the old one-click Auto
+    /// Setup is folded into the wizard (it ignored the running game and
+    /// saved names outside the Game - CarType - Track convention).</summary>
     [RelayCommand]
     private void AutoSetup()
     {
-        if (!IsAutoSetupAvailable || !IsDeviceConnected) return;
-
-        string deviceName = DeviceName;
-        float torque = WheelMaxTorqueNm;
-        if (torque <= 0) return;
-
-        EvoDetectedSettings? evoSettings = null;
-        var raw = _telemetryLoop.LatestRaw;
-        if (raw != null)
-        {
-            evoSettings = EvoSettingsDetector.DetectFromRaw(raw);
-            if (evoSettings != null)
-                evoSettings = new EvoDetectedSettings
-                {
-                    FfbStrength = evoSettings.FfbStrength,
-                    CarFfbMultiplier = evoSettings.CarFfbMultiplier,
-                    SteerDegrees = evoSettings.SteerDegrees,
-                    RecommendedOutputGain = evoSettings.RecommendedOutputGain,
-                    RecommendedNormalizationScale = evoSettings.RecommendedNormalizationScale,
-                    RecommendedSteeringLock = evoSettings.RecommendedSteeringLock,
-                    IsValid = false
-                };
-        }
-
-        var profile = WheelbaseAutoConfigurator.GenerateProfile(torque, deviceName, null);
-        if (evoSettings != null)
-            profile.SteeringLockDegrees = evoSettings.RecommendedSteeringLock;
-
-        profile.Name = $"Auto Setup - {deviceName}";
-
-        var existing = Profiles.FirstOrDefault(p => p.Name == profile.Name);
-        if (existing != null)
-            _profileManager.DeleteProfile(existing);
-
-        _profileManager.SaveProfile(profile);
-        RefreshProfiles();
-
-        SelectedProfile = profile;
-        profile.ApplyToPipeline(_pipeline);
-        profile.ApplyToStaticFriction(_telemetryLoop.StaticFriction);
-        LoadProfileValues(profile);
-        _profileManager.SetActiveProfile(profile);
-
-        var wheelType = WheelbaseAutoConfigurator.DetectWheelType(deviceName);
-        AutoSetupStatus = $"Auto Setup — {deviceName} ({torque:F1}Nm, {wheelType})";
-        StatusText = AutoSetupStatus;
+        (Application.Current?.MainWindow as Views.MainWindow)?.OpenSetupWizard();
     }
 
     [RelayCommand]
