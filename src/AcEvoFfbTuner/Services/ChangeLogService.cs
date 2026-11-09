@@ -50,6 +50,27 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.29.0-beta.5",
+            Date = new DateTime(2026, 11, 9),
+            Title = "Smoother, faster splash screen",
+            Features =
+            [
+            ],
+            Improvements =
+            [
+                "The splash screen now loads the app while it is showing instead of after a fixed 5-second intro, so startup is quicker",
+                "The splash progress bar shows the real startup steps (FFB engine, profiles and devices, settings, interface) and keeps moving during long steps instead of looking frozen",
+                "The splash animation stays smooth the whole time: it runs on its own thread and draws far less each frame",
+                "The splash window and engine sound fade out together, and the splash no longer sits on top of other windows",
+                "Sidebar pages can be opened by screen readers and other accessibility tools",
+            ],
+            Fixes =
+            [
+                "The splash screen froze on \"Ready!\" for several seconds while the app was actually still loading",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.29.0-beta.4",
             Date = new DateTime(2026, 11, 8),
             Title = "Live Map + Driver Coach",
