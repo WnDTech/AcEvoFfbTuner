@@ -64,6 +64,64 @@ public sealed class TieredTrackDataProvider : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// Quality rank of a layout source for "never replace better with worse": an OSM circuit
+    /// relation (curated geometry, names, pit lane) beats a shape-confirmed network loop, which
+    /// beats an Open Racetrack DB trace (often marked draft — 20-30 m off at Red Bull Ring).
+    /// A layout whose length disagrees with the game's by more than 5 % ranks last.
+    /// </summary>
+    public static int QualityRank(TrackDetailedInfo? d, double officialLengthM)
+    {
+        if (d?.TrackLayout is not { Count: >= 10 }) return -1;
+        if (officialLengthM > 500 && d.TrackLengthM > 0
+            && Math.Abs(d.TrackLengthM - officialLengthM) / officialLengthM > PreferOrtdbBeyond) return 0;
+        return d.DataSource switch
+        {
+            TrackDataSource.OsmRelation => 3,
+            TrackDataSource.OsmNetwork => 2,
+            TrackDataSource.OpenRacetrackDb => 1,
+            _ => 0,
+        };
+    }
+
+    /// <summary>
+    /// Try to replace a fallback layout (Open Racetrack DB / network loop) with the OSM circuit
+    /// relation — fallbacks are cached when Overpass is down and were never revisited. Returns
+    /// the relation data when it validates and matches the game's lap length within 5 %; caches it.
+    /// </summary>
+    public async Task<TrackDetailedInfo?> TryUpgradeToRelationAsync(string trackName, string? config,
+        TrackDetailedInfo current, double officialLengthM, double? lat, double? lon)
+    {
+        if (current.DataSource is not (TrackDataSource.OpenRacetrackDb or TrackDataSource.OsmNetwork)) return null;
+        if (officialLengthM <= 500) return null; // length is the only proof it is the right variant
+        var ownLimit = _relationService.RelationRateLimitRemaining(trackName, config);
+        if (ownLimit > TimeSpan.Zero) await Task.Delay(ownLimit + TimeSpan.FromMilliseconds(200));
+
+        TrackDetailedInfo? data;
+        try { data = await _relationService.FetchTrackDataAsync(trackName, lat, lon, config); }
+        catch (Exception ex) { TrackOsmRelationService.AppendLog($"[Upgrade] {trackName}: relation fetch failed ({ex.Message})"); return null; }
+        if (data == null || !ValidateTrackData(data, trackName, officialLengthM)
+            || data.TrackLengthM <= 0 || Math.Abs(data.TrackLengthM - officialLengthM) / officialLengthM > PreferOrtdbBeyond)
+        {
+            // FetchTrackDataAsync cached it — put the working fallback back.
+            _relationService.SaveCache(trackName, current, config);
+            TrackOsmRelationService.AppendLog($"[Upgrade] {trackName}: no matching OSM relation " +
+                $"({(data == null ? "none" : $"{data.TrackLengthM:F0} m vs {officialLengthM:F0} m")}) — keeping {current.DataSource}");
+            return null;
+        }
+        data.DataSource = TrackDataSource.OsmRelation;
+        data.ConfidenceScore = 0.8f;
+        if (!string.IsNullOrWhiteSpace(config)) data.TrackConfig = config;
+        _relationService.SaveCache(trackName, data, config);
+        TrackOsmRelationService.AppendLog($"[Upgrade] {trackName}: {current.DataSource} → OSM relation " +
+            $"({data.TrackLengthM:F0} m vs official {officialLengthM:F0} m, {data.Corners.Count} corners)");
+        return data;
+    }
+
+    /// <summary>Re-save known-good data (a refresh that found something worse must not leave the worse one cached).</summary>
+    public void RestoreCache(string trackName, string? config, TrackDetailedInfo data) =>
+        _relationService.SaveCache(trackName, data, config);
+
     public TrackDetailedInfo? LoadBestCached(string trackName, string? config = null)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return null;
@@ -113,6 +171,17 @@ public sealed class TieredTrackDataProvider : IDisposable
         TrackDetailedInfo? rejected = null; // wrong layout, but its corner names may sit on the right one
         for (int attempt = 1; attempt <= MaxRetries; attempt++)
         {
+            // Our OWN per-track limit (one relation query per 60 s) is not an Overpass outage:
+            // wait it out. Retrying into it burned all attempts within 15 s and fell back to an
+            // Open Racetrack DB draft when ⟳ was pressed right after a successful load
+            // (Red Bull Ring, 2026-11-09).
+            var ownLimit = _relationService.RelationRateLimitRemaining(trackName, config);
+            if (ownLimit > TimeSpan.Zero)
+            {
+                _relationService.StatusLog?.Invoke($"Waiting {ownLimit.TotalSeconds:F0}s before re-querying OpenStreetMap…");
+                await Task.Delay(ownLimit + TimeSpan.FromMilliseconds(200));
+            }
+
             TrackDetailedInfo? data;
             try
             {

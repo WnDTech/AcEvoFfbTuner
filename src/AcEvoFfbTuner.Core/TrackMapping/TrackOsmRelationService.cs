@@ -303,6 +303,18 @@ public sealed class TrackOsmRelationService : IDisposable
     /// <summary>Append a line to trackdata_relation.log (used by the other track-data tiers).</summary>
     public static void AppendLog(string msg) => StaticLog(msg);
 
+    /// <summary>Time left before this track may query relations again (our own 60 s per-track limit).</summary>
+    public TimeSpan RelationRateLimitRemaining(string trackName, string? config)
+    {
+        lock (_rateLock)
+        {
+            if (!_lastFetchByTrack.TryGetValue(TrackMapKeys.BuildKey(trackName, config), out var last))
+                return TimeSpan.Zero;
+            var left = TimeSpan.FromSeconds(60) - (DateTime.UtcNow - last);
+            return left > TimeSpan.Zero ? left : TimeSpan.Zero;
+        }
+    }
+
     public void SaveCache(string trackName, TrackDetailedInfo info, string? config = null)
     {
         if (string.IsNullOrWhiteSpace(trackName)) return;

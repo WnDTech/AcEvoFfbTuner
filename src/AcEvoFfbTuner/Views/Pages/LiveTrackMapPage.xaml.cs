@@ -1433,8 +1433,8 @@ public partial class LiveTrackMapPage : UserControl
 
         try
         {
-            // Delete cache files so the next load gets fresh data
-            _trackDataService.DeleteCache(trackName);
+            // The cache is NOT deleted first: the refresh bypasses it, and a refresh that only finds
+            // a worse layout (OpenStreetMap down → Open Racetrack DB draft) keeps the cached one.
 
             // Live game GPS first, then gazetteer (service tries Nominatim last).
             double? centerLat = null, centerLon = null;
@@ -1466,7 +1466,6 @@ public partial class LiveTrackMapPage : UserControl
             }
 
             // Force a fresh fetch bypassing cache (joins a load already in flight)
-            _trackDataService.DeleteCache(trackName, config);
             _fitPending = true;
             await _trackDataService.ForceRefreshAsync(trackName, centerLat, centerLon, config, officialLengthM,
                 LiveOfficialLength());

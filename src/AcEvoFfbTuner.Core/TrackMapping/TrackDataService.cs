@@ -66,36 +66,76 @@ public class TrackDataService : IDisposable
         double officialLengthM, Func<double>? liveOfficialLength)
     {
         _currentTrackName = trackName;
+        double Official()
+        {
+            double live = 0;
+            try { live = liveOfficialLength?.Invoke() ?? 0; } catch { }
+            return live > 500 ? live : officialLengthM;
+        }
+
+        // What we already have (the cache) — a refresh must never replace it with something worse.
+        var existing = _provider.LoadBestCached(trackName, config);
 
         // Try cache first (seed pack + tiered caches, layout-aware)
-        if (!forceRefresh)
+        if (!forceRefresh && existing != null)
         {
-            var cached = _provider.LoadBestCached(trackName, config);
-            if (cached != null)
-            {
-                _currentTrackData = cached;
-                TrackDataUpdated?.Invoke(cached);
-                StatusMessage?.Invoke($"Loaded cached track data ({cached.DataSource})");
-                await EnrichNamesAsync(trackName, config, cached);
-                return;
-            }
+            _currentTrackData = existing;
+            TrackDataUpdated?.Invoke(existing);
+            StatusMessage?.Invoke($"Loaded cached track data ({existing.DataSource})");
+            await EnrichNamesAsync(trackName, config, existing);
+            await TryUpgradeAsync(trackName, config, existing, Official(), centerLat, centerLon);
+            return;
         }
 
         // Fetch from tiered provider
         var data = await _provider.FetchTrackDataAsync(trackName, waypoints, centerLat, centerLon, config, officialLengthM,
             liveOfficialLength);
+        if (existing != null && TieredTrackDataProvider.QualityRank(data, Official())
+                                < TieredTrackDataProvider.QualityRank(existing, Official()))
+        {
+            // E.g. ⟳ while OpenStreetMap is down only reached an Open Racetrack DB draft: keep the
+            // better layout we had (it was overwritten in the cache by the fetch — restore it).
+            TrackOsmRelationService.AppendLog($"[Refresh] {trackName}: new {data?.DataSource.ToString() ?? "nothing"} " +
+                $"is worse than the cached {existing.DataSource} — keeping the cached layout");
+            _provider.RestoreCache(trackName, config, existing);
+            data = existing;
+            StatusMessage?.Invoke($"Kept the existing {existing.DataSource} layout (the refresh found nothing better)");
+        }
         if (data != null)
         {
             _currentTrackData = data;
             StatusMessage?.Invoke($"Loaded track data from {data.DataSource} ({data.Corners.Count} corners)");
             TrackDataUpdated?.Invoke(data);
             await EnrichNamesAsync(trackName, config, data);
+            await TryUpgradeAsync(trackName, config, data, Official(), centerLat, centerLon);
         }
         else
         {
             _currentTrackData = null;
             StatusMessage?.Invoke("No track data found for this track");
         }
+    }
+
+    // Fallback layouts (Open Racetrack DB drafts, network loops) cached during an Overpass outage
+    // were never revisited: try the OSM relation once per track per session.
+    private readonly HashSet<string> _upgradeTried = new(StringComparer.OrdinalIgnoreCase);
+
+    private async Task TryUpgradeAsync(string trackName, string? config, TrackDetailedInfo current,
+        double officialLengthM, double? lat, double? lon)
+    {
+        if (current.DataSource is not (TrackDataSource.OpenRacetrackDb or TrackDataSource.OsmNetwork)) return;
+        if (!_upgradeTried.Add(TrackMapKeys.BuildKey(trackName, config))) return;
+        try
+        {
+            var better = await _provider.TryUpgradeToRelationAsync(trackName, config, current, officialLengthM, lat, lon);
+            if (better != null && ReferenceEquals(_currentTrackData, current))
+            {
+                _currentTrackData = better;
+                StatusMessage?.Invoke("Upgraded to the OpenStreetMap circuit layout");
+                TrackDataUpdated?.Invoke(better);
+            }
+        }
+        catch { /* the fallback layout stays */ }
     }
 
     // One name lookup per track per session: a venue with no named ways must not re-query Overpass
@@ -139,6 +179,7 @@ public class TrackDataService : IDisposable
         Func<double>? liveOfficialLength = null)
     {
         _namesTried.Remove(TrackMapKeys.BuildKey(trackName, config));
+        _upgradeTried.Remove(TrackMapKeys.BuildKey(trackName, config));
         return LoadTrackDataAsync(trackName, null, centerLat, centerLon, forceRefresh: true, config: config,
             officialLengthM: officialLengthM, liveOfficialLength: liveOfficialLength);
     }
