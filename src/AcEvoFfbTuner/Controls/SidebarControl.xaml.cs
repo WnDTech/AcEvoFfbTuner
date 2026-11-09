@@ -16,11 +16,21 @@ public partial class SidebarControl : UserControl
     public SidebarControl()
     {
         InitializeComponent();
+        // Also navigate when a nav button becomes checked without a mouse click — UI Automation
+        // SelectionItem.Select() (screen readers, automation tools) only sets IsChecked and never
+        // raises Click. Re-navigating to the current page from SetSelected() is a no-op.
+        AddHandler(System.Windows.Controls.Primitives.ToggleButton.CheckedEvent, new RoutedEventHandler(OnNavChecked));
     }
 
     private void OnNavClick(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement fe && fe.Tag is NavPage page)
+            NavigateRequested?.Invoke(page);
+    }
+
+    private void OnNavChecked(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource is RadioButton { Tag: NavPage page })
             NavigateRequested?.Invoke(page);
     }
 

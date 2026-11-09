@@ -84,3 +84,7 @@ relay/__pycache__/
 ## vJoy installer binary — fetched + hash-verified at installer build time (see installer/third-party/vjoy/VERSION.txt)
 installer/third-party/vjoy/vJoySetup.exe
 
+
+# Website footage captures (large, regenerable)
+tools/site-capture/raw/
+tools/site-capture/session/
