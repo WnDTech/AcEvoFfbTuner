@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -19,39 +20,40 @@ public partial class SplashScreen : Window
         "pack://application:,,,/Resources/splash-wheels/GPro.png",
         "pack://application:,,,/Resources/splash-wheels/MOZA-KS-PRO_1.png",
     };
-    private readonly DispatcherTimer _spinTimer;
-    private readonly DispatcherTimer _progressTimer;
-    private readonly DispatcherTimer _fadeOutTimer;
+    // One vsync-locked frame callback replaces two free-running 16 ms timers
+    // (which drifted against the display and doubled the per-frame work).
+    private bool _framesHooked;
+    private bool _spinning = true;
+    private double _lastFrameSec;
     private readonly MediaPlayer _mediaPlayer;
     private readonly string? _customSoundPath;
     private string? _tempAudioFile;
     private double _angle;
-    private int _progressStep;
-    private int _fadeOutTicks;
     private readonly Stopwatch _spinStopwatch = new();
 
-    public event Action? LoadingComplete;
-
-    public SplashScreen(string? customSoundPath = null)
+    public SplashScreen(string? customSoundPath = null, ResourceDictionary? theme = null)
     {
+        // Theme loaded on THIS (splash) thread — app resources belong to the main thread.
+        if (theme != null) Resources.MergedDictionaries.Add(theme);
         InitializeComponent();
 
+        // Source PNGs are up to 1160 px; decode at display size (x2 for high DPI)
+        // instead of resampling a full-size bitmap every frame.
         var idx = Random.Shared.Next(SplashWheelUris.Length);
-        WheelImage.Source = new BitmapImage(new Uri(SplashWheelUris[idx]));
+        var bmp = new BitmapImage();
+        bmp.BeginInit();
+        bmp.UriSource = new Uri(SplashWheelUris[idx]);
+        bmp.DecodePixelWidth = 400;
+        bmp.CacheOption = BitmapCacheOption.OnLoad;
+        bmp.EndInit();
+        bmp.Freeze();
+        WheelImage.Source = bmp;
 
         LoadVersionInfo();
 
         _customSoundPath = customSoundPath;
         _mediaPlayer = new MediaPlayer();
 
-        _spinTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        _spinTimer.Tick += OnSpinTick;
-
-        _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
-        _progressTimer.Tick += OnProgressTick;
-
-        _fadeOutTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
-        _fadeOutTimer.Tick += OnFadeOutTick;
 
         Loaded += OnLoaded;
         Closed += OnClosed;
@@ -86,9 +88,8 @@ public partial class SplashScreen : Window
         PlayEngineStartup();
         RunEntranceAnimations();
         _spinStopwatch.Start();
-        _spinTimer.Start();
-        _progressStep = 0;
-        _progressTimer.Start();
+        CompositionTarget.Rendering += OnFrame;
+        _framesHooked = true;
     }
 
     private void ApplyThemeColors()
@@ -99,7 +100,6 @@ public partial class SplashScreen : Window
         var accent = accentBrush.Color;
 
         RootShadow.Color = accent;
-        ProgressShadow.Color = accent;
 
         var dashBrush = new LinearGradientBrush
         {
@@ -124,7 +124,7 @@ public partial class SplashScreen : Window
     {
         var rootFade = new DoubleAnimation(0, 1, TimeSpan.FromSeconds(0.5));
         rootFade.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut };
-        RootBorder.BeginAnimation(OpacityProperty, rootFade);
+        RootLayer.BeginAnimation(OpacityProperty, rootFade);
 
         AnimateElement(WheelHost, 0.1, 0.6);
         AnimateTransform(WheelScale, ScaleTransform.ScaleXProperty, 0.7, 1.0, 0.1, 0.6);
@@ -185,57 +185,91 @@ public partial class SplashScreen : Window
         ShimmerHighlight.BeginAnimation(System.Windows.Controls.Canvas.LeftProperty, shimmer);
     }
 
-    private void OnSpinTick(object? sender, EventArgs e)
+    private void OnSpinTick(double keep, double t)
+    {
+        var target = Math.Sin(t * 4) * 60 + Math.Sin(t * 9) * 15;
+        _angle += (target - _angle) * (1 - keep);
+        WheelRotation.Angle = _angle;
+    }
+
+    // ── Real progress ────────────────────────────────────────────────
+    // The splash used to run a fixed ~5 s fake progress bar and only THEN
+    // build the main window (freezing the finished splash for the real
+    // load). App now drives progress from the actual startup steps.
+
+    private static readonly TimeSpan MinimumDisplay = TimeSpan.FromSeconds(2.2);
+    private double _progressTarget;
+    private double _progressShown;
+    private double _progressCeiling;
+
+    /// <summary>
+    /// Report a real startup step. <paramref name="fraction"/> is where the
+    /// step starts; <paramref name="upTo"/> is where it ends — the bar creeps
+    /// toward it while the step runs so long steps never look frozen.
+    /// </summary>
+    public void Report(double fraction, string status, double upTo = -1)
+    {
+        _progressTarget = Math.Clamp(fraction, _progressTarget, 1.0);
+        _progressCeiling = Math.Max(_progressTarget, upTo);
+        StatusText.Text = status;
+    }
+
+    // Eases the bar toward the reported target so steps glide instead of jumping.
+    private void OnProgressTick(double keep, double dt)
+    {
+        // Creep: close ~40 % of the gap to the step's end per second (never reaches it).
+        if (_progressCeiling > _progressTarget)
+            _progressTarget += (_progressCeiling - _progressTarget) * (1 - Math.Exp(-dt * 0.5));
+        _progressShown += (_progressTarget - _progressShown) * (1 - keep);
+        if (_progressTarget - _progressShown < 0.002) _progressShown = _progressTarget;
+        var parentWidth = ((FrameworkElement)ProgressFill.Parent).ActualWidth;
+        ProgressFill.Width = Math.Max(0, parentWidth * _progressShown);
+    }
+
+    /// <summary>
+    /// Completes the bar, holds for the minimum display time (so the intro
+    /// and engine sound aren't cut off on fast machines), then fades the
+    /// window and the sound out together.
+    /// </summary>
+    public async Task FinishAsync()
+    {
+        Report(1.0, "Ready!");
+        var remaining = MinimumDisplay - _spinStopwatch.Elapsed;
+        var settle = TimeSpan.FromMilliseconds(350); // let the bar visibly reach 100 %
+        await Task.Delay(remaining > settle ? remaining : settle);
+
+        _spinning = false;
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(350))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+        RootLayer.BeginAnimation(OpacityProperty, fade);
+        var startVol = _mediaPlayer.Volume;
+        for (int i = 1; i <= 7; i++)
+        {
+            await Task.Delay(50);
+            _mediaPlayer.Volume = startVol * (1 - i / 7.0);
+        }
+        UnhookFrames();
+    }
+
+    private void UnhookFrames()
+    {
+        if (!_framesHooked) return;
+        CompositionTarget.Rendering -= OnFrame;
+        _framesHooked = false;
+    }
+
+    private void OnFrame(object? sender, EventArgs e)
     {
         var t = _spinStopwatch.Elapsed.TotalSeconds;
-        var target = Math.Sin(t * 4) * 60 + Math.Sin(t * 9) * 15;
-        _angle += (target - _angle) * 0.15;
-        WheelRotation.Angle = _angle;
-        WheelShake.X = 0;
-        WheelShake.Y = 0;
-    }
-
-    private void OnProgressTick(object? sender, EventArgs e)
-    {
-        _progressStep++;
-        var totalSteps = 35;
-
-        var fraction = Math.Min(1.0, (double)_progressStep / totalSteps);
-        var parentWidth = ((FrameworkElement)ProgressFill.Parent).ActualWidth;
-        ProgressFill.Width = Math.Max(0, parentWidth * fraction);
-
-        StatusText.Text = _progressStep switch
-        {
-            < 5 => "Cranking engine...",
-            < 10 => "Engine started!",
-            < 18 => "Loading FFB pipeline...",
-            < 25 => "Calibrating wheel input...",
-            < 30 => "Preparing telemetry...",
-            _ => "Ready!"
-        };
-
-        if (_progressStep >= totalSteps)
-        {
-            _progressTimer.Stop();
-            _spinTimer.Stop();
-            _fadeOutTimer.Start();
-        }
-    }
-
-    private void OnFadeOutTick(object? sender, EventArgs e)
-    {
-        _fadeOutTicks++;
-        var vol = _mediaPlayer.Volume - 0.05;
-        if (vol <= 0 || _fadeOutTicks >= 20)
-        {
-            _fadeOutTimer.Stop();
-            _mediaPlayer.Volume = 0;
-            LoadingComplete?.Invoke();
-        }
-        else
-        {
-            _mediaPlayer.Volume = vol;
-        }
+        var dt = Math.Clamp(t - _lastFrameSec, 0, 0.1);
+        _lastFrameSec = t;
+        // Frame-rate independent smoothing (same feel at 60/144/240 Hz).
+        var k60 = dt * 60.0;
+        if (_spinning)
+            OnSpinTick(Math.Pow(0.85, k60), t);
+        OnProgressTick(Math.Pow(0.65, k60), dt);
     }
 
     private void PlayEngineStartup()
@@ -272,6 +306,7 @@ public partial class SplashScreen : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        UnhookFrames();
         _mediaPlayer.Close();
         try { if (_tempAudioFile != null) File.Delete(_tempAudioFile); } catch { }
     }

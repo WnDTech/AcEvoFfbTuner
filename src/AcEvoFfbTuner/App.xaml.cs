@@ -324,24 +324,7 @@ public partial class App : Application
 
         if (Settings.SplashScreenEnabled)
         {
-            var customSound = Settings.CustomStartupSoundPath;
-            var splash = new Views.SplashScreen(customSound);
-            splash.LoadingComplete += () =>
-            {
-                try
-                {
-                    ShowMainWindow(showWhatsNew: false);
-                    splash.Close();
-                    ShowWhatsNewIfNeeded();
-                }
-                catch (Exception ex)
-                {
-                    WriteCrashLog("SplashScreen.LoadingComplete", ex);
-                    splash.Close();
-                    ShowErrorAndShutdown(ex);
-                }
-            };
-            splash.Show();
+            _ = RunSplashStartupAsync();
         }
         else
         {
@@ -397,14 +380,67 @@ public partial class App : Application
         catch { }
     }
 
+    /// <summary>
+    /// Splash startup: the real loading runs WHILE the splash is visible and
+    /// drives its progress bar. Each step yields to the dispatcher so the
+    /// splash repaints between steps.
+    /// </summary>
+    private async Task RunSplashStartupAsync()
+    {
+        // Splash renders on its own thread, so it keeps animating while each
+        // step below blocks this one. The short yields let the main dispatcher
+        // drain queued work (e.g. async continuations) between steps.
+        var splash = SplashHost.Start(Settings.CustomStartupSoundPath, ThemeManager.CurrentTheme);
+        try
+        {
+            splash.Report(0.03, "Starting FFB engine...", upTo: 0.18);
+            await Dispatcher.Yield(DispatcherPriority.Background);
+           
+            ViewModel = new MainViewModel();
+
+            splash.Report(0.18, "Loading profiles & devices...", upTo: 0.25);
+            await Dispatcher.Yield(DispatcherPriority.Background);
+           
+            ViewModel.Initialize();
+
+            splash.Report(0.25, "Applying settings...", upTo: 0.27);
+            await Dispatcher.Yield(DispatcherPriority.Background);
+           
+            ViewModel.LoadAppSettings();
+
+            splash.Report(0.27, "Building interface...", upTo: 0.96);
+            await Dispatcher.Yield(DispatcherPriority.Background);
+           
+            var mainWindow = new MainWindow();
+
+            await splash.FinishAsync();
+
+            PresentMainWindow(mainWindow);
+            splash.Close();
+            ShowWhatsNewIfNeeded();
+        }
+        catch (Exception ex)
+        {
+            WriteCrashLog("SplashStartup", ex);
+            splash.Close();
+            ShowErrorAndShutdown(ex);
+        }
+    }
+
     private void ShowMainWindow(bool showWhatsNew = true)
     {
         ViewModel = new MainViewModel();
         ViewModel.Initialize();
         ViewModel.LoadAppSettings();
 
-        var mainWindow = new MainWindow();
+        PresentMainWindow(new MainWindow());
 
+        if (showWhatsNew)
+            ShowWhatsNewIfNeeded();
+    }
+
+    private void PresentMainWindow(MainWindow mainWindow)
+    {
         if (Settings.StartMinimised)
         {
             mainWindow.WindowState = WindowState.Minimized;
@@ -418,8 +454,6 @@ public partial class App : Application
             ViewModel.ApplyStartupActions();
         }
 
-        if (showWhatsNew)
-            ShowWhatsNewIfNeeded();
     }
 
     private void ShowWhatsNewIfNeeded()
@@ -547,7 +581,7 @@ public partial class App : Application
         catch { }
     }
 
-    private static void WriteCrashLog(string source, Exception ex)
+    internal static void WriteCrashLog(string source, Exception ex)
     {
         try
         {
