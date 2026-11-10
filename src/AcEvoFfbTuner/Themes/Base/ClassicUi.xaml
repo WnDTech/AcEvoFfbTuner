@@ -1,0 +1,287 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Classic look: every Ui* key holds the exact value the pages hardcoded before theming. Do not change. -->
+    <SolidColorBrush x:Key="UiText" Color="#FFE6EDF3" />
+    <SolidColorBrush x:Key="UiTextDim" Color="#FF8B949E" />
+    <SolidColorBrush x:Key="UiAccent" Color="#FFF0883E" />
+    <SolidColorBrush x:Key="UiBorder" Color="#FF30363D" />
+    <SolidColorBrush x:Key="UiInfo" Color="#FF79C0FF" />
+    <SolidColorBrush x:Key="UiPanel" Color="#FF161B22" />
+    <SolidColorBrush x:Key="UiInput" Color="#FF21262D" />
+    <SolidColorBrush x:Key="UiGood" Color="#FF4CAF50" />
+    <SolidColorBrush x:Key="UiWarn" Color="#FFFFD600" />
+    <SolidColorBrush x:Key="UiGoodBright" Color="#FF00E676" />
+    <SolidColorBrush x:Key="UiBorderStrong" Color="#FF484F58" />
+    <SolidColorBrush x:Key="UiBgDeep" Color="#FF0D1117" />
+    <SolidColorBrush x:Key="UiBad" Color="#FFE53935" />
+    <SolidColorBrush x:Key="UiOrange" Color="#FFFF9800" />
+    <SolidColorBrush x:Key="UiTeal" Color="#FF56D4A0" />
+    <SolidColorBrush x:Key="UiPurple" Color="#FFD2A8FF" />
+    <SolidColorBrush x:Key="UiCard" Color="#FF1C2128" />
+    <SolidColorBrush x:Key="UiHover" Color="#1AFFFFFF" />
+    <SolidColorBrush x:Key="UiSky" Color="#FF4FC3F7" />
+    <SolidColorBrush x:Key="UiAccentDim" Color="#1AF0883E" />
+    <SolidColorBrush x:Key="UiLime" Color="#FF7EE787" />
+    <SolidColorBrush x:Key="UiTrack" Color="#FF333355" />
+    <SolidColorBrush x:Key="UiAccent2" Color="#FFE08040" />
+    <SolidColorBrush x:Key="UiHover2" Color="#22FFFFFF" />
+    <SolidColorBrush x:Key="UiSalmon" Color="#FFFF7B72" />
+    <SolidColorBrush x:Key="UiTextSoft" Color="#FFC9D1D9" />
+    <CornerRadius x:Key="UiR1">1</CornerRadius>
+    <CornerRadius x:Key="UiR2">2</CornerRadius>
+    <CornerRadius x:Key="UiR3">3</CornerRadius>
+    <CornerRadius x:Key="UiR4">4</CornerRadius>
+    <CornerRadius x:Key="UiR5">5</CornerRadius>
+    <CornerRadius x:Key="UiR6">6</CornerRadius>
+    <CornerRadius x:Key="UiR7">7</CornerRadius>
+    <CornerRadius x:Key="UiR8">8</CornerRadius>
+    <CornerRadius x:Key="UiR10">10</CornerRadius>
+    <CornerRadius x:Key="UiR11">11</CornerRadius>
+    <CornerRadius x:Key="UiR12">12</CornerRadius>
+    <CornerRadius x:Key="UiR14">14</CornerRadius>
+    <CornerRadius x:Key="UiR16">16</CornerRadius>
+    <CornerRadius x:Key="UiR20">20</CornerRadius>
+    <FontFamily x:Key="UiFont">Segoe UI</FontFamily>
+    <FontFamily x:Key="UiMono">Consolas</FontFamily>
+
+    <!-- Classic slider templates (moved verbatim from App.xaml / LabeledSlider.xaml) -->
+                        <ControlTemplate x:Key="UiSliderTemplate" TargetType="Slider">
+                            <Border Background="{TemplateBinding Background}" Padding="18,0">
+                                <Grid>
+                                    <Border CornerRadius="{DynamicResource UiR7}" Background="{DynamicResource SliderTrackBg}" Height="16" VerticalAlignment="Center" />
+                                    <Track x:Name="PART_Track" VerticalAlignment="Stretch">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton Command="Slider.DecreaseLarge">
+                                                <RepeatButton.Template>
+                                                    <ControlTemplate TargetType="RepeatButton">
+                                                        <Border Background="{DynamicResource AccentBrush}" CornerRadius="{DynamicResource UiR7}" Height="16" VerticalAlignment="Center" />
+                                                    </ControlTemplate>
+                                                </RepeatButton.Template>
+                                            </RepeatButton>
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton Command="Slider.IncreaseLarge">
+                                                <RepeatButton.Template>
+                                                    <ControlTemplate TargetType="RepeatButton">
+                                                        <Border Background="Transparent" />
+                                                    </ControlTemplate>
+                                                </RepeatButton.Template>
+                                            </RepeatButton>
+                                        </Track.IncreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb>
+                                                <Thumb.Template>
+                                                    <ControlTemplate TargetType="Thumb">
+                                                        <Grid>
+                                                            <Ellipse Width="36" Height="36" Fill="{DynamicResource AccentGlow}" />
+                                                            <Ellipse x:Name="ThumbFill" Width="28" Height="28" Fill="{DynamicResource AccentBrush}" Stroke="{DynamicResource SliderThumbStroke}" StrokeThickness="2" />
+                                                        </Grid>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="ThumbFill" Property="Fill" Value="{DynamicResource AccentHoverBrush}" />
+                                                            </Trigger>
+                                                            <Trigger Property="IsDragging" Value="True">
+                                                                <Setter TargetName="ThumbFill" Property="Fill" Value="{DynamicResource AccentDragBrush}" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+                                        </Track.Thumb>
+                                    </Track>
+                                </Grid>
+                            </Border>
+                        </ControlTemplate>
+                        <ControlTemplate x:Key="UiLabeledSliderTemplate" TargetType="Slider">
+                            <Border Background="Transparent" Padding="4,0">
+                                <Grid>
+                                    <Border CornerRadius="{DynamicResource UiR7}" Background="{DynamicResource UiInput}" Height="14" VerticalAlignment="Center" />
+                                    <Track x:Name="PART_Track" VerticalAlignment="Stretch">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton Command="Slider.DecreaseLarge">
+                                                <RepeatButton.Template>
+                                                    <ControlTemplate TargetType="RepeatButton">
+                                                        <Border Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}" CornerRadius="{DynamicResource UiR7}" Height="14" VerticalAlignment="Center" Opacity="0.8" />
+                                                    </ControlTemplate>
+                                                </RepeatButton.Template>
+                                            </RepeatButton>
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton Command="Slider.IncreaseLarge">
+                                                <RepeatButton.Template>
+                                                    <ControlTemplate TargetType="RepeatButton">
+                                                        <Border Background="Transparent" />
+                                                    </ControlTemplate>
+                                                </RepeatButton.Template>
+                                            </RepeatButton>
+                                        </Track.IncreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb>
+                                                <Thumb.Template>
+                                                    <ControlTemplate TargetType="Thumb">
+                                                        <Grid>
+                                                            <Ellipse Width="30" Height="30" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}" Opacity="0.15" />
+                                                            <Ellipse x:Name="ThumbFill" Width="22" Height="22" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}" Stroke="White" StrokeThickness="1.5" />
+                                                        </Grid>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="ThumbFill" Property="Opacity" Value="0.9" />
+                                                            </Trigger>
+                                                            <Trigger Property="IsDragging" Value="True">
+                                                                <Setter TargetName="ThumbFill" Property="Opacity" Value="1.0" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+                                        </Track.Thumb>
+                                    </Track>
+                                </Grid>
+                            </Border>
+                        </ControlTemplate>
+    <SolidColorBrush x:Key="UiDefaultMarker" Color="#B3E6EDF3" />
+    <FontFamily x:Key="UiValueFont">Segoe UI</FontFamily>
+    <SolidColorBrush x:Key="UiInputBorder" Color="#FF3D444D" />
+    <SolidColorBrush x:Key="UiInputBorderHover" Color="#FF555D66" />
+    <SolidColorBrush x:Key="UiInputHoverBg" Color="#FF282E38" />
+    <SolidColorBrush x:Key="UiInputFocusBg" Color="#FF2A2A45" />
+    <SolidColorBrush x:Key="UiMeaning" Color="#FFB0B8C2" />
+    <!-- Remaining one-off colours, exact originals -->
+    <SolidColorBrush x:Key="UiC_0AFFFFFF" Color="#0AFFFFFF" />
+    <SolidColorBrush x:Key="UiC_0DFFFFFF" Color="#0DFFFFFF" />
+    <SolidColorBrush x:Key="UiC_14FFFFFF" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="UiC_1A79C0FF" Color="#1A79C0FF" />
+    <SolidColorBrush x:Key="UiC_1A7EE787" Color="#1A7EE787" />
+    <SolidColorBrush x:Key="UiC_1AE53935" Color="#1AE53935" />
+    <SolidColorBrush x:Key="UiC_1AFFD600" Color="#1AFFD600" />
+    <SolidColorBrush x:Key="UiC_224CAF50" Color="#224CAF50" />
+    <SolidColorBrush x:Key="UiC_264CAF50" Color="#264CAF50" />
+    <SolidColorBrush x:Key="UiC_26E53935" Color="#26E53935" />
+    <SolidColorBrush x:Key="UiC_30F0883E" Color="#30F0883E" />
+    <SolidColorBrush x:Key="UiC_3347A15C" Color="#3347A15C" />
+    <SolidColorBrush x:Key="UiC_3347A1FF" Color="#3347A1FF" />
+    <SolidColorBrush x:Key="UiC_3356D4A0" Color="#3356D4A0" />
+    <SolidColorBrush x:Key="UiC_3379C0FF" Color="#3379C0FF" />
+    <SolidColorBrush x:Key="UiC_339E6BFF" Color="#339E6BFF" />
+    <SolidColorBrush x:Key="UiC_33D2A8FF" Color="#33D2A8FF" />
+    <SolidColorBrush x:Key="UiC_33E08040" Color="#33E08040" />
+    <SolidColorBrush x:Key="UiC_33E3B341" Color="#33E3B341" />
+    <SolidColorBrush x:Key="UiC_33E53935" Color="#33E53935" />
+    <SolidColorBrush x:Key="UiC_33E67E22" Color="#33E67E22" />
+    <SolidColorBrush x:Key="UiC_33F0883E" Color="#33F0883E" />
+    <SolidColorBrush x:Key="UiC_33F0A030" Color="#33F0A030" />
+    <SolidColorBrush x:Key="UiC_33FF4444" Color="#33FF4444" />
+    <SolidColorBrush x:Key="UiC_33FF7B72" Color="#33FF7B72" />
+    <SolidColorBrush x:Key="UiC_33FF9800" Color="#33FF9800" />
+    <SolidColorBrush x:Key="UiC_33FFD600" Color="#33FFD600" />
+    <SolidColorBrush x:Key="UiC_33FFFFFF" Color="#33FFFFFF" />
+    <SolidColorBrush x:Key="UiC_44F0883E" Color="#44F0883E" />
+    <SolidColorBrush x:Key="UiC_44FF4444" Color="#44FF4444" />
+    <SolidColorBrush x:Key="UiC_44FF9800" Color="#44FF9800" />
+    <SolidColorBrush x:Key="UiC_44FFFFFF" Color="#44FFFFFF" />
+    <SolidColorBrush x:Key="UiC_5547A15C" Color="#5547A15C" />
+    <SolidColorBrush x:Key="UiC_5579C0FF" Color="#5579C0FF" />
+    <SolidColorBrush x:Key="UiC_55E67E22" Color="#55E67E22" />
+    <SolidColorBrush x:Key="UiC_55F0883E" Color="#55F0883E" />
+    <SolidColorBrush x:Key="UiC_55FF9800" Color="#55FF9800" />
+    <SolidColorBrush x:Key="UiC_55FFD600" Color="#55FFD600" />
+    <SolidColorBrush x:Key="UiC_6679C0FF" Color="#6679C0FF" />
+    <SolidColorBrush x:Key="UiC_66E6EDF3" Color="#66E6EDF3" />
+    <SolidColorBrush x:Key="UiC_66F0883E" Color="#66F0883E" />
+    <SolidColorBrush x:Key="UiC_77D2A8FF" Color="#77D2A8FF" />
+    <SolidColorBrush x:Key="UiC_804CAF50" Color="#804CAF50" />
+    <SolidColorBrush x:Key="UiC_808BC34A" Color="#808BC34A" />
+    <SolidColorBrush x:Key="UiC_80CDDC39" Color="#80CDDC39" />
+    <SolidColorBrush x:Key="UiC_889E6BFF" Color="#889E6BFF" />
+    <SolidColorBrush x:Key="UiC_88F0883E" Color="#88F0883E" />
+    <SolidColorBrush x:Key="UiC_88FFD600" Color="#88FFD600" />
+    <SolidColorBrush x:Key="UiC_AAE6EDF3" Color="#AAE6EDF3" />
+    <SolidColorBrush x:Key="UiC_AAFF9800" Color="#AAFF9800" />
+    <SolidColorBrush x:Key="UiC_CC1A1A2E" Color="#CC1A1A2E" />
+    <SolidColorBrush x:Key="UiC_CC552200" Color="#CC552200" />
+    <SolidColorBrush x:Key="UiC_CC8B0000" Color="#CC8B0000" />
+    <SolidColorBrush x:Key="UiC_D0101418" Color="#D0101418" />
+    <SolidColorBrush x:Key="UiC_DD0D0D0D" Color="#DD0D0D0D" />
+    <SolidColorBrush x:Key="UiC_DD161B22" Color="#DD161B22" />
+    <SolidColorBrush x:Key="UiC_E0101418" Color="#E0101418" />
+    <SolidColorBrush x:Key="UiC_EE0D0D0D" Color="#EE0D0D0D" />
+    <SolidColorBrush x:Key="UiC_F00D1117" Color="#F00D1117" />
+    <SolidColorBrush x:Key="UiC_FF000000" Color="#FF000000" />
+    <SolidColorBrush x:Key="UiC_FF0033FF" Color="#FF0033FF" />
+    <SolidColorBrush x:Key="UiC_FF00BCD4" Color="#FF00BCD4" />
+    <SolidColorBrush x:Key="UiC_FF00C853" Color="#FF00C853" />
+    <SolidColorBrush x:Key="UiC_FF00E600" Color="#FF00E600" />
+    <SolidColorBrush x:Key="UiC_FF0D1B2A" Color="#FF0D1B2A" />
+    <SolidColorBrush x:Key="UiC_FF0F1117" Color="#FF0F1117" />
+    <SolidColorBrush x:Key="UiC_FF11161C" Color="#FF11161C" />
+    <SolidColorBrush x:Key="UiC_FF12161D" Color="#FF12161D" />
+    <SolidColorBrush x:Key="UiC_FF151525" Color="#FF151525" />
+    <SolidColorBrush x:Key="UiC_FF151B23" Color="#FF151B23" />
+    <SolidColorBrush x:Key="UiC_FF1A1A2E" Color="#FF1A1A2E" />
+    <SolidColorBrush x:Key="UiC_FF1A1D24" Color="#FF1A1D24" />
+    <SolidColorBrush x:Key="UiC_FF1B3A1B" Color="#FF1B3A1B" />
+    <SolidColorBrush x:Key="UiC_FF1E2227" Color="#FF1E2227" />
+    <SolidColorBrush x:Key="UiC_FF1E2235" Color="#FF1E2235" />
+    <SolidColorBrush x:Key="UiC_FF1E3A52" Color="#FF1E3A52" />
+    <SolidColorBrush x:Key="UiC_FF1F3D2B" Color="#FF1F3D2B" />
+    <SolidColorBrush x:Key="UiC_FF1F6FEB" Color="#FF1F6FEB" />
+    <SolidColorBrush x:Key="UiC_FF238636" Color="#FF238636" />
+    <SolidColorBrush x:Key="UiC_FF2A3138" Color="#FF2A3138" />
+    <SolidColorBrush x:Key="UiC_FF2D333B" Color="#FF2D333B" />
+    <SolidColorBrush x:Key="UiC_FF2E7D32" Color="#FF2E7D32" />
+    <SolidColorBrush x:Key="UiC_FF3D444D" Color="#FF3D444D" />
+    <SolidColorBrush x:Key="UiC_FF3FB950" Color="#FF3FB950" />
+    <SolidColorBrush x:Key="UiC_FF42A5F5" Color="#FF42A5F5" />
+    <SolidColorBrush x:Key="UiC_FF442222" Color="#FF442222" />
+    <SolidColorBrush x:Key="UiC_FF444444" Color="#FF444444" />
+    <SolidColorBrush x:Key="UiC_FF47A15C" Color="#FF47A15C" />
+    <SolidColorBrush x:Key="UiC_FF47A1FF" Color="#FF47A1FF" />
+    <SolidColorBrush x:Key="UiC_FF4A3520" Color="#FF4A3520" />
+    <SolidColorBrush x:Key="UiC_FF4DB6AC" Color="#FF4DB6AC" />
+    <SolidColorBrush x:Key="UiC_FF525252" Color="#FF525252" />
+    <SolidColorBrush x:Key="UiC_FF552222" Color="#FF552222" />
+    <SolidColorBrush x:Key="UiC_FF555555" Color="#FF555555" />
+    <SolidColorBrush x:Key="UiC_FF607D8B" Color="#FF607D8B" />
+    <SolidColorBrush x:Key="UiC_FF666666" Color="#FF666666" />
+    <SolidColorBrush x:Key="UiC_FF6666AA" Color="#FF6666AA" />
+    <SolidColorBrush x:Key="UiC_FF66BB6A" Color="#FF66BB6A" />
+    <SolidColorBrush x:Key="UiC_FF6B7682" Color="#FF6B7682" />
+    <SolidColorBrush x:Key="UiC_FF777777" Color="#FF777777" />
+    <SolidColorBrush x:Key="UiC_FF795548" Color="#FF795548" />
+    <SolidColorBrush x:Key="UiC_FF888888" Color="#FF888888" />
+    <SolidColorBrush x:Key="UiC_FF8BC34A" Color="#FF8BC34A" />
+    <SolidColorBrush x:Key="UiC_FF90CAF9" Color="#FF90CAF9" />
+    <SolidColorBrush x:Key="UiC_FF999999" Color="#FF999999" />
+    <SolidColorBrush x:Key="UiC_FF9999CC" Color="#FF9999CC" />
+    <SolidColorBrush x:Key="UiC_FF9C27B0" Color="#FF9C27B0" />
+    <SolidColorBrush x:Key="UiC_FF9CCC65" Color="#FF9CCC65" />
+    <SolidColorBrush x:Key="UiC_FF9E6BFF" Color="#FF9E6BFF" />
+    <SolidColorBrush x:Key="UiC_FFB0B0B0" Color="#FFB0B0B0" />
+    <SolidColorBrush x:Key="UiC_FFB0B8C0" Color="#FFB0B8C0" />
+    <SolidColorBrush x:Key="UiC_FFC9B3FF" Color="#FFC9B3FF" />
+    <SolidColorBrush x:Key="UiC_FFCC0000" Color="#FFCC0000" />
+    <SolidColorBrush x:Key="UiC_FFCC8800" Color="#FFCC8800" />
+    <SolidColorBrush x:Key="UiC_FFCDDC39" Color="#FFCDDC39" />
+    <SolidColorBrush x:Key="UiC_FFCE93D8" Color="#FFCE93D8" />
+    <SolidColorBrush x:Key="UiC_FFCF6679" Color="#FFCF6679" />
+    <SolidColorBrush x:Key="UiC_FFDA3633" Color="#FFDA3633" />
+    <SolidColorBrush x:Key="UiC_FFE03935" Color="#FFE03935" />
+    <SolidColorBrush x:Key="UiC_FFE3B341" Color="#FFE3B341" />
+    <SolidColorBrush x:Key="UiC_FFE6B800" Color="#FFE6B800" />
+    <SolidColorBrush x:Key="UiC_FFEF5350" Color="#FFEF5350" />
+    <SolidColorBrush x:Key="UiC_FFF0A030" Color="#FFF0A030" />
+    <SolidColorBrush x:Key="UiC_FFFF0000" Color="#FFFF0000" />
+    <SolidColorBrush x:Key="UiC_FFFF1744" Color="#FFFF1744" />
+    <SolidColorBrush x:Key="UiC_FFFF3030" Color="#FFFF3030" />
+    <SolidColorBrush x:Key="UiC_FFFF4444" Color="#FFFF4444" />
+    <SolidColorBrush x:Key="UiC_FFFF5252" Color="#FFFF5252" />
+    <SolidColorBrush x:Key="UiC_FFFF5722" Color="#FFFF5722" />
+    <SolidColorBrush x:Key="UiC_FFFF6666" Color="#FFFF6666" />
+    <SolidColorBrush x:Key="UiC_FFFF7A7A" Color="#FFFF7A7A" />
+    <SolidColorBrush x:Key="UiC_FFFF8A65" Color="#FFFF8A65" />
+    <SolidColorBrush x:Key="UiC_FFFF8A80" Color="#FFFF8A80" />
+    <SolidColorBrush x:Key="UiC_FFFF9F43" Color="#FFFF9F43" />
+    <SolidColorBrush x:Key="UiC_FFFFAB00" Color="#FFFFAB00" />
+    <SolidColorBrush x:Key="UiC_FFFFB74D" Color="#FFFFB74D" />
+    <SolidColorBrush x:Key="UiC_FFFFB86B" Color="#FFFFB86B" />
+    <SolidColorBrush x:Key="UiC_FFFFFFFF" Color="#FFFFFFFF" />
+</ResourceDictionary>

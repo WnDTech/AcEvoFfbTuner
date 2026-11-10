@@ -1,9 +1,9 @@
-<UserControl x:Class="AcEvoFfbTuner.Views.Pages.TelemetryPage"
+﻿<UserControl x:Class="AcEvoFfbTuner.Views.Pages.TelemetryPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#FF0F1117"
-             Foreground="#FFE6EDF3"
-             FontFamily="Segoe UI"
+             Background="{DynamicResource UiC_FF0F1117}"
+             Foreground="{DynamicResource UiText}"
+             FontFamily="{DynamicResource UiFont}"
              UseLayoutRounding="True">
     <Grid Margin="8">
         <Grid.RowDefinitions>
@@ -13,7 +13,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#FF1C2128" CornerRadius="6" Padding="10,6" Margin="0,0,0,6">
+        <Border Grid.Row="0" Background="{DynamicResource UiCard}" CornerRadius="{DynamicResource UiR6}" Padding="10,6" Margin="0,0,0,6">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -37,45 +37,45 @@
                     <Button Content="Clear" Click="ProfilerClear" Padding="12,4" FontSize="14" Style="{StaticResource OutlinedButton}" ToolTip="Clear the telemetry graph data" />
                 </StackPanel>
 
-                <Border Grid.Column="1" Width="1" Background="#FF30363D" Margin="8,0" />
+                <Border Grid.Column="1" Width="1" Background="{DynamicResource UiBorder}" Margin="8,0" />
 
                 <StackPanel Grid.Column="3" Margin="8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Speed" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfSpeed" Text="-- km/h" FontSize="16" FontWeight="Bold" Foreground="#FFFFD600" />
+                    <TextBlock Text="Speed" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfSpeed" Text="-- km/h" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiWarn}" />
                 </StackPanel>
                 <StackPanel Grid.Column="4" Margin="8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Force Out" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfForce" Text="--" FontSize="16" FontWeight="Bold" Foreground="#FFF0883E" />
+                    <TextBlock Text="Force Out" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfForce" Text="--" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiAccent}" />
                 </StackPanel>
                 <StackPanel Grid.Column="5" Margin="8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Throttle" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfGas" Text="--%" FontSize="16" FontWeight="Bold" Foreground="#FF4CAF50" />
+                    <TextBlock Text="Throttle" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfGas" Text="--%" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiGood}" />
                 </StackPanel>
                 <StackPanel Grid.Column="6" Margin="8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Brake" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfBrake" Text="--%" FontSize="16" FontWeight="Bold" Foreground="#FFE53935" />
+                    <TextBlock Text="Brake" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfBrake" Text="--%" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiBad}" />
                 </StackPanel>
                 <StackPanel Grid.Column="7" Margin="8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Clipping" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfClipPct" Text="0.0%" FontSize="16" FontWeight="Bold" Foreground="#FF00E676" />
+                    <TextBlock Text="Clipping" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfClipPct" Text="0.0%" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiGoodBright}" />
                 </StackPanel>
                 <StackPanel Grid.Column="8" Margin="8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Min / Max" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfMinMax" Text="-- / --" FontSize="15" Foreground="#FF00BCD4" />
+                    <TextBlock Text="Min / Max" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfMinMax" Text="-- / --" FontSize="15" Foreground="{DynamicResource UiC_FF00BCD4}" />
                 </StackPanel>
                 <StackPanel Grid.Column="9" Margin="8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Avg Force" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfAvg" Text="--" FontSize="16" Foreground="#FF9C27B0" />
+                    <TextBlock Text="Avg Force" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfAvg" Text="--" FontSize="16" Foreground="{DynamicResource UiC_FF9C27B0}" />
                 </StackPanel>
                 <StackPanel Grid.Column="10" Margin="8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Peak" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfPeak" Text="--" FontSize="16" FontWeight="Bold" Foreground="#FF00E676" />
-                    <TextBlock x:Name="ProfHeadroomHint" Text="Headroom OK." FontSize="11" Foreground="#FF8B949E" TextWrapping="Wrap" MaxWidth="230" />
+                    <TextBlock Text="Peak" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfPeak" Text="--" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiGoodBright}" />
+                    <TextBlock x:Name="ProfHeadroomHint" Text="Headroom OK." FontSize="11" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" MaxWidth="230" />
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Background="#FF1C2128" CornerRadius="6" Padding="6,3" Margin="0,4,0,0">
+        <Border Grid.Row="1" Background="{DynamicResource UiCard}" CornerRadius="{DynamicResource UiR6}" Padding="6,3" Margin="0,4,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -95,34 +95,34 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Margin="6,0,8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Steering" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfSteer" Text="--°" FontSize="15" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                    <TextBlock Text="Steering" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfSteer" Text="--°" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource UiText}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Margin="6,0,8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Raw FF" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfRawFF" Text="--" FontSize="15" Foreground="#FF00E676" />
+                    <TextBlock Text="Raw FF" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfRawFF" Text="--" FontSize="15" Foreground="{DynamicResource UiGoodBright}" />
                 </StackPanel>
                 <StackPanel Grid.Column="2" Margin="6,0,8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Peak Mz/Fx/Fy" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfPeakChannels" Text="--/--/--" FontSize="15" Foreground="#FFE6EDF3" />
+                    <TextBlock Text="Peak Mz/Fx/Fy" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfPeakChannels" Text="--/--/--" FontSize="15" Foreground="{DynamicResource UiText}" />
                 </StackPanel>
                 <StackPanel Grid.Column="3" Margin="6,0,8,0" VerticalAlignment="Center">
-                    <TextBlock Text="Time" FontSize="12" Foreground="#FF8B949E" />
-                    <TextBlock x:Name="ProfTimeWindow" Text="0.0s / 30s" FontSize="15" Foreground="#FF00BCD4" />
+                    <TextBlock Text="Time" FontSize="12" Foreground="{DynamicResource UiTextDim}" />
+                    <TextBlock x:Name="ProfTimeWindow" Text="0.0s / 30s" FontSize="15" Foreground="{DynamicResource UiC_FF00BCD4}" />
                 </StackPanel>
 
-                <Border Grid.Column="4" Width="1" Background="#FF30363D" Margin="4,0" />
+                <Border Grid.Column="4" Width="1" Background="{DynamicResource UiBorder}" Margin="4,0" />
 
-                <CheckBox x:Name="ShowOutput" Grid.Column="5" Content="Output" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FFF0883E" VerticalAlignment="Center" />
-                <CheckBox x:Name="ShowRaw" Grid.Column="6" Content="Raw FF" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FF00E676" VerticalAlignment="Center" />
-                <CheckBox x:Name="ShowCompress" Grid.Column="7" Content="Compress" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FF00BCD4" VerticalAlignment="Center" />
-                 <CheckBox x:Name="ShowDamping" Grid.Column="8" Content="Gain Out" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FF9C27B0" VerticalAlignment="Center" />
-                 <CheckBox x:Name="ShowSlip" Grid.Column="9" Content="Post Damp" IsChecked="False" Margin="4,0" FontSize="14" Foreground="#FFFF5722" VerticalAlignment="Center" />
-                <CheckBox x:Name="ShowSpeed" Grid.Column="10" Content="Speed" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FF666666" VerticalAlignment="Center" />
-                <CheckBox x:Name="ShowDynamic" Grid.Column="11" Content="Dynamic" IsChecked="False" Margin="4,0" FontSize="14" Foreground="#FF795548" VerticalAlignment="Center" />
-                <CheckBox x:Name="ShowSteer" Grid.Column="12" Content="Steer°" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FFFFD600" VerticalAlignment="Center" />
-                <CheckBox x:Name="ShowGas" Grid.Column="13" Content="Throttle" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FF4CAF50" VerticalAlignment="Center" />
-                <CheckBox x:Name="ShowBrake" Grid.Column="14" Content="Brake" IsChecked="True" Margin="4,0" FontSize="14" Foreground="#FFE53935" VerticalAlignment="Center" />
+                <CheckBox x:Name="ShowOutput" Grid.Column="5" Content="Output" IsChecked="True" Margin="4,0" FontSize="14" Foreground="{DynamicResource UiAccent}" VerticalAlignment="Center" />
+                <CheckBox x:Name="ShowRaw" Grid.Column="6" Content="Raw FF" IsChecked="True" Margin="4,0" FontSize="14" Foreground="{DynamicResource UiGoodBright}" VerticalAlignment="Center" />
+                <CheckBox x:Name="ShowCompress" Grid.Column="7" Content="Compress" IsChecked="True" Margin="4,0" FontSize="14" Foreground="{DynamicResource UiC_FF00BCD4}" VerticalAlignment="Center" />
+                 <CheckBox x:Name="ShowDamping" Grid.Column="8" Content="Gain Out" IsChecked="True" Margin="4,0" FontSize="14" Foreground="{DynamicResource UiC_FF9C27B0}" VerticalAlignment="Center" />
+                 <CheckBox x:Name="ShowSlip" Grid.Column="9" Content="Post Damp" IsChecked="False" Margin="4,0" FontSize="14" Foreground="{DynamicResource UiC_FFFF5722}" VerticalAlignment="Center" />
+                <CheckBox x:Name="ShowSpeed" Grid.Column="10" Content="Speed" IsChecked="True" Margin="4,0" FontSize="14" Foreground="{DynamicResource UiC_FF666666}" VerticalAlignment="Center" />
+                <CheckBox x:Name="ShowDynamic" Grid.Column="11" Content="Dynamic" IsChecked="False" Margin="4,0" FontSize="14" Foreground="{DynamicResource UiC_FF795548}" VerticalAlignment="Center" />
+                <CheckBox x:Name="ShowSteer" Grid.Column="12" Content="Steer°" IsChecked="True" Margin="4,0" FontSize="14" Foreground="{DynamicResource UiWarn}" VerticalAlignment="Center" />
+                <CheckBox x:Name="ShowGas" Grid.Column="13" Content="Throttle" IsChecked="True" Margin="4,0" FontSize="14" Foreground="{DynamicResource UiGood}" VerticalAlignment="Center" />
+                <CheckBox x:Name="ShowBrake" Grid.Column="14" Content="Brake" IsChecked="True" Margin="4,0" FontSize="14" Foreground="{DynamicResource UiBad}" VerticalAlignment="Center" />
             </Grid>
         </Border>
 
@@ -132,66 +132,66 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="#FF161B22" CornerRadius="4" Padding="10,8" Margin="0,0,4,0">
+            <Border Grid.Column="0" Background="{DynamicResource UiPanel}" CornerRadius="{DynamicResource UiR4}" Padding="10,8" Margin="0,0,4,0">
                 <StackPanel>
-                    <TextBlock Text="CHANNELS" FontSize="14" Foreground="#FF00E676" FontWeight="Bold" Margin="0,0,0,8" />
+                    <TextBlock Text="CHANNELS" FontSize="14" Foreground="{DynamicResource UiGoodBright}" FontWeight="Bold" Margin="0,0,0,8" />
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <Ellipse Width="10" Height="10" Fill="#FFF0883E" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Output" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <Ellipse Width="10" Height="10" Fill="{DynamicResource UiAccent}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Output" FontSize="13" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <Ellipse Width="10" Height="10" Fill="#FF00E676" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Raw FF" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <Ellipse Width="10" Height="10" Fill="{DynamicResource UiGoodBright}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Raw FF" FontSize="13" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <Ellipse Width="10" Height="10" Fill="#FF00BCD4" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Compress" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <Ellipse Width="10" Height="10" Fill="{DynamicResource UiC_FF00BCD4}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Compress" FontSize="13" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <Ellipse Width="10" Height="10" Fill="#FF9C27B0" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Gain Out" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <Ellipse Width="10" Height="10" Fill="{DynamicResource UiC_FF9C27B0}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Gain Out" FontSize="13" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <Ellipse Width="10" Height="10" Fill="#FFFF5722" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Post Damp" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <Ellipse Width="10" Height="10" Fill="{DynamicResource UiC_FFFF5722}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Post Damp" FontSize="13" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <Ellipse Width="10" Height="10" Fill="#FF795548" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Dynamic" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <Ellipse Width="10" Height="10" Fill="{DynamicResource UiC_FF795548}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Dynamic" FontSize="13" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
                     </StackPanel>
 
-                    <Border Background="#FF333355" Height="1" Margin="0,6,0,6" />
+                    <Border Background="{DynamicResource UiTrack}" Height="1" Margin="0,6,0,6" />
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <Ellipse Width="10" Height="10" Fill="#FFFFD600" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Steering°" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <Ellipse Width="10" Height="10" Fill="{DynamicResource UiWarn}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Steering°" FontSize="13" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <Ellipse Width="10" Height="10" Fill="#FF555555" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Speed" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <Ellipse Width="10" Height="10" Fill="{DynamicResource UiC_FF555555}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Speed" FontSize="13" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
                     </StackPanel>
 
-                    <Border Background="#FF333355" Height="1" Margin="0,6,0,6" />
+                    <Border Background="{DynamicResource UiTrack}" Height="1" Margin="0,6,0,6" />
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <Ellipse Width="10" Height="10" Fill="#FF4CAF50" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Throttle" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <Ellipse Width="10" Height="10" Fill="{DynamicResource UiGood}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Throttle" FontSize="13" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <Ellipse Width="10" Height="10" Fill="#FFE53935" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Brake" FontSize="13" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                        <Ellipse Width="10" Height="10" Fill="{DynamicResource UiBad}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Brake" FontSize="13" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
                     </StackPanel>
 
-                    <Border Background="#FF333355" Height="1" Margin="0,6,0,6" />
+                    <Border Background="{DynamicResource UiTrack}" Height="1" Margin="0,6,0,6" />
 
-                    <TextBlock Text="WINDOW" FontSize="12" Foreground="#FF8B949E" FontWeight="Bold" Margin="0,0,0,4" />
-                    <TextBlock Text="Scrolling 30-second" FontSize="12" Foreground="#FF999999" TextWrapping="Wrap" LineHeight="14" />
-                    <TextBlock x:Name="ProfSampleRate" Text="~30 Hz sample rate" FontSize="12" Foreground="#FF999999" Margin="0,2,0,0" />
+                    <TextBlock Text="WINDOW" FontSize="12" Foreground="{DynamicResource UiTextDim}" FontWeight="Bold" Margin="0,0,0,4" />
+                    <TextBlock Text="Scrolling 30-second" FontSize="12" Foreground="{DynamicResource UiC_FF999999}" TextWrapping="Wrap" LineHeight="14" />
+                    <TextBlock x:Name="ProfSampleRate" Text="~30 Hz sample rate" FontSize="12" Foreground="{DynamicResource UiC_FF999999}" Margin="0,2,0,0" />
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="1" Background="#FF151525" CornerRadius="6">
+            <Border Grid.Column="1" Background="{DynamicResource UiC_FF151525}" CornerRadius="{DynamicResource UiR6}">
                 <Grid>
                     <Canvas x:Name="ProfilerCanvas" ClipToBounds="True" />
                     <Canvas x:Name="ProfilerOverlayCanvas" ClipToBounds="True" IsHitTestVisible="False" />
@@ -199,7 +199,7 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="3" Background="#FF1C2128" CornerRadius="6" Padding="8,4" Margin="0,4,0,0">
+        <Border Grid.Row="3" Background="{DynamicResource UiCard}" CornerRadius="{DynamicResource UiR6}" Padding="8,4" Margin="0,4,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="70" />
@@ -212,15 +212,15 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="70" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="MzFront" FontSize="13" Foreground="#FF4CAF50" FontFamily="Consolas" VerticalAlignment="Center" />
-                <Rectangle Grid.Column="1" x:Name="BarMz" Fill="#804CAF50" Height="14" RadiusX="2" RadiusY="2" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="2" x:Name="BarMzVal" Text="--" FontSize="13" Foreground="#FF4CAF50" FontFamily="Consolas" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="3" Text="FxFront" FontSize="13" Foreground="#FF8BC34A" FontFamily="Consolas" VerticalAlignment="Center" />
-                <Rectangle Grid.Column="4" x:Name="BarFx" Fill="#808BC34A" Height="14" RadiusX="2" RadiusY="2" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="5" x:Name="BarFxVal" Text="--" FontSize="13" Foreground="#FF8BC34A" FontFamily="Consolas" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="6" Text="FyFront" FontSize="13" Foreground="#FFCDDC39" FontFamily="Consolas" VerticalAlignment="Center" />
-                <Rectangle Grid.Column="7" x:Name="BarFy" Fill="#80CDDC39" Height="14" RadiusX="2" RadiusY="2" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="8" x:Name="BarFyVal" Text="--" FontSize="13" Foreground="#FFCDDC39" FontFamily="Consolas" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="0" Text="MzFront" FontSize="13" Foreground="{DynamicResource UiGood}" FontFamily="{DynamicResource UiMono}" VerticalAlignment="Center" />
+                <Rectangle Grid.Column="1" x:Name="BarMz" Fill="{DynamicResource UiC_804CAF50}" Height="14" RadiusX="2" RadiusY="2" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" x:Name="BarMzVal" Text="--" FontSize="13" Foreground="{DynamicResource UiGood}" FontFamily="{DynamicResource UiMono}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3" Text="FxFront" FontSize="13" Foreground="{DynamicResource UiC_FF8BC34A}" FontFamily="{DynamicResource UiMono}" VerticalAlignment="Center" />
+                <Rectangle Grid.Column="4" x:Name="BarFx" Fill="{DynamicResource UiC_808BC34A}" Height="14" RadiusX="2" RadiusY="2" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="5" x:Name="BarFxVal" Text="--" FontSize="13" Foreground="{DynamicResource UiC_FF8BC34A}" FontFamily="{DynamicResource UiMono}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="6" Text="FyFront" FontSize="13" Foreground="{DynamicResource UiC_FFCDDC39}" FontFamily="{DynamicResource UiMono}" VerticalAlignment="Center" />
+                <Rectangle Grid.Column="7" x:Name="BarFy" Fill="{DynamicResource UiC_80CDDC39}" Height="14" RadiusX="2" RadiusY="2" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="8" x:Name="BarFyVal" Text="--" FontSize="13" Foreground="{DynamicResource UiC_FFCDDC39}" FontFamily="{DynamicResource UiMono}" VerticalAlignment="Center" />
             </Grid>
         </Border>
     </Grid>

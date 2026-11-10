@@ -1,4 +1,4 @@
-<Window x:Class="AcEvoFfbTuner.Views.TrackMapPopout"
+﻿<Window x:Class="AcEvoFfbTuner.Views.TrackMapPopout"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="FFB Tuner — Track Map"
@@ -18,8 +18,8 @@
             <Setter Property="Background" Value="Transparent" />
         </Style>
         <Style TargetType="Button">
-            <Setter Property="Background" Value="#FF333355" />
-            <Setter Property="Foreground" Value="#FFE6EDF3" />
+            <Setter Property="Background" Value="{DynamicResource UiTrack}" />
+            <Setter Property="Foreground" Value="{DynamicResource UiText}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="10,5" />
             <Setter Property="FontSize" Value="13" />
@@ -27,7 +27,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="{DynamicResource UiR4}" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -40,16 +40,16 @@
             </Setter>
         </Style>
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FFE6EDF3" />
+            <Setter Property="Foreground" Value="{DynamicResource UiText}" />
         </Style>
     </Window.Resources>
 
-    <Border x:Name="RootBorder" CornerRadius="8" Padding="1"
-            Background="#55E67E22"
+    <Border x:Name="RootBorder" CornerRadius="{DynamicResource UiR8}" Padding="1"
+            Background="{DynamicResource UiC_55E67E22}"
             MouseLeftButtonDown="OnDragMove"
             MouseWheel="OnMouseWheel">
 
-        <Border x:Name="ContentBorder" CornerRadius="7" Background="#DD0D0D0D">
+        <Border x:Name="ContentBorder" CornerRadius="{DynamicResource UiR7}" Background="{DynamicResource UiC_DD0D0D0D}">
 
             <Grid>
                 <Grid.RowDefinitions>
@@ -60,13 +60,13 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Border x:Name="HeaderBar" Grid.Row="0" Background="#FF161B22" CornerRadius="7,7,0,0" Padding="10,6"
+                <Border x:Name="HeaderBar" Grid.Row="0" Background="{DynamicResource UiPanel}" CornerRadius="7,7,0,0" Padding="10,6"
                         MouseLeftButtonDown="OnDragMove">
                     <Grid>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="TRACK MAP" FontSize="15" FontWeight="Black"
-                                       Foreground="#FFF0883E" VerticalAlignment="Center" />
-                            <TextBlock x:Name="OvTrackName" Text="" FontSize="13" Foreground="#FF00E676"
+                                       Foreground="{DynamicResource UiAccent}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="OvTrackName" Text="" FontSize="13" Foreground="{DynamicResource UiGoodBright}"
                                        VerticalAlignment="Center" Margin="10,0,0,0" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -77,18 +77,18 @@
                             <Button x:Name="BtnTransparency" ToolTip="Toggle transparency"
                                     Width="28" Height="28" FontSize="16" Padding="0" Margin="0,0,4,0"
                                     Click="ToggleTransparency">
-                                <TextBlock x:Name="TransparencyIcon" Text="OPQ" FontSize="12" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                                <TextBlock x:Name="TransparencyIcon" Text="OPQ" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiText}" />
                             </Button>
                             <Button x:Name="BtnClose" ToolTip="Close"
                                     Width="28" Height="28" FontSize="16" Padding="0"
-                                    Background="#FF552222" Click="CloseOverlay">
-                                <TextBlock Text="X" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                                    Background="{DynamicResource UiC_FF552222}" Click="CloseOverlay">
+                                <TextBlock Text="X" FontWeight="Bold" Foreground="{DynamicResource UiText}" />
                             </Button>
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="1" Background="#FF161B22" Padding="8,4" Margin="0,1,0,0">
+                <Border Grid.Row="1" Background="{DynamicResource UiPanel}" Padding="8,4" Margin="0,1,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -101,39 +101,39 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                            <TextBlock Text="Progress" FontSize="10" Foreground="#FF8B949E" />
-                            <TextBlock x:Name="OvProgress" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" />
+                            <TextBlock Text="Progress" FontSize="10" Foreground="{DynamicResource UiTextDim}" />
+                            <TextBlock x:Name="OvProgress" Text="--" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource UiWarn}" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="0,0,4,0">
-                            <TextBlock Text="Corner" FontSize="10" Foreground="#FF8B949E" />
-                            <TextBlock x:Name="OvCorner" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FFFFD600" />
+                            <TextBlock Text="Corner" FontSize="10" Foreground="{DynamicResource UiTextDim}" />
+                            <TextBlock x:Name="OvCorner" Text="--" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource UiWarn}" />
                         </StackPanel>
                         <StackPanel Grid.Column="2" Margin="0,0,4,0">
-                            <TextBlock Text="Sector" FontSize="10" Foreground="#FF8B949E" />
-                            <TextBlock x:Name="OvSector" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FFF0883E" />
+                            <TextBlock Text="Sector" FontSize="10" Foreground="{DynamicResource UiTextDim}" />
+                            <TextBlock x:Name="OvSector" Text="--" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource UiAccent}" />
                         </StackPanel>
                         <StackPanel Grid.Column="3" Margin="0,0,4,0">
-                            <TextBlock Text="Status" FontSize="10" Foreground="#FF8B949E" />
-                            <TextBlock x:Name="OvOnTrack" Text="--" FontSize="14" FontWeight="Bold" Foreground="#FF8B949E" />
+                            <TextBlock Text="Status" FontSize="10" Foreground="{DynamicResource UiTextDim}" />
+                            <TextBlock x:Name="OvOnTrack" Text="--" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource UiTextDim}" />
                         </StackPanel>
                         <StackPanel Grid.Column="4" Margin="0,0,4,0">
-                            <TextBlock Text="Waypoints" FontSize="10" Foreground="#FF8B949E" />
-                            <TextBlock x:Name="OvWaypoints" Text="--" FontSize="14" Foreground="#FFE6EDF3" />
+                            <TextBlock Text="Waypoints" FontSize="10" Foreground="{DynamicResource UiTextDim}" />
+                            <TextBlock x:Name="OvWaypoints" Text="--" FontSize="14" Foreground="{DynamicResource UiText}" />
                         </StackPanel>
                         <CheckBox x:Name="OvShowHeatmap" Grid.Column="5" Content="Heat" IsChecked="True"
-                                  FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="4,0" />
+                                  FontSize="12" Foreground="{DynamicResource UiTextDim}" VerticalAlignment="Center" Margin="4,0" />
                         <CheckBox x:Name="OvShowEdges" Grid.Column="6" Content="Edges" IsChecked="False"
-                                  FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" Margin="4,0" />
+                                  FontSize="12" Foreground="{DynamicResource UiTextDim}" VerticalAlignment="Center" Margin="4,0" />
                         <CheckBox x:Name="OvShowDiag" Grid.Column="7" Content="Diag" IsChecked="True"
-                                  FontSize="12" Foreground="#FFFF8A65" VerticalAlignment="Center" Margin="4,0" />
+                                  FontSize="12" Foreground="{DynamicResource UiC_FFFF8A65}" VerticalAlignment="Center" Margin="4,0" />
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="2" Background="#FF151525" Margin="0,1,0,0">
+                <Border Grid.Row="2" Background="{DynamicResource UiC_FF151525}" Margin="0,1,0,0">
                     <Canvas x:Name="OvCanvas" ClipToBounds="True" />
                 </Border>
 
-                <Border Grid.Row="3" Background="#FF161B22" Padding="8,4" Margin="0,1,0,0">
+                <Border Grid.Row="3" Background="{DynamicResource UiPanel}" Padding="8,4" Margin="0,1,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -143,31 +143,31 @@
                             <Ellipse Width="8" Height="8" Margin="0,0,4,0" VerticalAlignment="Center">
                                 <Ellipse.Style>
                                     <Style TargetType="Ellipse">
-                                        <Setter Property="Fill" Value="#FF8B949E" />
+                                        <Setter Property="Fill" Value="{DynamicResource UiTextDim}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding ElementName=OvStatusDot}" Value="True">
-                                                <Setter Property="Fill" Value="#FFF0883E" />
+                                                <Setter Property="Fill" Value="{DynamicResource UiAccent}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Ellipse.Style>
                             </Ellipse>
                             <TextBlock x:Name="OvStatusDot" />
-                            <TextBlock x:Name="OvMapStatus" Text="No Map" FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" />
-                            <TextBlock x:Name="OvTrackStats" Text="" FontSize="11" Foreground="#FF666666" VerticalAlignment="Center" Margin="12,0,0,0" />
+                            <TextBlock x:Name="OvMapStatus" Text="No Map" FontSize="12" Foreground="{DynamicResource UiTextDim}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="OvTrackStats" Text="" FontSize="11" Foreground="{DynamicResource UiC_FF666666}" VerticalAlignment="Center" Margin="12,0,0,0" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="X:" FontSize="12" Foreground="#FF8B949E" Margin="0,0,3,0" />
-                            <TextBlock x:Name="OvCarX" Text="--" FontSize="12" Foreground="#FFE6EDF3" FontFamily="Consolas" Margin="0,0,10,0" />
-                            <TextBlock Text="Z:" FontSize="12" Foreground="#FF8B949E" Margin="0,0,3,0" />
-                            <TextBlock x:Name="OvCarZ" Text="--" FontSize="12" Foreground="#FFE6EDF3" FontFamily="Consolas" />
+                            <TextBlock Text="X:" FontSize="12" Foreground="{DynamicResource UiTextDim}" Margin="0,0,3,0" />
+                            <TextBlock x:Name="OvCarX" Text="--" FontSize="12" Foreground="{DynamicResource UiText}" FontFamily="{DynamicResource UiMono}" Margin="0,0,10,0" />
+                            <TextBlock Text="Z:" FontSize="12" Foreground="{DynamicResource UiTextDim}" Margin="0,0,3,0" />
+                            <TextBlock x:Name="OvCarZ" Text="--" FontSize="12" Foreground="{DynamicResource UiText}" FontFamily="{DynamicResource UiMono}" />
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <Border x:Name="FooterBar" Grid.Row="4" Background="#FF161B22" CornerRadius="0,0,7,7" Padding="8,3">
+                <Border x:Name="FooterBar" Grid.Row="4" Background="{DynamicResource UiPanel}" CornerRadius="0,0,7,7" Padding="8,3">
                     <TextBlock Text="Drag to move | Scroll to resize | Rec/Save to create track map"
-                               FontSize="11" Foreground="#FF666666" />
+                               FontSize="11" Foreground="{DynamicResource UiC_FF666666}" />
                 </Border>
             </Grid>
         </Border>

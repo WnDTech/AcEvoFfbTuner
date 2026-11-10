@@ -1,9 +1,9 @@
-<UserControl x:Class="AcEvoFfbTuner.Controls.LabeledSlider"
+﻿<UserControl x:Class="AcEvoFfbTuner.Controls.LabeledSlider"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Name="Root">
 
-    <Border x:Name="GlowBorder" CornerRadius="4" Padding="0,0" Margin="0,0"
+    <Border x:Name="GlowBorder" CornerRadius="{DynamicResource UiR4}" Padding="0,0" Margin="0,0"
             BorderThickness="0" BorderBrush="Transparent">
         <StackPanel x:Name="RootPanel" PreviewMouseWheel="OnPreviewMouseWheel">
             <TextBlock x:Name="PART_LabelAbove"
@@ -13,7 +13,7 @@
                        Margin="0,2,0,0" />
             <TextBlock x:Name="PART_Description"
                        FontSize="13"
-                       Foreground="#FF8B949E"
+                       Foreground="{DynamicResource UiTextDim}"
                        TextWrapping="Wrap"
                        Visibility="Collapsed" />
             <DockPanel x:Name="SliderRow" Margin="0,4,0,0">
@@ -41,12 +41,12 @@
                         ToolTip="Reset to default value">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="ResetBd" Background="Transparent" CornerRadius="3" Padding="2">
-                                <TextBlock Text="&#x21BA;" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FF8B949E" />
+                            <Border x:Name="ResetBd" Background="Transparent" CornerRadius="{DynamicResource UiR3}" Padding="2">
+                                <TextBlock Text="&#x21BA;" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource UiTextDim}" />
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="ResetBd" Property="Background" Value="#22FFFFFF" />
+                                    <Setter TargetName="ResetBd" Property="Background" Value="{DynamicResource UiHover2}" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -67,22 +67,23 @@
                          KeyDown="OnTextBoxKeyDown">
                     <TextBox.Style>
                         <Style TargetType="TextBox">
-                            <Setter Property="Background" Value="#FF21262D" />
-                            <Setter Property="Foreground" Value="#FFE6EDF3" />
+                            <Setter Property="Background" Value="{DynamicResource UiInput}" />
+                            <Setter Property="Foreground" Value="{DynamicResource UiText}" />
                             <Setter Property="BorderThickness" Value="1" />
-                            <Setter Property="BorderBrush" Value="#FF3D444D" />
-                            <Setter Property="CaretBrush" Value="#FFF0883E" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource UiInputBorder}" />
+                            <Setter Property="CaretBrush" Value="{DynamicResource UiAccent}" />
                             <Setter Property="Padding" Value="4,2" />
                             <Setter Property="FontSize" Value="14" />
+                            <Setter Property="FontFamily" Value="{DynamicResource UiValueFont}" />
                             <Setter Property="ToolTip" Value="Click to type a value" />
                             <Style.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="BorderBrush" Value="#FF555D66" />
-                                    <Setter Property="Background" Value="#FF282E38" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource UiInputBorderHover}" />
+                                    <Setter Property="Background" Value="{DynamicResource UiInputHoverBg}" />
                                 </Trigger>
                                 <Trigger Property="IsFocused" Value="True">
-                                    <Setter Property="Background" Value="#FF2A2A45" />
-                                    <Setter Property="BorderBrush" Value="#FFF0883E" />
+                                    <Setter Property="Background" Value="{DynamicResource UiInputFocusBg}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource UiAccent}" />
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
@@ -100,75 +101,27 @@
                         LargeChange="100"
                         ValueChanged="OnSliderValueChanged"
                         PreviewMouseDown="OnSliderPreviewMouseDown"
-                        PreviewMouseUp="OnSliderPreviewMouseUp">
-                    <Slider.Template>
-                        <ControlTemplate TargetType="Slider">
-                            <Border Background="Transparent" Padding="4,0">
-                                <Grid>
-                                    <Border CornerRadius="7" Background="#FF21262D" Height="14" VerticalAlignment="Center" />
-                                    <Track x:Name="PART_Track" VerticalAlignment="Stretch">
-                                        <Track.DecreaseRepeatButton>
-                                            <RepeatButton Command="Slider.DecreaseLarge">
-                                                <RepeatButton.Template>
-                                                    <ControlTemplate TargetType="RepeatButton">
-                                                        <Border Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}" CornerRadius="7" Height="14" VerticalAlignment="Center" Opacity="0.8" />
-                                                    </ControlTemplate>
-                                                </RepeatButton.Template>
-                                            </RepeatButton>
-                                        </Track.DecreaseRepeatButton>
-                                        <Track.IncreaseRepeatButton>
-                                            <RepeatButton Command="Slider.IncreaseLarge">
-                                                <RepeatButton.Template>
-                                                    <ControlTemplate TargetType="RepeatButton">
-                                                        <Border Background="Transparent" />
-                                                    </ControlTemplate>
-                                                </RepeatButton.Template>
-                                            </RepeatButton>
-                                        </Track.IncreaseRepeatButton>
-                                        <Track.Thumb>
-                                            <Thumb>
-                                                <Thumb.Template>
-                                                    <ControlTemplate TargetType="Thumb">
-                                                        <Grid>
-                                                            <Ellipse Width="30" Height="30" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}" Opacity="0.15" />
-                                                            <Ellipse x:Name="ThumbFill" Width="22" Height="22" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}" Stroke="White" StrokeThickness="1.5" />
-                                                        </Grid>
-                                                        <ControlTemplate.Triggers>
-                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter TargetName="ThumbFill" Property="Opacity" Value="0.9" />
-                                                            </Trigger>
-                                                            <Trigger Property="IsDragging" Value="True">
-                                                                <Setter TargetName="ThumbFill" Property="Opacity" Value="1.0" />
-                                                            </Trigger>
-                                                        </ControlTemplate.Triggers>
-                                                    </ControlTemplate>
-                                                </Thumb.Template>
-                                            </Thumb>
-                                        </Track.Thumb>
-                                    </Track>
-                                </Grid>
-                            </Border>
-                        </ControlTemplate>
-                    </Slider.Template>
+                        PreviewMouseUp="OnSliderPreviewMouseUp"
+                        Template="{DynamicResource UiLabeledSliderTemplate}">
                 </Slider>
                 <!-- Default-position marker (placed in code-behind) -->
                 <Canvas x:Name="PART_DefaultCanvas" IsHitTestVisible="False" Height="36" VerticalAlignment="Center">
                     <Border x:Name="PART_DefaultMarker" Width="2" Height="20" Canvas.Top="8"
-                            Background="#B3E6EDF3" CornerRadius="1" Visibility="Collapsed" />
+                            Background="{DynamicResource UiDefaultMarker}" CornerRadius="{DynamicResource UiR1}" Visibility="Collapsed" />
                 </Canvas>
                 </Grid>
                 <Grid x:Name="PART_EndsRow" Margin="4,0,4,0" Visibility="Collapsed">
                     <TextBlock x:Name="PART_LowLabel" HorizontalAlignment="Left" FontSize="11.5"
-                               Foreground="#FF8B949E" TextWrapping="Wrap" MaxWidth="260" />
+                               Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" MaxWidth="260" />
                     <TextBlock x:Name="PART_HighLabel" HorizontalAlignment="Right" FontSize="11.5"
-                               Foreground="#FF8B949E" TextWrapping="Wrap" TextAlignment="Right" MaxWidth="260" />
+                               Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" TextAlignment="Right" MaxWidth="260" />
                 </Grid>
                 </StackPanel>
             </DockPanel>
 
             <TextBlock x:Name="PART_Meaning"
                        FontSize="12"
-                       Foreground="#FFB0B8C2"
+                       Foreground="{DynamicResource UiMeaning}"
                        TextWrapping="NoWrap"
                        TextTrimming="CharacterEllipsis"
                        Height="17"

@@ -7,7 +7,7 @@ public static class ThemeManager
 {
     public const string DefaultTheme = "Onyx";
 
-    public static readonly string[] ThemeNames = ["Onyx", "Slate", "Obsidian", "Graphite", "Amber", "Crimson", "Jade", "Cobalt", "Rose", "Charcoal"];
+    public static readonly string[] ThemeNames = ["Onyx", "Slate", "Obsidian", "Graphite", "Amber", "Crimson", "Jade", "Cobalt", "Rose", "Charcoal", "Workshop", "WorkshopDark"];
 
     private static readonly Uri[] ThemeUris = ThemeNames
         .Select(name => new Uri($"Themes/{name}.xaml", UriKind.Relative))

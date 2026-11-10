@@ -1,4 +1,4 @@
-<UserControl x:Class="AcEvoFfbTuner.Views.Pages.FfbTuningPage"
+﻿<UserControl x:Class="AcEvoFfbTuner.Views.Pages.FfbTuningPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:AcEvoFfbTuner.Controls"
@@ -24,7 +24,7 @@
                 <Grid VerticalAlignment="Center" Margin="0,0,24,0">
                     <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextDimBrush}"
                                Text="No car detected" />
-                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#FF79C0FF"
+                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource UiInfo}"
                                Text="{Binding DetectedCarModel}"
                                Visibility="{Binding DetectedCarModel, Converter={StaticResource NotEmptyToVis}}" />
                 </Grid>
@@ -40,7 +40,7 @@
                             <Setter Property="Text" Value="{Binding DeviceName, FallbackValue='No device', TargetNullValue='No device'}" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsDeviceConnected}" Value="True">
-                                    <Setter Property="Foreground" Value="#FF7EE787" />
+                                    <Setter Property="Foreground" Value="{DynamicResource UiLime}" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -60,7 +60,7 @@
                 <TextBlock Text="PEAK" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Text="{Binding OutputGainNmText}" FontSize="14" FontWeight="SemiBold"
-                           Foreground="#FFF0883E" VerticalAlignment="Center" />
+                           Foreground="{DynamicResource UiAccent}" VerticalAlignment="Center" />
 
                 <Border Width="1" Background="{DynamicResource BorderBrush}" Margin="0,2,24,2" />
 
@@ -72,11 +72,11 @@
                             <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding SelectedMixMode}" Value="Replace">
-                                    <Setter Property="Foreground" Value="#FF79C0FF" />
+                                    <Setter Property="Foreground" Value="{DynamicResource UiInfo}" />
                                     <Setter Property="Text" Value="Replace" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding SelectedMixMode}" Value="Overlay">
-                                    <Setter Property="Foreground" Value="#FF56D4A0" />
+                                    <Setter Property="Foreground" Value="{DynamicResource UiTeal}" />
                                     <Setter Property="Text" Value="Overlay" />
                                 </DataTrigger>
                             </Style.Triggers>
@@ -98,17 +98,17 @@
                 <StackPanel>
 
                     <!-- ═══ FILTER BAR: current game + search + section counter ═══ -->
-                    <Border Background="{StaticResource BgPanel}" CornerRadius="6"
+                    <Border Background="{StaticResource BgPanel}" CornerRadius="{DynamicResource UiR6}"
                             BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
                             Padding="14,10" Margin="0,0,0,16">
                         <DockPanel>
                             <Border DockPanel.Dock="Left"
-                                    Background="#1AF0883E" BorderBrush="#66F0883E" BorderThickness="1"
-                                    CornerRadius="12" Padding="10,4" Margin="0,0,14,0"
+                                    Background="{DynamicResource UiAccentDim}" BorderBrush="{DynamicResource UiC_66F0883E}" BorderThickness="1"
+                                    CornerRadius="{DynamicResource UiR12}" Padding="10,4" Margin="0,0,14,0"
                                     VerticalAlignment="Center">
                                 <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="7" Height="7" Fill="#FFF0883E" VerticalAlignment="Center" Margin="0,0,7,0" />
-                                    <TextBlock Text="{Binding GameDisplayName}" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" VerticalAlignment="Center" />
+                                    <Ellipse Width="7" Height="7" Fill="{DynamicResource UiAccent}" VerticalAlignment="Center" Margin="0,0,7,0" />
+                                    <TextBlock Text="{Binding GameDisplayName}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiAccent}" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Border>
                             <TextBlock x:Name="FilterCounter" DockPanel.Dock="Right"
@@ -130,77 +130,77 @@
                                           SectionBrush="{StaticResource SectionOutput}"
                                           Selectable="True" IsSelected="True" ToolTip="How strong the wheel is overall, clipping, your wheelbase, end-stops and force direction.">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Text="How strong the wheel is overall, clipping, your wheelbase, end-stops and force direction." />
+                            <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="How strong the wheel is overall, clipping, your wheelbase, end-stops and force direction." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="STEERING WEIGHT &amp; CENTRE" Tag="Steering"
                                           SectionBrush="{StaticResource SectionTyreForces}"
                                           Selectable="True" ToolTip="How heavy the steering is, how it feels around straight-ahead, and straight-line stability.">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Text="How heavy the steering is, how it feels around straight-ahead, and straight-line stability." />
+                            <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="How heavy the steering is, how it feels around straight-ahead, and straight-line stability." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="CORNERING &amp; FRONT GRIP" Tag="Grip"
                                           SectionBrush="{StaticResource SectionTyreSlip}"
                                           Selectable="True" ToolTip="Feeling the front tyres load up, reach the limit and start to understeer.">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Text="Feeling the front tyres load up, reach the limit and start to understeer." />
+                            <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Feeling the front tyres load up, reach the limit and start to understeer." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="OVERSTEER &amp; SLIDES" Tag="Oversteer"
                                           SectionBrush="{StaticResource SectionGripFeel}"
                                           Selectable="True" ToolTip="The rear stepping out, slide warnings, and how the wheel self-steers into countersteer.">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Text="The rear stepping out, slide warnings, and how the wheel self-steers into countersteer." />
+                            <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="The rear stepping out, slide warnings, and how the wheel self-steers into countersteer." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="BRAKING &amp; ACCELERATION" Tag="Braking"
                                           SectionBrush="{StaticResource SectionCrash}"
                                           Selectable="True" ToolTip="Steering weight under braking, lock-ups, ABS, wheelspin and traction control.">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Text="Steering weight under braking, lock-ups, ABS, wheelspin and traction control." />
+                            <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Steering weight under braking, lock-ups, ABS, wheelspin and traction control." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="KERBS, ROAD &amp; OFF-TRACK" Tag="Surfaces"
                                           SectionBrush="{StaticResource SectionVibration}"
                                           Selectable="True" ToolTip="Rumble strips, bumps, road texture, grass, gravel and dirt.">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Text="Rumble strips, bumps, road texture, grass, gravel and dirt." />
+                            <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Rumble strips, bumps, road texture, grass, gravel and dirt." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="ENGINE &amp; CHASSIS RUMBLE" Tag="Engine"
                                           SectionBrush="{StaticResource SectionLfe}"
                                           Selectable="True" ToolTip="Low-frequency rumble from engine and suspension (LFE), and gear shifts.">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Text="Low-frequency rumble from engine and suspension (LFE), and gear shifts." />
+                            <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Low-frequency rumble from engine and suspension (LFE), and gear shifts." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="SMOOTHNESS &amp; DAMPING" Tag="Smoothness"
                                           SectionBrush="{StaticResource SectionDamping}"
                                           Selectable="True" ToolTip="Grainy, notchy, oscillating or twitchy wheel? Resistance and filtering live here.">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Text="Grainy, notchy, oscillating or twitchy wheel? Resistance and filtering live here." />
+                            <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Grainy, notchy, oscillating or twitchy wheel? Resistance and filtering live here." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="PARKED &amp; LOW SPEED" Tag="Parked"
                                           SectionBrush="{StaticResource SectionDamping}"
                                           Selectable="True" ToolTip="Steering resistance when stopped or crawling (pits, grid). Fades out by ~1.2 km/h. All games.">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Text="Steering resistance when stopped or crawling (pits, grid). Fades out by ~1.2 km/h. All games." />
+                            <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Steering resistance when stopped or crawling (pits, grid). Fades out by ~1.2 km/h. All games." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="CRASHES &amp; TYRE DAMAGE" Tag="Crashes"
                                           SectionBrush="{StaticResource SectionCrash}"
                                           Selectable="True" ToolTip="Wall and car impacts, blowouts, pressure loss and damage pull.">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Text="Wall and car impacts, blowouts, pressure loss and damage pull." />
+                            <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Wall and car impacts, blowouts, pressure loss and damage pull." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="WET WEATHER" Tag="WetWeather"
                                           SectionBrush="{StaticResource SectionWetWeather}"
                                           Selectable="True" ToolTip="Rain: less road and kerb detail, wider slip curves, hydroplaning.">
                         <controls:SectionCard.SummaryContent>
-                            <TextBlock FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Text="Rain: less road and kerb detail, wider slip curves, hydroplaning." />
+                            <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Rain: less road and kerb detail, wider slip curves, hydroplaning." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                 </StackPanel>
@@ -210,13 +210,13 @@
             <Border Grid.Column="1" Margin="0,16,24,20"
                     Background="{StaticResource BgPanel}"
                     BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
-                    CornerRadius="10">
+                    CornerRadius="{DynamicResource UiR10}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,20,24,20">
                     <StackPanel>
                         <!-- Section header -->
                         <DockPanel>
                             <Border x:Name="DetailHeaderAccent" DockPanel.Dock="Left" Width="4"
-                                    CornerRadius="2" Background="{StaticResource SectionOutput}"
+                                    CornerRadius="{DynamicResource UiR2}" Background="{StaticResource SectionOutput}"
                                     VerticalAlignment="Stretch" />
                             <TextBlock x:Name="DetailHeader" Text="OVERALL STRENGTH &amp; WHEEL" FontSize="18" FontWeight="Bold"
                                        Foreground="{StaticResource SectionOutput}"
@@ -226,8 +226,8 @@
 
                         <!-- OVERALL STRENGTH & WHEEL -->
                         <StackPanel x:Name="DtlOutput">
-                            <TextBlock Text="How strong the wheel is overall, clipping, your wheelbase, end-stops and force direction." FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,12" />
-                            <TextBlock Text="Start here. Set overall strength first, then shape the feel in the sections below." FontSize="13" Foreground="#FF8B949E" Margin="0,0,0,10" TextWrapping="Wrap" />
+                            <TextBlock Text="How strong the wheel is overall, clipping, your wheelbase, end-stops and force direction." FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <TextBlock Text="Start here. Set overall strength first, then shape the feel in the sections below." FontSize="13" Foreground="{DynamicResource UiTextDim}" Margin="0,0,0,10" TextWrapping="Wrap" />
                             <controls:LabeledSlider Value="{Binding OutputGain, Mode=TwoWay}" Minimum="0" Maximum="20" TickFrequency="0.001"
                                 Label="Output Gain" StringFormat="{}{0:F3}" LabelAbove="True"
                                 DisplayText="{Binding OutputGainNmText}" ValueWidth="110"
@@ -283,7 +283,7 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding SoftLockEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Soft Lock (end-stop wall)" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Pushes back progressively past 92% of steering lock so you feel the end of the rack." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Pushes back progressively past 92% of steering lock so you feel the end of the rack." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <controls:LabeledSlider Value="{Binding SoftLockStrength, Mode=TwoWay}" Minimum="0" Maximum="1.5" TickFrequency="0.05"
@@ -297,7 +297,7 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding AutoGainEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Enable Auto-Gain" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Automatically compensates for cars with very strong or very weak FFB so they land at a similar level." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Automatically compensates for cars with very strong or very weak FFB so they land at a similar level." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <controls:LabeledSlider Value="{Binding AutoGainScale, Mode=TwoWay}" Minimum="0.1" Maximum="5" TickFrequency="0.01"
@@ -334,28 +334,28 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding SignCorrectionEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Sign Correction" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Keeps self-centering forces pointing toward centre near straight-ahead." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Keeps self-centering forces pointing toward centre near straight-ahead." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <DockPanel Margin="0,6,0,10">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding ForceInvertEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Invert Force" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Flips ALL forces at the wheel. Use only if the wheel pushes away from centre." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Flips ALL forces at the wheel. Use only if the wheel pushes away from centre." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding FyInverted}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Invert Lateral Force" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Fixes a left/right pull under braking caused by the lateral-force sign." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Fixes a left/right pull under braking caused by the lateral-force sign." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                         </StackPanel>
 
                         <!-- STEERING WEIGHT & CENTRE -->
                         <StackPanel x:Name="DtlSteering" Visibility="Collapsed">
-                            <TextBlock Text="How heavy the steering is, how it feels around straight-ahead, and straight-line stability." FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <TextBlock Text="How heavy the steering is, how it feels around straight-ahead, and straight-line stability." FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <TextBlock Text="Steering weight (self-aligning)" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" />
                             <controls:LabeledSlider Value="{Binding MzFrontGain, Mode=TwoWay}" Minimum="-2" Maximum="2" TickFrequency="0.01"
                                 Label="Self-Aligning Torque (Mz)" StringFormat="{}{0:F2}" LabelAbove="True"
@@ -395,21 +395,21 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding UseNativeTorqueSign}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Native Torque Direction (LMU)" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="On = force follows LMU's own torque direction (self-steers into countersteer, real road/camber feel). Off = legacy always-pull-to-centre. Leave on." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="On = force follows LMU's own torque direction (self-steers into countersteer, real road/camber feel). Off = legacy always-pull-to-centre. Leave on." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding SteeringAngleCompensationEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Steering Angle Comp (RaceRoom)" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="On = legacy +15% high-steer boost. Off = feel the Historic Update's own SAT curve (recommended)." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="On = legacy +15% high-steer boost. Off = feel the Historic Update's own SAT curve (recommended)." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <DockPanel Margin="0,0,0,10" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding UseNativeTorqueSign}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Game Torque Direction (RaceRoom)" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="On = use the game's own torque direction (real self-steer, camber and crown through centre). Off = legacy: force always points back toward centre (uses Core Floor + Direction Blend)." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="On = use the game's own torque direction (real self-steer, camber and crown through centre). Off = legacy: force always points back toward centre (uses Core Floor + Direction Blend)." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <TextBlock Text="Around centre" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
@@ -436,7 +436,7 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding GyroEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Gyro Stabilizer" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Torque that opposes the car's yaw rate. Calms high-speed nervousness and wander." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Torque that opposes the car's yaw rate. Calms high-speed nervousness and wander." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <controls:LabeledSlider Value="{Binding GyroGain, Mode=TwoWay}" Minimum="-2" Maximum="2" TickFrequency="0.05"
@@ -460,7 +460,7 @@
 
                         <!-- CORNERING & FRONT GRIP -->
                         <StackPanel x:Name="DtlGrip" Visibility="Collapsed">
-                            <TextBlock Text="Feeling the front tyres load up, reach the limit and start to understeer." FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <TextBlock Text="Feeling the front tyres load up, reach the limit and start to understeer." FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <TextBlock Text="Grip limit / understeer" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <controls:LabeledSlider Value="{Binding SlipAngleGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Slip Angle Feel" StringFormat="{}{0:F2}" LabelAbove="True"
@@ -484,7 +484,7 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding SlipUseFrontOnly}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Front Wheels Only" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Slip effects use only the front tyres (pure understeer feel; rear slides handled in Oversteer)." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Slip effects use only the front tyres (pure understeer feel; rear slides handled in Oversteer)." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <controls:LabeledSlider Value="{Binding ScrubGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
@@ -560,7 +560,7 @@
 
                         <!-- OVERSTEER & SLIDES -->
                         <StackPanel x:Name="DtlOversteer" Visibility="Collapsed">
-                            <TextBlock Text="The rear stepping out, slide warnings, and how the wheel self-steers into countersteer." FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <TextBlock Text="The rear stepping out, slide warnings, and how the wheel self-steers into countersteer." FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <controls:LabeledSlider Value="{Binding RearSlipGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Rear Slip Warning" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Low rumble (12-25 Hz) when the rear tyres lose grip — early oversteer warning."
@@ -622,7 +622,7 @@
 
                         <!-- BRAKING & ACCELERATION -->
                         <StackPanel x:Name="DtlBraking" Visibility="Collapsed">
-                            <TextBlock Text="Steering weight under braking, lock-ups, ABS, wheelspin and traction control." FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <TextBlock Text="Steering weight under braking, lock-ups, ABS, wheelspin and traction control." FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <TextBlock Text="Weight under braking" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <controls:LabeledSlider Value="{Binding FxFrontGain, Mode=TwoWay}" Minimum="-2" Maximum="2" TickFrequency="0.01"
                                 Label="Braking/Drive Force (Fx)" StringFormat="{}{0:F2}" LabelAbove="True"
@@ -697,7 +697,7 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding SynthAbsEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Synthesise ABS (LMU, experimental)" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="LMU has no ABS flag; this detects ABS from front slip + brake." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="LMU has no ABS flag; this detects ABS from front slip + brake." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <TextBlock Text="Traction control" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
@@ -705,7 +705,7 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding TcWheelEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="TC Wheel Feel" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Gentle nudge while traction control is actively cutting power (needs a live TC flag; LMU needs Synth TC)." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Gentle nudge while traction control is actively cutting power (needs a live TC flag; LMU needs Synth TC)." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <controls:LabeledSlider Value="{Binding TcWheelGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
@@ -724,14 +724,14 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding SynthTcEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Synthesise TC (LMU, experimental)" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="LMU has no TC flag; this detects TC cuts from rear slip + throttle." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="LMU has no TC flag; this detects TC cuts from rear slip + throttle." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                         </StackPanel>
 
                         <!-- KERBS, ROAD & OFF-TRACK -->
                         <StackPanel x:Name="DtlSurfaces" Visibility="Collapsed">
-                            <TextBlock Text="Rumble strips, bumps, road texture, grass, gravel and dirt." FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <TextBlock Text="Rumble strips, bumps, road texture, grass, gravel and dirt." FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <controls:LabeledSlider Value="{Binding VibrationMasterGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.05"
                                 Label="Vibration Master" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Volume knob for all vibrations (kerbs, slip, road, ABS)."
@@ -798,7 +798,7 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding UseMixerSuspRoad}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Suspension Road Layer on (LMU)" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Off = only the built-in kerb/road envelopes." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Off = only the built-in kerb/road envelopes." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <TextBlock Text="Off-track: grass, gravel, dirt" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
@@ -824,12 +824,12 @@
 
                         <!-- ENGINE & CHASSIS RUMBLE -->
                         <StackPanel x:Name="DtlEngine" Visibility="Collapsed">
-                            <TextBlock Text="Low-frequency rumble from engine and suspension (LFE), and gear shifts." FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <TextBlock Text="Low-frequency rumble from engine and suspension (LFE), and gear shifts." FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <DockPanel Margin="0,6,0,10">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding LfeEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Enable LFE" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Deep chassis/engine rumble mixed into the force. Best on strong wheelbases." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Deep chassis/engine rumble mixed into the force. Best on strong wheelbases." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <controls:LabeledSlider Value="{Binding LfeGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
@@ -874,14 +874,14 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding GearChangeMuteEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Mute Gear Change Spikes" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Suppresses force spikes during gear shifts." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Suppresses force spikes during gear shifts." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                         </StackPanel>
 
                         <!-- SMOOTHNESS & DAMPING -->
                         <StackPanel x:Name="DtlSmoothness" Visibility="Collapsed">
-                            <TextBlock Text="Grainy, notchy, oscillating or twitchy wheel? Resistance and filtering live here." FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <TextBlock Text="Grainy, notchy, oscillating or twitchy wheel? Resistance and filtering live here." FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <TextBlock Text="Resistance (damping &amp; friction)" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsDampingTuningVisible, Converter={StaticResource BoolToVis}}" />
                             <controls:LabeledSlider Value="{Binding ViscousDamping, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.005"
                                 Label="Damping" StringFormat="{}{0:F3}" LabelAbove="True"
@@ -955,7 +955,7 @@
 
                         <!-- PARKED & LOW SPEED -->
                         <StackPanel x:Name="DtlParked" Visibility="Collapsed">
-                            <TextBlock Text="Steering resistance when stopped or crawling (pits, grid). Fades out by ~1.2 km/h. All games." FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <TextBlock Text="Steering resistance when stopped or crawling (pits, grid). Fades out by ~1.2 km/h. All games." FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Parked Steering Weight" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Overall tyre scrub when stationary. 0 = off."
@@ -1058,20 +1058,20 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding StaticFrictionSurfaceResponseEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Surface Response" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="RaceRoom kerb-material data: grass/dirt/gravel lighter, rumble heavier. Other games neutral." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="RaceRoom kerb-material data: grass/dirt/gravel lighter, rumble heavier. Other games neutral." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                         </StackPanel>
 
                         <!-- CRASHES & TYRE DAMAGE -->
                         <StackPanel x:Name="DtlCrashes" Visibility="Collapsed">
-                            <TextBlock Text="Wall and car impacts, blowouts, pressure loss and damage pull." FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <TextBlock Text="Wall and car impacts, blowouts, pressure loss and damage pull." FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <TextBlock Text="Crash impacts" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" />
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding CrashEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Enable Crash Forces" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Directional kick on wall/car impacts, detected from G-force spikes." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Directional kick on wall/car impacts, detected from G-force spikes." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <controls:LabeledSlider Value="{Binding CrashImpactGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
@@ -1099,17 +1099,17 @@
                                 DefaultValue="{Binding BuiltInDefaults.Crash.DecayRate}"
                                 SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Safety override (hazard mode)" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" />
-                            <Border Background="#33FF4444" CornerRadius="6" Padding="12,10" Margin="0,4,0,8">
+                            <Border Background="{DynamicResource UiC_33FF4444}" CornerRadius="{DynamicResource UiR6}" Padding="12,10" Margin="0,4,0,8">
                                 <StackPanel>
-                                    <TextBlock Text="&#x26A0; HAZARD WARNING" FontSize="14" FontWeight="Bold" Foreground="#FFFF4444" Margin="0,0,0,4" />
-                                    <TextBlock Text="Removing the safety clamp allows crash forces up to 100% of wheel output. This can generate sudden, powerful torque spikes that may cause injury or damage equipment." FontSize="13" Foreground="#FFB0B0B0" TextWrapping="Wrap" />
+                                    <TextBlock Text="&#x26A0; HAZARD WARNING" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource UiC_FFFF4444}" Margin="0,0,0,4" />
+                                    <TextBlock Text="Removing the safety clamp allows crash forces up to 100% of wheel output. This can generate sudden, powerful torque spikes that may cause injury or damage equipment." FontSize="13" Foreground="{DynamicResource UiC_FFB0B0B0}" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
                             <DockPanel Margin="0,6,0,10">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding CrashSafetyOverride}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Remove Safety Clamp" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Crash forces then limited only by Output Gain and Max Force Limit." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Crash forces then limited only by Output Gain and Max Force Limit." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <controls:LabeledSlider Value="{Binding CrashMinSpeedKmh, Mode=TwoWay}" Minimum="0" Maximum="50" TickFrequency="1"
@@ -1123,7 +1123,7 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding TyreConditionEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Enable Tyre Condition Effects" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Blowout shake, slow pressure-loss rumble and uneven-damage pull." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Blowout shake, slow pressure-loss rumble and uneven-damage pull." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <controls:LabeledSlider Value="{Binding TyreConditionBlowoutGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
@@ -1161,22 +1161,22 @@
 
                         <!-- WET WEATHER -->
                         <StackPanel x:Name="DtlWetWeather" Visibility="Collapsed">
-                            <TextBlock Text="Rain: less road and kerb detail, wider slip curves, hydroplaning." FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <TextBlock Text="Rain: less road and kerb detail, wider slip curves, hydroplaning." FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,12" />
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsWetWeatherSectionVisible, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding WetWeatherEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Enable Wet Weather" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Adjusts FFB for wet track conditions." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Adjusts FFB for wet track conditions." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsWetWeatherSectionVisible, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding WetWeatherAutoDetect}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Auto-Detect Wet Conditions" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Uses game wetness. Off = use Manual Intensity." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Uses game wetness. Off = use Manual Intensity." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
-                            <TextBlock Visibility="{Binding IsWetWeatherSectionVisible, Converter={StaticResource BoolToVis}}" FontSize="13" Foreground="#FF4FC3F7" Margin="0,4,0,10">
+                            <TextBlock Visibility="{Binding IsWetWeatherSectionVisible, Converter={StaticResource BoolToVis}}" FontSize="13" Foreground="{DynamicResource UiSky}" Margin="0,4,0,10">
                                 <Run Text="Current wetness (live): " /><Run Text="{Binding WetWeatherCurrentFactor, StringFormat='{}{0:P0}'}" FontSize="16" FontWeight="Bold" />
                             </TextBlock>
                             <controls:LabeledSlider Value="{Binding WetWeatherRoadVibSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
@@ -1226,7 +1226,7 @@
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding WetWeatherHydroplaningEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
                                     <TextBlock Text="Enable Hydroplaning Feel" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="Steering goes light at high speed in standing water." FontSize="12.5" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    <TextBlock Text="Steering goes light at high speed in standing water." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
                             <controls:LabeledSlider Value="{Binding WetWeatherHydroplaningSpeedThreshold, Mode=TwoWay}" Minimum="60" Maximum="250" TickFrequency="5"

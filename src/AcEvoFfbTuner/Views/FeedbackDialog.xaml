@@ -1,4 +1,4 @@
-<Window x:Class="AcEvoFfbTuner.Views.FeedbackDialog"
+﻿<Window x:Class="AcEvoFfbTuner.Views.FeedbackDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Send Diagnostics — Feedback Required"
@@ -19,7 +19,7 @@
 
         <TextBlock Grid.Row="0" Text="Describe any issues or feedback before sending:" FontSize="16" FontWeight="Bold" Margin="0,0,0,6" />
 
-        <TextBlock Grid.Row="1" FontSize="14" Foreground="#FF888888" Margin="0,0,0,10" TextWrapping="Wrap">
+        <TextBlock Grid.Row="1" FontSize="14" Foreground="{DynamicResource UiC_FF888888}" Margin="0,0,0,10" TextWrapping="Wrap">
             <Run Text="What felt wrong? Where on track? What wheel base? This gets sent with your diagnostic data." />
         </TextBlock>
 

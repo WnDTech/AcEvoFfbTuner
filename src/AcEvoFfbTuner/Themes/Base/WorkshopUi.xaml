@@ -1,0 +1,68 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Workshop control templates, shared by Workshop and WorkshopDark (colours come from the theme). -->
+
+    <SolidColorBrush x:Key="UiDefaultMarker" Color="#FF8A877F" />
+    <FontFamily x:Key="UiValueFont">Cascadia Mono, Consolas</FontFamily>
+
+    <!-- Thin track, ink fill, slim bar thumb; orange only while hovered/dragged. -->
+    <ControlTemplate x:Key="UiWorkshopSliderCore" TargetType="Slider">
+        <!-- Padding 11 + half thumb (8) = 19: matches LabeledSlider.UpdateDefaultMarker's 19 px inset. -->
+        <Border Background="Transparent" Padding="11,0">
+            <Grid>
+                <Border Background="{DynamicResource BorderBrush}" Height="4" VerticalAlignment="Center" />
+                <Track x:Name="PART_Track" VerticalAlignment="Stretch">
+                    <Track.DecreaseRepeatButton>
+                        <RepeatButton Command="Slider.DecreaseLarge">
+                            <RepeatButton.Template>
+                                <ControlTemplate TargetType="RepeatButton">
+                                    <Grid Background="Transparent">
+                                        <Border Background="{DynamicResource TextBrush}" Height="4" VerticalAlignment="Center" />
+                                    </Grid>
+                                </ControlTemplate>
+                            </RepeatButton.Template>
+                        </RepeatButton>
+                    </Track.DecreaseRepeatButton>
+                    <Track.IncreaseRepeatButton>
+                        <RepeatButton Command="Slider.IncreaseLarge">
+                            <RepeatButton.Template>
+                                <ControlTemplate TargetType="RepeatButton">
+                                    <Border Background="Transparent" />
+                                </ControlTemplate>
+                            </RepeatButton.Template>
+                        </RepeatButton>
+                    </Track.IncreaseRepeatButton>
+                    <Track.Thumb>
+                        <Thumb Cursor="Hand">
+                            <Thumb.Template>
+                                <ControlTemplate TargetType="Thumb">
+                                    <!-- 16 px wide hit area, 5 px visible bar -->
+                                    <Grid Width="16" Height="26" Background="Transparent">
+                                        <Border x:Name="Bar" Width="5" Height="20" Background="{DynamicResource TextBrush}" />
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bar" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsDragging" Value="True">
+                                            <Setter TargetName="Bar" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                            <Setter TargetName="Bar" Property="Height" Value="24" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
+                    </Track.Thumb>
+                </Track>
+            </Grid>
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.4" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <StaticResource x:Key="UiSliderTemplate" ResourceKey="UiWorkshopSliderCore" />
+    <StaticResource x:Key="UiLabeledSliderTemplate" ResourceKey="UiWorkshopSliderCore" />
+</ResourceDictionary>

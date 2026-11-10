@@ -12,9 +12,9 @@
 
         <Style x:Key="CoachActionBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#FF8B949E" />
+            <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="#FF30363D" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UiBorder}" />
             <Setter Property="Padding" Value="14,8" />
             <Setter Property="Margin" Value="0,3" />
             <Setter Property="Cursor" Value="Hand" />
@@ -25,17 +25,17 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                CornerRadius="6" BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{DynamicResource UiR6}" BorderThickness="{TemplateBinding BorderThickness}"
                                 BorderBrush="{TemplateBinding BorderBrush}" Padding="{TemplateBinding Padding}">
                             <ContentPresenter />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#1AF0883E" />
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiAccentDim}" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#30F0883E" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_30F0883E}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -44,9 +44,9 @@
         </Style>
 
         <Style x:Key="CoachPrimaryBtn" TargetType="Button" BasedOn="{StaticResource CoachActionBtn}">
-            <Setter Property="Background" Value="#1AF0883E" />
-            <Setter Property="Foreground" Value="#FFF0883E" />
-            <Setter Property="BorderBrush" Value="#88F0883E" />
+            <Setter Property="Background" Value="{DynamicResource UiAccentDim}" />
+            <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UiC_88F0883E}" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
@@ -65,19 +65,19 @@
         <!-- Message Bubble Template -->
         <DataTemplate x:Key="MessageTemplate">
             <Border Name="Bubble"
-                    CornerRadius="8" Padding="14,10"
+                    CornerRadius="{DynamicResource UiR8}" Padding="14,10"
                     Margin="0,0,0,8"
                     BorderThickness="1">
                 <Border.Style>
                     <Style TargetType="Border">
                         <Setter Property="HorizontalAlignment" Value="Stretch" />
-                        <Setter Property="Background" Value="#1AFFFFFF" />
-                        <Setter Property="BorderBrush" Value="#22FFFFFF" />
+                        <Setter Property="Background" Value="{DynamicResource UiHover}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource UiHover2}" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsUser}" Value="True">
                                 <Setter Property="HorizontalAlignment" Value="Right" />
-                                <Setter Property="Background" Value="#30F0883E" />
-                                <Setter Property="BorderBrush" Value="#44F0883E" />
+                                <Setter Property="Background" Value="{DynamicResource UiC_30F0883E}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource UiC_44F0883E}" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -89,7 +89,7 @@
                          a *-column would force every bubble to full width. -->
                     <TextBlock TextWrapping="Wrap"
                                FontSize="15" LineHeight="22"
-                               Foreground="#FFE6EDF3"
+                               Foreground="{DynamicResource UiText}"
                                HorizontalAlignment="Stretch">
                         <Run Text="{Binding Icon, Mode=OneWay}" FontSize="16" /><Run Text="  " FontSize="15" /><Run Text="{Binding Text, Mode=OneWay}" />
                     </TextBlock>
@@ -112,7 +112,7 @@
                                     <StackPanel>
                                         <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="SemiBold" />
                                         <TextBlock Text="{Binding Description}" FontSize="11"
-                                                   Foreground="#FF6B7682" Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource UiC_FF6B7682}" Margin="0,2,0,0"
                                                    Visibility="{Binding Description, Converter={StaticResource NotEmptyToVis}}" />
                                     </StackPanel>
                                 </Button>
@@ -143,8 +143,8 @@
         </Grid.RowDefinitions>
 
         <!-- ===== HEADER ===== -->
-        <Border Grid.Row="0" Background="#FF151B23"
-                BorderThickness="0,0,0,1" BorderBrush="#FF30363D">
+        <Border Grid.Row="0" Background="{DynamicResource UiC_FF151B23}"
+                BorderThickness="0,0,0,1" BorderBrush="{DynamicResource UiBorder}">
             <Grid Margin="16,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -160,10 +160,10 @@
                 <!-- Center: state badge + data source -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="20,0,0,0">
-                    <Border Name="StateBadge" CornerRadius="4" Padding="8,3">
+                    <Border Name="StateBadge" CornerRadius="{DynamicResource UiR4}" Padding="8,3">
                         <Border.Style>
                             <Style TargetType="Border">
-                                <Setter Property="Background" Value="#1AFFFFFF" />
+                                <Setter Property="Background" Value="{DynamicResource UiHover}" />
                                 <Setter Property="Visibility" Value="Collapsed" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding CoachIsBusy}" Value="True">
@@ -188,23 +188,23 @@
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Text" Value="Idle" />
-                                    <Setter Property="Foreground" Value="#FF8B949E" />
+                                    <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding CoachIsBusy}" Value="True">
                                             <Setter Property="Text" Value="⏳ Thinking..." />
-                                            <Setter Property="Foreground" Value="#FFFFD600" />
+                                            <Setter Property="Foreground" Value="{DynamicResource UiWarn}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding CoachSessionState}" Value="Questioning">
                                             <Setter Property="Text" Value="💬 Chat Active" />
-                                            <Setter Property="Foreground" Value="#FF4CAF50" />
+                                            <Setter Property="Foreground" Value="{DynamicResource UiGood}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding CoachSessionState}" Value="Applying">
                                             <Setter Property="Text" Value="✓ Applying" />
-                                            <Setter Property="Foreground" Value="#FF00BCD4" />
+                                            <Setter Property="Foreground" Value="{DynamicResource UiC_FF00BCD4}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding CoachSessionState}" Value="Summary">
                                             <Setter Property="Text" Value="📋 Summary" />
-                                            <Setter Property="Foreground" Value="#FFE03935" />
+                                            <Setter Property="Foreground" Value="{DynamicResource UiC_FFE03935}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -213,7 +213,7 @@
                     </Border>
 
                     <TextBlock Text="{Binding CoachDataSourceLabel}" FontSize="12"
-                               Foreground="#FF6B7682" VerticalAlignment="Center" Margin="10,0,0,0"
+                               Foreground="{DynamicResource UiC_FF6B7682}" VerticalAlignment="Center" Margin="10,0,0,0"
                                Visibility="{Binding CoachDataSourceLabel, Converter={StaticResource NotEmptyToVis}}" />
                 </StackPanel>
 
@@ -233,11 +233,11 @@
                       Padding="24,16" PanningMode="VerticalOnly">
             <StackPanel>
                 <!-- Loading indicator -->
-                <Border Background="#1AF0883E" CornerRadius="8" Padding="14,10" Margin="0,0,0,8"
+                <Border Background="{DynamicResource UiAccentDim}" CornerRadius="{DynamicResource UiR8}" Padding="14,10" Margin="0,0,0,8"
                         Visibility="{Binding CoachIsBusy, Converter={StaticResource BoolToVis}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="⏳" FontSize="16" Margin="0,0,8,0" />
-                        <TextBlock Text="{Binding CoachLoadingText}" FontSize="14" Foreground="#FFE6EDF3" />
+                        <TextBlock Text="{Binding CoachLoadingText}" FontSize="14" Foreground="{DynamicResource UiText}" />
                     </StackPanel>
                 </Border>
 
@@ -257,12 +257,12 @@
         </ScrollViewer>
 
         <!-- ===== PENDING RECOMMENDATIONS ===== -->
-        <Border Grid.Row="2" Background="#FF151B23" BorderThickness="0,1,0,0" BorderBrush="#FF30363D"
+        <Border Grid.Row="2" Background="{DynamicResource UiC_FF151B23}" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource UiBorder}"
                 Padding="16,10" Visibility="{Binding CoachHasPendingRecs, Converter={StaticResource BoolToVis}}">
             <StackPanel>
                 <DockPanel Margin="0,0,0,8">
                     <TextBlock Text="PENDING RECOMMENDATIONS" FontSize="12" FontWeight="Bold"
-                               Foreground="#FF00BCD4" VerticalAlignment="Center" />
+                               Foreground="{DynamicResource UiC_FF00BCD4}" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Apply All" Command="{Binding CoachApplyAllCommand}"
                                 Style="{StaticResource CoachActionBtn}" Padding="10,4" FontSize="12" />
@@ -273,14 +273,14 @@
                 <ItemsControl ItemsSource="{Binding CoachPendingRecs}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,8" Margin="0,0,0,6"
-                                    BorderThickness="1" BorderBrush="#22FFFFFF">
+                            <Border Background="{DynamicResource UiHover}" CornerRadius="{DynamicResource UiR6}" Padding="12,8" Margin="0,0,0,6"
+                                    BorderThickness="1" BorderBrush="{DynamicResource UiHover2}">
                                 <DockPanel>
                                     <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center" MaxWidth="600">
                                         <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="SemiBold"
-                                                   Foreground="#FFE6EDF3" TextWrapping="Wrap" />
+                                                   Foreground="{DynamicResource UiText}" TextWrapping="Wrap" />
                                         <TextBlock Text="{Binding Description}" FontSize="12"
-                                                   Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                                   Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                     </StackPanel>
                                     <Button Content="Apply"
                                             Command="{Binding DataContext.CoachApplyRecCommand,
@@ -297,26 +297,26 @@
         </Border>
 
         <!-- ===== APPLIED HISTORY ===== -->
-        <Border Grid.Row="3" Background="#FF151B23" BorderThickness="0,1,0,0" BorderBrush="#FF30363D"
+        <Border Grid.Row="3" Background="{DynamicResource UiC_FF151B23}" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource UiBorder}"
                 Padding="16,10" Visibility="{Binding CoachHasAppliedHistory, Converter={StaticResource BoolToVis}}">
             <StackPanel>
                 <DockPanel Margin="0,0,0,8">
                     <TextBlock Text="APPLIED HISTORY" FontSize="12" FontWeight="Bold"
-                                Foreground="#FF4CAF50" VerticalAlignment="Center" />
+                                Foreground="{DynamicResource UiGood}" VerticalAlignment="Center" />
                     <Button Content="↩ Undo Last" Command="{Binding CoachUndoCommand}" HorizontalAlignment="Right"
                                  Style="{StaticResource CoachActionBtn}" Padding="10,4" FontSize="12" />
                 </DockPanel>
                 <ItemsControl ItemsSource="{Binding CoachAppliedHistory}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="#1AFFFFFF" CornerRadius="6" Padding="12,8" Margin="0,0,0,6"
-                                    BorderThickness="1" BorderBrush="#224CAF50">
+                            <Border Background="{DynamicResource UiHover}" CornerRadius="{DynamicResource UiR6}" Padding="12,8" Margin="0,0,0,6"
+                                    BorderThickness="1" BorderBrush="{DynamicResource UiC_224CAF50}">
                                 <DockPanel>
                                     <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center" MaxWidth="600">
                                         <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="SemiBold"
-                                                    Foreground="#FFE6EDF3" TextWrapping="Wrap" />
+                                                    Foreground="{DynamicResource UiText}" TextWrapping="Wrap" />
                                         <TextBlock Text="{Binding Detail}" FontSize="12"
-                                                    Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                                    Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                     </StackPanel>
                                     <Button Content="Revert"
                                             Command="{Binding DataContext.CoachRevertChangeCommand,
@@ -334,7 +334,7 @@
 
         <!-- ===== INPUT BAR ===== -->
         <Border Grid.Row="4" x:Name="InputBar"
-                Background="#FF151B23" BorderThickness="0,1,0,0" BorderBrush="#FF30363D"
+                Background="{DynamicResource UiC_FF151B23}" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource UiBorder}"
                 Padding="16,10" Visibility="Collapsed">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -344,29 +344,29 @@
                 <TextBox x:Name="CoachInputBox"
                          Text="{Binding CoachInput, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
                          FontSize="14" Padding="10,8"
-                         Background="#0AFFFFFF" Foreground="#FFE6EDF3"
-                         BorderBrush="#FF30363D" BorderThickness="1"
+                         Background="{DynamicResource UiC_0AFFFFFF}" Foreground="{DynamicResource UiText}"
+                         BorderBrush="{DynamicResource UiBorder}" BorderThickness="1"
                          AcceptsReturn="False"
                          VerticalContentAlignment="Center"
                          KeyDown="OnInputKeyDown" />
                 <Button Grid.Column="1" Content="Send"
                         Command="{Binding CoachSendTextCommand}"
                         FontSize="13" Padding="12,8" Margin="10,0,0,0"
-                        Background="#1AF0883E" Foreground="#FFF0883E"
-                        BorderBrush="#88F0883E" BorderThickness="1"
+                        Background="{DynamicResource UiAccentDim}" Foreground="{DynamicResource UiAccent}"
+                        BorderBrush="{DynamicResource UiC_88F0883E}" BorderThickness="1"
                         Cursor="Hand" />
             </Grid>
         </Border>
 
         <!-- ===== EMPTY STATE (overlay when no messages) ===== -->
         <Border Grid.Row="1" x:Name="EmptyState"
-                Background="#1AFFFFFF" CornerRadius="8" Padding="24,20" Margin="0,8,0,0">
+                Background="{DynamicResource UiHover}" CornerRadius="{DynamicResource UiR8}" Padding="24,20" Margin="0,8,0,0">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,30">
                 <TextBlock Text="🤖" FontSize="48" HorizontalAlignment="Center" />
                 <TextBlock Text="Welcome to FFB Coach!" FontSize="20" FontWeight="Bold"
-                           Foreground="#FFE6EDF3" HorizontalAlignment="Center" Margin="0,12,0,6" />
+                           Foreground="{DynamicResource UiText}" HorizontalAlignment="Center" Margin="0,12,0,6" />
                 <TextBlock Text="I'll help you tune your FFB profile using telemetry data."
-                           FontSize="14" Foreground="#FF8B949E" HorizontalAlignment="Center"
+                           FontSize="14" Foreground="{DynamicResource UiTextDim}" HorizontalAlignment="Center"
                            Margin="0,0,0,20" />
                 <Button Content="💬  Chat with AI"
                         Click="OnChatWithAi"

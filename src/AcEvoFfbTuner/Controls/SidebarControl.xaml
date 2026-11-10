@@ -1,4 +1,4 @@
-<UserControl x:Class="AcEvoFfbTuner.Controls.SidebarControl"
+﻿<UserControl x:Class="AcEvoFfbTuner.Controls.SidebarControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:AcEvoFfbTuner.ViewModels"
@@ -16,7 +16,7 @@
         <vm:NavPage x:Key="NavOverlays">Overlays</vm:NavPage>
     </UserControl.Resources>
 
-    <Grid Background="#FF0D1117">
+    <Grid Background="{DynamicResource UiBgDeep}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -30,7 +30,7 @@
                          ToolTip="Home — status and quick start">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,9,12,8" Margin="0,0">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,9,12,8" Margin="0,0">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
@@ -46,20 +46,20 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -71,7 +71,7 @@
                          ToolTip="FFB Tuning — all force effect parameters">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
@@ -87,20 +87,20 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -112,7 +112,7 @@
                          ToolTip="Equalizer — 10-band FFB frequency shaping">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
@@ -135,20 +135,20 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -161,7 +161,7 @@
                          ToolTip="FFB Coach — interactive tuning assistant using telemetry data">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
@@ -176,20 +176,20 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -201,7 +201,7 @@
                          ToolTip="Devices — LED effects, haptic pad, button assignments">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
@@ -217,20 +217,20 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -242,7 +242,7 @@
                          ToolTip="Profiles — manage and import/export FFB profiles">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
@@ -258,20 +258,20 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -283,7 +283,7 @@
                          ToolTip="Hub — browse and download community FFB profiles">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
@@ -299,20 +299,20 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -324,7 +324,7 @@
                          ToolTip="Test Drive — Discord sign-in, your testing tasks, and The Podium">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
@@ -340,29 +340,29 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
                 </RadioButton.Style>
             </RadioButton>
 
-            <Border Background="#FF30363D" Height="1" Margin="12,8,12,4" />
+            <Border Background="{DynamicResource UiBorder}" Height="1" Margin="12,8,12,4" />
             <TextBlock x:Name="WipHeader" Text="WORK IN PROGRESS" FontSize="11" FontWeight="Bold"
-                       Foreground="#FFF0A030" Margin="16,4,12,4" />
+                       Foreground="{DynamicResource UiC_FFF0A030}" Margin="16,4,12,4" />
 
             <RadioButton x:Name="NavTelemetryBtn" GroupName="SidebarNav" Content="Telemetry" Margin="4,1"
 
@@ -370,7 +370,7 @@
                          ToolTip="Telemetry — live profiler and signal analysis (work in progress)">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <Grid>
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
@@ -385,27 +385,27 @@
                                            VerticalAlignment="Center" />
                             </StackPanel>
                                 <Border x:Name="WipBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,-4,-6,0">
-                                    <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="#FFF0A030" />
+                                        Background="{DynamicResource UiC_33F0A030}" CornerRadius="{DynamicResource UiR3}" Padding="5,1" Margin="0,-4,-6,0">
+                                    <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource UiC_FFF0A030}" />
                                 </Border>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -418,7 +418,7 @@
                          ToolTip="Pipeline — live FFB stage flow from game to wheel (work in progress)">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <Grid>
                                 <StackPanel Orientation="Horizontal">
                                     <Viewbox Width="24" Height="24" Margin="0,0,12,0">
@@ -433,27 +433,27 @@
                                                VerticalAlignment="Center" />
                                 </StackPanel>
                                 <Border x:Name="WipBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,-4,-6,0">
-                                    <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="#FFF0A030" />
+                                        Background="{DynamicResource UiC_33F0A030}" CornerRadius="{DynamicResource UiR3}" Padding="5,1" Margin="0,-4,-6,0">
+                                    <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource UiC_FFF0A030}" />
                                 </Border>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -466,7 +466,7 @@
                          ToolTip="Overlays — OBS browser sources and telemetry overlays (work in progress)">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <Grid>
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
@@ -484,27 +484,27 @@
                                            VerticalAlignment="Center" />
                             </StackPanel>
                                 <Border x:Name="WipBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,-4,-6,0">
-                                    <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="#FFF0A030" />
+                                        Background="{DynamicResource UiC_33F0A030}" CornerRadius="{DynamicResource UiR3}" Padding="5,1" Margin="0,-4,-6,0">
+                                    <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource UiC_FFF0A030}" />
                                 </Border>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -517,7 +517,7 @@
                          ToolTip="Live Map — real circuit layout, field, and optional FFB heatmap / diagnostics layers">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <Grid>
                                 <StackPanel Orientation="Horizontal">
                                     <Viewbox Width="24" Height="24" Margin="0,0,12,0">
@@ -532,27 +532,27 @@
                                                VerticalAlignment="Center" />
                                 </StackPanel>
                                 <Border x:Name="WipBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,-4,-6,0">
-                                    <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="#FFF0A030" />
+                                        Background="{DynamicResource UiC_33F0A030}" CornerRadius="{DynamicResource UiR3}" Padding="5,1" Margin="0,-4,-6,0">
+                                    <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource UiC_FFF0A030}" />
                                 </Border>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -564,7 +564,7 @@
                          ToolTip="Track Map — track layout, FFB diagnostics, and live satellite view with GPS (work in progress)">
                 <RadioButton.Template>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="12,8" Margin="0,1">
+                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,1">
                             <Grid>
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="24" Height="24" Margin="0,0,12,0">
@@ -579,27 +579,27 @@
                                            VerticalAlignment="Center" />
                             </StackPanel>
                             <Border x:Name="WipBadge" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                    Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,-4,-6,0">
-                                <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="#FFF0A030" />
+                                    Background="{DynamicResource UiC_33F0A030}" CornerRadius="{DynamicResource UiR3}" Padding="5,1" Margin="0,-4,-6,0">
+                                <TextBlock Text="WIP" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource UiC_FFF0A030}" />
                             </Border>
                         </Grid>
                     </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#1AF0883E" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource UiAccentDim}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </RadioButton.Template>
                 <RadioButton.Style>
                     <Style TargetType="RadioButton">
-                        <Setter Property="Foreground" Value="#FF8B949E" />
+                        <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
                         <Style.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="#FFF0883E" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiAccent}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -608,13 +608,13 @@
         </StackPanel>
 
         <StackPanel Grid.Row="2" Margin="0,0,0,8">
-            <Border Background="#FF30363D" Height="1" Margin="12,4" />
+            <Border Background="{DynamicResource UiBorder}" Height="1" Margin="12,4" />
             <Button x:Name="SettingsBtn" Content="Settings" Click="OnSettingsClick" Cursor="Hand" HorizontalAlignment="Stretch"
-                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1"
+                    Background="Transparent" Foreground="{DynamicResource UiTextDim}" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1"
                     ToolTip="App settings and debug tools">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="{TemplateBinding Padding}">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="20" Height="20" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
@@ -629,18 +629,18 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Button.Template>
             </Button>
             <Button x:Name="HelpBtn" Content="Help" Click="OnHelpClick" Cursor="Hand" HorizontalAlignment="Stretch"
-                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1"
+                    Background="Transparent" Foreground="{DynamicResource UiTextDim}" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1"
                     ToolTip="Help guide — searchable, plain-language guide to every page and slider">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="{TemplateBinding Padding}">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="20" Height="20" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
@@ -656,18 +656,18 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Button.Template>
             </Button>
             <Button x:Name="CollapseBtn" Click="OnToggleCollapse" Cursor="Hand" HorizontalAlignment="Stretch"
-                    Background="Transparent" Foreground="#FF8B949E" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1"
+                    Background="Transparent" Foreground="{DynamicResource UiTextDim}" BorderThickness="0" Padding="12,6" FontSize="18" Margin="4,1"
                     ToolTip="Collapse or expand sidebar">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource UiR4}" Padding="{TemplateBinding Padding}">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="20" Height="20" Margin="0,0,12,0">
                                     <Canvas Width="24" Height="24">
@@ -683,7 +683,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#1AFFFFFF" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiHover}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

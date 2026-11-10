@@ -6,7 +6,7 @@
     <UserControl.Resources>
         <!-- Underlined sub-tabs used by Pedals and Assetto Corsa Setup -->
         <Style x:Key="SubTabStyle" TargetType="RadioButton">
-            <Setter Property="Foreground" Value="#FF8B949E" />
+            <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Cursor" Value="Hand" />
@@ -19,11 +19,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_14FFFFFF}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FFF0883E" />
-                                <Setter Property="Foreground" Value="#FFE6EDF3" />
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource UiAccent}" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiText}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -31,24 +31,24 @@
             </Setter>
         </Style>
         <Style x:Key="HapticTabStyle" TargetType="RadioButton">
-            <Setter Property="Foreground" Value="#FF8B949E" />
+            <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="Bd" Background="#FF21262D" BorderBrush="#FF30363D" BorderThickness="1"
-                                CornerRadius="16" Padding="14,6">
+                        <Border x:Name="Bd" Background="{DynamicResource UiInput}" BorderBrush="{DynamicResource UiBorder}" BorderThickness="1"
+                                CornerRadius="{DynamicResource UiR16}" Padding="14,6">
                             <ContentPresenter VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FF8B949E" />
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource UiTextDim}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#33FF9800" />
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FFFF9800" />
-                                <Setter Property="Foreground" Value="#FFFFB74D" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_33FF9800}" />
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource UiOrange}" />
+                                <Setter Property="Foreground" Value="{DynamicResource UiC_FFFFB74D}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -63,7 +63,7 @@
         <!-- Pedal route toggle for PHF effect tiles. Set BorderBrush to the
              pedal colour: off = outlined, on = filled with that colour. -->
         <Style x:Key="PedalRouteToggle" TargetType="ToggleButton">
-            <Setter Property="Foreground" Value="#FF8B949E" />
+            <Setter Property="Foreground" Value="{DynamicResource UiTextDim}" />
             <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Padding" Value="10,3" />
@@ -73,8 +73,8 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
                         <Grid>
-                            <Border x:Name="Fill" CornerRadius="10" Background="{TemplateBinding BorderBrush}" Opacity="0" />
-                            <Border x:Name="Outline" CornerRadius="10" BorderThickness="1" BorderBrush="{TemplateBinding BorderBrush}" Opacity="0.45" />
+                            <Border x:Name="Fill" CornerRadius="{DynamicResource UiR10}" Background="{TemplateBinding BorderBrush}" Opacity="0" />
+                            <Border x:Name="Outline" CornerRadius="{DynamicResource UiR10}" BorderThickness="1" BorderBrush="{TemplateBinding BorderBrush}" Opacity="0.45" />
                             <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Grid>
                         <ControlTemplate.Triggers>
@@ -111,9 +111,9 @@
                                       SectionBrush="#FF47A1FF"
                                       Selectable="True" IsSelected="True">
                     <controls:SectionCard.SummaryContent>
-                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
-                            <Run Text="{Binding DeviceName, Mode=OneWay, FallbackValue='No device', TargetNullValue='No device'}" Foreground="#FFE6EDF3" />
-                            <Run Text="  ·  " /><Run Text="{Binding IsDeviceConnected, Mode=OneWay, StringFormat='Connected: {0}'}" Foreground="#FF7EE787" />
+                        <TextBlock FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap">
+                            <Run Text="{Binding DeviceName, Mode=OneWay, FallbackValue='No device', TargetNullValue='No device'}" Foreground="{DynamicResource UiText}" />
+                            <Run Text="  ·  " /><Run Text="{Binding IsDeviceConnected, Mode=OneWay, StringFormat='Connected: {0}'}" Foreground="{DynamicResource UiLime}" />
                         </TextBlock>
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
@@ -124,9 +124,9 @@
                                       SectionBrush="#FF79C0FF"
                                       Selectable="True">
                     <controls:SectionCard.SummaryContent>
-                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
-                            <Run Text="{Binding LedVisibleCount, Mode=OneWay, StringFormat='{}{0} LEDs'}" Foreground="#FF79C0FF" />
-                            <Run Text="  ·  " /><Run Text="{Binding LedSupportedInfo, Mode=OneWay}" Foreground="#FF79C0FF" />
+                        <TextBlock FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap">
+                            <Run Text="{Binding LedVisibleCount, Mode=OneWay, StringFormat='{}{0} LEDs'}" Foreground="{DynamicResource UiInfo}" />
+                            <Run Text="  ·  " /><Run Text="{Binding LedSupportedInfo, Mode=OneWay}" Foreground="{DynamicResource UiInfo}" />
                         </TextBlock>
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
@@ -138,9 +138,9 @@
                                       Selectable="True">
                     <controls:SectionCard.SummaryContent>
                         <StackPanel>
-                            <TextBlock FontSize="12" Foreground="#FF8B949E" TextWrapping="Wrap"
+                            <TextBlock FontSize="12" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap"
                                        Text="Seat and back vibration pad (NLR HF8) — not your pedals" />
-                            <TextBlock FontSize="13" Foreground="#FFD2A8FF" TextWrapping="Wrap" Margin="0,2,0,0"
+                            <TextBlock FontSize="13" Foreground="{DynamicResource UiPurple}" TextWrapping="Wrap" Margin="0,2,0,0"
                                        Text="{Binding Hf8ConnectionStatus}" />
                         </StackPanel>
                     </controls:SectionCard.SummaryContent>
@@ -152,9 +152,9 @@
                                       SectionBrush="#FFE3B341"
                                       Selectable="True">
                     <controls:SectionCard.SummaryContent>
-                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
-                            <Run Text="Snapshot" Foreground="#FFE3B341" />
-                            <Run Text=" · " /><Run Text="Panic Stop" Foreground="#FFE3B341" />
+                        <TextBlock FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap">
+                            <Run Text="Snapshot" Foreground="{DynamicResource UiC_FFE3B341}" />
+                            <Run Text=" · " /><Run Text="Panic Stop" Foreground="{DynamicResource UiC_FFE3B341}" />
                         </TextBlock>
                     </controls:SectionCard.SummaryContent>
                 </controls:SectionCard>
@@ -166,13 +166,13 @@
                                       Selectable="True">
                     <controls:SectionCard.SummaryContent>
                         <StackPanel>
-                            <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                            <TextBlock FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap">
                                 <Run Text="Input, calibration, pedal haptics" />
-                                <Run Text="  ·  " /><Run Text="{Binding MozaPhfIsConnected, Mode=OneWay, StringFormat='MOZA PHF: {0}'}" Foreground="#FF7EE787" />
+                                <Run Text="  ·  " /><Run Text="{Binding MozaPhfIsConnected, Mode=OneWay, StringFormat='MOZA PHF: {0}'}" Foreground="{DynamicResource UiLime}" />
                             </TextBlock>
-                            <Border Background="#33F0A030" CornerRadius="3" Padding="5,1" Margin="0,4,0,0"
+                            <Border Background="{DynamicResource UiC_33F0A030}" CornerRadius="{DynamicResource UiR3}" Padding="5,1" Margin="0,4,0,0"
                                     HorizontalAlignment="Left">
-                                <TextBlock Text="WIP" FontSize="9" FontWeight="Bold" Foreground="#FFF0A030" />
+                                <TextBlock Text="WIP" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource UiC_FFF0A030}" />
                             </Border>
                         </StackPanel>
                     </controls:SectionCard.SummaryContent>
@@ -184,7 +184,7 @@
                                        SectionBrush="#FF7EE787"
                                        Selectable="True">
                     <controls:SectionCard.SummaryContent>
-                        <TextBlock FontSize="13" Foreground="#FF8B949E" TextWrapping="Wrap">
+                        <TextBlock FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap">
                             <Run Text="Virtual wheel (vJoy) for Assetto Corsa — original AC only" />
                         </TextBlock>
                     </controls:SectionCard.SummaryContent>
@@ -197,17 +197,17 @@
         <Border Grid.Column="1" Margin="0,16,16,20"
                 Background="{StaticResource BgPanel}"
                 BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
-                CornerRadius="10">
+                CornerRadius="{DynamicResource UiR10}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
                     <!-- Device header -->
                     <StackPanel Margin="24,20,24,0">
                         <DockPanel>
                             <Border x:Name="DetailHeaderAccent" DockPanel.Dock="Left" Width="4"
-                                    CornerRadius="2" Background="#FF47A1FF"
+                                    CornerRadius="{DynamicResource UiR2}" Background="{DynamicResource UiC_FF47A1FF}"
                                     VerticalAlignment="Stretch" />
                             <TextBlock x:Name="DetailHeader" Text="WHEELBASE" FontSize="18" FontWeight="Bold"
-                                       Foreground="#FF47A1FF"
+                                       Foreground="{DynamicResource UiC_FF47A1FF}"
                                        VerticalAlignment="Center" Margin="12,0,0,0" />
                         </DockPanel>
                         <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,12,0,16" />
@@ -221,7 +221,7 @@
 
                     <!-- Wheelbase connection info -->
                     <TextBlock FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4" TextWrapping="Wrap">
-                        <Run Text="Wheelbase: " /><Run FontWeight="Bold" Foreground="#FFE6EDF3" Text="{Binding DeviceName}" />
+                        <Run Text="Wheelbase: " /><Run FontWeight="Bold" Foreground="{DynamicResource UiText}" Text="{Binding DeviceName}" />
                     </TextBlock>
                     <TextBlock FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap">
                         <Run Text="{Binding IsDeviceConnected, Mode=OneWay, StringFormat='Connected: {0}'}" />
@@ -230,15 +230,15 @@
                     </TextBlock>
 
                     <!-- System-wide sim hardware scan (RaceHardwareScanner) -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
-                            BorderThickness="1" BorderBrush="#3347A1FF">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="{DynamicResource UiC_3347A1FF}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <Button DockPanel.Dock="Right" Content="Rescan" Command="{Binding RescanHardwareCommand}"
-                                        Height="28" Padding="12,0" Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        Height="28" Padding="12,0" Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                         BorderThickness="0" Cursor="Hand" FontSize="12"
                                         ToolTip="Scan USB for wheelbases, pedals, haptics, shifters, handbrakes and button boxes" />
-                                <TextBlock Text="DETECTED SIM HARDWARE" FontSize="12" FontWeight="Bold" Foreground="#FF47A1FF" VerticalAlignment="Center" />
+                                <TextBlock Text="DETECTED SIM HARDWARE" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiC_FF47A1FF}" VerticalAlignment="Center" />
                             </DockPanel>
                             <TextBlock Text="{Binding HardwareScanSummary}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
                                        TextWrapping="Wrap" Margin="0,0,0,8" />
@@ -252,8 +252,8 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0" Text="{Binding CategoryLabel}" FontSize="12" FontWeight="SemiBold"
-                                                       Foreground="#FF47A1FF" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="1" FontSize="12" Foreground="#FFE6EDF3" TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource UiC_FF47A1FF}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" FontSize="12" Foreground="{DynamicResource UiText}" TextTrimming="CharacterEllipsis"
                                                        VerticalAlignment="Center">
                                                 <Run Text="{Binding ProductName, Mode=OneWay}" />
                                                 <Run Text="{Binding VendorName, Mode=OneWay, StringFormat='  ({0})'}" Foreground="{StaticResource TextDimBrush}" />
@@ -269,18 +269,18 @@
                     </Border>
 
                     <!-- Logitech HID++ direct wheel settings (no G HUB) -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
-                            BorderThickness="1" BorderBrush="#33FF9800"
+                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="{DynamicResource UiC_33FF9800}"
                             Visibility="{Binding LogitechCardsVisible, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
-                                <TextBlock Text="LOGITECH WHEEL SETTINGS" FontSize="12" FontWeight="Bold" Foreground="#FFFF9800" VerticalAlignment="Center" />
+                                <TextBlock Text="LOGITECH WHEEL SETTINGS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiOrange}" VerticalAlignment="Center" />
                                 <TextBlock Text="Direct HID++ — no G HUB needed" FontSize="11"
                                            Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
                             <TextBlock Text="{Binding LogitechHidppStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
                                        TextWrapping="Wrap" Margin="0,0,0,6" />
-                            <TextBlock Text="{Binding LogitechModeInfo}" FontSize="12" Foreground="#FFFF9800"
+                            <TextBlock Text="{Binding LogitechModeInfo}" FontSize="12" Foreground="{DynamicResource UiOrange}"
                                        TextWrapping="Wrap" Margin="0,0,0,8" />
 
                             <controls:LabeledSlider Value="{Binding LogitechFfbStrengthNm, Mode=TwoWay}" Minimum="1" Maximum="8" TickFrequency="0.1"
@@ -300,18 +300,18 @@
                                           SelectedValuePath="Key" DisplayMemberPath="Value"
                                           IsEnabled="{Binding LogitechHidppConnected}"
                                           MinWidth="160" MaxWidth="260" HorizontalAlignment="Stretch" Height="28" VerticalContentAlignment="Center"
-                                          Background="#FF21262D" Foreground="#FFE6EDF3" BorderBrush="#3347A15C"
+                                          Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}" BorderBrush="{DynamicResource UiC_3347A15C}"
                                           Cursor="Hand" FontSize="12"
                                           ToolTip="Which wheel profile the app writes to. Onboard slots (1-5) store settings in the wheel and survive restarts; Desktop applies live but resets on wheel restart. Pick a slot you don't use for presets." />
                                 <Button Content="Re-read Settings" Command="{Binding RefreshLogitechWheelCommand}"
                                         IsEnabled="{Binding LogitechHidppConnected}"
                                         Height="30" Padding="12,0" Margin="8,0,0,0"
-                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                         BorderThickness="0" Cursor="Hand" FontSize="12" />
                                 <Button Content="Desktop mode" Command="{Binding SwitchToDesktopModeCommand}"
                                         IsEnabled="{Binding LogitechHidppConnected}"
                                         Height="30" Padding="12,0" Margin="8,0,0,0"
-                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                         BorderThickness="0" Cursor="Hand" FontSize="12"
                                         ToolTip="Switch the wheel to desktop mode so live changes apply immediately (resets on wheel restart)" />
                             </StackPanel>
@@ -320,7 +320,7 @@
                                  live telemetry on the wheel's display. Kept inside the
                                  Logitech card with the other wheel-specific settings. -->
                             <DockPanel Margin="0,16,0,0">
-                                <TextBlock Text="DYNAMIC OLED SCREEN" FontSize="11" FontWeight="Bold" Foreground="#FF47A1FF" VerticalAlignment="Center" />
+                                <TextBlock Text="DYNAMIC OLED SCREEN" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiC_FF47A1FF}" VerticalAlignment="Center" />
                                 <TextBlock Text="{Binding OledStatus}" FontSize="11" Foreground="{StaticResource TextDimBrush}"
                                            HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
@@ -347,11 +347,11 @@
                     </Border>
 
                     <!-- Wheel FFB Motor Test -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
-                            BorderThickness="1" BorderBrush="#3347A15C">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="{DynamicResource UiC_3347A15C}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,8">
-                                <TextBlock Text="WHEEL FFB TEST" FontSize="12" FontWeight="Bold" Foreground="#FF47A1FF" VerticalAlignment="Center" />
+                                <TextBlock Text="WHEEL FFB TEST" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiC_FF47A1FF}" VerticalAlignment="Center" />
                                 <TextBlock Text="Verifies the wheelbase executes force — telemetry paused" FontSize="11"
                                            Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
@@ -369,21 +369,21 @@
                                         Value="{Binding WheelFfbTestIntensity, Mode=TwoWay}"
                                         VerticalAlignment="Center" Height="26" />
                                 <TextBlock Grid.Column="2" Text="{Binding WheelFfbTestIntensity, StringFormat='{}{0:P0}'}"
-                                           FontSize="12" FontWeight="Bold" Foreground="#FF47A1FF"
+                                           FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiC_FF47A1FF}"
                                            VerticalAlignment="Center" Margin="8,0,0,0" Width="40" TextAlignment="Right" />
                             </Grid>
                             <WrapPanel Orientation="Horizontal" Margin="0,10,0,0">
                                 <Button Content="TEST FORCE" Command="{Binding StartWheelFfbTestCommand}"
                                         Height="32" Padding="12,0"
-                                        Background="#FF47A1FF" Foreground="White"
+                                        Background="{DynamicResource UiC_FF47A1FF}" Foreground="White"
                                         BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
                                 <Button Content="STOP" Command="{Binding StopWheelFfbTestCommand}"
                                         Height="32" Padding="12,0" Margin="8,0,0,0"
-                                        Background="#FF525252" Foreground="White"
+                                        Background="{DynamicResource UiC_FF525252}" Foreground="White"
                                         BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
                                 <Button Content="BUZZ TEST" Command="{Binding TestBuzzCommand}"
                                         Height="32" Padding="12,0" Margin="8,0,0,0"
-                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                         BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold"
                                         ToolTip="500ms 60Hz diagnostic vibration — verifies haptics path independently of telemetry" />
                             </WrapPanel>
@@ -393,12 +393,12 @@
                     </Border>
 
                     <!-- TrueForce stream (RS50 / G PRO — app is the FFB source, no G HUB) -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
-                            BorderThickness="1" BorderBrush="#3347A15C"
+                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="{DynamicResource UiC_3347A15C}"
                             Visibility="{Binding LogitechCardsVisible, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
-                                <TextBlock Text="TRUEFORCE STREAM" FontSize="12" FontWeight="Bold" Foreground="#FF47A15C" VerticalAlignment="Center" />
+                                <TextBlock Text="TRUEFORCE STREAM" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiC_FF47A15C}" VerticalAlignment="Center" />
                                 <TextBlock Text="Direct FFB channel — no G HUB needed" FontSize="11"
                                            Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
@@ -440,7 +440,7 @@
                     <TextBlock Text="{Binding LedSupportedInfo}" FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
 
                     <!-- LED Strip Preview -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
+                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
                             <TextBlock Text="LED PREVIEW" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
@@ -461,8 +461,8 @@
 
                             <!-- BRIGHTNESS -->
                             <StackPanel Visibility="{Binding LedBrightnessVisible, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="BRIGHTNESS" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,8" />
-                                <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,12" Margin="0,0,0,16"
+                                <TextBlock Text="BRIGHTNESS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" Margin="0,0,0,8" />
+                                <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12" Margin="0,0,0,16"
                                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                                     <controls:LabeledSlider Value="{Binding LedBrightness, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
                                         Label="Brightness" StringFormat="{}{0}" Suffix="%"
@@ -472,8 +472,8 @@
                             </StackPanel>
 
                             <!-- FLASH EFFECTS -->
-                            <TextBlock Text="FLASH EFFECTS" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,8" />
-                            <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,12"
+                            <TextBlock Text="FLASH EFFECTS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" Margin="0,0,0,8" />
+                            <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12"
                                     BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                                 <StackPanel>
                                     <DockPanel Margin="0,4">
@@ -502,7 +502,7 @@
                                         <TextBlock Text="Yellow, red, blue flags on LEDs" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
                                     </StackPanel>
 
-                                    <Border Background="{StaticResource BgInput}" CornerRadius="6" Padding="12,10" Margin="0,4,0,0">
+                                    <Border Background="{StaticResource BgInput}" CornerRadius="{DynamicResource UiR6}" Padding="12,10" Margin="0,4,0,0">
                                         <controls:LabeledSlider Value="{Binding LedFlashRate, Mode=TwoWay}" Minimum="2" Maximum="60" TickFrequency="1"
                                             Label="Flash Speed" StringFormat="{}{0}"
                                             Description="Lower = faster (2=very fast, 60=slow)"
@@ -513,8 +513,8 @@
 
                             <!-- COLOR SCHEME -->
                             <StackPanel Visibility="{Binding LedColorSchemeVisible, Converter={StaticResource BoolToVis}}" Margin="0,16,0,0">
-                                <TextBlock Text="COLOR SCHEME" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,8" />
-                                <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,12"
+                                <TextBlock Text="COLOR SCHEME" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" Margin="0,0,0,8" />
+                                <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12"
                                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                                     <StackPanel>
                                         <TextBlock Text="Color Preset" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4" />
@@ -533,8 +533,8 @@
 
                         <!-- Right Column: RPM Thresholds -->
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="RPM THRESHOLDS" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,8" />
-                            <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,12"
+                            <TextBlock Text="RPM THRESHOLDS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" Margin="0,0,0,8" />
+                            <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12"
                                     BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                                 <StackPanel>
                                     <TextBlock Text="Preset" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4" />
@@ -613,12 +613,12 @@
                                FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
 
                     <!-- MASTER CONTROLS BAR -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16" Margin="0,0,0,20"
-                            BorderThickness="1" BorderBrush="#33D2A8FF">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,20"
+                            BorderThickness="1" BorderBrush="{DynamicResource UiC_33D2A8FF}">
                         <StackPanel>
                             <DockPanel VerticalAlignment="Center" Margin="0,0,0,12">
                                 <CheckBox IsChecked="{Binding Hf8Enabled}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                <TextBlock Text="Haptic Output" FontSize="16" FontWeight="Bold" Foreground="#FFD2A8FF" VerticalAlignment="Center" />
+                                <TextBlock Text="Haptic Output" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiPurple}" VerticalAlignment="Center" />
                             </DockPanel>
                             <controls:LabeledSlider Value="{Binding Hf8MasterGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Master Gain" StringFormat="{}{0:F2}" LabelWidth="110"
@@ -634,7 +634,7 @@
                     <!-- MOTOR LAYOUT: 4 rows x 2 cols (Left | Right) -->
 
                     <!-- ROW 1: SEAT FRONT — M8 FL (left) | M7 FR (right) -->
-                    <TextBlock Text="SEAT FRONT" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,6" />
+                    <TextBlock Text="SEAT FRONT" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" Margin="0,0,0,6" />
                     <Grid Margin="0,0,0,16" controls:ResponsiveColumns.StackBelow="640">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -642,42 +642,42 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
-                                BorderThickness="1" BorderBrush="#3379C0FF">
+                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                                BorderThickness="1" BorderBrush="{DynamicResource UiC_3379C0FF}">
                             <StackPanel>
-                                <TextBlock Text="Seat Front Left" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <TextBlock Text="Seat Front Left" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
                                     <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="Transparent" BorderThickness="0" Foreground="#FF79C0FF"
+                                            Background="Transparent" BorderThickness="0" Foreground="{DynamicResource UiInfo}"
                                             Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
                                             Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="1">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiHover2}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Button.Template>
                                     </Button>
-                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiPurple}"
                                                VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource1, Converter={StaticResource BoolToVis}}" />
                                     <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Background="{DynamicResource UiC_33D2A8FF}" BorderThickness="0" Foreground="{DynamicResource UiPurple}" Margin="4,0,0,0"
                                             Visibility="{Binding Hf8CanCopyTo1, Converter={StaticResource BoolToVis}}"
                                             Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="1">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_77D2A8FF}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -700,42 +700,42 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
-                                BorderThickness="1" BorderBrush="#3379C0FF">
+                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                                BorderThickness="1" BorderBrush="{DynamicResource UiC_3379C0FF}">
                             <StackPanel>
-                                <TextBlock Text="Seat Front Right" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <TextBlock Text="Seat Front Right" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
                                     <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="Transparent" BorderThickness="0" Foreground="#FF79C0FF"
+                                            Background="Transparent" BorderThickness="0" Foreground="{DynamicResource UiInfo}"
                                             Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
                                             Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="0">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiHover2}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Button.Template>
                                     </Button>
-                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiPurple}"
                                                VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource0, Converter={StaticResource BoolToVis}}" />
                                     <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Background="{DynamicResource UiC_33D2A8FF}" BorderThickness="0" Foreground="{DynamicResource UiPurple}" Margin="4,0,0,0"
                                             Visibility="{Binding Hf8CanCopyTo0, Converter={StaticResource BoolToVis}}"
                                             Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="0">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_77D2A8FF}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -760,7 +760,7 @@
                     </Grid>
 
                     <!-- ROW 2: SEAT REAR — M6 RL (left) | M5 RR (right) -->
-                    <TextBlock Text="SEAT REAR" FontSize="12" FontWeight="Bold" Foreground="#FF56D4A0" Margin="0,0,0,6" />
+                    <TextBlock Text="SEAT REAR" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiTeal}" Margin="0,0,0,6" />
                     <Grid Margin="0,0,0,16" controls:ResponsiveColumns.StackBelow="640">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -768,42 +768,42 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
-                                BorderThickness="1" BorderBrush="#3356D4A0">
+                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                                BorderThickness="1" BorderBrush="{DynamicResource UiC_3356D4A0}">
                             <StackPanel>
-                                <TextBlock Text="Seat Rear Left" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <TextBlock Text="Seat Rear Left" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
                                     <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="Transparent" BorderThickness="0" Foreground="#FF56D4A0"
+                                            Background="Transparent" BorderThickness="0" Foreground="{DynamicResource UiTeal}"
                                             Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
                                             Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="3">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiHover2}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Button.Template>
                                     </Button>
-                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiPurple}"
                                                VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource3, Converter={StaticResource BoolToVis}}" />
                                     <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Background="{DynamicResource UiC_33D2A8FF}" BorderThickness="0" Foreground="{DynamicResource UiPurple}" Margin="4,0,0,0"
                                             Visibility="{Binding Hf8CanCopyTo3, Converter={StaticResource BoolToVis}}"
                                             Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="3">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_77D2A8FF}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -826,42 +826,42 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
-                                BorderThickness="1" BorderBrush="#3356D4A0">
+                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                                BorderThickness="1" BorderBrush="{DynamicResource UiC_3356D4A0}">
                             <StackPanel>
-                                <TextBlock Text="Seat Rear Right" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <TextBlock Text="Seat Rear Right" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
                                     <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="Transparent" BorderThickness="0" Foreground="#FF56D4A0"
+                                            Background="Transparent" BorderThickness="0" Foreground="{DynamicResource UiTeal}"
                                             Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
                                             Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="2">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiHover2}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Button.Template>
                                     </Button>
-                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiPurple}"
                                                VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource2, Converter={StaticResource BoolToVis}}" />
                                     <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Background="{DynamicResource UiC_33D2A8FF}" BorderThickness="0" Foreground="{DynamicResource UiPurple}" Margin="4,0,0,0"
                                             Visibility="{Binding Hf8CanCopyTo2, Converter={StaticResource BoolToVis}}"
                                             Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="2">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_77D2A8FF}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -886,7 +886,7 @@
                     </Grid>
 
                     <!-- ROW 3: BACK LOWER — M4 LL (left) | M3 LR (right) -->
-                    <TextBlock Text="BACK LOWER" FontSize="12" FontWeight="Bold" Foreground="#FFE08040" Margin="0,0,0,6" />
+                    <TextBlock Text="BACK LOWER" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiAccent2}" Margin="0,0,0,6" />
                     <Grid Margin="0,0,0,16" controls:ResponsiveColumns.StackBelow="640">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -894,42 +894,42 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
-                                BorderThickness="1" BorderBrush="#33E08040">
+                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                                BorderThickness="1" BorderBrush="{DynamicResource UiC_33E08040}">
                             <StackPanel>
-                                <TextBlock Text="Back Lower Left" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <TextBlock Text="Back Lower Left" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
                                     <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="Transparent" BorderThickness="0" Foreground="#FFE08040"
+                                            Background="Transparent" BorderThickness="0" Foreground="{DynamicResource UiAccent2}"
                                             Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
                                             Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="5">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiHover2}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Button.Template>
                                     </Button>
-                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiPurple}"
                                                VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource5, Converter={StaticResource BoolToVis}}" />
                                     <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Background="{DynamicResource UiC_33D2A8FF}" BorderThickness="0" Foreground="{DynamicResource UiPurple}" Margin="4,0,0,0"
                                             Visibility="{Binding Hf8CanCopyTo5, Converter={StaticResource BoolToVis}}"
                                             Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="5">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_77D2A8FF}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -952,42 +952,42 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
-                                BorderThickness="1" BorderBrush="#33E08040">
+                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                                BorderThickness="1" BorderBrush="{DynamicResource UiC_33E08040}">
                             <StackPanel>
-                                <TextBlock Text="Back Lower Right" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <TextBlock Text="Back Lower Right" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
                                     <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="Transparent" BorderThickness="0" Foreground="#FFE08040"
+                                            Background="Transparent" BorderThickness="0" Foreground="{DynamicResource UiAccent2}"
                                             Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
                                             Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="4">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiHover2}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Button.Template>
                                     </Button>
-                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiPurple}"
                                                VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource4, Converter={StaticResource BoolToVis}}" />
                                     <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Background="{DynamicResource UiC_33D2A8FF}" BorderThickness="0" Foreground="{DynamicResource UiPurple}" Margin="4,0,0,0"
                                             Visibility="{Binding Hf8CanCopyTo4, Converter={StaticResource BoolToVis}}"
                                             Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="4">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_77D2A8FF}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -1012,7 +1012,7 @@
                     </Grid>
 
                     <!-- ROW 4: BACK UPPER — M2 UL (left) | M1 UR (right) -->
-                    <TextBlock Text="BACK UPPER" FontSize="12" FontWeight="Bold" Foreground="#FFF0883E" Margin="0,0,0,6" />
+                    <TextBlock Text="BACK UPPER" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiAccent}" Margin="0,0,0,6" />
                     <Grid Margin="0,0,0,16" controls:ResponsiveColumns.StackBelow="640">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -1020,42 +1020,42 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
-                                BorderThickness="1" BorderBrush="#33F0883E">
+                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                                BorderThickness="1" BorderBrush="{DynamicResource UiC_33F0883E}">
                             <StackPanel>
-                                <TextBlock Text="Back Upper Left" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <TextBlock Text="Back Upper Left" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
                                     <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="Transparent" BorderThickness="0" Foreground="#FFF0883E"
+                                            Background="Transparent" BorderThickness="0" Foreground="{DynamicResource UiAccent}"
                                             Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
                                             Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="7">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiHover2}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Button.Template>
                                     </Button>
-                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiPurple}"
                                                VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource7, Converter={StaticResource BoolToVis}}" />
                                     <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Background="{DynamicResource UiC_33D2A8FF}" BorderThickness="0" Foreground="{DynamicResource UiPurple}" Margin="4,0,0,0"
                                             Visibility="{Binding Hf8CanCopyTo7, Converter={StaticResource BoolToVis}}"
                                             Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="7">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_77D2A8FF}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -1078,42 +1078,42 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="14,12"
-                                BorderThickness="1" BorderBrush="#33F0883E">
+                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                                BorderThickness="1" BorderBrush="{DynamicResource UiC_33F0883E}">
                             <StackPanel>
-                                <TextBlock Text="Back Upper Right" FontSize="11" FontWeight="SemiBold" Foreground="#FFC9D1D9" Margin="0,0,0,4" />
+                                <TextBlock Text="Back Upper Right" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
                                     <Button Content="Copy from here" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="Transparent" BorderThickness="0" Foreground="#FFF0883E"
+                                            Background="Transparent" BorderThickness="0" Foreground="{DynamicResource UiAccent}"
                                             Visibility="{Binding Hf8CopyActive, Converter={StaticResource InvertBoolToVis}}"
                                             Command="{Binding Hf8SetCopySourceCommand}" CommandParameter="6">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiHover2}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Button.Template>
                                     </Button>
-                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="#FFD2A8FF"
+                                    <TextBlock Text="★ SOURCE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiPurple}"
                                                VerticalAlignment="Center" Visibility="{Binding Hf8IsCopySource6, Converter={StaticResource BoolToVis}}" />
                                     <Button Content="Copy →" FontSize="11" Padding="6,1" Cursor="Hand"
-                                            Background="#33D2A8FF" BorderThickness="0" Foreground="#FFD2A8FF" Margin="4,0,0,0"
+                                            Background="{DynamicResource UiC_33D2A8FF}" BorderThickness="0" Foreground="{DynamicResource UiPurple}" Margin="4,0,0,0"
                                             Visibility="{Binding Hf8CanCopyTo6, Converter={StaticResource BoolToVis}}"
                                             Command="{Binding Hf8CopyToZoneCommand}" CommandParameter="6">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource UiR3}" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Background" Value="#77D2A8FF" />
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_77D2A8FF}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -1140,20 +1140,20 @@
                     <!-- MOTOR TEST BUTTON -->
                     <Button Content="&#x2699; Test Motors"
                             Click="OnOpenMotorTest"
-                            Background="#FF333355" Foreground="#FFFF9800" BorderThickness="0"
+                            Background="{DynamicResource UiTrack}" Foreground="{DynamicResource UiOrange}" BorderThickness="0"
                             Padding="16,10" FontSize="14" FontWeight="SemiBold" Cursor="Hand"
                             HorizontalAlignment="Left" Margin="0,0,0,16"
                             ToolTip="Test individual haptic pad motors">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                        CornerRadius="6" Padding="{TemplateBinding Padding}"
-                                        BorderThickness="1" BorderBrush="#44FF9800">
+                                        CornerRadius="{DynamicResource UiR6}" Padding="{TemplateBinding Padding}"
+                                        BorderThickness="1" BorderBrush="{DynamicResource UiC_44FF9800}">
                                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Bd" Property="Background" Value="#44FF9800" />
+                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource UiC_44FF9800}" />
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -1161,11 +1161,11 @@
                     </Button>
 
                     <!-- CONNECTION INFO PANEL -->
-                    <Border Background="#FF1A1A2E" CornerRadius="6" Padding="14,10" Margin="0,0,0,0"
-                            BorderThickness="1" BorderBrush="#333355">
+                    <Border Background="{DynamicResource UiC_FF1A1A2E}" CornerRadius="{DynamicResource UiR6}" Padding="14,10" Margin="0,0,0,0"
+                            BorderThickness="1" BorderBrush="{DynamicResource UiTrack}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="USB" FontSize="11" FontWeight="Bold" Foreground="#FF6666AA" VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#FF9999CC" VerticalAlignment="Center">
+                            <TextBlock Text="USB" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiC_FF6666AA}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="{DynamicResource UiC_FF9999CC}" VerticalAlignment="Center">
                                 <Run Text="Connect the HF8 / HF8 Pro via USB. Close the NLR HFS software before use — it holds exclusive HID access." />
                             </TextBlock>
                         </StackPanel>
@@ -1196,49 +1196,49 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16"
-                                BorderThickness="1" BorderBrush="#3356D4A0">
+                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16"
+                                BorderThickness="1" BorderBrush="{DynamicResource UiC_3356D4A0}">
                             <StackPanel>
                                 <DockPanel VerticalAlignment="Center" Margin="0,0,0,12">
                                     <CheckBox IsChecked="{Binding PedalInputEnabled, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <TextBlock Text="Physical Pedal Input" FontSize="16" FontWeight="Bold" Foreground="#FF56D4A0" VerticalAlignment="Center" />
+                                    <TextBlock Text="Physical Pedal Input" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiTeal}" VerticalAlignment="Center" />
                                 </DockPanel>
                                 <TextBlock Text="When enabled, pedal values come from physical devices instead of game telemetry. Keyboard (W/S/A) simulation is also available."
                                            FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
                                 <TextBlock Text="{Binding PedalDeviceInfo, StringFormat='Pedal device: {0}'}" FontSize="12"
-                                           Foreground="#FF56D4A0" TextWrapping="Wrap" Margin="0,0,0,2" />
+                                           Foreground="{DynamicResource UiTeal}" TextWrapping="Wrap" Margin="0,0,0,2" />
                                 <TextBlock Text="USB pedals are handled here — no need to select them in the Device menu at the top."
                                            FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,4" />
                                 <TextBlock Text="{Binding PedalDiagnosticInfo, StringFormat='Diagnostics: {0}'}" FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14"
                                 BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                             <StackPanel>
-                                <TextBlock Text="LIVE PEDAL STATE" FontSize="11" FontWeight="Bold" Foreground="#FF56D4A0" Margin="0,0,0,12" />
+                                <TextBlock Text="LIVE PEDAL STATE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiTeal}" Margin="0,0,0,12" />
 
                                 <DockPanel Margin="0,4">
                                     <TextBlock Text="Source:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
-                                    <TextBlock Text="{Binding PedalLiveSource}" FontSize="13" FontWeight="Bold" Foreground="#FF56D4A0" />
+                                    <TextBlock Text="{Binding PedalLiveSource}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiTeal}" />
                                 </DockPanel>
 
                                 <DockPanel Margin="0,4">
                                     <TextBlock Text="Gas:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
-                                    <ProgressBar Value="{Binding PedalLiveGas}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="#FF4CAF50" />
-                                    <TextBlock Text="{Binding PedalLiveGas, StringFormat=' {0:P0}'}" FontSize="13" Foreground="#FF4CAF50" Margin="4,0,0,0" />
+                                    <ProgressBar Value="{Binding PedalLiveGas}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="{DynamicResource UiGood}" />
+                                    <TextBlock Text="{Binding PedalLiveGas, StringFormat=' {0:P0}'}" FontSize="13" Foreground="{DynamicResource UiGood}" Margin="4,0,0,0" />
                                 </DockPanel>
 
                                 <DockPanel Margin="0,4">
                                     <TextBlock Text="Brake:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
-                                    <ProgressBar Value="{Binding PedalLiveBrake}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="#FFE53935" />
-                                    <TextBlock Text="{Binding PedalLiveBrake, StringFormat=' {0:P0}'}" FontSize="13" Foreground="#FFE53935" Margin="4,0,0,0" />
+                                    <ProgressBar Value="{Binding PedalLiveBrake}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="{DynamicResource UiBad}" />
+                                    <TextBlock Text="{Binding PedalLiveBrake, StringFormat=' {0:P0}'}" FontSize="13" Foreground="{DynamicResource UiBad}" Margin="4,0,0,0" />
                                 </DockPanel>
 
                                 <DockPanel Margin="0,4">
                                     <TextBlock Text="Clutch:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
-                                    <ProgressBar Value="{Binding PedalLiveClutch}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="#FFFF9800" />
-                                    <TextBlock Text="{Binding PedalLiveClutch, StringFormat=' {0:P0}'}" FontSize="13" Foreground="#FFFF9800" Margin="4,0,0,0" />
+                                    <ProgressBar Value="{Binding PedalLiveClutch}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="{DynamicResource UiOrange}" />
+                                    <TextBlock Text="{Binding PedalLiveClutch, StringFormat=' {0:P0}'}" FontSize="13" Foreground="{DynamicResource UiOrange}" Margin="4,0,0,0" />
                                 </DockPanel>
 
                                 <TextBlock Text="Press the pedals — the bars should follow. If not, fix the axis mapping on the Calibrate tab."
@@ -1250,15 +1250,15 @@
                     </StackPanel>
                     <StackPanel x:Name="Ped_Calibrate" Visibility="Collapsed">
                     <!-- Calibration Section -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16" Margin="0,0,0,20"
+                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,20"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
-                            <TextBlock Text="CALIBRATION" FontSize="12" FontWeight="Bold" Foreground="#FF79C0FF" Margin="0,0,0,12" />
+                            <TextBlock Text="CALIBRATION" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" Margin="0,0,0,12" />
 
                             <!-- Axis Mapping -->
-                            <Border Background="#FF161B22" CornerRadius="6" Padding="12,10" Margin="0,0,0,12">
+                            <Border Background="{DynamicResource UiPanel}" CornerRadius="{DynamicResource UiR6}" Padding="12,10" Margin="0,0,0,12">
                                 <StackPanel>
-                                    <TextBlock Text="PEDAL AXIS MAPPING" FontSize="11" FontWeight="Bold" Foreground="#FFFF9800" Margin="0,0,0,6" />
+                                    <TextBlock Text="PEDAL AXIS MAPPING" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiOrange}" Margin="0,0,0,6" />
                                     <TextBlock Text="Select which DirectInput axis each pedal uses. If the Input tab bars don't match your pedals, change these here." FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
                                     <WrapPanel Orientation="Horizontal" Margin="0,0,0,4">
                                         <TextBlock Text="Pedal device:" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -1266,7 +1266,7 @@
                                                   MinWidth="160" MaxWidth="260" Height="28" FontSize="12" Margin="0,0,8,6" />
                                         <Button Content="Rescan" Command="{Binding RescanPedalUsbDevicesCommand}"
                                                 Height="28" Padding="10,0" Margin="0,0,8,6"
-                                                Background="#FF21262D" Foreground="#FFE6EDF3"
+                                                Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" />
                                     </WrapPanel>
                                     <TextBlock Text="Pedals plugged into the wheelbase are automatic — leave this on Auto. Pick a device only for separate USB pedals."
@@ -1274,10 +1274,10 @@
                                     <WrapPanel Orientation="Horizontal" Margin="0,0,0,8">
                                         <Button Content="Find my pedals…" Command="{Binding OpenPedalDetectDialogCommand}"
                                                 Height="28" Padding="10,0"
-                                                Background="#FF21262D" Foreground="#FFE6EDF3"
+                                                Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12"
                                                 ToolTip="Opens pedal setup: big live bars plus per-pedal Detect, Undo and Clear." />
-                                        <TextBlock Text="{Binding PedalDetectStatus}" FontSize="11" Foreground="#FF7EE787"
+                                        <TextBlock Text="{Binding PedalDetectStatus}" FontSize="11" Foreground="{DynamicResource UiLime}"
                                                    VerticalAlignment="Center" TextWrapping="Wrap" Margin="10,0,0,0"
                                                    Visibility="{Binding PedalDetectStatus, Converter={StaticResource NotEmptyToVis}}" />
                                     </WrapPanel>
@@ -1290,19 +1290,19 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0">
-                                            <TextBlock Text="Gas Axis" FontSize="11" Foreground="#FF4CAF50" Margin="0,0,0,2" />
+                                            <TextBlock Text="Gas Axis" FontSize="11" Foreground="{DynamicResource UiGood}" Margin="0,0,0,2" />
                                             <ComboBox ItemsSource="{Binding PedalAvailableAxes}" SelectedItem="{Binding PedalGasAxis, Mode=TwoWay}"
-                                                      FontSize="13" Padding="6,4" Background="#FF21262D" Foreground="{DynamicResource TextBrush}" />
+                                                      FontSize="13" Padding="6,4" Background="{DynamicResource UiInput}" Foreground="{DynamicResource TextBrush}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
-                                            <TextBlock Text="Brake Axis" FontSize="11" Foreground="#FFE53935" Margin="0,0,0,2" />
+                                            <TextBlock Text="Brake Axis" FontSize="11" Foreground="{DynamicResource UiBad}" Margin="0,0,0,2" />
                                             <ComboBox ItemsSource="{Binding PedalAvailableAxes}" SelectedItem="{Binding PedalBrakeAxis, Mode=TwoWay}"
-                                                      FontSize="13" Padding="6,4" Background="#FF21262D" Foreground="{DynamicResource TextBrush}" />
+                                                      FontSize="13" Padding="6,4" Background="{DynamicResource UiInput}" Foreground="{DynamicResource TextBrush}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="4">
-                                            <TextBlock Text="Clutch Axis" FontSize="11" Foreground="#FFFF9800" Margin="0,0,0,2" />
+                                            <TextBlock Text="Clutch Axis" FontSize="11" Foreground="{DynamicResource UiOrange}" Margin="0,0,0,2" />
                                             <ComboBox ItemsSource="{Binding PedalAvailableAxes}" SelectedItem="{Binding PedalClutchAxis, Mode=TwoWay}"
-                                                      FontSize="13" Padding="6,4" Background="#FF21262D" Foreground="{DynamicResource TextBrush}" />
+                                                      FontSize="13" Padding="6,4" Background="{DynamicResource UiInput}" Foreground="{DynamicResource TextBrush}" />
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>
@@ -1319,7 +1319,7 @@
 
                                 <!-- Gas Column -->
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="GAS" FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" Margin="0,0,0,4" />
+                                    <TextBlock Text="GAS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiGood}" Margin="0,0,0,4" />
                                     <controls:LabeledSlider Value="{Binding PedalGasDeadzone, Mode=TwoWay}" Minimum="0" Maximum="0.3" TickFrequency="0.005"
                                         Label="Deadzone" StringFormat="{}{0:F3}" SectionColor="#FF4CAF50" />
                                     <controls:LabeledSlider Value="{Binding PedalGasMin, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.005"
@@ -1336,7 +1336,7 @@
 
                                 <!-- Brake Column -->
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="BRAKE" FontSize="12" FontWeight="Bold" Foreground="#FFE53935" Margin="0,0,0,4" />
+                                    <TextBlock Text="BRAKE" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiBad}" Margin="0,0,0,4" />
                                     <controls:LabeledSlider Value="{Binding PedalBrakeDeadzone, Mode=TwoWay}" Minimum="0" Maximum="0.3" TickFrequency="0.005"
                                         Label="Deadzone" StringFormat="{}{0:F3}" SectionColor="#FFE53935" />
                                     <controls:LabeledSlider Value="{Binding PedalBrakeMin, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.005"
@@ -1353,7 +1353,7 @@
 
                                 <!-- Clutch Column -->
                                 <StackPanel Grid.Column="4">
-                                    <TextBlock Text="CLUTCH" FontSize="12" FontWeight="Bold" Foreground="#FFFF9800" Margin="0,0,0,4" />
+                                    <TextBlock Text="CLUTCH" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiOrange}" Margin="0,0,0,4" />
                                     <controls:LabeledSlider Value="{Binding PedalClutchDeadzone, Mode=TwoWay}" Minimum="0" Maximum="0.3" TickFrequency="0.005"
                                         Label="Deadzone" StringFormat="{}{0:F3}" SectionColor="#FFFF9800" />
                                     <controls:LabeledSlider Value="{Binding PedalClutchMin, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.005"
@@ -1385,7 +1385,7 @@
                         <RadioButton x:Name="HapticTabMoza" GroupName="PedalHapticHw" Checked="OnPedalHapticTabChanged"
                                      Style="{StaticResource HapticTabStyle}" Margin="0,0,8,6">
                             <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="8" Height="8" Fill="#FF4CAF50" Margin="0,0,8,0" VerticalAlignment="Center"
+                                <Ellipse Width="8" Height="8" Fill="{DynamicResource UiGood}" Margin="0,0,8,0" VerticalAlignment="Center"
                                          Opacity="{Binding MozaPhfIsConnected, Converter={StaticResource BoolToOpacity}}" />
                                 <TextBlock Text="MOZA PHF modules" VerticalAlignment="Center" />
                             </StackPanel>
@@ -1393,7 +1393,7 @@
                         <RadioButton x:Name="HapticTabSerial" GroupName="PedalHapticHw" Checked="OnPedalHapticTabChanged"
                                      Style="{StaticResource HapticTabStyle}" Margin="0,0,8,6">
                             <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="8" Height="8" Fill="#FF4CAF50" Margin="0,0,8,0" VerticalAlignment="Center"
+                                <Ellipse Width="8" Height="8" Fill="{DynamicResource UiGood}" Margin="0,0,8,0" VerticalAlignment="Center"
                                          Opacity="{Binding OsoyooIsConnected, Converter={StaticResource BoolToOpacity}}" />
                                 <TextBlock Text="DIY serial box (Arduino)" VerticalAlignment="Center" />
                             </StackPanel>
@@ -1402,22 +1402,22 @@
                     <StackPanel Margin="0,0,0,20">
 
                     <!-- MOZA PHF Pedal Haptic Feedback (RS102 kit + RS103 modules) -->
-                    <Border x:Name="MozaHapticCard" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14"
+                    <Border x:Name="MozaHapticCard" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
                             <!-- Header: status dot + title, Enabled on the right -->
                             <DockPanel Margin="0,0,0,8">
                                 <CheckBox DockPanel.Dock="Right" Content="Enabled" IsChecked="{Binding MozaPhfEnabled, Mode=TwoWay}"
                                           Foreground="{StaticResource TextDimBrush}" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                <Ellipse Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center" Fill="#FF4CAF50"
+                                <Ellipse Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center" Fill="{DynamicResource UiGood}"
                                          Opacity="{Binding MozaPhfIsConnected, Converter={StaticResource BoolToOpacity}}" />
-                                <TextBlock Text="MOZA PHF PEDAL HAPTICS" FontSize="16" FontWeight="Bold" Foreground="#FF9800"
+                                <TextBlock Text="MOZA PHF PEDAL HAPTICS" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiOrange}"
                                            VerticalAlignment="Center" TextWrapping="Wrap" />
                             </DockPanel>
 
                             <!-- Live status — the most important line, right under the title -->
-                            <Border Background="#FF1E2227" CornerRadius="4" Padding="10,6" Margin="0,0,0,10">
-                                <TextBlock Text="{Binding MozaPhfStatus}" FontSize="12" Foreground="#FFE6EDF3" TextWrapping="Wrap" />
+                            <Border Background="{DynamicResource UiC_FF1E2227}" CornerRadius="{DynamicResource UiR4}" Padding="10,6" Margin="0,0,0,10">
+                                <TextBlock Text="{Binding MozaPhfStatus}" FontSize="12" Foreground="{DynamicResource UiText}" TextWrapping="Wrap" />
                             </Border>
 
                             <TextBlock Text="Plug the PHF control box into the PC by USB — the app finds and connects to it automatically. MOZA's own software must be closed: only one program can use the box at a time."
@@ -1437,10 +1437,10 @@
                                        FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,12" />
 
                             <!-- Module test -->
-                            <Border Background="#FF1E2227" CornerRadius="6" Padding="12,10"
-                                    BorderThickness="1" BorderBrush="#3347A15C">
+                            <Border Background="{DynamicResource UiC_FF1E2227}" CornerRadius="{DynamicResource UiR6}" Padding="12,10"
+                                    BorderThickness="1" BorderBrush="{DynamicResource UiC_3347A15C}">
                                 <StackPanel>
-                                    <TextBlock Text="TEST A MODULE" FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" />
+                                    <TextBlock Text="TEST A MODULE" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiGood}" />
                                     <TextBlock Text="Live effects pause while a test runs — press Stop when done." FontSize="11"
                                                Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,8" />
                                     <Grid>
@@ -1457,29 +1457,29 @@
                                         <Slider Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
                                                 Value="{Binding MozaPhfTestIntensity, Mode=TwoWay}" VerticalAlignment="Center" />
                                         <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding MozaPhfTestIntensity, StringFormat='{}{0}%'}"
-                                                   FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" VerticalAlignment="Center" TextAlignment="Right" />
+                                                   FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiGood}" VerticalAlignment="Center" TextAlignment="Right" />
                                         <TextBlock Grid.Row="1" Text="Pitch" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,6,0,0" />
                                         <Slider Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
                                                 Value="{Binding MozaPhfTestFrequency, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,6,0,0" />
                                         <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding MozaPhfTestFrequency, StringFormat='{}{0} Hz'}"
-                                                   FontSize="12" Foreground="#FF8B949E" VerticalAlignment="Center" TextAlignment="Right" Margin="0,6,0,0" />
+                                                   FontSize="12" Foreground="{DynamicResource UiTextDim}" VerticalAlignment="Center" TextAlignment="Right" Margin="0,6,0,0" />
                                     </Grid>
                                     <WrapPanel Orientation="Horizontal" Margin="0,10,0,0">
                                         <Button Content="TEST BRAKE" Command="{Binding MozaPhfTestBrakeCommand}"
                                                 Height="32" Padding="12,0" Margin="0,0,8,6"
-                                                Background="#FFE53935" Foreground="White"
+                                                Background="{DynamicResource UiBad}" Foreground="White"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
                                         <Button Content="TEST THROTTLE" Command="{Binding MozaPhfTestGasCommand}"
                                                 Height="32" Padding="12,0" Margin="0,0,8,6"
-                                                Background="#FF4CAF50" Foreground="White"
+                                                Background="{DynamicResource UiGood}" Foreground="White"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
                                         <Button Content="TEST CLUTCH" Command="{Binding MozaPhfTestClutchCommand}"
                                                 Height="32" Padding="12,0" Margin="0,0,8,6"
-                                                Background="#FF42A5F5" Foreground="White"
+                                                Background="{DynamicResource UiC_FF42A5F5}" Foreground="White"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
                                         <Button Content="STOP" Command="{Binding MozaPhfStopTestCommand}"
                                                 Height="32" Padding="16,0" Margin="0,0,8,6"
-                                                Background="#FF525252" Foreground="White"
+                                                Background="{DynamicResource UiC_FF525252}" Foreground="White"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
                                     </WrapPanel>
                                 </StackPanel>
@@ -1501,12 +1501,12 @@
                                         <Button Content="Connect" Command="{Binding ConnectMozaPhfCommand}"
                                                 Visibility="{Binding MozaPhfIsConnected, Converter={StaticResource InvertBoolToVis}}"
                                                 Height="30" Padding="14,0" Margin="0,0,8,6"
-                                                Background="#FF9800" Foreground="#FF1A1D24"
+                                                Background="{DynamicResource UiOrange}" Foreground="{DynamicResource UiC_FF1A1D24}"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="SemiBold" />
                                         <Button Content="Disconnect" Command="{Binding DisconnectMozaPhfCommand}"
                                                 Visibility="{Binding MozaPhfIsConnected, Converter={StaticResource BoolToVis}}"
                                                 Height="30" Padding="14,0" Margin="0,0,8,6"
-                                                Background="#FF5252" Foreground="White"
+                                                Background="{DynamicResource UiC_FFFF5252}" Foreground="White"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="SemiBold" />
                                     </WrapPanel>
                                 </StackPanel>
@@ -1514,19 +1514,19 @@
                         </StackPanel>
                     </Border>
                     <!-- Osoyoo Serial Pedal Haptic Device -->
-                    <Border x:Name="SerialHapticCard" Visibility="Collapsed" Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16"
+                    <Border x:Name="SerialHapticCard" Visibility="Collapsed" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
                             <DockPanel VerticalAlignment="Center" Margin="0,0,0,12">
                                 <Ellipse Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center"
-                                         Fill="#FF4CAF50"
+                                         Fill="{DynamicResource UiGood}"
                                          Opacity="{Binding OsoyooIsConnected, Converter={StaticResource BoolToOpacity}}" />
-                                <TextBlock Text="DIY SERIAL HAPTIC BOX" FontSize="16" FontWeight="Bold" Foreground="#FF9800" VerticalAlignment="Center" />
+                                <TextBlock Text="DIY SERIAL HAPTIC BOX" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiOrange}" VerticalAlignment="Center" />
                             </DockPanel>
                             <TextBlock Text="Home-built pedal vibration box: an Osoyoo Arduino Uno (or compatible serial device) driving a brake and a gas motor. No clutch."
                                        FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
                             <TextBlock Text="Note: COM ports are for this vibration box only — your USB pedals connect as a DirectInput device (Input tab) and need no COM port."
-                                       FontSize="11" Foreground="#FFFF9800" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                       FontSize="11" Foreground="{DynamicResource UiOrange}" TextWrapping="Wrap" Margin="0,0,0,12" />
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -1552,13 +1552,13 @@
                                     <Button Content="Connect" Command="{Binding ConnectOsoyooCommand}"
                                             Visibility="{Binding OsoyooIsConnected, Converter={StaticResource InvertBoolToVis}}"
                                             Width="90" Height="30" Margin="6,0,0,0" Padding="8,0"
-                                            Background="#FF9800" Foreground="#FF1A1D24"
+                                            Background="{DynamicResource UiOrange}" Foreground="{DynamicResource UiC_FF1A1D24}"
                                             BorderThickness="0" Cursor="Hand" FontSize="13" FontWeight="SemiBold" />
 
                                     <Button Content="Disconnect" Command="{Binding DisconnectOsoyooCommand}"
                                             Visibility="{Binding OsoyooIsConnected, Converter={StaticResource BoolToVis}}"
                                             Width="90" Height="30" Margin="6,0,0,0" Padding="8,0"
-                                            Background="#FF5252" Foreground="White"
+                                            Background="{DynamicResource UiC_FFFF5252}" Foreground="White"
                                             BorderThickness="0" Cursor="Hand" FontSize="13" FontWeight="SemiBold" />
                                 </StackPanel>
                             </Grid>
@@ -1567,10 +1567,10 @@
                                        Margin="0,8,0,0" TextWrapping="Wrap" />
 
                             <!-- Motor Test Panel -->
-                            <Border Background="#FF1E2227" CornerRadius="6" Padding="14,12" Margin="0,14,0,0"
-                                    BorderThickness="1" BorderBrush="#3347A15C">
+                            <Border Background="{DynamicResource UiC_FF1E2227}" CornerRadius="{DynamicResource UiR6}" Padding="14,12" Margin="0,14,0,0"
+                                    BorderThickness="1" BorderBrush="{DynamicResource UiC_3347A15C}">
                                 <StackPanel>
-                                    <TextBlock Text="TEST A MOTOR" FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" />
+                                    <TextBlock Text="TEST A MOTOR" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiGood}" />
                                     <TextBlock Text="Live effects pause while a test runs — press Stop when done." FontSize="11"
                                                Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,8" />
                                     <Grid>
@@ -1585,21 +1585,21 @@
                                                 Value="{Binding OsoyooTestIntensity, Mode=TwoWay}"
                                                 VerticalAlignment="Center" Height="26" />
                                         <TextBlock Grid.Column="2" Text="{Binding OsoyooTestIntensity, StringFormat='{}{0}'}"
-                                                   FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50"
+                                                   FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiGood}"
                                                    VerticalAlignment="Center" Margin="8,0,0,0" Width="36" TextAlignment="Right" />
                                     </Grid>
                                     <WrapPanel Orientation="Horizontal" Margin="0,10,0,0">
                                         <Button Content="TEST BRAKE" Command="{Binding OsoyooTestBrakeCommand}"
                                                 Height="32" Padding="12,0" Margin="0,0,8,6"
-                                                Background="#FFE53935" Foreground="White"
+                                                Background="{DynamicResource UiBad}" Foreground="White"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
                                         <Button Content="TEST THROTTLE" Command="{Binding OsoyooTestGasCommand}"
                                                 Height="32" Padding="12,0" Margin="0,0,8,6"
-                                                Background="#FF4CAF50" Foreground="White"
+                                                Background="{DynamicResource UiGood}" Foreground="White"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
                                         <Button Content="STOP" Command="{Binding OsoyooStopTestCommand}"
                                                 Height="32" Padding="16,0" Margin="0,0,8,6"
-                                                Background="#FF525252" Foreground="White"
+                                                Background="{DynamicResource UiC_FF525252}" Foreground="White"
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" FontWeight="Bold" />
                                     </WrapPanel>
                                 </StackPanel>
@@ -1614,10 +1614,10 @@
                                FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
 
                     <!-- ── 1. EFFECT GAINS — every pedal haptic device ── -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,14"
+                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,14"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
-                            <TextBlock Text="EFFECT GAINS" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                            <TextBlock Text="EFFECT GAINS" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiText}" />
                             <TextBlock Text="Applies to every connected pedal haptic device. Each effect feeds its pedal, then the master gain scales that pedal (0-2x)."
                                        FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,12" />
 
@@ -1630,8 +1630,8 @@
 
                                 <!-- BRAKE -->
                                 <StackPanel Grid.Column="0">
-                                    <Border Background="#26E53935" CornerRadius="4" Padding="8,5" Margin="0,0,0,8">
-                                        <TextBlock Text="BRAKE PEDAL" FontSize="12" FontWeight="Bold" Foreground="#FFE53935" />
+                                    <Border Background="{DynamicResource UiC_26E53935}" CornerRadius="{DynamicResource UiR4}" Padding="8,5" Margin="0,0,0,8">
+                                        <TextBlock Text="BRAKE PEDAL" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiBad}" />
                                     </Border>
                                     <controls:LabeledSlider Value="{Binding PedalMasterBrakeGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                         Label="Master gain" StringFormat="{}{0:F2}" SectionColor="#FFE53935" />
@@ -1647,8 +1647,8 @@
 
                                 <!-- THROTTLE -->
                                 <StackPanel Grid.Column="2">
-                                    <Border Background="#264CAF50" CornerRadius="4" Padding="8,5" Margin="0,0,0,8">
-                                        <TextBlock Text="THROTTLE PEDAL" FontSize="12" FontWeight="Bold" Foreground="#FF4CAF50" />
+                                    <Border Background="{DynamicResource UiC_264CAF50}" CornerRadius="{DynamicResource UiR4}" Padding="8,5" Margin="0,0,0,8">
+                                        <TextBlock Text="THROTTLE PEDAL" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiGood}" />
                                     </Border>
                                     <controls:LabeledSlider Value="{Binding PedalMasterGasGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                         Label="Master gain" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" />
@@ -1666,20 +1666,20 @@
                     </Border>
 
                     <!-- ── 2. MOZA PHF — per-effect strength + pitch (PHF only) ── -->
-                    <Border x:Name="PhfFrequencyBox" Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,20"
-                            BorderThickness="1" BorderBrush="#5547A15C">
+                    <Border x:Name="PhfFrequencyBox" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,20"
+                            BorderThickness="1" BorderBrush="{DynamicResource UiC_5547A15C}">
                         <StackPanel>
                             <DockPanel LastChildFill="True">
                                 <StackPanel DockPanel.Dock="Right" Margin="8,0,0,0" VerticalAlignment="Top">
                                     <Button Content="Reset strengths" Command="{Binding MozaPhfResetStrengthsCommand}"
-                                            Height="26" Padding="10,0" Background="#FF30363D" Foreground="#FFE6EDF3"
+                                            Height="26" Padding="10,0" Background="{DynamicResource UiBorder}" Foreground="{DynamicResource UiText}"
                                             BorderThickness="0" Cursor="Hand" FontSize="11" />
                                     <Button Content="Reset pedals" Command="{Binding MozaPhfResetRoutesCommand}"
-                                            Height="26" Padding="10,0" Background="#FF30363D" Foreground="#FFE6EDF3"
+                                            Height="26" Padding="10,0" Background="{DynamicResource UiBorder}" Foreground="{DynamicResource UiText}"
                                             BorderThickness="0" Cursor="Hand" FontSize="11" Margin="0,4,0,0" />
                                 </StackPanel>
                                 <StackPanel>
-                                    <TextBlock Text="MOZA PHF EFFECTS" FontSize="13" FontWeight="Bold" Foreground="#FF4CAF50" />
+                                    <TextBlock Text="MOZA PHF EFFECTS" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiGood}" />
                                     <TextBlock Text="Choose which pedal(s) each effect plays on, then fine-tune it. Strength: 100% = default, 0% = off. Pitch: the vibration frequency. Only pedals with a module fitted vibrate."
                                                FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
@@ -1696,25 +1696,25 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="#FF1E2227" CornerRadius="6" Padding="12,10"
-                                                BorderThickness="1" BorderBrush="#FF30363D">
+                                        <Border Background="{DynamicResource UiC_FF1E2227}" CornerRadius="{DynamicResource UiR6}" Padding="12,10"
+                                                BorderThickness="1" BorderBrush="{DynamicResource UiBorder}">
                                             <StackPanel>
-                                                <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="#FFE6EDF3"
+                                                <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource UiText}"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <!-- Which pedal(s) this effect plays on -->
                                                 <WrapPanel Orientation="Horizontal" Margin="0,6,0,0">
                                                     <ToggleButton Content="Brake" IsChecked="{Binding OnBrake, Mode=TwoWay}"
-                                                                  Style="{StaticResource PedalRouteToggle}" BorderBrush="#FFE53935" Margin="0,0,6,4" />
+                                                                  Style="{StaticResource PedalRouteToggle}" BorderBrush="{DynamicResource UiBad}" Margin="0,0,6,4" />
                                                     <ToggleButton Content="Throttle" IsChecked="{Binding OnThrottle, Mode=TwoWay}"
-                                                                  Style="{StaticResource PedalRouteToggle}" BorderBrush="#FF4CAF50" Margin="0,0,6,4" />
+                                                                  Style="{StaticResource PedalRouteToggle}" BorderBrush="{DynamicResource UiGood}" Margin="0,0,6,4" />
                                                     <ToggleButton Content="Clutch" IsChecked="{Binding OnClutch, Mode=TwoWay}"
-                                                                  Style="{StaticResource PedalRouteToggle}" BorderBrush="#FF42A5F5" Margin="0,0,6,4" />
-                                                    <TextBlock Text="off" FontSize="11" FontStyle="Italic" Foreground="#FF8B949E" VerticalAlignment="Center"
+                                                                  Style="{StaticResource PedalRouteToggle}" BorderBrush="{DynamicResource UiC_FF42A5F5}" Margin="0,0,6,4" />
+                                                    <TextBlock Text="off" FontSize="11" FontStyle="Italic" Foreground="{DynamicResource UiTextDim}" VerticalAlignment="Center"
                                                                Margin="2,0,0,4" Visibility="{Binding IsOff, Converter={StaticResource BoolToVis}}" />
                                                 </WrapPanel>
-                                                <TextBlock Text="{Binding Hint}" FontSize="10" Foreground="#FF8B949E" TextWrapping="Wrap" Margin="0,0,0,2"
+                                                <TextBlock Text="{Binding Hint}" FontSize="10" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,0,0,2"
                                                            Visibility="{Binding HasHint, Converter={StaticResource BoolToVis}}" />
-                                                <Rectangle Height="1" Fill="#FF30363D" Margin="0,4,0,6" />
+                                                <Rectangle Height="1" Fill="{DynamicResource UiBorder}" Margin="0,4,0,6" />
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="58" />
@@ -1729,12 +1729,12 @@
                                                     <Slider Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True"
                                                             Value="{Binding Strength, Mode=TwoWay}" VerticalAlignment="Center" />
                                                     <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding Strength, StringFormat='{}{0}%'}" FontSize="12" FontWeight="SemiBold"
-                                                               Foreground="#FF4CAF50" VerticalAlignment="Center" TextAlignment="Right" />
+                                                               Foreground="{DynamicResource UiGood}" VerticalAlignment="Center" TextAlignment="Right" />
                                                     <TextBlock Grid.Row="1" Text="Pitch" FontSize="11" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,4,0,0" />
                                                     <Slider Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
                                                             Value="{Binding Frequency, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,4,0,0" />
                                                     <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Frequency, StringFormat='{}{0} Hz'}" FontSize="12"
-                                                               Foreground="#FF8B949E" VerticalAlignment="Center" TextAlignment="Right" Margin="0,4,0,0" />
+                                                               Foreground="{DynamicResource UiTextDim}" VerticalAlignment="Center" TextAlignment="Right" Margin="0,4,0,0" />
                                                 </Grid>
                                             </StackPanel>
                                         </Border>
@@ -1757,10 +1757,10 @@
                     <TextBlock Text="Configure wheel and button box inputs for in-app actions." FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,20" TextWrapping="Wrap" />
 
                     <!-- Snapshot Button Card -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16" Margin="0,0,0,16"
-                            BorderThickness="1" BorderBrush="#33E3B341">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="{DynamicResource UiC_33E3B341}">
                         <StackPanel>
-                            <TextBlock Text="SNAPSHOT BUTTON" FontSize="12" FontWeight="Bold" Foreground="#FFE3B341" Margin="0,0,0,4" />
+                            <TextBlock Text="SNAPSHOT BUTTON" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiC_FFE3B341}" Margin="0,0,0,4" />
                             <TextBlock Text="Press while driving to auto-save a telemetry snapshot" FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" />
 
                             <Grid Margin="0,0,0,8">
@@ -1773,17 +1773,17 @@
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding SnapshotButtonNames}" SelectedIndex="{Binding SnapshotButtonComboIndex}" FontSize="14" Padding="6,4" Margin="0,0,6,0" />
                                 <Button Grid.Column="2" Content="Assign" Command="{Binding AssignSnapshotButtonCommand}" Padding="12,6" FontSize="14" Style="{StaticResource OutlinedButton}" ToolTip="Listen for a button press to assign as snapshot trigger" />
                             </Grid>
-                            <TextBlock Text="{Binding SnapshotAssignStatus}" FontSize="13" Foreground="#FFFFD600" FontWeight="Bold" Visibility="{Binding SnapshotAssignStatus, Converter={StaticResource NotEmptyToVis}}" />
-                            <TextBlock Text="{Binding ButtonDetectionText}" FontSize="13" Foreground="#FFFFD600" FontWeight="Bold" />
+                            <TextBlock Text="{Binding SnapshotAssignStatus}" FontSize="13" Foreground="{DynamicResource UiWarn}" FontWeight="Bold" Visibility="{Binding SnapshotAssignStatus, Converter={StaticResource NotEmptyToVis}}" />
+                            <TextBlock Text="{Binding ButtonDetectionText}" FontSize="13" Foreground="{DynamicResource UiWarn}" FontWeight="Bold" />
                             <TextBlock Text="Uses your FFB wheel device. Select a button easy to reach while driving." FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,6,0,0" />
                         </StackPanel>
                     </Border>
 
                     <!-- Panic Stop Button Card -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="20,16" Margin="0,0,0,16"
-                            BorderThickness="1" BorderBrush="#33FF7B72">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="{DynamicResource UiC_33FF7B72}">
                         <StackPanel>
-                            <TextBlock Text="PANIC STOP BUTTON" FontSize="12" FontWeight="Bold" Foreground="#FFFF7B72" Margin="0,0,0,4" />
+                            <TextBlock Text="PANIC STOP BUTTON" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiSalmon}" Margin="0,0,0,4" />
                             <TextBlock Text="Assign a button on a SEPARATE device (e.g. button box) as hardware panic stop. Immediately zeros all FFB output." FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" />
 
                             <Grid Margin="0,0,0,10">
@@ -1814,14 +1814,14 @@
                                 <Button Grid.Column="2" Content="Assign" Command="{Binding AssignPanicButtonCommand}" Padding="12,6" FontSize="14" Style="{StaticResource OutlinedButton}" ToolTip="Listen for a button press to assign as panic stop" />
                             </Grid>
 
-                            <TextBlock Text="{Binding PanicAssignStatus}" FontSize="13" Foreground="#FFFFD600" FontWeight="Bold" Visibility="{Binding PanicAssignStatus, Converter={StaticResource NotEmptyToVis}}" />
+                            <TextBlock Text="{Binding PanicAssignStatus}" FontSize="13" Foreground="{DynamicResource UiWarn}" FontWeight="Bold" Visibility="{Binding PanicAssignStatus, Converter={StaticResource NotEmptyToVis}}" />
                         </StackPanel>
                     </Border>
 
                     <!-- Panic Info -->
-                    <Border Background="#FF1A1A2E" CornerRadius="6" Padding="14,10"
-                            BorderThickness="1" BorderBrush="#333355">
-                        <TextBlock Text="The panic device is opened in non-exclusive mode, so it won't conflict with the game or your FFB wheel." FontSize="13" Foreground="#FF9999CC" TextWrapping="Wrap" />
+                    <Border Background="{DynamicResource UiC_FF1A1A2E}" CornerRadius="{DynamicResource UiR6}" Padding="14,10"
+                            BorderThickness="1" BorderBrush="{DynamicResource UiTrack}">
+                        <TextBlock Text="The panic device is opened in non-exclusive mode, so it won't conflict with the game or your FFB wheel." FontSize="13" Foreground="{DynamicResource UiC_FF9999CC}" TextWrapping="Wrap" />
                     </Border>
                 </StackPanel>
             </ScrollViewer>
@@ -1836,10 +1836,10 @@
                                FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap" />
 
                     <!-- Not on AC: say so up front -->
-                    <Border Background="#1A79C0FF" BorderBrush="#6679C0FF" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,16"
+                    <Border Background="{DynamicResource UiC_1A79C0FF}" BorderBrush="{DynamicResource UiC_6679C0FF}" BorderThickness="1" CornerRadius="{DynamicResource UiR6}" Padding="12,10" Margin="0,0,0,16"
                             Visibility="{Binding IsAssettoCorsa, Converter={StaticResource InvertBoolToVis}}">
-                        <TextBlock FontSize="13" Foreground="#FFE6EDF3" TextWrapping="Wrap">
-                            <Run Text="{Binding GameDisplayName, Mode=OneWay, FallbackValue='This game'}" FontWeight="Bold" Foreground="#FF79C0FF" />
+                        <TextBlock FontSize="13" Foreground="{DynamicResource UiText}" TextWrapping="Wrap">
+                            <Run Text="{Binding GameDisplayName, Mode=OneWay, FallbackValue='This game'}" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" />
                             <Run Text=" is selected — nothing to set up here. You can still prepare Assetto Corsa below; the game doesn't need to be running." />
                         </TextBlock>
                     </Border>
@@ -1848,11 +1848,11 @@
                          Always visible on purpose: driver install and axis
                          binding need neither the game selected nor running.
                          (Live bridge state engages on its own once AC runs.) -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="8" Padding="16,14" Margin="0,0,0,16"
-                            BorderThickness="1" BorderBrush="#3347A15C">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
+                            BorderThickness="1" BorderBrush="{DynamicResource UiC_3347A15C}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
-                                <TextBlock Text="ONE-TIME SETUP — WORK THROUGH THE TABS LEFT TO RIGHT" FontSize="12" FontWeight="Bold" Foreground="#FF7EE787" VerticalAlignment="Center" />
+                                <TextBlock Text="ONE-TIME SETUP — WORK THROUGH THE TABS LEFT TO RIGHT" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiLime}" VerticalAlignment="Center" />
                                 <TextBlock Text="{Binding GameDisplayName}" FontSize="11"
                                            Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
@@ -1870,11 +1870,11 @@
                                              Checked="OnSubTabChecked" Style="{StaticResource SubTabStyle}" />
                             </WrapPanel>
                             <StackPanel x:Name="Ac_Driver">
-                            <TextBlock Text="Install the virtual wheel (vJoy driver)" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                            <TextBlock Text="Install the virtual wheel (vJoy driver)" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiText}" Margin="0,0,0,4" />
                             <WrapPanel Orientation="Horizontal" Margin="18,0,0,0">
                                 <Button Content="Install driver" Command="{Binding InstallVJoyDriverCommand}"
                                         Height="30" Padding="12,0"
-                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                         BorderThickness="0" Cursor="Hand" FontSize="12"
                                         ToolTip="Downloads the vJoy driver, checks it, and installs it (one admin prompt). Reboot afterwards." />
                                 <TextBlock FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0">
@@ -1882,11 +1882,11 @@
                                         <Run.Style>
                                             <Style TargetType="Run">
                                                 <Setter Property="Text" Value="✓ ready" />
-                                                <Setter Property="Foreground" Value="#FF7EE787" />
+                                                <Setter Property="Foreground" Value="{DynamicResource UiLime}" />
                                                 <Style.Triggers>
                                                 <DataTrigger Binding="{Binding VJoyDriverPresent}" Value="False">
                                                     <Setter Property="Text" Value="✗ not installed yet — hit Install driver below (one admin prompt, usually no reboot)" />
-                                                    <Setter Property="Foreground" Value="#FFFF7A7A" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource UiC_FFFF7A7A}" />
                                                 </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -1900,29 +1900,29 @@
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                                 <CheckBox IsChecked="{Binding AcVJoyBridgeEnabled, Mode=TwoWay}" VerticalAlignment="Center"
-                                          Content="Send my wheel and pedals to the game" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Cursor="Hand" />
+                                          Content="Send my wheel and pedals to the game" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiText}" Cursor="Hand" />
                             </StackPanel>
-                            <TextBlock Text="{Binding VJoyBridgeStatus}" FontSize="12" Foreground="#FF7EE787"
+                            <TextBlock Text="{Binding VJoyBridgeStatus}" FontSize="12" Foreground="{DynamicResource UiLime}"
                                        TextWrapping="Wrap" Margin="18,0,0,10" />
 
                             </StackPanel>
                             <StackPanel x:Name="Ac_Pedals" Visibility="Collapsed">
-                            <TextBlock Text="Press each pedal — all three bars should move:" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                            <TextBlock Text="Press each pedal — all three bars should move:" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiText}" Margin="0,0,0,4" />
                             <StackPanel Margin="18,0,0,0">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                                     <TextBlock Text="Gas" Width="52" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
-                                    <ProgressBar Value="{Binding SetupPedalGas, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="#FF4CAF50" />
-                                    <TextBlock Text="{Binding SetupPedalGas, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="#FF4CAF50" Margin="4,0,0,0" />
+                                    <ProgressBar Value="{Binding SetupPedalGas, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="{DynamicResource UiGood}" />
+                                    <TextBlock Text="{Binding SetupPedalGas, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="{DynamicResource UiGood}" Margin="4,0,0,0" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                                     <TextBlock Text="Brake" Width="52" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
-                                    <ProgressBar Value="{Binding SetupPedalBrake, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="#FFE53935" />
-                                    <TextBlock Text="{Binding SetupPedalBrake, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="#FFE53935" Margin="4,0,0,0" />
+                                    <ProgressBar Value="{Binding SetupPedalBrake, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="{DynamicResource UiBad}" />
+                                    <TextBlock Text="{Binding SetupPedalBrake, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="{DynamicResource UiBad}" Margin="4,0,0,0" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                     <TextBlock Text="Clutch" Width="52" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
-                                    <ProgressBar Value="{Binding SetupPedalClutch, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="#FFFF9800" />
-                                    <TextBlock Text="{Binding SetupPedalClutch, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="#FFFF9800" Margin="4,0,0,0" />
+                                    <ProgressBar Value="{Binding SetupPedalClutch, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="{DynamicResource UiOrange}" />
+                                    <TextBlock Text="{Binding SetupPedalClutch, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="{DynamicResource UiOrange}" Margin="4,0,0,0" />
                                 </StackPanel>
                                 <TextBlock FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,6">
                                     <Run Text="Reading from: " /><Run Text="{Binding SetupPedalSource, Mode=OneWay}" FontWeight="Bold" />
@@ -1932,65 +1932,65 @@
                                            Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,6" />
                                 <Button Content="Open Pedals settings" Click="OnOpenPedalsSection" HorizontalAlignment="Left"
                                         Height="28" Padding="10,0" Margin="0,0,0,10"
-                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                         BorderThickness="0" Cursor="Hand" FontSize="12" />
                             </StackPanel>
 
                             </StackPanel>
                             <StackPanel x:Name="Ac_Buttons" Visibility="Collapsed">
-                            <TextBlock Text="Wheel buttons (gears, pits, lights…): press to assign each task, then push them to the game on the Apply to AC tab." FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" TextWrapping="Wrap" />
+                            <TextBlock Text="Wheel buttons (gears, pits, lights…): press to assign each task, then push them to the game on the Apply to AC tab." FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiText}" Margin="0,0,0,4" TextWrapping="Wrap" />
                             <WrapPanel Orientation="Horizontal" Margin="18,0,0,4">
                                 <TextBlock Text="{Binding VJoyButtonsText}" FontSize="11" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" TextWrapping="Wrap" />
                                 <Button Content="Match buttons to wheel" Command="{Binding MatchVJoyButtonsCommand}"
                                         Height="26" Padding="10,0" Margin="8,0,0,0"
-                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                         BorderThickness="0" Cursor="Hand" FontSize="11"
                                         ToolTip="Sets vJoy to 128 buttons (matches any racing wheel). One admin prompt, done forever." />
                                 <Button Content="Open vJoyConf" Command="{Binding OpenVJoyConfCommand}"
                                         Height="26" Padding="10,0" Margin="8,0,0,0"
-                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                         BorderThickness="0" Cursor="Hand" FontSize="11"
                                         ToolTip="Needs more vJoy buttons than the device offers? Change the count here (admin), Apply, then come back." />
                                 <Button Content="Reset 1:1" Command="{Binding ResetVJoyButtonMapCommand}"
                                         Height="26" Padding="10,0" Margin="8,0,0,0"
-                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                         BorderThickness="0" Cursor="Hand" FontSize="11"
                                         ToolTip="Repairs a scrambled map: every vJoy slot follows its own wheel button again. Task list is kept." />
                             </WrapPanel>
                             <TextBlock Margin="18,0,0,4" FontSize="11" Foreground="{StaticResource TextDimBrush}">
-                                <Run Text="Last wheel press: " /><Run Text="{Binding LastWheelButtonText, Mode=OneWay}" FontWeight="Bold" Foreground="#FFE6EDF3" />
+                                <Run Text="Last wheel press: " /><Run Text="{Binding LastWheelButtonText, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource UiText}" />
                             </TextBlock>
                             <ItemsControl ItemsSource="{Binding AcTaskRows}" Margin="18,0,0,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                            <TextBlock Text="{Binding DisplayName}" Width="130" FontSize="12" Foreground="#FFE6EDF3" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding DisplayName}" Width="130" FontSize="12" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
                                             <TextBlock Text="{Binding Assignment, Mode=OneWay}" Width="190" FontSize="11" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                             <Button Content="Press to assign" Command="{Binding DataContext.CaptureAcTaskCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding Section}"
                                                     Height="26" Padding="10,0" Margin="8,0,0,0"
-                                                    Background="#FF21262D" Foreground="#FFE6EDF3"
+                                                    Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                                     BorderThickness="0" Cursor="Hand" FontSize="11" />
                                             <Button Content="Clear" Command="{Binding DataContext.ClearAcTaskCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding Section}"
                                                     Height="26" Padding="10,0" Margin="8,0,0,0"
-                                                    Background="#FF21262D" Foreground="#FFE6EDF3"
+                                                    Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                                     BorderThickness="0" Cursor="Hand" FontSize="11" />
                                         </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <TextBlock Text="{Binding VJoyTaskCapturePrompt}" FontSize="12" Foreground="#FF7EE787"
+                            <TextBlock Text="{Binding VJoyTaskCapturePrompt}" FontSize="12" Foreground="{DynamicResource UiLime}"
                                        TextWrapping="Wrap" Margin="18,4,0,10"
                                        Visibility="{Binding VJoyTaskCapturePrompt, Converter={StaticResource NotEmptyToVis}}" />
 
                             </StackPanel>
                             <StackPanel x:Name="Ac_Apply" Visibility="Collapsed">
-                            <TextBlock Text="Point Assetto Corsa's controls at the virtual wheel (close the game first):" FontSize="13" FontWeight="Bold" Foreground="#FFE6EDF3" Margin="0,0,0,4" />
+                            <TextBlock Text="Point Assetto Corsa's controls at the virtual wheel (close the game first):" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiText}" Margin="0,0,0,4" />
                             <StackPanel Orientation="Horizontal" Margin="18,0,0,0">
                                 <Button Content="Point Assetto Corsa at the virtual wheel" Command="{Binding WriteAcVJoyBindingsCommand}"
                                         Height="30" Padding="12,0"
-                                        Background="#FF21262D" Foreground="#FFE6EDF3"
+                                        Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
                                         BorderThickness="0" Cursor="Hand" FontSize="12"
                                         ToolTip="Switches steering, pedals and your assigned button tasks in the game's settings file to the virtual wheel. Keyboard lines and everything else untouched; a backup is kept." />
                             </StackPanel>
