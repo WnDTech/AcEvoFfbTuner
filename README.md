@@ -167,6 +167,7 @@ Work in progress — the Pedals tab is tagged **WIP** in the Devices page.
 - Detects wheel type: Direct Drive, Belt-Driven, Gear-Driven
 - Auto-detects wheelbase torque from device name (Moza R5/R9/R12/R16/R21, Fanatec CSL DD/DD1/DD2, Simagic Alpha/Mini, Simucube, Logitech G RS50/G29/G920, Thrustmaster, and more)
 - Auto-detects FFB strength and steering lock from AC EVO shared memory
+- **Setup Wizard** — one guided flow: game, wheel + direction test, accessories, optional strength drive, save with auto-load scope (class / car / car+track)
 
 ### Wheel LED Controller
 
@@ -191,7 +192,7 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 - Track gazetteer of 1,200+ circuits (curated list + Wikidata, CC0) with Open Racetrack DB layouts (ODbL) chosen by the game's lap length
 - Force heatmap and diagnostic heatmap overlay (snap events, oscillations, clipping, anomalies)
 - Popout overlay window for second-screen use during track creation
-- **Live Map page** — every car on OSM satellite tiles (LMU, R3E, AC EVO, ACC), placed by a shape fit of your driven lap to the real circuit; class-coloured discs with race position and per-car flag rings, class legend and Field standings panel
+- **Live Map page** — every car on OSM satellite tiles (LMU, R3E, AC EVO, ACC), placed by a shape fit of your driven lap to the real circuit; class-coloured discs with race position and per-car flag rings, class legend and Field standings panel, with car names (your car in the header, class and model per car)
 - **FFB layers on the Live Map** — FFB Heatmap and FFB Diagnostics drawn on the real circuit, with corner-tagged events, a Worst Places list and one-click profile recommendations
 - **Fast, smooth splash screen** — the app loads while the splash shows, with a real progress bar for each startup step
 - **Real corner names** — matched by position from OpenStreetMap and cached; stable corner numbering from the start/finish line
@@ -257,6 +258,7 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 - **Game FFB Detection** — Warns if in-game FFB is not set to 0
 - **Panic Stop** — Immediately zeroes all FFB output and disconnects from the device
 - **Custom Slider Controls** — Editable values, logarithmic scale, undo, reset, context menu, section color theming
+- **Workshop themes** — Workshop (light) and Workshop Dark: warm greys, square corners, thin sliders, orange only for live state and changed values
 - **Collapsible Sidebar** — Icon-only mode for more screen real estate, wider 200px default layout
 
 ## Tech Stack

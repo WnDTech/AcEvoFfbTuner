@@ -50,6 +50,30 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.29.0-beta.6",
+            Date = new DateTime(2026, 11, 10),
+            Title = "New Workshop look + one Setup Wizard",
+            Features =
+            [
+                "New Workshop and Workshop Dark themes (Settings → Theme): warm greys, square corners, cleaner type, thin sliders, and orange used only for live state and values you've changed. Your current theme is unchanged until you pick one",
+                "One Setup Wizard: Auto Setup and Settings open the same guided flow (game, wheel and direction test, accessories, optional strength drive, save with auto-load scope)",
+                "Live Map shows car names: your car in a CAR tile in the header, and class and car model for each car in the Field list (R3E)",
+            ],
+            Improvements =
+            [
+                "Setup Wizard save scopes (class / car / car+track) are always selectable, with auto-filled, editable match fields",
+                "Car detection for ACC (from the static page) and R3E (car and class names)",
+                "Track layouts: a refresh never replaces a better cached layout with a lower-quality one, and cached fallback layouts upgrade to the real OpenStreetMap circuit when it becomes available",
+            ],
+            Fixes =
+            [
+                "Profiles saved with Save As or the wizard never auto-loaded (the game's display name was stored instead of its match string); General profiles now save with no matches",
+                "The Setup Wizard could crash when opened",
+                "Track layouts could fall back to an inaccurate draft (e.g. Red Bull Ring) when the map service rate limit was hit",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.29.0-beta.5",
             Date = new DateTime(2026, 11, 9),
             Title = "Smoother, faster splash screen",
