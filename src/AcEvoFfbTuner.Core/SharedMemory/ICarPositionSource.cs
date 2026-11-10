@@ -3,12 +3,13 @@ namespace AcEvoFfbTuner.Core.SharedMemory;
 /// <summary>
 /// One car in the session: world position (game X/Z plane, meters), lap fraction
 /// (0 = unknown — e.g. AC EVO publishes no per-car lap position), flags, the game's class
-/// name ("" = unknown; LMU mVehicleClass, R3E class name), the race number ("" = unknown)
-/// and the flag currently shown to that car.
+/// name ("" = unknown; LMU mVehicleClass, R3E class name), the race number ("" = unknown),
+/// the flag currently shown to that car and the car model ("" = unknown; R3E resolves
+/// driver_info.model_id via r3e-data.json — LMU/ACC/EVO publish no per-car model).
 /// </summary>
 public readonly record struct CarPosition(
     int Id, float X, float Z, float Npos, bool IsPlayer, bool InPits, int Place, string Name,
-    string CarClass = "", string Number = "", CarFlag Flag = CarFlag.None);
+    string CarClass = "", string Number = "", CarFlag Flag = CarFlag.None, string CarModel = "");
 
 /// <summary>
 /// Optional reader capability: positions of every car in the session, player

@@ -611,6 +611,11 @@ public partial class LiveTrackMapPage : UserControl
             ClassValue.Text = "--";
         }
 
+        // Player's car: the game's per-car model (R3E) or the detected car (every game).
+        string myCar = PlayerCarName(me);
+        CarValue.Text = myCar.Length > 0 ? myCar : "--";
+        CarValue.ToolTip = myCar.Length > 0 ? myCar : null;
+
         // Legend: one chip per class family present, ordered by size of the field.
         var groups = list
             .Select(c => (c, cat: CarClasses.Categorize(c.CarClass)))
@@ -661,7 +666,12 @@ public partial class LiveTrackMapPage : UserControl
             row.Place = c.Place > 0 ? c.Place.ToString() : "–";
             row.Name = c.Name.Length > 0 ? c.Name : (c.IsPlayer ? "You" : $"Car {c.Id + 1}");
             row.Number = c.Number.Length > 0 ? $"#{c.Number}" : "";
-            row.ClassLabel = c.CarClass.Length > 0 ? c.CarClass : (c.IsPlayer ? "You" : "");
+            // "GT3 · Audi R8 LMS" — class and car model where the game provides them.
+            string model = c.IsPlayer ? PlayerCarName(c) : c.CarModel;
+            var parts = new List<string>(2);
+            if (c.CarClass.Length > 0) parts.Add(c.CarClass);
+            if (model.Length > 0 && !model.Equals(c.CarClass, StringComparison.OrdinalIgnoreCase)) parts.Add(model);
+            row.ClassLabel = parts.Count > 0 ? string.Join(" · ", parts) : (c.IsPlayer ? "You" : "");
             row.ClassBrush = CarClassPalette.Brush(CarClassPalette.ArgbFor(cat, c.CarClass));
             row.IsPlayer = c.IsPlayer;
             row.Tag = CarFlagPalette.Tag(c.Flag, c.InPits);
@@ -670,6 +680,15 @@ public partial class LiveTrackMapPage : UserControl
         FieldCount.Text = list.Count > 0 ? $"{list.Count} cars" : "";
         FieldEmpty.Visibility = list.Count > 1 ? Visibility.Collapsed : Visibility.Visible;
         FieldPanel.Visibility = FieldToggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The player's car name: the per-car model from the field data when the game has one
+    /// (R3E), else the app's detected car (EVO car_model, ACC static carModel, R3E/LMU resolved).</summary>
+    private string PlayerCarName(CarPosition? me)
+    {
+        if (me is { CarModel.Length: > 0 } m) return m.CarModel;
+        return DataContext is MainViewModel vm && !string.IsNullOrWhiteSpace(vm.DetectedCarModel)
+            ? vm.DetectedCarModel.Trim() : "";
     }
 
     private static bool IsValidGps(double lat, double lon) =>

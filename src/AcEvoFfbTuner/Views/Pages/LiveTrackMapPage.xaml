@@ -149,6 +149,12 @@
                             </StackPanel>
                         </StackPanel>
                     </Border>
+                    <Border Style="{StaticResource StatTile}">
+                        <StackPanel>
+                            <TextBlock Text="CAR" Style="{StaticResource StatLabel}" />
+                            <TextBlock x:Name="CarValue" Text="--" Style="{StaticResource StatValue}" />
+                        </StackPanel>
+                    </Border>
                 </UniformGrid>
             </Grid>
         </Border>

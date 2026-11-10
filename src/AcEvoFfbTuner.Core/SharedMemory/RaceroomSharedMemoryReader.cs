@@ -28,6 +28,7 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
     private const int DD_NAME = 0;
     private const int DD_CAR_NUMBER = 64;
     private const int DD_CLASS_ID = 68;   // driver_info: name[64], car_number@64, class_id@68
+    private const int DD_MODEL_ID = 72;   // model_id follows class_id (…team@76 livery@80 manufacturer@84 user@88 slot@92)
     private const int DD_SLOT_ID = 92;
     private const int DD_FINISH_STATUS = 128;
     private const int DD_PLACE = 132;
@@ -813,7 +814,8 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
                 Name: System.Text.Encoding.UTF8.GetString(buf, e + DD_NAME, nameLen),
                 CarClass: R3eClassNames.Get(BitConverter.ToInt32(buf, e + DD_CLASS_ID)),
                 Number: carNumber > 0 ? carNumber.ToString() : "",
-                Flag: CarFlags.FromR3e(BitConverter.ToInt32(buf, e + DD_FINISH_STATUS), yellowSector, penalty)));
+                Flag: CarFlags.FromR3e(BitConverter.ToInt32(buf, e + DD_FINISH_STATUS), yellowSector, penalty),
+                CarModel: R3eClassNames.GetCar(BitConverter.ToInt32(buf, e + DD_MODEL_ID))));
         }
     }
 
