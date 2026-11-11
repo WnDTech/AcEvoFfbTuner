@@ -21,13 +21,27 @@
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="CAR" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
-                <Grid VerticalAlignment="Center" Margin="0,0,24,0">
-                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextDimBrush}"
-                               Text="No car detected" />
-                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource UiInfo}"
-                               Text="{Binding DetectedCarModel}"
-                               Visibility="{Binding DetectedCarModel, Converter={StaticResource NotEmptyToVis}}" />
-                </Grid>
+                <!-- One text: the placeholder used to stay visible under the car name and overlap it. -->
+                <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,24,0"
+                           MaxWidth="320" TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding DetectedCarDisplayName}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="{Binding DetectedCarDisplayName}" />
+                            <Setter Property="Foreground" Value="{DynamicResource UiInfo}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DetectedCarDisplayName}" Value="">
+                                    <Setter Property="Text" Value="No car detected" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding DetectedCarDisplayName}" Value="{x:Null}">
+                                    <Setter Property="Text" Value="No car detected" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
 
                 <Border Width="1" Background="{DynamicResource BorderBrush}" Margin="0,2,24,2" />
 

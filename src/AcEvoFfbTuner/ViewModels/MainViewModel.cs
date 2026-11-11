@@ -1362,6 +1362,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _detectedCarModel = "";
 
+    /// <summary>The car for display (LMU: the model, not the entry). Matching keeps DetectedCarModel.</summary>
+    [ObservableProperty]
+    private string _detectedCarDisplayName = "";
+
     [ObservableProperty]
     private bool _isPerCarAutoLoadEnabled = true;
 
@@ -3053,14 +3057,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             $"PeakFx: {s.PeakFx:F4}\n" +
             $"PeakFy: {s.PeakFy:F4}"));
 
-        _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
+        _coachService.SyncLiveContext(GameDisplayName, DetectedCarDisplayName, DetectedTrackName, DetectedTrackConfig);
         var csvData = new SnapshotCsvData
         {
             ProfileName = SelectedProfile?.Name ?? "Live",
             TorqueNm = 5.5f,
             StatsText = statsText,
             Game = GameDisplayName,
-            CarModel = DetectedCarModel,
+            CarModel = DetectedCarDisplayName,
             TrackName = DetectedTrackName,
             TrackConfig = DetectedTrackConfig
         };
@@ -3184,7 +3188,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             };
 
             CoachSessionState = CoachSessionState.Analyzing;
-            _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
+            _coachService.SyncLiveContext(GameDisplayName, DetectedCarDisplayName, DetectedTrackName, DetectedTrackConfig);
             var result = await _coachService.AnalyzeLiveDataAsync(stats, SelectedProfile?.Name ?? "Live");
             CoachSessionState = result.State;
             CoachDataSourceLabel = _coachService.DataSourceLabel;
@@ -3460,7 +3464,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     /// Snapshot-embedded context still wins inside AnalyzeSnapshotAsync.
     /// </summary>
     private void SyncCoachContext()
-        => _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
+        => _coachService.SyncLiveContext(GameDisplayName, DetectedCarDisplayName, DetectedTrackName, DetectedTrackConfig);
 
     [RelayCommand]
     private async Task CoachAnswer(string answerId)

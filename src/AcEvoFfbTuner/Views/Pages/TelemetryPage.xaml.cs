@@ -459,7 +459,9 @@ public partial class TelemetryPage : UserControl
         sb.AppendLine($"=== FFB FULL ANALYSIS @ {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===");
         sb.AppendLine($"Profile: {prof?.Name ?? "None"}");
         sb.AppendLine($"Game: {vm?.GameDisplayName ?? "Unknown"}");
-        sb.AppendLine($"Car: {vm?.DetectedCarModel ?? ""}");
+        sb.AppendLine($"Car: {vm?.DetectedCarDisplayName ?? ""}");
+        if (vm != null && vm.DetectedCarModel != vm.DetectedCarDisplayName)
+            sb.AppendLine($"Car entry: {vm.DetectedCarModel}");
         sb.AppendLine($"Track: {vm?.DetectedTrackName ?? ""}  Config: {vm?.DetectedTrackConfig ?? ""}");
         sb.AppendLine($"ProfileScope: {prof?.Scope.ToString() ?? "Unknown"}  CarMatch: {prof?.CarMatch ?? ""}  TrackMatch: {prof?.TrackMatch ?? ""}  GameMatch: {prof?.GameMatch ?? ""}");
         sb.AppendLine($"TyreCompoundFront: {vm?.CurrentTyreCompoundFront ?? ""}  Category: {vm?.CurrentTyreCategoryName ?? "Unknown"}");

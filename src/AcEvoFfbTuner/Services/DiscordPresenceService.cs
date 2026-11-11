@@ -128,7 +128,7 @@ public sealed class DiscordPresenceService : IDisposable
             LmuSharedMemoryReader => "Le Mans Ultimate",
             _ => "AC EVO"
         };
-        var car = _loop.DetectedCarModel;
+        var car = _loop.DetectedCarDisplayName;
         var track = _loop.DetectedTrackName;
         var connected = _loop.IsGameConnected && _loop.LatestRaw?.IsEngineRunning == true;
         if (raw != null && proc != null)

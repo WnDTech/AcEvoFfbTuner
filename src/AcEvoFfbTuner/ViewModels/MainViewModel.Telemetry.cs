@@ -49,12 +49,14 @@ public sealed partial class MainViewModel
     private void OnCarModelDetected(string carModel)
     {
         DetectedCarModel = carModel;
+        DetectedCarDisplayName = _telemetryLoop.DetectedCarDisplayName;
         string carClass = _telemetryLoop.DetectedCarClass;
-        string carLabel = string.IsNullOrEmpty(carClass) ? carModel : $"{carModel} [{carClass}]";
+        string shown = DetectedCarDisplayName == carModel ? carModel : $"{DetectedCarDisplayName} ({carModel})";
+        string carLabel = string.IsNullOrEmpty(carClass) ? shown : $"{shown} [{carClass}]";
         StatusText = $"Car detected: {carLabel}";
         if (!string.IsNullOrEmpty(carClass))
             AddSystemLog($"Car class: {carClass} — use this as Car Match for a per-car-type profile");
-        _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
+        _coachService.SyncLiveContext(GameDisplayName, DetectedCarDisplayName, DetectedTrackName, DetectedTrackConfig);
 
         if (!_appSettings.AutoSwitchProfiles || _appSettings.ProfileLocked) return;
 
@@ -93,7 +95,7 @@ public sealed partial class MainViewModel
     private void OnTrackChanged(string newTrackName)
     {
         DetectedTrackName = newTrackName;
-        _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
+        _coachService.SyncLiveContext(GameDisplayName, DetectedCarDisplayName, DetectedTrackName, DetectedTrackConfig);
         _mapClearedByUser = false;
         _lastAutoLoadedTrack = null;
         IsTrackMapAvailable = false;
@@ -118,7 +120,7 @@ public sealed partial class MainViewModel
         DetectedTrackName = trackName;
         DetectedTrackConfig = config;
         OfficialTrackLengthM = lengthM;
-        _coachService.SyncLiveContext(GameDisplayName, DetectedCarModel, DetectedTrackName, DetectedTrackConfig);
+        _coachService.SyncLiveContext(GameDisplayName, DetectedCarDisplayName, DetectedTrackName, DetectedTrackConfig);
 
         var calibration = SatelliteMapService.LoadCalibration(trackName);
         if (calibration != null)
@@ -218,6 +220,11 @@ public sealed partial class MainViewModel
     {
         var raw = _telemetryLoop.LatestRaw;
         var processed = _telemetryLoop.LatestProcessed;
+
+        // LMU's model field can land a tick after the entry-name change that fires CarModelChanged.
+        var carDisplay = _telemetryLoop.DetectedCarDisplayName;
+        if (!string.IsNullOrEmpty(DetectedCarModel) && carDisplay != DetectedCarDisplayName)
+            DetectedCarDisplayName = carDisplay;
 
         // Live pedal bars work WITHOUT clicking Start — reads physical pedal
         // devices directly (game telemetry used as fallback when available).

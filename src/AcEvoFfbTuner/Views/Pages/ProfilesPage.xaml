@@ -104,7 +104,7 @@
                                       Selectable="True">
                     <controls:SectionCard.SummaryContent>
                         <TextBlock FontSize="13" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap">
-                            <Run Text="{Binding DetectedCarModel, StringFormat='Car: {0}'}" Foreground="{DynamicResource UiInfo}" />
+                            <Run Text="{Binding DetectedCarDisplayName, StringFormat='Car: {0}'}" Foreground="{DynamicResource UiInfo}" />
                             <Run Text="  ·  " /><Run Text="{Binding DetectedTrackName, StringFormat='Track: {0}'}" Foreground="{DynamicResource UiInfo}" />
                             <Run Text="  ·  " /><Run Text="{Binding IsPerCarAutoLoadEnabled, StringFormat='Auto-load: {0}'}" Foreground="{DynamicResource UiInfo}" />
                         </TextBlock>
@@ -257,7 +257,7 @@
                                         <Style TargetType="TextBlock">
                                             <Setter Property="Foreground" Value="{DynamicResource UiC_FF66BB6A}" />
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding DetectedCarModel}" Value="">
+                                                <DataTrigger Binding="{Binding DetectedCarDisplayName}" Value="">
                                                     <Setter Property="Foreground" Value="{DynamicResource UiBorderStrong}" />
                                                     <Setter Property="FontWeight" Value="Normal" />
                                                     <Setter Property="Text" Value="No car detected — start a session" />
@@ -266,8 +266,11 @@
                                         </Style>
                                     </TextBlock.Style>
                                     <TextBlock.Text>
-                                        <Binding Path="DetectedCarModel" />
+                                        <Binding Path="DetectedCarDisplayName" />
                                     </TextBlock.Text>
+                                    <TextBlock.ToolTip>
+                                        <TextBlock Text="{Binding DetectedCarModel, StringFormat='Car Match uses the game id: {0}'}" />
+                                    </TextBlock.ToolTip>
                                 </TextBlock>
 
                                 <Border Background="{DynamicResource UiBorder}" Height="1" Margin="0,0,0,14" />

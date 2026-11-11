@@ -687,8 +687,8 @@ public partial class LiveTrackMapPage : UserControl
     private string PlayerCarName(CarPosition? me)
     {
         if (me is { CarModel.Length: > 0 } m) return m.CarModel;
-        return DataContext is MainViewModel vm && !string.IsNullOrWhiteSpace(vm.DetectedCarModel)
-            ? vm.DetectedCarModel.Trim() : "";
+        return DataContext is MainViewModel vm && !string.IsNullOrWhiteSpace(vm.DetectedCarDisplayName)
+            ? vm.DetectedCarDisplayName.Trim() : "";
     }
 
     private static bool IsValidGps(double lat, double lon) =>

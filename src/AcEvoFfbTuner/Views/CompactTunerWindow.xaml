@@ -79,7 +79,7 @@
                     <WrapPanel Margin="0,0,0,6">
                         <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
                             <TextBlock Text="CAR" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBlock Text="{Binding DetectedCarModel, FallbackValue='—', TargetNullValue='—'}" FontSize="11" Foreground="{DynamicResource UiInfo}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding DetectedCarDisplayName, FallbackValue='—', TargetNullValue='—'}" FontSize="11" Foreground="{DynamicResource UiInfo}" VerticalAlignment="Center" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
                             <TextBlock Text="PEAK" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />

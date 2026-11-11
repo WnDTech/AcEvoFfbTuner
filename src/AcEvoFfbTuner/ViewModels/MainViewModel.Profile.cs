@@ -82,7 +82,7 @@ public sealed partial class MainViewModel
         // ends any A/B context (slots kept, active marker cleared).
         _telemetryLoop.LapRecorder.ActiveProfileName = value.Name;
         _telemetryLoop.LapRecorder.ActiveGameName = string.IsNullOrWhiteSpace(value.GameMatch) ? SelectedGame.ToString() : value.GameMatch;
-        _telemetryLoop.LapRecorder.ActiveCarName = string.IsNullOrWhiteSpace(value.CarMatch) ? DetectedCarModel : value.CarMatch;
+        _telemetryLoop.LapRecorder.ActiveCarName = string.IsNullOrWhiteSpace(value.CarMatch) ? DetectedCarDisplayName : value.CarMatch;
         _telemetryLoop.LapRecorder.ActiveTrackName = string.IsNullOrWhiteSpace(value.TrackMatch) ? DetectedTrackName : value.TrackMatch;
         AbActiveSlot = "";
         RefreshAbLapSummary();
@@ -415,7 +415,7 @@ public sealed partial class MainViewModel
         var previewParts = new List<string>
         {
             GameDisplayName,
-            string.IsNullOrWhiteSpace(profile.CarMatch) ? DetectedCarModel : profile.CarMatch,
+            string.IsNullOrWhiteSpace(profile.CarMatch) ? DetectedCarDisplayName : profile.CarMatch,
             string.IsNullOrWhiteSpace(profile.TrackMatch) ? DetectedTrackName : profile.TrackMatch
         };
         var preview = string.Join(" · ", previewParts.Where(p => !string.IsNullOrWhiteSpace(p)));

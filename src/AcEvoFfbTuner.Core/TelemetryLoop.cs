@@ -211,6 +211,11 @@ public sealed class TelemetryLoop : IDisposable
     public string DetectedTrackConfig => _lastDetectedTrackConfig;
     public float OfficialTrackLengthM => _lastOfficialTrackLengthM;
     public string DetectedCarModel => _lastDetectedCarModel;
+    /// <summary>The car as people name it, for display. LMU: the car model ('McLaren 720S LMGT3
+    /// Evo') — DetectedCarModel there is the entry/livery ('Garage 59 2026 #10:LM') and stays the
+    /// profile CarMatch key. Every other game: the same as DetectedCarModel.</summary>
+    public string DetectedCarDisplayName =>
+        _reader is LmuSharedMemoryReader { VehicleModel: { Length: > 0 } model } ? model : _lastDetectedCarModel;
     /// <summary>Car class/type where the game exposes one (LMU scoring
     /// mVehicleClass); empty for every other game.</summary>
     public string DetectedCarClass => _lastDetectedCarClass;
@@ -1166,7 +1171,7 @@ public sealed class TelemetryLoop : IDisposable
             {
                 // Driver Coach: lap timing + inputs per waypoint (telemetry only, no FFB effect).
                 Coach.Update(PositionDetector.Map, raw.CurrentLap, pos.NearestWaypointIndex,
-                    raw.SpeedKmh, raw.BrakeInput, raw.GasInput, raw.IsInPitLane, _lastDetectedCarModel,
+                    raw.SpeedKmh, raw.BrakeInput, raw.GasInput, raw.IsInPitLane, DetectedCarDisplayName,
                     raw.SteerAngle, raw.LocalAngularVel is { Length: > 1 } av ? av[1] : 0f);
 
                 var processed = LatestProcessed;

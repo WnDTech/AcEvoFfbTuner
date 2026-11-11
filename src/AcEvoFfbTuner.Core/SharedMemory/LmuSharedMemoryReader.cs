@@ -117,6 +117,9 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
     public string? FrontTireCompoundName { get; private set; }
     public string? RearTireCompoundName { get; private set; }
     public string? VehicleName { get; private set; }
+    /// <summary>The player's car model ('McLaren 720S LMGT3 Evo'); null when not published.
+    /// Display only — profile matching keeps using the entry string (VehicleName / CarModel).</summary>
+    public string? VehicleModel { get; private set; }
     // Player's scoring-entry mVehicleClass (e.g. the class string LMU shows in
     // the session UI). VehicleName is a livery/entry string ("Team Virage
     // #8:ELMS25"), so per-car-TYPE profiles match on this instead.
@@ -124,6 +127,11 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
     private int _vehicleClassCounter;
 
     private const int TI_VEHICLE_NAME = 32;
+    // The car MODEL ('McLaren 720S LMGT3 Evo'), unlike TI_VEHICLE_NAME which is the entry /
+    // livery ('Garage 59 2026 #10:LM'). Verified LIVE 2026-11-11 on all 5 telemetry entries of a
+    // Le Mans session (NUL-terminated, inside the 848-byte pre-wheel block).
+    private const int TI_VEHICLE_MODEL = 796;
+    private const int TI_VEHICLE_MODEL_LEN = 48;
     private const int TI_TRACK_NAME = 96;
     private const int TI_LAP_NUMBER = 20;
     private const int TI_LAP_START_ET = 24;
@@ -588,6 +596,8 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
             RearTireCompoundName = string.IsNullOrEmpty(rearCompound) || rearCompound.Length < 2 ? null : rearCompound;
             string vehicleName = LmuFieldReader.ReadStr(_rawBuffer, t + TI_VEHICLE_NAME, 64);
             VehicleName = string.IsNullOrEmpty(vehicleName) || vehicleName.Length < 3 ? null : vehicleName;
+            string vehicleModel = LmuFieldReader.ReadStr(_rawBuffer, t + TI_VEHICLE_MODEL, TI_VEHICLE_MODEL_LEN).Trim();
+            VehicleModel = vehicleModel.Length < 3 ? null : vehicleModel;
 
             // ── World position (mPos @ TI_POS, 3 doubles, meters, y-up) ──
             // This is what the track-map car dot, auto-record and Npos all consume.
@@ -1187,6 +1197,7 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
         double trackLen = _lmuScoringTrackLength > 500 ? _lmuScoringTrackLength : _lmuLapLength;
 
         _telemPosById.Clear();
+        _telemModelById.Clear();
         if (TELEM_HEADER_OFF < len)
         {
             int active = buf[TELEM_HEADER_OFF];
@@ -1196,8 +1207,11 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
                 if (off + TI_POS + 24 > len) break;
                 double x = LmuFieldReader.ReadF64(buf, off + TI_POS);
                 double z = LmuFieldReader.ReadF64(buf, off + TI_POS + 16);
+                int tid = LmuFieldReader.ReadI32(buf, off);
                 if (IsFinite(x) && IsFinite(z) && Math.Abs(x) < 50000 && Math.Abs(z) < 50000)
-                    _telemPosById[LmuFieldReader.ReadI32(buf, off)] = (x, z);
+                    _telemPosById[tid] = (x, z);
+                if (off + TI_VEHICLE_MODEL + TI_VEHICLE_MODEL_LEN <= len)
+                    _telemModelById[tid] = LmuFieldReader.ReadStr(buf, off + TI_VEHICLE_MODEL, TI_VEHICLE_MODEL_LEN).Trim();
             }
         }
 
@@ -1237,9 +1251,12 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
                 Name: LmuFieldReader.ReadStr(buf, e + SC_DRIVER_NAME_OFF, 32).Trim(),
                 CarClass: LmuFieldReader.ReadStr(buf, e + SC_VEHICLE_CLASS_OFF, 32).Trim(),
                 Number: CarFlags.LmuCarNumber(LmuFieldReader.ReadStr(buf, e + SC_NAME_OFF, 64)),
-                Flag: flag));
+                Flag: flag,
+                CarModel: _telemModelById.TryGetValue(id, out var model) && model.Length >= 3 ? model : ""));
         }
     }
+
+    private readonly Dictionary<int, string> _telemModelById = new();
 
     /// <summary>
     /// Find/validate the player's scoring entry index (hot-path safe: 104-entry scan,
