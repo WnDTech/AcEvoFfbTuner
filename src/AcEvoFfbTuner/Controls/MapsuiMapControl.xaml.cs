@@ -83,10 +83,12 @@ public partial class MapsuiMapControl : UserControl
         _map.Layers.Add(_coachLayer);
 
         // Opponents below the player's car so the player dot always draws on top.
-        _opponentLayer = new MemoryLayer("Opponents") { Features = [] };
+        // Style = null: features carry their own styles. Mapsui's default layer style draws a
+        // 32 px white disc under every point, which swamps the small opponent dots.
+        _opponentLayer = new MemoryLayer("Opponents") { Features = [], Style = null };
         _map.Layers.Add(_opponentLayer);
 
-        _carLayer = new MemoryLayer("Car") { Features = [] };
+        _carLayer = new MemoryLayer("Car") { Features = [], Style = null };
         _map.Layers.Add(_carLayer);
 
         MapCtrl.Map = _map;
@@ -643,73 +645,35 @@ public partial class MapsuiMapControl : UserControl
         RenderCarDot(longitude, latitude, Math.PI - compassHeading);
     }
 
-    // Car/opponent styles are cached and shared: the discs are re-created 10–30 times a
-    // second, and fresh Style/Pen/Brush objects per disc per frame were pure allocation
+    // Car/opponent styles are cached and shared: the markers are re-created 10–30 times a
+    // second, and fresh Style/Pen/Brush objects per marker per frame were pure allocation
     // churn (and defeat Mapsui's style-keyed render caches).
-    private readonly Dictionary<(uint argb, bool pits, bool selected), SymbolStyle> _discStyles = new();
-    private readonly Dictionary<(AcEvoFfbTuner.Core.SharedMemory.CarFlag flag, bool selected, bool top), SymbolStyle> _ringStyles = new();
-    private static readonly LabelStyle DiscLabelDark = MakeDiscLabel(Color.FromRgba(0x0D, 0x11, 0x17, 0xFF), 15);
-    private static readonly LabelStyle DiscLabelLight = MakeDiscLabel(Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF), 15);
-    // 3-digit positions (fields over 99 cars) step down so they stay inside the disc.
-    private static readonly LabelStyle DiscLabelDarkSmall = MakeDiscLabel(Color.FromRgba(0x0D, 0x11, 0x17, 0xFF), 11);
-    private static readonly LabelStyle DiscLabelLightSmall = MakeDiscLabel(Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF), 11);
-
-    // Disc geometry (SymbolScale × 32 px): 1–2 digit positions at 15 pt fill most of the disc.
-    private const double DiscScale = 0.85;
-    private const double DiscScaleSelected = 1.0;
-    private const double RingGrow = 0.22;
-    private readonly Dictionary<uint, SymbolStyle> _carDotStyles = new();
-    private readonly Dictionary<uint, SymbolStyle> _carHaloStyles = new();
-    private static readonly VectorStyle CarHeadingStyle = new()
+    private readonly Dictionary<(uint argb, bool pits, bool selected, AcEvoFfbTuner.Core.SharedMemory.CarFlag flag), SymbolStyle> _dotStyles = new();
+    private static readonly LabelStyle TagLabel = new()
     {
-        Line = new Pen { Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0xF0), Width = 3 }
+        LabelColumn = "Label",
+        ForeColor = Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF),
+        BackColor = new Brush { Color = Color.FromRgba(0x0D, 0x11, 0x17, 0xD8) },
+        Font = new Font { Size = 10, Bold = true },
+        Offset = new Offset { X = 14, Y = 0 },
+    };
+
+    // Opponent dot geometry (SymbolScale × 32 px): ~12 px dots stay narrower than the racing
+    // line at track scale so bunched cars no longer bury each other; selected cars grow a little.
+    private const double DotScale = 0.38;
+    private const double DotScaleSelected = 0.55;
+
+    // Player marker: a navigation arrow (screen px), pointing along the car's heading.
+    private const double ArrowTip = 15, ArrowBack = 10, ArrowNotch = 4, ArrowHalfWidth = 10;
+    private readonly Dictionary<uint, VectorStyle> _playerArrowStyles = new();
+    private static readonly VectorStyle PlayerArrowShadow = new()
+    {
+        Fill = new Brush { Color = Color.FromRgba(0x00, 0x00, 0x00, 0x60) },
+        Outline = new Pen { Color = Color.FromRgba(0x00, 0x00, 0x00, 0x60), Width = 6 },
     };
 
     /// <summary>Fill colour (ARGB) of the player's own car — the page passes the theme accent.</summary>
     public uint PlayerColorArgb { get; set; } = 0xFF50C878;
-
-    private static LabelStyle MakeDiscLabel(Color fore, double size) => new()
-    {
-        LabelColumn = "Label",
-        ForeColor = fore,
-        BackColor = null,
-        Font = new Font { Size = size, Bold = true },
-        Offset = new Offset { X = 0, Y = 0 },
-    };
-
-    /// <summary>
-    /// Flag ring drawn just outside the disc (a thin dark separator keeps it readable on any
-    /// class colour — a blue ring on a blue LMP2 disc). Checkered = black ring + white dashes on top.
-    /// </summary>
-    private SymbolStyle RingStyle(AcEvoFfbTuner.Core.SharedMemory.CarFlag flag, bool selected, bool top = false)
-    {
-        var key = (flag, selected, top);
-        if (_ringStyles.TryGetValue(key, out var s)) return s;
-        Color color = flag switch
-        {
-            AcEvoFfbTuner.Core.SharedMemory.CarFlag.Yellow => Color.FromRgba(0xFF, 0xD3, 0x3D, 0xFF),
-            AcEvoFfbTuner.Core.SharedMemory.CarFlag.Blue => Color.FromRgba(0x2F, 0x81, 0xF7, 0xFF),
-            AcEvoFfbTuner.Core.SharedMemory.CarFlag.Penalty => Color.FromRgba(0x00, 0x00, 0x00, 0xFF),
-            AcEvoFfbTuner.Core.SharedMemory.CarFlag.Checkered => top ? Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF) : Color.FromRgba(0x00, 0x00, 0x00, 0xFF),
-            AcEvoFfbTuner.Core.SharedMemory.CarFlag.Retired => Color.FromRgba(0x6E, 0x76, 0x81, 0xFF),
-            _ => Color.FromRgba(0xFF, 0xFF, 0xFF, 0xF0),
-        };
-        bool flagged = flag != AcEvoFfbTuner.Core.SharedMemory.CarFlag.None;
-        s = new SymbolStyle
-        {
-            SymbolType = SymbolType.Ellipse,
-            SymbolScale = (selected ? DiscScaleSelected : DiscScale) + RingGrow,
-            Fill = new Brush { Color = Color.FromRgba(0x0D, 0x11, 0x17, top ? 0x00 : 0xD0) },
-            Outline = new Pen
-            {
-                Color = color,
-                Width = flagged ? 3.5 : 2.5,
-                PenStyle = top ? PenStyle.Dash : PenStyle.Solid,
-            }
-        };
-        _ringStyles[key] = s;
-        return s;
-    }
 
     private static Color ToMapsui(uint argb, byte? alpha = null) =>
         Color.FromRgba((int)((argb >> 16) & 0xFF), (int)((argb >> 8) & 0xFF), (int)(argb & 0xFF),
@@ -722,40 +686,60 @@ public partial class MapsuiMapControl : UserControl
         return 0.299 * r + 0.587 * g + 0.114 * b > 160;
     }
 
-    private SymbolStyle DiscStyle(uint argb, bool pits, bool selected)
+    /// <summary>
+    /// Opponent dot: class-colour fill, state carried by the dot itself —
+    /// finished = hollow ring in the class colour, retired = grey and faded, in pits = faded,
+    /// yellow/blue/penalty = coloured outline, otherwise a thin dark outline for contrast on imagery.
+    /// </summary>
+    private SymbolStyle DotStyle(uint argb, bool pits, bool selected, AcEvoFfbTuner.Core.SharedMemory.CarFlag flag)
     {
-        var key = (argb, pits, selected);
-        if (_discStyles.TryGetValue(key, out var s)) return s;
-        s = new SymbolStyle
+        var key = (argb, pits, selected, flag);
+        if (_dotStyles.TryGetValue(key, out var s)) return s;
+        double scale = selected ? DotScaleSelected : DotScale;
+        Brush fill;
+        Pen outline;
+        switch (flag)
         {
-            SymbolType = SymbolType.Ellipse,
-            SymbolScale = selected ? DiscScaleSelected : DiscScale,
-            Fill = new Brush { Color = ToMapsui(argb, pits ? (byte)0x70 : (byte)0xFF) },
-            Outline = new Pen { Color = Color.FromRgba(0x0D, 0x11, 0x17, 0xE0), Width = 1.5 }
-        };
-        _discStyles[key] = s;
+            case AcEvoFfbTuner.Core.SharedMemory.CarFlag.Checkered:
+                fill = new Brush { Color = Color.FromRgba(0x0D, 0x11, 0x17, 0x90) };
+                outline = new Pen { Color = ToMapsui(argb), Width = 3 };
+                break;
+            case AcEvoFfbTuner.Core.SharedMemory.CarFlag.Retired:
+                fill = new Brush { Color = Color.FromRgba(0x6E, 0x76, 0x81, 0x66) };
+                outline = new Pen { Color = Color.FromRgba(0x0D, 0x11, 0x17, 0x66), Width = 1 };
+                break;
+            default:
+                fill = new Brush { Color = ToMapsui(argb, pits ? (byte)0x70 : (byte)0xFF) };
+                Color edge = flag switch
+                {
+                    AcEvoFfbTuner.Core.SharedMemory.CarFlag.Yellow => Color.FromRgba(0xFF, 0xD3, 0x3D, 0xFF),
+                    AcEvoFfbTuner.Core.SharedMemory.CarFlag.Blue => Color.FromRgba(0x2F, 0x81, 0xF7, 0xFF),
+                    AcEvoFfbTuner.Core.SharedMemory.CarFlag.Penalty => Color.FromRgba(0x00, 0x00, 0x00, 0xFF),
+                    _ => selected ? Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF) : Color.FromRgba(0x0D, 0x11, 0x17, 0xE0),
+                };
+                bool flagged = flag != AcEvoFfbTuner.Core.SharedMemory.CarFlag.None;
+                outline = new Pen { Color = edge, Width = flagged ? 3 : selected ? 2 : 1.5 };
+                break;
+        }
+        s = new SymbolStyle { SymbolType = SymbolType.Ellipse, SymbolScale = scale, Fill = fill, Outline = outline };
+        _dotStyles[key] = s;
         return s;
     }
 
-    /// <summary>Replace the opponent discs (class-coloured, position number inside, dimmed in the pits).</summary>
+    /// <summary>Replace the opponent dots (class-coloured; a side tag only when the page gives a label).</summary>
     public void UpdateOpponents(IReadOnlyList<MapCarMarker> cars)
     {
         var features = new List<IFeature>(cars.Count);
-        foreach (var c in cars)
+        // Unlabelled first so tagged cars (ahead/behind/selected) draw on top of a bunch.
+        foreach (var c in cars.OrderBy(c => string.IsNullOrEmpty(c.Label) ? 0 : 1))
         {
             var merc = ToMercator(c.Longitude, c.Latitude);
             var f = new PointFeature(merc.X, merc.Y);
-            f.Styles.Add(RingStyle(c.Flag, c.Selected));
-            if (c.Flag == AcEvoFfbTuner.Core.SharedMemory.CarFlag.Checkered)
-                f.Styles.Add(RingStyle(c.Flag, c.Selected, top: true));
-            f.Styles.Add(DiscStyle(c.FillArgb, c.InPits || c.Flag == AcEvoFfbTuner.Core.SharedMemory.CarFlag.Retired, c.Selected));
+            f.Styles.Add(DotStyle(c.FillArgb, c.InPits, c.Selected, c.Flag));
             if (!string.IsNullOrEmpty(c.Label))
             {
                 f["Label"] = c.Label;
-                bool dark = IsLightFill(c.FillArgb) && !c.InPits;
-                f.Styles.Add(c.Label.Length > 2
-                    ? (dark ? DiscLabelDarkSmall : DiscLabelLightSmall)
-                    : (dark ? DiscLabelDark : DiscLabelLight));
+                f.Styles.Add(TagLabel);
             }
             features.Add(f);
         }
@@ -767,50 +751,41 @@ public partial class MapsuiMapControl : UserControl
     private void RenderCarDot(double longitude, double latitude, double heading)
     {
         var merc = ToMercator(longitude, latitude);
+        double res = _map.Navigator.Viewport.Resolution; // metres per screen pixel
 
-        var vp = _map.Navigator.Viewport;
-        double headingLen = vp.Resolution * 28;
-        double rad = heading;
+        // Forward and side unit vectors in map space (same convention as the old heading line).
+        double fx = Math.Sin(heading), fy = -Math.Cos(heading);
+        double sx = -fy, sy = fx;
+        Coordinate P(double fwd, double side) =>
+            new(merc.X + (fx * fwd + sx * side) * res, merc.Y + (fy * fwd + sy * side) * res);
 
-        // Create fresh car dot feature (cached styles in the player colour). A soft halo marks
-        // "you": the theme accent can equal a class colour (Obsidian purple = LMP3, Crimson red =
-        // Hypercar), so colour alone must not identify the player's car.
-        var carPt = new PointFeature(merc.X, merc.Y);
-        if (!_carDotStyles.TryGetValue(PlayerColorArgb, out var dot))
+        // Navigation arrow (chevron with a notched tail): distinct in shape from every opponent
+        // dot, so the player never depends on colour alone (the accent can match a class colour).
+        var ring = new[]
         {
-            dot = new SymbolStyle
-            {
-                SymbolType = SymbolType.Ellipse,
-                SymbolScale = 1.0,
-                Fill = new Brush { Color = ToMapsui(PlayerColorArgb) },
-                Outline = new Pen { Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF), Width = 3 }
-            };
-            _carDotStyles[PlayerColorArgb] = dot;
-            _carHaloStyles[PlayerColorArgb] = new SymbolStyle
-            {
-                SymbolType = SymbolType.Ellipse,
-                SymbolScale = 1.9,
-                Fill = new Brush { Color = ToMapsui(PlayerColorArgb, 0x45) },
-                Outline = new Pen { Color = ToMapsui(PlayerColorArgb, 0xB0), Width = 1.5 }
-            };
-        }
-        carPt.Styles.Add(_carHaloStyles[PlayerColorArgb]);
-        carPt.Styles.Add(dot);
-
-        // Create fresh heading line
-        var headX = merc.X + Math.Sin(rad) * headingLen;
-        var headY = merc.Y - Math.Cos(rad) * headingLen;
-        var headingLine = new GeometryFeature
-        {
-            Geometry = new LineString(new[]
-            {
-                new Coordinate(merc.X, merc.Y),
-                new Coordinate(headX, headY)
-            })
+            P(ArrowTip, 0),
+            P(-ArrowBack, ArrowHalfWidth),
+            P(-ArrowNotch, 0),
+            P(-ArrowBack, -ArrowHalfWidth),
+            P(ArrowTip, 0),
         };
-        headingLine.Styles.Add(CarHeadingStyle);
+        var arrow = new GeometryFeature
+        {
+            Geometry = new NetTopologySuite.Geometries.Polygon(new NetTopologySuite.Geometries.LinearRing(ring))
+        };
+        if (!_playerArrowStyles.TryGetValue(PlayerColorArgb, out var style))
+        {
+            style = new VectorStyle
+            {
+                Fill = new Brush { Color = ToMapsui(PlayerColorArgb) },
+                Outline = new Pen { Color = Color.FromRgba(0xFF, 0xFF, 0xFF, 0xFF), Width = 2.5 },
+            };
+            _playerArrowStyles[PlayerColorArgb] = style;
+        }
+        arrow.Styles.Add(PlayerArrowShadow);
+        arrow.Styles.Add(style);
 
-        _carLayer.Features = [carPt, headingLine];
+        _carLayer.Features = [arrow];
         _carLayer.FeaturesWereModified();
         MapCtrl.Refresh();
     }

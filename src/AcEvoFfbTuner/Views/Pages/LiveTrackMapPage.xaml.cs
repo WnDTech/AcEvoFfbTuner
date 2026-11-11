@@ -865,6 +865,9 @@ public partial class LiveTrackMapPage : UserControl
 
         if (cars != null && layoutReady)
         {
+            int playerPlace = 0;
+            foreach (var c in cars)
+                if (c.IsPlayer) { playerPlace = c.Place; break; }
             foreach (var car in cars)
             {
                 if (car.IsPlayer)
@@ -898,9 +901,13 @@ public partial class LiveTrackMapPage : UserControl
                 var (mLat, mLon) = _osmProj.ToGps(e, n);
                 _carGps[car.Id] = (mLat, mLon);
                 uint fill = CarClassPalette.ArgbFor(CarClasses.Categorize(car.CarClass), car.CarClass);
-                // Position inside the disc (race number stays in the Field list). Practice/qualifying
-                // positions follow best laps, not running order.
-                string label = car.Place > 0 ? car.Place.ToString() : car.Number;
+                // Small dots by default; a position tag only on the cars that matter — the
+                // selected car and the cars directly ahead/behind the player. The full order
+                // stays in the Field list. (Practice/qualifying positions follow best laps.)
+                bool selected = car.Id == _selectedCarId;
+                bool neighbour = playerPlace > 0 && car.Place > 0 && Math.Abs(car.Place - playerPlace) == 1;
+                string label = !(selected || neighbour) ? ""
+                    : car.Place > 0 ? $"P{car.Place}" : car.Number;
                 _opponentMarkers.Add(new MapCarMarker(mLat, mLon, label,
                     car.InPits, fill, car.Id == _selectedCarId, car.Flag));
             }
