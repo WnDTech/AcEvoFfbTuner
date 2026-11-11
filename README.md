@@ -192,7 +192,7 @@ Configurable brightness, flash rate, color schemes (Traffic Light, Blue Gradient
 - Track gazetteer of 1,200+ circuits (curated list + Wikidata, CC0) with Open Racetrack DB layouts (ODbL) chosen by the game's lap length
 - Force heatmap and diagnostic heatmap overlay (snap events, oscillations, clipping, anomalies)
 - Popout overlay window for second-screen use during track creation
-- **Live Map page** — every car on OSM satellite tiles (LMU, R3E, AC EVO, ACC), placed by a shape fit of your driven lap to the real circuit; class-coloured discs with race position and per-car flag rings, class legend and Field standings panel, with car names (your car in the header, class and model per car)
+- **Live Map page** — every car on OSM satellite tiles (LMU, R3E, AC EVO, ACC), placed by a shape fit of your driven lap to the real circuit; small class-coloured dots with per-car flag outlines, position tags for the cars around you, a heading arrow for your car, class legend and Field standings panel, with car names (your car in the header, class and model per car; LMU shows the real car model)
 - **FFB layers on the Live Map** — FFB Heatmap and FFB Diagnostics drawn on the real circuit, with corner-tagged events, a Worst Places list and one-click profile recommendations
 - **Fast, smooth splash screen** — the app loads while the splash shows, with a real progress bar for each startup step
 - **Real corner names** — matched by position from OpenStreetMap and cached; stable corner numbering from the start/finish line

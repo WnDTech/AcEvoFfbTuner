@@ -50,6 +50,35 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.29.0-beta.7",
+            Date = new DateTime(2026, 11, 11),
+            Title = "LMU car names, per-wheel slip and a cleaner Live Map",
+            Features =
+            [
+                "LMU shows the real car model (e.g. McLaren 720S LMGT3 Evo) everywhere: FFB Tuning header, Compact Tuner, Profiles, snapshots, Discord, FFB Coach, Live Map and Driver Coach",
+                "LMU slip angle is now measured per wheel, and the FFB Coach can suggest Slip Angle slider changes for LMU",
+                "Live Map redesign: small class-coloured dots for opponents, position tags only for the cars around you and the selected car, and a heading arrow for your car",
+            ],
+            Improvements =
+            [
+                "FFB Coach uses the exact Tuning page section and slider names, covers every slider, and no longer mentions internal settings",
+                "R3E front and rear slip angle are calculated per axle instead of one body slip value",
+                "LMU wheel loads come from suspension forces when the game sends no tyre load",
+                "Workshop themes: switching theme while the app is running now updates every page",
+            ],
+            Fixes =
+            [
+                "Workshop themes: horizontal sliders drew the vertical slider style, and equalizer sliders ignored the theme",
+                "Workshop Dark: leftover light colours on Profiles, Hub, Test Drive, Pipeline, the slider menu and LED preview",
+                "A possible crash at startup from the LED VU meter",
+                "FFB Coach could drop real changes on wide sliders such as Output Gain",
+                "Live Map drew a white disc under each car",
+                "FFB Tuning: the car placeholder overlapped the car name",
+                "Existing LMU profiles keep auto-loading after the car name change",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.29.0-beta.6",
             Date = new DateTime(2026, 11, 10),
             Title = "New Workshop look + one Setup Wizard",
