@@ -117,6 +117,92 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
     /// Used by TelemetryLoop for class-matched profile auto-load.</summary>
     public string VehicleClass => _mmf != null ? R3eClassNames.Get(_lastData.VehicleInfo.ClassId) : "";
 
+    // ── Per-axle slip angle model (R3E only) ──
+    // α_f = β + a·r/V − δ,  α_r = β − b·r/V  (β body sideslip, r yaw rate, δ road-wheel steer).
+    // Wheelbase L is learned online from gentle cornering (δ ≈ L·r/V when the tyres barely
+    // slip; live fit gave 2.85 m, R² 0.95). Front-axle weight share comes from static tyre
+    // loads while parked (a = (1−f)·L, b = f·L). Both reset when the car model changes.
+    // Output sign is −α so it matches the legacy body-sideslip convention (98% agreement)
+    // and existing SlipAngleGain directions are unchanged.
+    private const float DefaultWheelbaseM = 2.7f;
+    private const float DefaultFrontShare = 0.45f;
+    private int _slipModelId = int.MinValue;
+    private double _wbSumXX, _wbSumXY;
+    private float _wheelbaseM = DefaultWheelbaseM;
+    private float _frontShare = DefaultFrontShare;
+    private bool _frontShareSeeded;
+
+    /// <summary>Learned wheelbase (m) used for the axle slip model. Diagnostics/tests.</summary>
+    public float SlipModelWheelbase => _wheelbaseM;
+    /// <summary>Front-axle static weight share used for the axle slip model.</summary>
+    public float SlipModelFrontShare => _frontShare;
+
+    internal static (float Front, float Rear) AxleSlip(
+        float beta, float yawRate, float speedMs, float steerRad, float wheelbase, float frontShare)
+    {
+        float rv = yawRate / speedMs;
+        float a = (1f - frontShare) * wheelbase;
+        float b = frontShare * wheelbase;
+        float front = -(beta + a * rv - steerRad);
+        float rear = -(beta - b * rv);
+        return (Math.Clamp(front, -0.30f, 0.30f), Math.Clamp(rear, -0.30f, 0.30f));
+    }
+
+    private void ComputeAxleSlipAngles(float carSpeedMs, float[] slipAngle)
+    {
+        int modelId = _lastData.VehicleInfo.ModelId;
+        if (modelId != _slipModelId)
+        {
+            _slipModelId = modelId;
+            _wbSumXX = _wbSumXY = 0;
+            _wheelbaseM = DefaultWheelbaseM;
+            _frontShare = DefaultFrontShare;
+            _frontShareSeeded = false;
+        }
+
+        var p = _lastData.Player;
+        float vx = (float)p.LocalVelocity.X, vz = (float)p.LocalVelocity.Z;
+        float lockDeg = _lastData.SteerLockDegrees > 0 ? _lastData.SteerLockDegrees : 0f;
+
+        if (carSpeedMs < 3f || lockDeg <= 0f)
+        {
+            // Parked / crawling: learn the static weight split, report no slip.
+            float lf = _lastData.TireLoad.FrontLeft + _lastData.TireLoad.FrontRight;
+            float lr = _lastData.TireLoad.RearLeft + _lastData.TireLoad.RearRight;
+            if (carSpeedMs < 0.5f && lf > 500f && lr > 500f)
+            {
+                float f = Math.Clamp(lf / (lf + lr), 0.30f, 0.70f);
+                _frontShare = _frontShareSeeded ? _frontShare + 0.02f * (f - _frontShare) : f;
+                _frontShareSeeded = true;
+            }
+            Array.Clear(slipAngle);
+            return;
+        }
+
+        // Model β convention: positive = travelling to the right of the heading
+        // (opposite sign of the legacy atan2(Vx, −Vz) with X = left).
+        float beta = -(float)Math.Atan2(vx, -vz);
+        float yaw = (float)p.LocalAngularVelocity.Y;
+        float steerRad = _lastData.SteerInputRaw * lockDeg * (MathF.PI / 180f);
+
+        // Online wheelbase fit: gentle cornering only (tyres near zero slip).
+        float rv = yaw / carSpeedMs;
+        if (carSpeedMs > 12f && Math.Abs(rv) > 0.001f && Math.Abs(p.LocalAcceleration.X) < 6.0)
+        {
+            const double keep = 0.999; // ~1000-sample memory
+            _wbSumXX = _wbSumXX * keep + rv * rv;
+            _wbSumXY = _wbSumXY * keep + rv * steerRad;
+            if (_wbSumXX > 1e-3)
+                _wheelbaseM = Math.Clamp((float)(_wbSumXY / _wbSumXX), 2.0f, 3.6f);
+        }
+
+        var (front, rear) = AxleSlip(beta, yaw, carSpeedMs, steerRad, _wheelbaseM, _frontShare);
+        slipAngle[0] = front;
+        slipAngle[1] = front;
+        slipAngle[2] = rear;
+        slipAngle[3] = rear;
+    }
+
     private static int _carNameModelId = -1;
     private static byte[] _carNameBytes = new byte[33];
 
@@ -321,20 +407,13 @@ public sealed class RaceroomSharedMemoryReader : ISharedMemoryReader, ICarPositi
                 // slip vibration alongside the synthesized texture.
                 physics.SlipVibrations = 0f;
 
-                // Chassis slip angle from local-space velocity vectors.
-                // R3E doesn't expose per-wheel slip angle, but calculates chassis-level
-                // sideslip from LocalVelocity (X=left, Z=back in car local space).
-                // β = atan2(Vx, -Vz) gives the angle between heading and travel direction.
-                // This is real physics data — more accurate than TireGrip-based synthesis.
-                float localVx = (float)_lastData.Player.LocalVelocity.X;
-                float localVz = (float)_lastData.Player.LocalVelocity.Z;
-                float chassisSlipAngle = (float)Math.Atan2(localVx, -localVz);
-                chassisSlipAngle = Math.Clamp(chassisSlipAngle, -0.30f, 0.30f);
-                physics.SlipAngle[0] = chassisSlipAngle;
-                physics.SlipAngle[1] = chassisSlipAngle;
-                physics.SlipAngle[2] = chassisSlipAngle;
-                physics.SlipAngle[3] = chassisSlipAngle;
+                // Per-axle slip angles (bicycle model). R3E exposes no tyre slip angle;
+                // body sideslip alone reads ~3x too low at the front in normal cornering
+                // and cannot tell a front-led from a rear-led slide (verified live
+                // 2026-11-10: hard-corner median β 0.030 vs α_f 0.080 / α_r 0.055 rad).
             }
+
+            ComputeAxleSlipAngles(carSpeedMs, physics.SlipAngle);
 
             physics.KerbVibration = SynthesizeKerbVibration();
             physics.KerbVibrationLeft = SynthesizeKerbVibrationSide(true);

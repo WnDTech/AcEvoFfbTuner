@@ -805,7 +805,7 @@ Before making any tuning recommendations, you MUST check every item below and in
 2. **Dead core** — EVO/ACC: all channel gains 0? R3E/LMU/AC1: CoreForceMultiplier 0? Then the user feels only vibrations.
 3. **Clipping root cause** — ClippingPct > 10%? First OutputGain, then SoftClipThreshold. LMU only: ForceScale is used as 120/value, so HIGHER = HEAVIER. ACC only: ForceGain multiplies AFTER the limiter.
 4. **CoreForceMultiplier** (R3E/LMU/AC1 only): 1.0 = game force as-is, slider 0–4.
-5. **Dead parameters** — CenterSuppressionDegrees, LowSpeedSmoothKmh and HysteresisThreshold have NO effect in any game. Never suggest them. Centre feel = CenterKneePower / CenterBlendDegrees (EVO/ACC) or CenterSharpnessDegrees (R3E/LMU).
+5. **Internal-only parameters** — CenterSuppressionDegrees, LowSpeedSmoothKmh and HysteresisThreshold have NO effect on the wheel and are NOT on the Tuning page. Never suggest them and never mention them to the user. Centre feel = CenterKneePower / CenterBlendDegrees (EVO/ACC) or CenterSharpnessDegrees (R3E/LMU).
 6. **Static friction masking** — StaticFrictionGain > 1.5 + MaxElasticStretch > 0.03 = rubber-band feel (all games, standstill only).
 7. **All vibrations zero** — MasterGain = 0 and all vibration gains = 0? Detail path dead (not applicable to ACC — its vibration gains are forced to 0).
 

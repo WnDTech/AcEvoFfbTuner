@@ -1589,14 +1589,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             existing.CurrentValue = rec.CurrentValue;
             existing.SuggestedValue = rec.SuggestedValue;
-            existing.Label = $"{rec.Parameter}: {rec.CurrentValue:F2} → {rec.SuggestedValue:F2}";
+            existing.Label = $"{AcEvoFfbTuner.Core.FfbProcessing.CoachParameterCatalog.DisplayName(rec.Parameter)}: {rec.CurrentValue:F2} → {rec.SuggestedValue:F2}";
             existing.Description = rec.Impact ?? rec.Reason ?? "";
             SystemLogEntries.Add($"[Coach] Updated pending rec: {rec.Parameter} {rec.CurrentValue:F3}→{rec.SuggestedValue:F3}");
             return;
         }
         CoachPendingRecs.Add(new CoachPendingRec
         {
-            Label = $"{rec.Parameter}: {rec.CurrentValue:F2} → {rec.SuggestedValue:F2}",
+            Label = $"{AcEvoFfbTuner.Core.FfbProcessing.CoachParameterCatalog.DisplayName(rec.Parameter)}: {rec.CurrentValue:F2} → {rec.SuggestedValue:F2}",
             Description = rec.Impact ?? rec.Reason ?? "",
             Parameter = rec.Parameter,
             CurrentValue = rec.CurrentValue,
@@ -2162,7 +2162,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             {
                 applied++;
                 string dir = rec.SuggestedValue > rec.CurrentValue ? "↑" : "↓";
-                sb.AppendLine($"  {rec.Parameter} {dir} {rec.CurrentValue:F3} → {rec.SuggestedValue:F3}");
+                sb.AppendLine($"  {AcEvoFfbTuner.Core.FfbProcessing.CoachParameterCatalog.DisplayName(rec.Parameter)} {dir} {rec.CurrentValue:F3} → {rec.SuggestedValue:F3}");
             }
         }
 

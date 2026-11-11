@@ -58,7 +58,7 @@ public sealed class CoachAppliedChange
     public string Car { get; init; } = "";
     public string Track { get; init; } = "";
     public string ProfileName { get; init; } = "";
-    public string Label => $"{Parameter}: {OldValue:F2} → {NewValue:F2}";
+    public string Label => $"{CoachParameterCatalog.DisplayName(Parameter)}: {OldValue:F2} → {NewValue:F2}";
     public string Detail => $"{AppliedAt:HH:mm:ss} · {ProfileName}" +
         (string.IsNullOrWhiteSpace(Car) ? "" : $" · {Car}") +
         (string.IsNullOrWhiteSpace(Track) ? "" : $" @ {Track}");
@@ -156,7 +156,7 @@ Core + Detail → Soft clip → Noise floor gate → Output to wheel.
 2. **Dead core** — EVO/ACC: all channel gains 0? R3E/LMU/AC1: CoreForceMultiplier 0? Then the user feels only vibrations.
 3. **Clipping root cause** — ClippingPct > 10%? First OutputGain, then SoftClipThreshold. LMU only: ForceScale is used as 120/value, so HIGHER = HEAVIER. ACC only: ForceGain multiplies AFTER the limiter.
 4. **CoreForceMultiplier** (R3E/LMU/AC1 only): 1.0 = game force as-is, slider 0–4.
-5. **Dead parameters** — CenterSuppressionDegrees, LowSpeedSmoothKmh and HysteresisThreshold have NO effect in any game. Never suggest them. Centre feel = CenterKneePower / CenterBlendDegrees (EVO/ACC) or CenterSharpnessDegrees (R3E/LMU).
+5. **Internal-only parameters** — CenterSuppressionDegrees, LowSpeedSmoothKmh and HysteresisThreshold have NO effect on the wheel and are NOT on the Tuning page. Never suggest them and never mention them to the user. Centre feel = CenterKneePower / CenterBlendDegrees (EVO/ACC) or CenterSharpnessDegrees (R3E/LMU).
 6. **Static friction masking** — StaticFrictionGain > 1.5 + MaxElasticStretch > 0.03 = rubber-band feel (all games, standstill only).
 7. **All vibrations zero** — MasterGain = 0 and all vibration gains = 0? Detail path dead (not applicable to ACC — its vibration gains are forced to 0).
 
@@ -183,7 +183,7 @@ Anything listed under ""NOT available"" must never be suggested for that game.
         var gameNotes = isColumn
             ? @"- Column-force game: the game supplies total steering-column torque (no per-wheel Mz/Fx/Fy mixing)
 - Strength comes from CoreForceMultiplier and OutputGain (LMU also ForceScale, HIGHER = heavier)
-- Slip angle telemetry is unreliable — SlipAngleGain should be kept at 0
+- LMU slip angle is a single body-sideslip value (unreliable) — keep SlipAngleGain 0 in LMU. R3E computes real per-axle slip angles (front/rear), so Slip Angle Feel / Peak Grip Bump work there; R3E front slip at the limit is ~0.08 rad, so Slip Trigger Point above ~0.10 means slip-angle effects only fire past the limit
 - See the Pipeline Path and Tunable parameters table for exactly what applies"
             : @"- Per-wheel game: see the Pipeline Path below (AC1 has NO tyre-force data; ACC overrides several gains)
 - EVO/ACC: MzFrontGain POSITIVE. BrakeBoost is not used in EVO
@@ -229,7 +229,7 @@ Anything listed under ""NOT available"" must never be suggested for that game.
         sb.AppendLine("## Recommendation Rules (HARD — violating responses are discarded)");
         sb.AppendLine("- `parameter` MUST be from the tunable list above for this game. Never suggest a NOT-available parameter.");
         sb.AppendLine("- `suggestedValue` MUST be inside the slider min–max. The app clamps out-of-range values, so asking outside the range is pointless.");
-        sb.AppendLine("- `suggestedValue` MUST differ from `currentValue` by a meaningful step (>= 2% of the slider span). Micro-steps do nothing.");
+        sb.AppendLine("- `suggestedValue` MUST differ from `currentValue` by a meaningful step (>= 2% of the slider span, or >= 5% of the current value on wide sliders). Micro-steps do nothing.");
         sb.AppendLine("- For NO SLIDER (profile-only) parameters: only suggest when nothing with a slider can fix the issue, and say explicitly the user cannot drag a slider for it.");
         sb.AppendLine("- Every recommendation needs a non-empty `reason` (WHY: which data/issues it fixes) and `impact` (what the driver will feel).");
         sb.AppendLine("- After the fix, tell the user how to verify: take a new snapshot on the same car/track and compare clipping/avg/peak numbers.");
@@ -469,7 +469,7 @@ Anything listed under ""NOT available"" must never be suggested for that game.
         var gameSpecific = isColumn
             ? @"- Column-force game: total steering-column torque, no per-wheel Mz/Fx/Fy mixing
 - CoreForceMultiplier (0–4) and OutputGain set strength; LMU ForceScale is HIGHER = heavier
-- Slip angle telemetry is unreliable — SlipAngleGain should stay at 0
+- LMU slip angle is a single body-sideslip value (unreliable) — keep SlipAngleGain 0 in LMU. R3E computes real per-axle slip angles (front/rear), so Slip Angle Feel / Peak Grip Bump work there; R3E front slip at the limit is ~0.08 rad, so Slip Trigger Point above ~0.10 means slip-angle effects only fire past the limit
 - CenterSharpnessDegrees: higher = softer centre, 0 = crispest"
             : @"- Per-wheel game: AC1 has NO tyre-force/slip data (use CoreForceMultiplier, damping, vibrations)
 - EVO/ACC: MzFrontGain positive; centre feel via CenterKneePower / CenterBlendDegrees
@@ -507,7 +507,7 @@ Profiles can be scoped per car/track (Scope/CarMatch/TrackMatch on the profile).
 
 ## Recommendation Rules (HARD — violating responses are discarded)
 - `parameter` MUST be tunable for this game (see table). Never suggest a NOT-available parameter.
-- `suggestedValue` MUST be inside the slider min–max and differ from `currentValue` by >= 2% of the slider span.
+- `suggestedValue` MUST be inside the slider min–max and differ from `currentValue` by >= 2% of the slider span (or >= 5% of the current value on wide sliders).
 - For NO SLIDER (profile-only) parameters: only suggest when nothing with a slider can fix it, and say there is no slider.
 - Every recommendation needs `reason` (WHY it fixes the issue) and `impact` (what the driver will feel).
 
@@ -543,22 +543,8 @@ Rules:
   Do NOT emit apply/skip/apply_* buttons — the app adds one Apply button per recommendation automatically.
 - The ``parameter`` name must be exact (case-insensitive, spaces ignored).
 
-## Exact Parameter Names
-Use these EXACT names in the ""parameter"" field, ignoring spaces and case. System normalizes automatically.
-
-Core: OutputGain, CompressionPower, ForceScale, SoftClipThreshold, CoreForceMultiplier
-Mix: MzFrontGain, FxFrontGain, FyFrontGain, MzRearGain, WheelLoadWeighting, MzScale, FxScale, FyScale
-Damping: ViscousDamping, SpeedDamping, Friction, Inertia, MaxSpeedReference, CenterDampFloor, StraightGain
-Slip: SlipRatioGain, SlipAngleGain, SlipAngleShapeGain, SlipThreshold, UseFrontOnly, BrakeBoostGain, BrakeBoostThreshold, GearSpikeThreshold, RearFyScale, RearGripDetailGain, YawOnsetGain, YawOnsetThreshold, YawOnsetDecay, YawOnsetMax, SuspRoadScale, UseMixerSuspRoad, BrakeLoadBias, SynthYawEnabled, SynthAbsEnabled, SynthTcEnabled
-Dynamic: LateralGGain, LongitudinalGGain, SuspensionGain, YawRateGain
-Vibrations: MasterGain, KerbGain, RoadGain, SlipGain, AbsGain, AbsPulseAmplitude, SuspensionRoadGain, ScrubGain, RearSlipGain, OfftrackGain, OfftrackSeverityScale, CurbSeverityScale, ScrubForceScale, RearSlipForceScale
-Advanced: MaxSlewRate, CenterSuppressionDegrees, CenterSharpnessDegrees, CenterKneePower, CenterBlendDegrees, HysteresisThreshold, NoiseFloor, HysteresisWatchdogFrames, LowSpeedSmoothKmh
-TyreFlex: FlexGain, CarcassStiffness, FlexSmoothing, ContactPatchWeight, LoadFlexGain
-GripGuard: GripGuardEnabled, GripGuardPeakSlipAngle, GripGuardAttenuationStrength, GripGuardMechanicalTrailGain
-Crash: CrashEnabled, CrashImpactGain, CrashSafetyClamp, CrashTriggerThresholdG
-TyreCondition: TyreConditionEnabled, BlowoutVibrationGain, PressureLossGain, DamageAsymmetryGain
-WetWeather: WetWeatherEnabled, WetRoadVibSuppression, WetPeakSlipAngleMultiplier, WetDampingReduction
-StaticFriction: StaticFrictionGain, StaticFrictionMaxElasticStretch, StaticFrictionSpringStiffness, StaticFrictionKineticFrictionBase, StaticFrictionEngineOffDamping, StaticFrictionEngineOnDamping, StaticFrictionEngineOffScale, StaticFrictionEngineOnScale, StaticFrictionActiveDecay, StaticFrictionReturnDecay, StaticFrictionOutputSmoothAlpha
+## Parameter Names
+Use the INTERNAL name (first column of the Tunable parameters table) in the ""parameter"" field — case and spaces are ignored, and the exact slider label is also accepted. In ``reply`` text always refer to a setting by its slider label and section as the user sees it on the Tuning page (e.g. ""Steering Weight & Centre -> Centre Damping Floor""), never by the internal name alone.
 
 ## Current Profile Values
 ```json
@@ -671,7 +657,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                     State = CoachSessionState.Questioning,
                     Messages =
                     [
-                        new CoachMessage { Text = $"Skipped {skipped.Parameter} — no more pending suggestions.", Icon = "⏭" },
+                        new CoachMessage { Text = $"Skipped {CoachParameterCatalog.DisplayName(skipped.Parameter)} — no more pending suggestions.", Icon = "⏭" },
                         new CoachMessage
                         {
                             Text = "What next?",
@@ -684,7 +670,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                     ]
                 };
             }
-            return ShowRecommendationsFromLastResult($"Skipped {skipped.Parameter}. ");
+            return ShowRecommendationsFromLastResult($"Skipped {CoachParameterCatalog.DisplayName(skipped.Parameter)}. ");
         }
 
         if (answerId == "talk" && _lastResult?.Recommendations.Count > 0)
@@ -766,7 +752,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
 
                 if (shown == 0) recText.AppendLine("**Suggested adjustments:**\n");
                 shown++;
-                recText.AppendLine($"**{shown}. {fr.Parameter}**");
+                recText.AppendLine($"**{shown}. {CoachParameterCatalog.DisplayLocation(fr.Parameter)}**");
                 recText.AppendLine($"   {fr.CurrentValue:F3}  →  **{fr.SuggestedValue:F3}**");
                 recText.AppendLine($"   {fr.Impact}");
                 recText.AppendLine();
@@ -866,7 +852,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             answers.Add(new CoachAnswer
             {
                 Id = $"apply_{i}",
-                Label = recs.Count == 1 ? "Apply Change" : $"Apply #{i + 1}: {r.Parameter}",
+                Label = recs.Count == 1 ? "Apply Change" : $"Apply #{i + 1}: {CoachParameterCatalog.DisplayName(r.Parameter)}",
                 Description = $"{r.CurrentValue:F2} → {r.SuggestedValue:F2}"
             });
         }
@@ -896,7 +882,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
         for (int i = 0; i < recs.Count; i++)
         {
             var r = recs[i];
-            itemList.AppendLine($"**{i + 1}. {r.Parameter}**");
+            itemList.AppendLine($"**{i + 1}. {CoachParameterCatalog.DisplayLocation(r.Parameter)}**");
             itemList.AppendLine($"   {r.CurrentValue:F3}  →  **{r.SuggestedValue:F3}**");
             itemList.AppendLine($"   {r.Impact}");
             itemList.AppendLine();
@@ -958,7 +944,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                     [
                         new CoachMessage
                         {
-                            Text = $"Not applying {info.Name}: it has no effect for " +
+                            Text = $"Not applying {CoachParameterCatalog.UiLabel(info)}: it has no effect for " +
                                 $"{CoachParameterCatalog.GameShortName(ActiveCoachGame)} " +
                                 $"({CoachParameterCatalog.GamesText(info)}).",
                             Icon = "🚫"
@@ -1007,7 +993,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             [
                 new CoachMessage
                 {
-                    Text = $"✓ Applied: {rec.Parameter}: {rec.CurrentValue:F3} → {rec.SuggestedValue:F3}",
+                    Text = $"✓ Applied: {CoachParameterCatalog.DisplayLocation(rec.Parameter)}: {rec.CurrentValue:F3} → {rec.SuggestedValue:F3}",
                     Icon = "✓"
                 },
                 new CoachMessage
@@ -1046,7 +1032,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                 ProfileChanged = true,
                 Messages =
                 [
-                    new CoachMessage { Text = $"↩ Reverted {last.Parameter}: {last.NewValue:F3} → {last.OldValue:F3} ({_history.Count} change(s) still applied).", Icon = "↩" }
+                    new CoachMessage { Text = $"↩ Reverted {CoachParameterCatalog.DisplayName(last.Parameter)}: {last.NewValue:F3} → {last.OldValue:F3} ({_history.Count} change(s) still applied).", Icon = "↩" }
                 ]
             };
         }
@@ -1098,7 +1084,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                 [
                     new CoachMessage
                     {
-                        Text = $"Can't revert {entry.Parameter} to {entry.OldValue:F3}: it is now {current:F3} (changed after this entry was applied). Revert the newer change first, or apply a manual value.",
+                        Text = $"Can't revert {CoachParameterCatalog.DisplayName(entry.Parameter)} to {entry.OldValue:F3}: it is now {current:F3} (changed after this entry was applied). Revert the newer change first, or apply a manual value.",
                         Icon = "⚠️"
                     }
                 ]
@@ -1116,7 +1102,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
             ProfileChanged = true,
             Messages =
             [
-                new CoachMessage { Text = $"↩ Reverted {entry.Parameter}: {entry.NewValue:F3} → {entry.OldValue:F3} ({_history.Count} change(s) still applied).", Icon = "↩" }
+                new CoachMessage { Text = $"↩ Reverted {CoachParameterCatalog.DisplayName(entry.Parameter)}: {entry.NewValue:F3} → {entry.OldValue:F3} ({_history.Count} change(s) still applied).", Icon = "↩" }
             ]
         };
     }
@@ -1545,6 +1531,14 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
     /// known parameter, applicable to the current game, inside the real slider range,
     /// and a meaningful step. Returns null when the suggestion must be dropped.
     /// </summary>
+    /// <summary>
+    /// Smallest change worth suggesting: 2% of the slider span, but never more than 5% of the
+    /// current value. Wide sliders (Output Gain 0–20) would otherwise reject real changes
+    /// (0.98 → 0.73 was dropped as a 'micro-step'). Floor of 0.5% span stops true micro-steps.
+    /// </summary>
+    internal static float MinMeaningfulStep(float span, float current)
+        => Math.Max(Math.Min(span * 0.02f, Math.Max(Math.Abs(current) * 0.05f, span * 0.005f)), 1e-6f);
+
     private FfbRecommendation? ValidateRecommendation(
         string parameter, string issueDescription, string reason,
         float aiCurrent, float aiSuggested, string impact,
@@ -1580,7 +1574,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
         if (info.SliderMin.HasValue && info.SliderMax.HasValue)
         {
             float span = info.SliderMax.Value - info.SliderMin.Value;
-            meaningful = Math.Abs(suggested - actualCurrent) >= Math.Max(span * 0.02f, 1e-6f);
+            meaningful = Math.Abs(suggested - actualCurrent) >= MinMeaningfulStep(span, actualCurrent);
         }
         else
         {
@@ -1589,7 +1583,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
         if (!meaningful)
         {
             droppedNotes.Add($"Dropped '{info.Name}': suggested {suggested:F3} is not a meaningful " +
-                $"step from current {actualCurrent:F3} (min step is 2% of slider span).");
+                $"step from current {actualCurrent:F3} (min step is 2% of the slider span or 5% of the current value, whichever is smaller).");
             return null;
         }
 
@@ -1723,7 +1717,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                     Recommendation = rec,
                     Answers =
                     [
-                        new CoachAnswer { Id = "clipping_yes", Label = "Yes, too strong", Description = $"Suggested: OutputGain {rec.CurrentValue:F2} → {rec.SuggestedValue:F2}" },
+                        new CoachAnswer { Id = "clipping_yes", Label = "Yes, too strong", Description = $"Suggested: Output Gain {rec.CurrentValue:F2} → {rec.SuggestedValue:F2}" },
                         new CoachAnswer { Id = "clipping_no", Label = "Feels fine", Description = "Skip this adjustment" }
                     ]
                 });
@@ -1737,7 +1731,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
                     Recommendation = rec,
                     Answers =
                     [
-                        new CoachAnswer { Id = "weak_yes", Label = "Yes, too weak", Description = $"Suggested: OutputGain {rec.CurrentValue:F2} → {rec.SuggestedValue:F2}" },
+                        new CoachAnswer { Id = "weak_yes", Label = "Yes, too weak", Description = $"Suggested: Output Gain {rec.CurrentValue:F2} → {rec.SuggestedValue:F2}" },
                         new CoachAnswer { Id = "weak_no", Label = "Feels about right", Description = "Skip this adjustment" }
                     ]
                 });
@@ -1949,7 +1943,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
         var historyText = "";
         if (count > 0)
         {
-            var lines = _history.Select((h, i) => $"{i + 1}. {h.Parameter}: {h.OldValue:F3} → {h.NewValue:F3} ({h.AppliedAt:HH:mm:ss})");
+            var lines = _history.Select((h, i) => $"{i + 1}. {CoachParameterCatalog.DisplayName(h.Parameter)}: {h.OldValue:F3} → {h.NewValue:F3} ({h.AppliedAt:HH:mm:ss})");
             historyText = "\n\n**Applied history:**\n" + string.Join("\n", lines) +
                 "\n\nUse Undo (last change) or Revert (any entry) in the history panel to roll back.";
         }
@@ -2106,12 +2100,77 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
     {
         if (string.IsNullOrWhiteSpace(name)) return name ?? "";
         var key = new string(name.Where(c => !char.IsWhiteSpace(c)).ToArray()).ToLowerInvariant();
-        return ParamNormalize.TryGetValue(key, out var canonical) ? canonical : name;
+        if (ParamNormalize.TryGetValue(key, out var canonical)) return canonical;
+        // Catalog names + exact Tuning-page slider labels ("Centre Damping Floor").
+        return CoachParameterCatalog.TryResolve(name, out var info) && info != null ? info.Name : name;
     }
+
+    /// <summary>
+    /// Profile accessors for parameters added with the feel-based Tuning page (2026-11).
+    /// Consulted before the legacy switches in Read/WriteProfileValue so every catalog
+    /// entry the coach may suggest can actually be read and applied.
+    /// </summary>
+    private static readonly Dictionary<string, (Func<FfbProfile, float> Get, Action<FfbProfile, float> Set)> Accessors =
+        new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["NormalizationScale"] = (p => p.NormalizationScale, (p, v) => p.NormalizationScale = v),
+        ["ForceGain"] = (p => p.Slip.ForceGain, (p, v) => p.Slip.ForceGain = v),
+        ["WheelMaxTorqueNm"] = (p => p.WheelMaxTorqueNm, (p, v) => p.WheelMaxTorqueNm = v),
+        ["SoftLockStrength"] = (p => p.SoftLock.Strength, (p, v) => p.SoftLock.Strength = v),
+        ["AutoGainScale"] = (p => p.AutoGain.Scale, (p, v) => p.AutoGain.Scale = v),
+        ["GyroGain"] = (p => p.Gyro.Gain, (p, v) => p.Gyro.Gain = v),
+        ["FyRearGain"] = (p => p.FyRear.Gain, (p, v) => p.FyRear.Gain = v),
+        ["TyreGripScale"] = (p => p.Slip.TyreGripScale, (p, v) => p.Slip.TyreGripScale = v),
+        ["GripScaleGain"] = (p => p.Slip.GripScaleGain, (p, v) => p.Slip.GripScaleGain = v),
+        ["TyreTempGain"] = (p => p.Slip.TyreTempGain, (p, v) => p.Slip.TyreTempGain = v),
+        ["SelfSteerGain"] = (p => p.Slip.SelfSteerGain, (p, v) => p.Slip.SelfSteerGain = v),
+        ["FlatspotGain"] = (p => p.Slip.FlatspotGain, (p, v) => p.Slip.FlatspotGain = v),
+        ["BrakePressureGain"] = (p => p.Slip.BrakePressureGain, (p, v) => p.Slip.BrakePressureGain = v),
+        ["TcWheelGain"] = (p => p.TcWheel.Gain, (p, v) => p.TcWheel.Gain = v),
+        ["TcFeelGain"] = (p => p.Slip.TcFeelGain, (p, v) => p.Slip.TcFeelGain = v),
+        ["RoadTextureGain"] = (p => p.Slip.RoadTextureGain, (p, v) => p.Slip.RoadTextureGain = v),
+        ["RoadTextureDecayMs"] = (p => p.Slip.RoadTextureDecayMs, (p, v) => p.Slip.RoadTextureDecayMs = v),
+        ["RoadCompressionGain"] = (p => p.Slip.RoadCompressionGain, (p, v) => p.Slip.RoadCompressionGain = v),
+        ["BumpTwistGain"] = (p => p.Slip.BumpTwistGain, (p, v) => p.Slip.BumpTwistGain = v),
+        ["SurfaceFeelGain"] = (p => p.Slip.SurfaceFeelGain, (p, v) => p.Slip.SurfaceFeelGain = v),
+        ["KerbStrikeDecayMs"] = (p => p.Slip.KerbStrikeDecayMs, (p, v) => p.Slip.KerbStrikeDecayMs = v),
+        ["GripReleaseRate"] = (p => p.Slip.GripReleaseRate, (p, v) => p.Slip.GripReleaseRate = v),
+        ["BrakeShimmerGain"] = (p => p.Slip.BrakeShimmerGain, (p, v) => p.Slip.BrakeShimmerGain = v),
+        ["CoreFloor"] = (p => p.Slip.CoreFloor, (p, v) => p.Slip.CoreFloor = v),
+        ["CenterDirectionBlend"] = (p => p.Slip.CenterDirectionBlend, (p, v) => p.Slip.CenterDirectionBlend = v),
+        ["LfeGain"] = (p => p.Lfe.Gain, (p, v) => p.Lfe.Gain = v),
+        ["LfeFrequency"] = (p => p.Lfe.Frequency, (p, v) => p.Lfe.Frequency = v),
+        ["LfeRpmDrive"] = (p => p.Lfe.RpmDrive, (p, v) => p.Lfe.RpmDrive = v),
+        ["EngineTorqueLfeMod"] = (p => p.Slip.EngineTorqueLfeMod, (p, v) => p.Slip.EngineTorqueLfeMod = v),
+        ["LfeSuspensionDrive"] = (p => p.Lfe.SuspensionDrive, (p, v) => p.Lfe.SuspensionDrive = v),
+        ["LfeSpeedScaling"] = (p => p.Lfe.SpeedScaling, (p, v) => p.Lfe.SpeedScaling = v),
+        ["SteerVelocityReference"] = (p => p.Advanced.SteerVelocityReference, (p, v) => p.Advanced.SteerVelocityReference = v),
+        ["VelocityDeadzone"] = (p => p.Advanced.VelocityDeadzone, (p, v) => p.Advanced.VelocityDeadzone = v),
+        ["CoreSmoothing"] = (p => p.Slip.CoreSmoothing, (p, v) => p.Slip.CoreSmoothing = v),
+        ["DetailSmoothing"] = (p => p.Slip.DetailSmoothing, (p, v) => p.Slip.DetailSmoothing = v),
+        ["StaticFrictionBreakoutGain"] = (p => p.StaticFriction.BreakoutGain, (p, v) => p.StaticFriction.BreakoutGain = v),
+        ["StaticFrictionBreakoutFrequencyHz"] = (p => p.StaticFriction.BreakoutFrequencyHz, (p, v) => p.StaticFriction.BreakoutFrequencyHz = v),
+        ["StaticFrictionScrubGain"] = (p => p.StaticFriction.ScrubGain, (p, v) => p.StaticFriction.ScrubGain = v),
+        ["StaticFrictionLoadAsymmetryGain"] = (p => p.StaticFriction.LoadAsymmetryGain, (p, v) => p.StaticFriction.LoadAsymmetryGain = v),
+        ["StaticFrictionPressureSensitivity"] = (p => p.StaticFriction.PressureSensitivity, (p, v) => p.StaticFriction.PressureSensitivity = v),
+        ["CrashDecayRate"] = (p => p.Crash.DecayRate, (p, v) => p.Crash.DecayRate = v),
+        ["CrashMinSpeedKmh"] = (p => p.Crash.MinSpeedKmh, (p, v) => p.Crash.MinSpeedKmh = v),
+        ["BlowoutPressureThreshold"] = (p => p.TyreCondition.BlowoutPressureThreshold, (p, v) => p.TyreCondition.BlowoutPressureThreshold = v),
+        ["MaxBlowoutAmplitude"] = (p => p.TyreCondition.MaxBlowoutAmplitude, (p, v) => p.TyreCondition.MaxBlowoutAmplitude = v),
+        ["WetCurbSuppression"] = (p => p.WetWeather.CurbSuppression, (p, v) => p.WetWeather.CurbSuppression = v),
+        ["WetScrubSuppression"] = (p => p.WetWeather.ScrubSuppression, (p, v) => p.WetWeather.ScrubSuppression = v),
+        ["WetManualIntensity"] = (p => p.WetWeather.ManualIntensity, (p, v) => p.WetWeather.ManualIntensity = v),
+        ["WetNoiseFloorSuppression"] = (p => p.WetWeather.NoiseFloorSuppression, (p, v) => p.WetWeather.NoiseFloorSuppression = v),
+        ["WetHydroplaningSpeedThreshold"] = (p => p.WetWeather.HydroplaningSpeedThreshold, (p, v) => p.WetWeather.HydroplaningSpeedThreshold = v),
+        ["WetHydroplaningMaxAttenuation"] = (p => p.WetWeather.HydroplaningMaxAttenuation, (p, v) => p.WetWeather.HydroplaningMaxAttenuation = v),
+        ["SteeringLockDegrees"] = (p => p.SteeringLockDegrees, (p, v) => p.SteeringLockDegrees = (int)Math.Round(Math.Clamp(v, 180f, 1080f))),
+        ["SteeringAngleCompensationEnabled"] = (p => p.Slip.SteeringAngleCompensationEnabled ? 1 : 0, (p, v) => p.Slip.SteeringAngleCompensationEnabled = v > 0.5f),
+    };
 
     private static float ReadProfileValue(FfbProfile profile, string parameter)
     {
         parameter = NormalizeParam(parameter);
+        if (Accessors.TryGetValue(parameter, out var acc)) return acc.Get(profile);
         return parameter switch
         {
             "OutputGain" => profile.OutputGain,
@@ -2223,6 +2282,7 @@ The user wants to chat about their FFB tuning. Greet them and ask what they'd li
     private static void WriteProfileValue(FfbProfile profile, string parameter, float value)
     {
         parameter = NormalizeParam(parameter);
+        if (Accessors.TryGetValue(parameter, out var acc)) { acc.Set(profile, value); return; }
         switch (parameter)
         {
             case "OutputGain": profile.OutputGain = value; break;

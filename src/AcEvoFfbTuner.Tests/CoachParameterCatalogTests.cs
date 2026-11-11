@@ -134,6 +134,44 @@ public class CoachParameterCatalogTests
         Assert.True(bad.Count == 0, $"{profileName}: " + string.Join(", ", bad));
     }
 
+    [Theory]
+    [InlineData("CenterDampFloor", "Centre Damping Floor", "Steering Weight & Centre")]
+    [InlineData("SoftClipThreshold", "Max Force Limit (clipping knee)", "Overall Strength & Wheel")]
+    [InlineData("MzFrontGain", "Self-Aligning Torque (Mz)", "Steering Weight & Centre")]
+    [InlineData("CrashEnabled", "Enable Crash Forces", "Crashes & Tyre Damage")]
+    [InlineData("StaticFrictionBreakoutGain", "Breakout Judder", "Parked & Low Speed")]
+    public void UiLabel_MatchesTuningPage(string name, string label, string section)
+    {
+        var p = Get(name);
+        Assert.Equal(label, CoachParameterCatalog.UiLabel(p));
+        Assert.Equal(section, CoachParameterCatalog.UiSection(p));
+    }
+
+    [Fact]
+    public void Resolve_AcceptsSliderLabel_AndProfileOnlyFallsBackToName()
+    {
+        Assert.True(CoachParameterCatalog.TryResolve("Centre Damping Floor", out var p));
+        Assert.Equal("CenterDampFloor", p!.Name);
+        Assert.Equal("Tyre Slip Vibration", CoachParameterCatalog.DisplayName("SlipGain"));
+        Assert.Equal("GripReleaseRate", CoachParameterCatalog.DisplayName("GripReleaseRate"));
+    }
+
+    [Theory]
+    [InlineData("TyreGripScale", CoachGame.Raceroom, true)]
+    [InlineData("TyreGripScale", CoachGame.AcEvo, false)]
+    [InlineData("SelfSteerGain", CoachGame.LeMansUltimate, true)]
+    [InlineData("ForceGain", CoachGame.AssettoCorsaCompetizione, true)]
+    [InlineData("ForceGain", CoachGame.AcEvo, false)]
+    [InlineData("CoreSmoothing", CoachGame.AcEvo, false)]
+    [InlineData("LfeGain", CoachGame.Raceroom, true)]
+    [InlineData("SteeringLockDegrees", CoachGame.AcEvo, false)]
+    [InlineData("SlipAngleGain", CoachGame.Raceroom, true)]
+    [InlineData("SlipAngleShapeGain", CoachGame.Raceroom, true)]
+    [InlineData("SlipAngleGain", CoachGame.LeMansUltimate, false)]
+    [InlineData("SlipAngleGain", CoachGame.AssettoCorsa, false)]
+    public void NewSliders_Applicability(string name, CoachGame game, bool expected)
+        => Assert.Equal(expected, CoachParameterCatalog.IsApplicable(Get(name), game));
+
     [Fact]
     public void AutoConfigurator_ClampsSteeringLock()
     {
