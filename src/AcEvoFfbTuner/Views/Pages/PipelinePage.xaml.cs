@@ -1,3 +1,4 @@
+using AcEvoFfbTuner.Services;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -117,17 +118,17 @@ public sealed partial class PipelinePage : UserControl
             if (card == null) continue;
             bool sel = i == _selectedStage;
             card.BorderBrush = sel
-                ? new SolidColorBrush(Color.FromRgb(0xFF, 0xF0, 0x88))
-                : new SolidColorBrush(Color.FromRgb(0x30, 0x36, 0x3D));
+                ? ThemeManager.Brush("#FFFFF088")
+                : ThemeManager.Brush("#FF30363D");
         }
     }
 
-    private static readonly SolidColorBrush ActiveBadgeBrush = new(Color.FromArgb(0x1A, 0x7E, 0xE7, 0x87));
-    private static readonly SolidColorBrush DimBadgeBrush = new(Color.FromArgb(0x33, 0x48, 0x4F, 0x58));
-    private static readonly SolidColorBrush ActiveTextBrush = new(Color.FromRgb(0x7E, 0xE7, 0x87));
-    private static readonly SolidColorBrush DimTextBrush = new(Color.FromRgb(0x8B, 0x94, 0x9E));
-    private static readonly SolidColorBrush RedTextBrush = new(Color.FromRgb(0xFF, 0x17, 0x44));
-    private static readonly SolidColorBrush GreenTextBrush = new(Color.FromRgb(0x7E, 0xE7, 0x87));
+    private static SolidColorBrush ActiveBadgeBrush => ThemeManager.Brush("#1A7EE787");
+    private static SolidColorBrush DimBadgeBrush => ThemeManager.Brush("#33484F58");
+    private static SolidColorBrush ActiveTextBrush => ThemeManager.Brush("#FF7EE787");
+    private static SolidColorBrush DimTextBrush => ThemeManager.Brush("#FF8B949E");
+    private static SolidColorBrush RedTextBrush => ThemeManager.Brush("#FFFF1744");
+    private static SolidColorBrush GreenTextBrush => ThemeManager.Brush("#FF7EE787");
 
     private void Refresh(bool force)
     {
@@ -156,8 +157,8 @@ public sealed partial class PipelinePage : UserControl
             bool clipping = proc!.IsClipping;
             LiveStatusLabel.Text = $"LIVE  •  {raw!.SpeedKmh:F0} km/h  •  steer {raw.SteerAngle:+0.00;-0.00}  •  {(clipping ? "⚠ CLIPPING" : "headroom OK")}";
             LiveStatusLabel.Foreground = clipping
-                ? new SolidColorBrush(Color.FromRgb(0xFF, 0x17, 0x44))
-                : new SolidColorBrush(Color.FromRgb(0x7E, 0xE7, 0x87));
+                ? ThemeManager.Brush("#FFFF1744")
+                : ThemeManager.Brush("#FF7EE787");
         }
 
         for (int i = 0; i < 15; i++)
@@ -254,11 +255,11 @@ public sealed partial class PipelinePage : UserControl
     {
         badgeText.Text = text;
         badge.Background = active
-            ? new SolidColorBrush(Color.FromArgb(0x1A, 0x7E, 0xE7, 0x87))
-            : new SolidColorBrush(Color.FromArgb(0x33, 0x48, 0x4F, 0x58));
+            ? ThemeManager.Brush("#1A7EE787")
+            : ThemeManager.Brush("#33484F58");
         badgeText.Foreground = active
-            ? new SolidColorBrush(Color.FromRgb(0x7E, 0xE7, 0x87))
-            : new SolidColorBrush(Color.FromRgb(0x8B, 0x94, 0x9E));
+            ? ThemeManager.Brush("#FF7EE787")
+            : ThemeManager.Brush("#FF8B949E");
     }
 
     private Border? GetCard(int i) => i switch

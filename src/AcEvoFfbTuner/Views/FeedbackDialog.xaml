@@ -6,7 +6,7 @@
         Height="340"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        Background="{StaticResource BgDark}"
+        Background="{DynamicResource BgDark}"
         Foreground="{DynamicResource TextBrush}">
 
     <Grid Margin="24">

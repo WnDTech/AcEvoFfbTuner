@@ -33,13 +33,13 @@ public partial class HubPage : UserControl
 
     private DispatcherTimer? _searchTimer;
 
-    private static readonly SolidColorBrush BrushAccent = new(Color.FromRgb(0xF0, 0x88, 0x3E));
-    private static readonly SolidColorBrush BrushAccentFaint = new(Color.FromArgb(0x30, 0xF0, 0x88, 0x3E));
-    private static readonly SolidColorBrush BrushMuted = new(Color.FromRgb(0x8B, 0x94, 0x9E));
-    private static readonly SolidColorBrush BrushBadgeBg = new(Color.FromRgb(0x2D, 0x33, 0x3B));
-    private static readonly SolidColorBrush BrushCardBg = new(Color.FromRgb(0x1C, 0x21, 0x28));
-    private static readonly SolidColorBrush BrushCardBorder = new(Color.FromRgb(0x30, 0x36, 0x3D));
-    private static readonly SolidColorBrush BrushForeground = new(Color.FromRgb(0xE6, 0xED, 0xF3));
+    private static SolidColorBrush BrushAccent => ThemeManager.Brush("#FFF0883E");
+    private static SolidColorBrush BrushAccentFaint => ThemeManager.Brush("#30F0883E");
+    private static SolidColorBrush BrushMuted => ThemeManager.Brush("#FF8B949E");
+    private static SolidColorBrush BrushBadgeBg => ThemeManager.Brush("#FF2D333B");
+    private static SolidColorBrush BrushCardBg => ThemeManager.Brush("#FF1C2128");
+    private static SolidColorBrush BrushCardBorder => ThemeManager.Brush("#FF30363D");
+    private static SolidColorBrush BrushForeground => ThemeManager.Brush("#FFE6EDF3");
 
     public HubPage()
     {

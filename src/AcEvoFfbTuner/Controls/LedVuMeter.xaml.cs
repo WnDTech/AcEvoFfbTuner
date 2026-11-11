@@ -1,3 +1,4 @@
+using AcEvoFfbTuner.Services;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -34,13 +35,13 @@ public partial class LedVuMeter : UserControl
         }
     }
 
-    private static readonly Color GreenOn = Color.FromRgb(0x00, 0xE6, 0x76);
-    private static readonly Color YellowOn = Color.FromRgb(0xFF, 0xD6, 0x00);
-    private static readonly Color RedOn = Color.FromRgb(0xFF, 0x17, 0x44);
-    private static readonly Color GreenOff = Color.FromRgb(0x1B, 0x3A, 0x2A);
-    private static readonly Color YellowOff = Color.FromRgb(0x3A, 0x34, 0x13);
-    private static readonly Color RedOff = Color.FromRgb(0x3A, 0x1A, 0x1A);
-    private static readonly Color InactiveOff = Color.FromRgb(0x22, 0x26, 0x2C);
+    private static Color GreenOn => ThemeManager.Color("#FF00E676");
+    private static Color YellowOn => ThemeManager.Color("#FFFFD600");
+    private static Color RedOn => ThemeManager.Color("#FFFF1744");
+    private static Color GreenOff => ThemeManager.Color("#FF1B3A2A");
+    private static Color YellowOff => ThemeManager.Color("#FF3A3413");
+    private static Color RedOff => ThemeManager.Color("#FF3A1A1A");
+    private static Color InactiveOff => ThemeManager.Color("#FF22262C");
 
     public LedVuMeter()
     {
@@ -61,7 +62,7 @@ public partial class LedVuMeter : UserControl
                 Margin = new Thickness(0, 0, _compact ? 2 : 3, 0),
                 Background = new SolidColorBrush(OffColor(i)),
                 BorderThickness = new Thickness(1),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x00, 0x00, 0x00))
+                BorderBrush = ThemeManager.Brush("#FF000000")
             };
             _segments[i] = b;
             SegmentRow.Children.Add(b);
@@ -114,7 +115,7 @@ public partial class LedVuMeter : UserControl
             if (!_isActive)
             {
                 bg.Color = InactiveOff;
-                border.Color = Color.FromRgb(0x30, 0x36, 0x3D);
+                border.Color = ThemeManager.Color("#FF30363D");
             }
             else if (i < lit)
             {

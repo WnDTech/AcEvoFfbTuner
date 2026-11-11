@@ -6,7 +6,7 @@
         SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        Background="{StaticResource BgDark}"
+        Background="{DynamicResource BgDark}"
         Foreground="{DynamicResource TextBrush}">
 
     <StackPanel Margin="24">

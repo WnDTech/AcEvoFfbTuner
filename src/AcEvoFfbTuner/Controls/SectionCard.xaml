@@ -5,8 +5,8 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </UserControl.Resources>
-    <Border x:Name="CardBorder" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}"
-            BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+    <Border x:Name="CardBorder" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}"
+            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
             Margin="0,0,0,10">
         <Grid>
             <DockPanel>

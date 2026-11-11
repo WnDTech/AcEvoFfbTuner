@@ -273,57 +273,7 @@
                 <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
                 <Setter Property="Orientation" Value="Vertical" />
                 <Setter Property="Width" Value="44" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Slider">
-                            <Border Background="{TemplateBinding Background}" Padding="0,6">
-                                <Grid>
-                                    <Border CornerRadius="{DynamicResource UiR7}" Background="{DynamicResource SliderTrackBg}" Width="14" HorizontalAlignment="Center" />
-                                    <Track x:Name="PART_Track" HorizontalAlignment="Stretch">
-                                        <Track.DecreaseRepeatButton>
-                                            <RepeatButton Command="Slider.DecreaseLarge">
-                                                <RepeatButton.Template>
-                                                    <ControlTemplate TargetType="RepeatButton">
-                                                        <Border Background="{DynamicResource AccentBrush}" CornerRadius="{DynamicResource UiR7}" Width="14" HorizontalAlignment="Center" />
-                                                    </ControlTemplate>
-                                                </RepeatButton.Template>
-                                            </RepeatButton>
-                                        </Track.DecreaseRepeatButton>
-                                        <Track.IncreaseRepeatButton>
-                                            <RepeatButton Command="Slider.IncreaseLarge">
-                                                <RepeatButton.Template>
-                                                    <ControlTemplate TargetType="RepeatButton">
-                                                        <Border Background="Transparent" />
-                                                    </ControlTemplate>
-                                                </RepeatButton.Template>
-                                            </RepeatButton>
-                                        </Track.IncreaseRepeatButton>
-                                        <Track.Thumb>
-                                            <Thumb>
-                                                <Thumb.Template>
-                                                    <ControlTemplate TargetType="Thumb">
-                                                        <Grid>
-                                                            <Ellipse Width="32" Height="32" Fill="{DynamicResource AccentGlow}" />
-                                                            <Ellipse x:Name="ThumbFill" Width="24" Height="24" Fill="{DynamicResource AccentBrush}" Stroke="{DynamicResource SliderThumbStroke}" StrokeThickness="2" />
-                                                        </Grid>
-                                                        <ControlTemplate.Triggers>
-                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter TargetName="ThumbFill" Property="Fill" Value="{DynamicResource AccentHoverBrush}" />
-                                                            </Trigger>
-                                                            <Trigger Property="IsDragging" Value="True">
-                                                                <Setter TargetName="ThumbFill" Property="Fill" Value="{DynamicResource AccentDragBrush}" />
-                                                            </Trigger>
-                                                        </ControlTemplate.Triggers>
-                                                    </ControlTemplate>
-                                                </Thumb.Template>
-                                            </Thumb>
-                                        </Track.Thumb>
-                                    </Track>
-                                </Grid>
-                            </Border>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
+                <Setter Property="Template" Value="{DynamicResource UiVerticalSliderTemplate}" />
             </Style>
 
             <Style TargetType="CheckBox">

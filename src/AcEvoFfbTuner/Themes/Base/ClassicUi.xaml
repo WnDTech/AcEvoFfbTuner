@@ -284,4 +284,66 @@
     <SolidColorBrush x:Key="UiC_FFFFB74D" Color="#FFFFB74D" />
     <SolidColorBrush x:Key="UiC_FFFFB86B" Color="#FFFFB86B" />
     <SolidColorBrush x:Key="UiC_FFFFFFFF" Color="#FFFFFFFF" />
+    <!-- Classic vertical EQ slider (moved verbatim from App.xaml) -->
+                        <ControlTemplate x:Key="UiVerticalSliderTemplate" TargetType="Slider">
+                            <Border Background="{TemplateBinding Background}" Padding="0,6">
+                                <Grid>
+                                    <Border CornerRadius="{DynamicResource UiR7}" Background="{DynamicResource SliderTrackBg}" Width="14" HorizontalAlignment="Center" />
+                                    <Track x:Name="PART_Track" HorizontalAlignment="Stretch">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton Command="Slider.DecreaseLarge">
+                                                <RepeatButton.Template>
+                                                    <ControlTemplate TargetType="RepeatButton">
+                                                        <Border Background="{DynamicResource AccentBrush}" CornerRadius="{DynamicResource UiR7}" Width="14" HorizontalAlignment="Center" />
+                                                    </ControlTemplate>
+                                                </RepeatButton.Template>
+                                            </RepeatButton>
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton Command="Slider.IncreaseLarge">
+                                                <RepeatButton.Template>
+                                                    <ControlTemplate TargetType="RepeatButton">
+                                                        <Border Background="Transparent" />
+                                                    </ControlTemplate>
+                                                </RepeatButton.Template>
+                                            </RepeatButton>
+                                        </Track.IncreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb>
+                                                <Thumb.Template>
+                                                    <ControlTemplate TargetType="Thumb">
+                                                        <Grid>
+                                                            <Ellipse Width="32" Height="32" Fill="{DynamicResource AccentGlow}" />
+                                                            <Ellipse x:Name="ThumbFill" Width="24" Height="24" Fill="{DynamicResource AccentBrush}" Stroke="{DynamicResource SliderThumbStroke}" StrokeThickness="2" />
+                                                        </Grid>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="ThumbFill" Property="Fill" Value="{DynamicResource AccentHoverBrush}" />
+                                                            </Trigger>
+                                                            <Trigger Property="IsDragging" Value="True">
+                                                                <Setter TargetName="ThumbFill" Property="Fill" Value="{DynamicResource AccentDragBrush}" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+                                        </Track.Thumb>
+                                    </Track>
+                                </Grid>
+                            </Border>
+                        </ControlTemplate>
+    <!-- Colours used from code-behind -->
+    <SolidColorBrush x:Key="UiC_33484F58" Color="#33484F58" />
+    <SolidColorBrush x:Key="UiC_FF1B3A2A" Color="#FF1B3A2A" />
+    <SolidColorBrush x:Key="UiC_FF22223A" Color="#FF22223A" />
+    <SolidColorBrush x:Key="UiC_FF22262C" Color="#FF22262C" />
+    <SolidColorBrush x:Key="UiC_FF3A1A1A" Color="#FF3A1A1A" />
+    <SolidColorBrush x:Key="UiC_FF3A3413" Color="#FF3A3413" />
+    <SolidColorBrush x:Key="UiC_FF3D2E00" Color="#FF3D2E00" />
+    <SolidColorBrush x:Key="UiC_FFE0E0E0" Color="#FFE0E0E0" />
+    <SolidColorBrush x:Key="UiC_FFE67E22" Color="#FFE67E22" />
+    <SolidColorBrush x:Key="UiC_FFF0AD4E" Color="#FFF0AD4E" />
+    <SolidColorBrush x:Key="UiC_FFF85151" Color="#FFF85151" />
+    <SolidColorBrush x:Key="UiC_FFFFF088" Color="#FFFFF088" />
+    <LinearGradientBrush x:Key="UiHighlightCardBg" StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#FF2D1F00" Offset="0" /><GradientStop Color="#FF1C2128" Offset="1" /></LinearGradientBrush>
 </ResourceDictionary>

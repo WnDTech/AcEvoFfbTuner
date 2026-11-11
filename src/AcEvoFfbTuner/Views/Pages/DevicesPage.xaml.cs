@@ -1,3 +1,4 @@
+using AcEvoFfbTuner.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -210,7 +211,7 @@ public partial class DevicesPage : UserControl
         if (LedPreviewBar.Children.Count != ledCount)
             BuildLedDots(ledCount);
 
-        var offColor = Color.FromRgb(0x21, 0x26, 0x2D);
+        var offColor = ThemeManager.Color("#FF21262D");
         var colors = new[]
         {
             Color.FromRgb(0x00, 0xE6, 0x76),
@@ -236,7 +237,7 @@ public partial class DevicesPage : UserControl
                 dot.StrokeThickness = active ? 2 : 1;
                 dot.Stroke = active
                     ? new SolidColorBrush(Color.FromArgb(0x80, c.R, c.G, c.B))
-                    : new SolidColorBrush(Color.FromRgb(0x30, 0x36, 0x3D));
+                    : ThemeManager.Brush("#FF30363D");
             }
         }
     }
@@ -251,8 +252,8 @@ public partial class DevicesPage : UserControl
                 Width = 22,
                 Height = 22,
                 Margin = new Thickness(6, 0, 6, 0),
-                Fill = new SolidColorBrush(Color.FromRgb(0x21, 0x26, 0x2D)),
-                Stroke = new SolidColorBrush(Color.FromRgb(0x30, 0x36, 0x3D)),
+                Fill = ThemeManager.Brush("#FF21262D"),
+                Stroke = ThemeManager.Brush("#FF30363D"),
                 StrokeThickness = 1,
             };
             LedPreviewBar.Children.Add(ellipse);

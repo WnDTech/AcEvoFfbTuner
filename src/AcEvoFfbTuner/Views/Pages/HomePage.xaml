@@ -426,13 +426,8 @@
             <!-- ═══ SETUP WIZARD ═══ -->
             <Border x:Name="SetupWizardCard"
                     CornerRadius="{DynamicResource UiR10}" Padding="28,22"
-                    BorderThickness="2" BorderBrush="{DynamicResource UiAccent}" Margin="0,0,0,16">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#FF2D1F00" Offset="0" />
-                        <GradientStop Color="#FF1C2128" Offset="1" />
-                    </LinearGradientBrush>
-                </Border.Background>
+                    BorderThickness="2" BorderBrush="{DynamicResource UiAccent}" Margin="0,0,0,16"
+                    Background="{DynamicResource UiHighlightCardBg}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />

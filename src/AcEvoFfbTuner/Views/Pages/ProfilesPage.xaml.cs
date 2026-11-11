@@ -1,3 +1,4 @@
+using AcEvoFfbTuner.Services;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -24,15 +25,15 @@ public partial class ProfilesPage : UserControl
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AcEvoFfbTuner");
     private static readonly string StateFilePath = Path.Combine(AppDataPath, "browser_state.json");
 
-    private static readonly SolidColorBrush BrushAccent = new(System.Windows.Media.Color.FromRgb(0xF0, 0x88, 0x3E));
-    private static readonly SolidColorBrush BrushAccentFaint = new(System.Windows.Media.Color.FromArgb(0x30, 0xF0, 0x88, 0x3E));
-    private static readonly SolidColorBrush BrushHeaderBg = new(System.Windows.Media.Color.FromRgb(0x21, 0x26, 0x2D));
-    private static readonly SolidColorBrush BrushMuted = new(System.Windows.Media.Color.FromRgb(0x8B, 0x94, 0x9E));
-    private static readonly SolidColorBrush BrushBadgeBg = new(System.Windows.Media.Color.FromRgb(0x30, 0x36, 0x3D));
-    private static readonly SolidColorBrush BrushForeground = new(System.Windows.Media.Color.FromRgb(0xE6, 0xED, 0xF3));
-    private static readonly SolidColorBrush BrushHover = new(System.Windows.Media.Color.FromRgb(0x2D, 0x33, 0x3B));
-    private static readonly SolidColorBrush BrushWarningBadgeBg = new(System.Windows.Media.Color.FromRgb(0x3D, 0x2E, 0x00));
-    private static readonly SolidColorBrush BrushWarningFg = new(System.Windows.Media.Color.FromRgb(0xF0, 0xAD, 0x4E));
+    private static SolidColorBrush BrushAccent => ThemeManager.Brush("#FFF0883E");
+    private static SolidColorBrush BrushAccentFaint => ThemeManager.Brush("#30F0883E");
+    private static SolidColorBrush BrushHeaderBg => ThemeManager.Brush("#FF21262D");
+    private static SolidColorBrush BrushMuted => ThemeManager.Brush("#FF8B949E");
+    private static SolidColorBrush BrushBadgeBg => ThemeManager.Brush("#FF30363D");
+    private static SolidColorBrush BrushForeground => ThemeManager.Brush("#FFE6EDF3");
+    private static SolidColorBrush BrushHover => ThemeManager.Brush("#FF2D333B");
+    private static SolidColorBrush BrushWarningBadgeBg => ThemeManager.Brush("#FF3D2E00");
+    private static SolidColorBrush BrushWarningFg => ThemeManager.Brush("#FFF0AD4E");
 
     public ProfilesPage()
     {

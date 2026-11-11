@@ -16,8 +16,8 @@
             <StackPanel>
 
                 <TextBlock Text="O V E R L A Y S" FontSize="12" FontWeight="Bold"
-                           Foreground="{StaticResource TextDimBrush}" Margin="0,4,0,8" />
-                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12">
+                           Foreground="{DynamicResource TextDimBrush}" Margin="0,4,0,8" />
+                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12">
                     OBS browser source overlays for live telemetry. Add a Browser Source in OBS and point it to one of the URLs. Each overlay can use a different source address.
                 </TextBlock>
 
@@ -169,8 +169,8 @@
 
         <!-- ═══ RIGHT: SELECTED OVERLAY DETAILS ═══ -->
         <Border Grid.Column="1" Margin="0,16,24,20"
-                Background="{StaticResource BgPanel}"
-                BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                Background="{DynamicResource BgPanel}"
+                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
                 CornerRadius="{DynamicResource UiR10}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
@@ -184,7 +184,7 @@
                                        Foreground="{DynamicResource UiSky}"
                                        VerticalAlignment="Center" Margin="12,0,0,0" />
                         </DockPanel>
-                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,12,0,16" />
+                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,12,0,16" />
                     </StackPanel>
 
                     <!-- FFB TELEMETRY DASHBOARD -->

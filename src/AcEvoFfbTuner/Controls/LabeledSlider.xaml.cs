@@ -1,3 +1,4 @@
+using AcEvoFfbTuner.Services;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -584,7 +585,7 @@ namespace AcEvoFfbTuner.Controls
 
         private void ApplySectionColor()
         {
-            var brush = SectionColor ?? new SolidColorBrush(Color.FromRgb(0xE6, 0x7E, 0x22));
+            var brush = SectionColor ?? ThemeManager.Brush("#FFE67E22");
             if (PART_Slider != null)
                 PART_Slider.Foreground = brush;
             if (PART_ValueTextBox != null)
@@ -725,22 +726,22 @@ namespace AcEvoFfbTuner.Controls
         private void BuildContextMenu()
         {
             var menuStyle = new Style(typeof(ContextMenu));
-            menuStyle.Setters.Add(new Setter(BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x22, 0x22, 0x3A))));
-            menuStyle.Setters.Add(new Setter(BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55))));
+            menuStyle.Setters.Add(new Setter(BackgroundProperty, ThemeManager.Brush("#FF22223A")));
+            menuStyle.Setters.Add(new Setter(BorderBrushProperty, ThemeManager.Brush("#FF555555")));
             menuStyle.Setters.Add(new Setter(BorderThicknessProperty, new Thickness(1)));
-            menuStyle.Setters.Add(new Setter(ForegroundProperty, new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0))));
+            menuStyle.Setters.Add(new Setter(ForegroundProperty, ThemeManager.Brush("#FFE0E0E0")));
             menuStyle.Setters.Add(new Setter(FontSizeProperty, 14.0));
 
             var itemStyle = new Style(typeof(MenuItem));
-            itemStyle.Setters.Add(new Setter(ForegroundProperty, new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0))));
+            itemStyle.Setters.Add(new Setter(ForegroundProperty, ThemeManager.Brush("#FFE0E0E0")));
             itemStyle.Setters.Add(new Setter(FontSizeProperty, 14.0));
             itemStyle.Setters.Add(new Setter(PaddingProperty, new Thickness(24, 6, 24, 6)));
             var itemHoverTrigger = new Trigger { Property = IsMouseOverProperty, Value = true };
-            itemHoverTrigger.Setters.Add(new Setter(BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x55))));
+            itemHoverTrigger.Setters.Add(new Setter(BackgroundProperty, ThemeManager.Brush("#FF333355")));
             itemHoverTrigger.Setters.Add(new Setter(ForegroundProperty, Brushes.White));
             itemStyle.Triggers.Add(itemHoverTrigger);
             var itemDisabledTrigger = new Trigger { Property = IsEnabledProperty, Value = false };
-            itemDisabledTrigger.Setters.Add(new Setter(ForegroundProperty, new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88))));
+            itemDisabledTrigger.Setters.Add(new Setter(ForegroundProperty, ThemeManager.Brush("#FF888888")));
             itemStyle.Triggers.Add(itemDisabledTrigger);
 
             var menu = new ContextMenu { Style = menuStyle };

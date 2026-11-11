@@ -103,7 +103,7 @@
             <StackPanel>
 
                 <TextBlock Text="D E V I C E S" FontSize="12" FontWeight="Bold"
-                           Foreground="{StaticResource TextDimBrush}" Margin="0,4,0,12" />
+                           Foreground="{DynamicResource TextDimBrush}" Margin="0,4,0,12" />
 
                 <!-- WHEELBASE -->
                 <controls:SectionCard Title="WHEELBASE"
@@ -195,8 +195,8 @@
 
         <!-- ═══ RIGHT: SELECTED DEVICE SETTINGS ═══ -->
         <Border Grid.Column="1" Margin="0,16,16,20"
-                Background="{StaticResource BgPanel}"
-                BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                Background="{DynamicResource BgPanel}"
+                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
                 CornerRadius="{DynamicResource UiR10}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
@@ -210,7 +210,7 @@
                                        Foreground="{DynamicResource UiC_FF47A1FF}"
                                        VerticalAlignment="Center" Margin="12,0,0,0" />
                         </DockPanel>
-                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,12,0,16" />
+                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,12,0,16" />
                     </StackPanel>
 
             <!-- ═══════════════════════════════════════════ -->
@@ -220,17 +220,17 @@
                 <StackPanel>
 
                     <!-- Wheelbase connection info -->
-                    <TextBlock FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4" TextWrapping="Wrap">
+                    <TextBlock FontSize="14" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4" TextWrapping="Wrap">
                         <Run Text="Wheelbase: " /><Run FontWeight="Bold" Foreground="{DynamicResource UiText}" Text="{Binding DeviceName}" />
                     </TextBlock>
-                    <TextBlock FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap">
+                    <TextBlock FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap">
                         <Run Text="{Binding IsDeviceConnected, Mode=OneWay, StringFormat='Connected: {0}'}" />
                         <Run Text="   |   " /><Run Text="{Binding ForceInvertEnabled, Mode=OneWay, StringFormat='Force inversion: {0}'}" />
                         <Run Text="   |   " /><Run Text="{Binding SupportsPeriodicEffects, Mode=OneWay, StringFormat='Periodic effects: {0}'}" />
                     </TextBlock>
 
                     <!-- System-wide sim hardware scan (RaceHardwareScanner) -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
                             BorderThickness="1" BorderBrush="{DynamicResource UiC_3347A1FF}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
@@ -240,7 +240,7 @@
                                         ToolTip="Scan USB for wheelbases, pedals, haptics, shifters, handbrakes and button boxes" />
                                 <TextBlock Text="DETECTED SIM HARDWARE" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiC_FF47A1FF}" VerticalAlignment="Center" />
                             </DockPanel>
-                            <TextBlock Text="{Binding HardwareScanSummary}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                            <TextBlock Text="{Binding HardwareScanSummary}" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                        TextWrapping="Wrap" Margin="0,0,0,8" />
                             <ItemsControl ItemsSource="{Binding DetectedHardware}">
                                 <ItemsControl.ItemTemplate>
@@ -256,10 +256,10 @@
                                             <TextBlock Grid.Column="1" FontSize="12" Foreground="{DynamicResource UiText}" TextTrimming="CharacterEllipsis"
                                                        VerticalAlignment="Center">
                                                 <Run Text="{Binding ProductName, Mode=OneWay}" />
-                                                <Run Text="{Binding VendorName, Mode=OneWay, StringFormat='  ({0})'}" Foreground="{StaticResource TextDimBrush}" />
+                                                <Run Text="{Binding VendorName, Mode=OneWay, StringFormat='  ({0})'}" Foreground="{DynamicResource TextDimBrush}" />
                                             </TextBlock>
                                             <TextBlock Grid.Column="2" Text="{Binding VidPid}" FontSize="11" Margin="8,0,0,0"
-                                                       Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center"
                                                        ToolTip="{Binding Reason}" />
                                         </Grid>
                                     </DataTemplate>
@@ -269,16 +269,16 @@
                     </Border>
 
                     <!-- Logitech HID++ direct wheel settings (no G HUB) -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
                             BorderThickness="1" BorderBrush="{DynamicResource UiC_33FF9800}"
                             Visibility="{Binding LogitechCardsVisible, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock Text="LOGITECH WHEEL SETTINGS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiOrange}" VerticalAlignment="Center" />
                                 <TextBlock Text="Direct HID++ — no G HUB needed" FontSize="11"
-                                           Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                           Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
-                            <TextBlock Text="{Binding LogitechHidppStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                            <TextBlock Text="{Binding LogitechHidppStatus}" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                        TextWrapping="Wrap" Margin="0,0,0,6" />
                             <TextBlock Text="{Binding LogitechModeInfo}" FontSize="12" Foreground="{DynamicResource UiOrange}"
                                        TextWrapping="Wrap" Margin="0,0,0,8" />
@@ -293,7 +293,7 @@
                                 SectionColor="#FFFF9800" Margin="0,8,0,0" />
 
                             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                <TextBlock Text="Profile slot:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                <TextBlock Text="Profile slot:" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                            VerticalAlignment="Center" Margin="0,0,8,0" />
                                 <ComboBox ItemsSource="{Binding LogitechProfileSlotOptions}"
                                           SelectedValue="{Binding LogitechProfileSlot, Mode=TwoWay}"
@@ -321,7 +321,7 @@
                                  Logitech card with the other wheel-specific settings. -->
                             <DockPanel Margin="0,16,0,0">
                                 <TextBlock Text="DYNAMIC OLED SCREEN" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiC_FF47A1FF}" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding OledStatus}" FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                <TextBlock Text="{Binding OledStatus}" FontSize="11" Foreground="{DynamicResource TextDimBrush}"
                                            HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
                             <Grid Margin="0,4,0,0">
@@ -333,8 +333,8 @@
                                 </Grid.ColumnDefinitions>
                                 <CheckBox Grid.Column="0" IsChecked="{Binding OledEnabled, Mode=TwoWay}" VerticalAlignment="Center"
                                           IsEnabled="{Binding OledAvailable}"
-                                          Content="Screen live" FontSize="12" Foreground="{StaticResource TextDimBrush}" Cursor="Hand" />
-                                <TextBlock Grid.Column="2" Text="Screen:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                          Content="Screen live" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Cursor="Hand" />
+                                <TextBlock Grid.Column="2" Text="Screen:" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                            VerticalAlignment="Center" />
                                 <ComboBox Grid.Column="3" SelectedIndex="{Binding OledScreen, Mode=TwoWay}"
                                           IsEnabled="{Binding OledAvailable}"
@@ -347,23 +347,23 @@
                     </Border>
 
                     <!-- Wheel FFB Motor Test -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
                             BorderThickness="1" BorderBrush="{DynamicResource UiC_3347A15C}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,8">
                                 <TextBlock Text="WHEEL FFB TEST" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiC_FF47A1FF}" VerticalAlignment="Center" />
                                 <TextBlock Text="Verifies the wheelbase executes force — telemetry paused" FontSize="11"
-                                           Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                           Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
                             <TextBlock Text="Hold the wheel loosely and press TEST FORCE — you should feel a clear pull for 3 seconds. If nothing happens, the wheel is not executing DirectInput force."
-                                       FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                       FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Force %:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                <TextBlock Grid.Column="0" Text="Force %:" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                            VerticalAlignment="Center" Margin="0,0,8,0" />
                                 <Slider Grid.Column="1" Minimum="0" Maximum="1" TickFrequency="0.05"
                                         Value="{Binding WheelFfbTestIntensity, Mode=TwoWay}"
@@ -388,21 +388,21 @@
                                         ToolTip="500ms 60Hz diagnostic vibration — verifies haptics path independently of telemetry" />
                             </WrapPanel>
                             <TextBlock Text="{Binding WheelFfbTestStatus}" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                       Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,8,0,0" />
                         </StackPanel>
                     </Border>
 
                     <!-- TrueForce stream (RS50 / G PRO — app is the FFB source, no G HUB) -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
                             BorderThickness="1" BorderBrush="{DynamicResource UiC_3347A15C}"
                             Visibility="{Binding LogitechCardsVisible, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock Text="TRUEFORCE STREAM" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiC_FF47A15C}" VerticalAlignment="Center" />
                                 <TextBlock Text="Direct FFB channel — no G HUB needed" FontSize="11"
-                                           Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                           Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
-                            <TextBlock Text="{Binding TrueForceStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                            <TextBlock Text="{Binding TrueForceStatus}" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                        TextWrapping="Wrap" Margin="0,0,0,8" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -412,8 +412,8 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <CheckBox Grid.Column="0" IsChecked="{Binding TrueForceEnabled, Mode=TwoWay}" VerticalAlignment="Center"
-                                          Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Cursor="Hand" />
-                                <TextBlock Grid.Column="2" Text="Force scale:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                          Content="Enabled" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Cursor="Hand" />
+                                <TextBlock Grid.Column="2" Text="Force scale:" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                            VerticalAlignment="Center" />
                                 <Slider Grid.Column="3" Minimum="0.2" Maximum="2.0" TickFrequency="0.05"
                                         Value="{Binding TrueForceForceScale, Mode=TwoWay}"
@@ -422,10 +422,10 @@
                             <DockPanel Margin="0,10,0,0">
                                 <CheckBox IsChecked="{Binding LogitechDiForceMode, Mode=TwoWay}" VerticalAlignment="Center"
                                           Content="Use DirectInput force instead (no TrueForce stream)" FontSize="12"
-                                          Foreground="{StaticResource TextDimBrush}" Cursor="Hand"
+                                          Foreground="{DynamicResource TextDimBrush}" Cursor="Hand"
                                           ToolTip="Experimental: force goes through DirectInput and the TrueForce stream never engages — no stream contention with the game, DI effects (incl. haptics) carry the force. Applies at the next connect." />
                                 <TextBlock Text="Experimental — applies on reconnect" FontSize="11"
-                                           Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                           Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
                         </StackPanel>
                     </Border>
@@ -437,13 +437,13 @@
                 <StackPanel>
 
                     <!-- Header -->
-                    <TextBlock Text="{Binding LedSupportedInfo}" FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding LedSupportedInfo}" FontSize="14" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
 
                     <!-- LED Strip Preview -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
-                            <TextBlock Text="LED PREVIEW" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+                            <TextBlock Text="LED PREVIEW" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,10" />
                             <StackPanel x:Name="LedPreviewBar" Orientation="Horizontal" HorizontalAlignment="Center" />
                         </StackPanel>
                     </Border>
@@ -462,7 +462,7 @@
                             <!-- BRIGHTNESS -->
                             <StackPanel Visibility="{Binding LedBrightnessVisible, Converter={StaticResource BoolToVis}}">
                                 <TextBlock Text="BRIGHTNESS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" Margin="0,0,0,8" />
-                                <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12" Margin="0,0,0,16"
+                                <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12" Margin="0,0,0,16"
                                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                                     <controls:LabeledSlider Value="{Binding LedBrightness, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
                                         Label="Brightness" StringFormat="{}{0}" Suffix="%"
@@ -473,36 +473,36 @@
 
                             <!-- FLASH EFFECTS -->
                             <TextBlock Text="FLASH EFFECTS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" Margin="0,0,0,8" />
-                            <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12"
+                            <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12"
                                     BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                                 <StackPanel>
                                     <DockPanel Margin="0,4">
                                         <TextBlock Text="Shift / Limiter Flash" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" />
                                         <CheckBox IsChecked="{Binding LedShiftLimiterFlashEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                     </DockPanel>
-                                    <TextBlock Text="All LEDs flash at redline" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+                                    <TextBlock Text="All LEDs flash at redline" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,10" />
 
                                     <DockPanel Margin="0,4">
                                         <TextBlock Text="Pit Limiter Flash" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" />
                                         <CheckBox IsChecked="{Binding LedPitLimiterFlashEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                     </DockPanel>
-                                    <TextBlock Text="Alternating outer LEDs when pit limiter active" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+                                    <TextBlock Text="Alternating outer LEDs when pit limiter active" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,10" />
 
                                     <DockPanel Margin="0,4">
                                         <TextBlock Text="ABS Flash" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" />
                                         <CheckBox IsChecked="{Binding LedAbsFlashEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                     </DockPanel>
-                                    <TextBlock Text="First &amp; last LED when ABS active" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+                                    <TextBlock Text="First &amp; last LED when ABS active" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,10" />
 
                                     <StackPanel Visibility="{Binding LedFlagIndicatorsVisible, Converter={StaticResource BoolToVis}}">
                                         <DockPanel Margin="0,4">
                                             <TextBlock Text="Race Flag Indicators" FontSize="14" VerticalAlignment="Center" DockPanel.Dock="Left" />
                                             <CheckBox IsChecked="{Binding LedFlagIndicatorsEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                         </DockPanel>
-                                        <TextBlock Text="Yellow, red, blue flags on LEDs" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,10" />
+                                        <TextBlock Text="Yellow, red, blue flags on LEDs" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,10" />
                                     </StackPanel>
 
-                                    <Border Background="{StaticResource BgInput}" CornerRadius="{DynamicResource UiR6}" Padding="12,10" Margin="0,4,0,0">
+                                    <Border Background="{DynamicResource BgInput}" CornerRadius="{DynamicResource UiR6}" Padding="12,10" Margin="0,4,0,0">
                                         <controls:LabeledSlider Value="{Binding LedFlashRate, Mode=TwoWay}" Minimum="2" Maximum="60" TickFrequency="1"
                                             Label="Flash Speed" StringFormat="{}{0}"
                                             Description="Lower = faster (2=very fast, 60=slow)"
@@ -514,11 +514,11 @@
                             <!-- COLOR SCHEME -->
                             <StackPanel Visibility="{Binding LedColorSchemeVisible, Converter={StaticResource BoolToVis}}" Margin="0,16,0,0">
                                 <TextBlock Text="COLOR SCHEME" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" Margin="0,0,0,8" />
-                                <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12"
+                                <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12"
                                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                                     <StackPanel>
                                         <TextBlock Text="Color Preset" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4" />
-                                        <TextBlock Text="For wheels with per-LED RGB control" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8" />
+                                        <TextBlock Text="For wheels with per-LED RGB control" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,8" />
                                         <ComboBox SelectedIndex="{Binding LedColorSchemeIndex}" MaxWidth="240" HorizontalAlignment="Stretch" FontSize="14" Padding="6,4">
                                             <ComboBoxItem Content="Traffic Light (Green/Yellow/Red)" />
                                             <ComboBoxItem Content="Blue Gradient" />
@@ -534,7 +534,7 @@
                         <!-- Right Column: RPM Thresholds -->
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="RPM THRESHOLDS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" Margin="0,0,0,8" />
-                            <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12"
+                            <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,12"
                                     BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                                 <StackPanel>
                                     <TextBlock Text="Preset" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4" />
@@ -548,7 +548,7 @@
 
                                     <Expander Style="{StaticResource SectionExpander}" Header="Individual RPM Thresholds" IsExpanded="True">
                                         <StackPanel>
-                                            <TextBlock Text="Each LED lights up when RPM reaches its threshold (% of redline)" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8" />
+                                            <TextBlock Text="Each LED lights up when RPM reaches its threshold (% of redline)" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,8" />
                                             <controls:LabeledSlider Value="{Binding LedRpmThreshold1, Mode=TwoWay}" Minimum="5" Maximum="100" TickFrequency="1"
                                                 Label="LED 1" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
                                                 SectionColor="#FF79C0FF"
@@ -589,7 +589,7 @@
                                                 Label="LED 10" LabelWidth="60" StringFormat="{}{0}" Suffix="%" ValueWidth="52"
                                                 SectionColor="#FF79C0FF"
                                                 Visibility="{Binding LedRpmThreshold10Visible, Converter={StaticResource BoolToVis}}" />
-                                            <TextBlock Text="Select a preset first, then switch to Custom to fine-tune" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,8,0,0" />
+                                            <TextBlock Text="Select a preset first, then switch to Custom to fine-tune" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,8,0,0" />
                                         </StackPanel>
                                     </Expander>
                                 </StackPanel>
@@ -607,13 +607,13 @@
 
                     <!-- Connection Status -->
                     <TextBlock Text="Vibration motors in your seat and back pad (NLR HF8 / HF8 Pro). Pedal vibration motors are set up under Pedals → Haptics."
-                               FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding Hf8ConnectionStatus}" FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4" TextWrapping="Wrap" />
+                               FontSize="13" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Hf8ConnectionStatus}" FontSize="14" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4" TextWrapping="Wrap" />
                     <TextBlock Text="Map telemetry sources (suspension, slip, kerbs, G-force, engine) to individual seat and back motor zones."
-                               FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
+                               FontSize="14" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,16" TextWrapping="Wrap" />
 
                     <!-- MASTER CONTROLS BAR -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,20"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,20"
                             BorderThickness="1" BorderBrush="{DynamicResource UiC_33D2A8FF}">
                         <StackPanel>
                             <DockPanel VerticalAlignment="Center" Margin="0,0,0,12">
@@ -642,7 +642,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                        <Border Grid.Column="0" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
                                 BorderThickness="1" BorderBrush="{DynamicResource UiC_3379C0FF}">
                             <StackPanel>
                                 <TextBlock Text="Seat Front Left" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
@@ -686,7 +686,7 @@
                                 </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain1, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF79C0FF" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled1}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled1}" Content="Enabled" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSusp1, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
                                     Label="Suspension" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSlip1, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
@@ -700,7 +700,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                        <Border Grid.Column="2" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
                                 BorderThickness="1" BorderBrush="{DynamicResource UiC_3379C0FF}">
                             <StackPanel>
                                 <TextBlock Text="Seat Front Right" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
@@ -744,7 +744,7 @@
                                 </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain0, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF79C0FF" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled0}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled0}" Content="Enabled" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSusp0, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
                                     Label="Suspension" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF79C0FF" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSlip0, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
@@ -768,7 +768,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                        <Border Grid.Column="0" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
                                 BorderThickness="1" BorderBrush="{DynamicResource UiC_3356D4A0}">
                             <StackPanel>
                                 <TextBlock Text="Seat Rear Left" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
@@ -812,7 +812,7 @@
                                 </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain3, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF56D4A0" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled3}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled3}" Content="Enabled" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSusp3, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
                                     Label="Suspension" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSlip3, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
@@ -826,7 +826,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                        <Border Grid.Column="2" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
                                 BorderThickness="1" BorderBrush="{DynamicResource UiC_3356D4A0}">
                             <StackPanel>
                                 <TextBlock Text="Seat Rear Right" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
@@ -870,7 +870,7 @@
                                 </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain2, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FF56D4A0" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled2}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled2}" Content="Enabled" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSusp2, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
                                     Label="Suspension" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FF56D4A0" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSlip2, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
@@ -894,7 +894,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                        <Border Grid.Column="0" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
                                 BorderThickness="1" BorderBrush="{DynamicResource UiC_33E08040}">
                             <StackPanel>
                                 <TextBlock Text="Back Lower Left" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
@@ -938,7 +938,7 @@
                                 </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain5, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFE08040" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled5}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled5}" Content="Enabled" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSusp5, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
                                     Label="Suspension" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSlip5, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
@@ -952,7 +952,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                        <Border Grid.Column="2" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
                                 BorderThickness="1" BorderBrush="{DynamicResource UiC_33E08040}">
                             <StackPanel>
                                 <TextBlock Text="Back Lower Right" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
@@ -996,7 +996,7 @@
                                 </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain4, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFE08040" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled4}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled4}" Content="Enabled" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSusp4, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
                                     Label="Suspension" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFE08040" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSlip4, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
@@ -1020,7 +1020,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                        <Border Grid.Column="0" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
                                 BorderThickness="1" BorderBrush="{DynamicResource UiC_33F0883E}">
                             <StackPanel>
                                 <TextBlock Text="Back Upper Left" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
@@ -1064,7 +1064,7 @@
                                 </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain7, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFF0883E" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled7}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled7}" Content="Enabled" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSusp7, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
                                     Label="Suspension" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSlip7, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
@@ -1078,7 +1078,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
+                        <Border Grid.Column="2" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="14,12"
                                 BorderThickness="1" BorderBrush="{DynamicResource UiC_33F0883E}">
                             <StackPanel>
                                 <TextBlock Text="Back Upper Right" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource UiTextSoft}" Margin="0,0,0,4" />
@@ -1122,7 +1122,7 @@
                                 </StackPanel>
                                 <controls:LabeledSlider Value="{Binding Hf8ZoneGain6, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                     Label="Zone Intensity" StringFormat="{}{0:F2}" ValueWidth="52" SectionColor="#FFF0883E" />
-                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled6}" Content="Enabled" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,4" />
+                                <CheckBox IsChecked="{Binding Hf8ZoneEnabled6}" Content="Enabled" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,2,0,4" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSusp6, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
                                     Label="Suspension" StringFormat="{}{0:F2}" ValueWidth="48" SectionColor="#FFF0883E" />
                                 <controls:LabeledSlider Value="{Binding Hf8SrcSlip6, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
@@ -1196,7 +1196,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16"
+                        <Border Grid.Column="0" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16"
                                 BorderThickness="1" BorderBrush="{DynamicResource UiC_3356D4A0}">
                             <StackPanel>
                                 <DockPanel VerticalAlignment="Center" Margin="0,0,0,12">
@@ -1204,45 +1204,45 @@
                                     <TextBlock Text="Physical Pedal Input" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiTeal}" VerticalAlignment="Center" />
                                 </DockPanel>
                                 <TextBlock Text="When enabled, pedal values come from physical devices instead of game telemetry. Keyboard (W/S/A) simulation is also available."
-                                           FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                           FontSize="12" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
                                 <TextBlock Text="{Binding PedalDeviceInfo, StringFormat='Pedal device: {0}'}" FontSize="12"
                                            Foreground="{DynamicResource UiTeal}" TextWrapping="Wrap" Margin="0,0,0,2" />
                                 <TextBlock Text="USB pedals are handled here — no need to select them in the Device menu at the top."
-                                           FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,4" />
-                                <TextBlock Text="{Binding PedalDiagnosticInfo, StringFormat='Diagnostics: {0}'}" FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" />
+                                           FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,4" />
+                                <TextBlock Text="{Binding PedalDiagnosticInfo, StringFormat='Diagnostics: {0}'}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14"
+                        <Border Grid.Column="2" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14"
                                 BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                             <StackPanel>
                                 <TextBlock Text="LIVE PEDAL STATE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiTeal}" Margin="0,0,0,12" />
 
                                 <DockPanel Margin="0,4">
-                                    <TextBlock Text="Source:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
+                                    <TextBlock Text="Source:" FontSize="13" Foreground="{DynamicResource TextDimBrush}" Width="70" />
                                     <TextBlock Text="{Binding PedalLiveSource}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiTeal}" />
                                 </DockPanel>
 
                                 <DockPanel Margin="0,4">
-                                    <TextBlock Text="Gas:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
+                                    <TextBlock Text="Gas:" FontSize="13" Foreground="{DynamicResource TextDimBrush}" Width="70" />
                                     <ProgressBar Value="{Binding PedalLiveGas}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="{DynamicResource UiGood}" />
                                     <TextBlock Text="{Binding PedalLiveGas, StringFormat=' {0:P0}'}" FontSize="13" Foreground="{DynamicResource UiGood}" Margin="4,0,0,0" />
                                 </DockPanel>
 
                                 <DockPanel Margin="0,4">
-                                    <TextBlock Text="Brake:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
+                                    <TextBlock Text="Brake:" FontSize="13" Foreground="{DynamicResource TextDimBrush}" Width="70" />
                                     <ProgressBar Value="{Binding PedalLiveBrake}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="{DynamicResource UiBad}" />
                                     <TextBlock Text="{Binding PedalLiveBrake, StringFormat=' {0:P0}'}" FontSize="13" Foreground="{DynamicResource UiBad}" Margin="4,0,0,0" />
                                 </DockPanel>
 
                                 <DockPanel Margin="0,4">
-                                    <TextBlock Text="Clutch:" FontSize="13" Foreground="{StaticResource TextDimBrush}" Width="70" />
+                                    <TextBlock Text="Clutch:" FontSize="13" Foreground="{DynamicResource TextDimBrush}" Width="70" />
                                     <ProgressBar Value="{Binding PedalLiveClutch}" Minimum="0" Maximum="1" Height="14" Width="120" HorizontalAlignment="Left" Foreground="{DynamicResource UiOrange}" />
                                     <TextBlock Text="{Binding PedalLiveClutch, StringFormat=' {0:P0}'}" FontSize="13" Foreground="{DynamicResource UiOrange}" Margin="4,0,0,0" />
                                 </DockPanel>
 
                                 <TextBlock Text="Press the pedals — the bars should follow. If not, fix the axis mapping on the Calibrate tab."
-                                           FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                           FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,8,0,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -1250,7 +1250,7 @@
                     </StackPanel>
                     <StackPanel x:Name="Ped_Calibrate" Visibility="Collapsed">
                     <!-- Calibration Section -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,20"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,20"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
                             <TextBlock Text="CALIBRATION" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiInfo}" Margin="0,0,0,12" />
@@ -1259,9 +1259,9 @@
                             <Border Background="{DynamicResource UiPanel}" CornerRadius="{DynamicResource UiR6}" Padding="12,10" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="PEDAL AXIS MAPPING" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UiOrange}" Margin="0,0,0,6" />
-                                    <TextBlock Text="Select which DirectInput axis each pedal uses. If the Input tab bars don't match your pedals, change these here." FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                    <TextBlock Text="Select which DirectInput axis each pedal uses. If the Input tab bars don't match your pedals, change these here." FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
                                     <WrapPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                        <TextBlock Text="Pedal device:" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock Text="Pedal device:" FontSize="12" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
                                         <ComboBox ItemsSource="{Binding PedalUsbDeviceNames}" SelectedIndex="{Binding PedalUsbDeviceIndex, Mode=TwoWay}"
                                                   MinWidth="160" MaxWidth="260" Height="28" FontSize="12" Margin="0,0,8,6" />
                                         <Button Content="Rescan" Command="{Binding RescanPedalUsbDevicesCommand}"
@@ -1270,7 +1270,7 @@
                                                 BorderThickness="0" Cursor="Hand" FontSize="12" />
                                     </WrapPanel>
                                     <TextBlock Text="Pedals plugged into the wheelbase are automatic — leave this on Auto. Pick a device only for separate USB pedals."
-                                               FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                               FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
                                     <WrapPanel Orientation="Horizontal" Margin="0,0,0,8">
                                         <Button Content="Find my pedals…" Command="{Binding OpenPedalDetectDialogCommand}"
                                                 Height="28" Padding="10,0"
@@ -1328,7 +1328,7 @@
                                         Label="Max Range" StringFormat="{}{0:F3}" SectionColor="#FF4CAF50" />
                                     <DockPanel Margin="0,4">
                                         <CheckBox IsChecked="{Binding PedalGasInvert, Mode=TwoWay}" VerticalAlignment="Center" />
-                                        <TextBlock Text="Invert" FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="Invert" FontSize="13" Foreground="{DynamicResource TextDimBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
                                     </DockPanel>
                                     <controls:LabeledSlider Value="{Binding PedalGasSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.99" TickFrequency="0.01"
                                         Label="Smoothing α" StringFormat="{}{0:F2}" SectionColor="#FF4CAF50" />
@@ -1345,7 +1345,7 @@
                                         Label="Max Range" StringFormat="{}{0:F3}" SectionColor="#FFE53935" />
                                     <DockPanel Margin="0,4">
                                         <CheckBox IsChecked="{Binding PedalBrakeInvert, Mode=TwoWay}" VerticalAlignment="Center" />
-                                        <TextBlock Text="Invert" FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="Invert" FontSize="13" Foreground="{DynamicResource TextDimBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
                                     </DockPanel>
                                     <controls:LabeledSlider Value="{Binding PedalBrakeSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.99" TickFrequency="0.01"
                                         Label="Smoothing α" StringFormat="{}{0:F2}" SectionColor="#FFE53935" />
@@ -1362,7 +1362,7 @@
                                         Label="Max Range" StringFormat="{}{0:F3}" SectionColor="#FFFF9800" />
                                     <DockPanel Margin="0,4">
                                         <CheckBox IsChecked="{Binding PedalClutchInvert, Mode=TwoWay}" VerticalAlignment="Center" />
-                                        <TextBlock Text="Invert" FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="Invert" FontSize="13" Foreground="{DynamicResource TextDimBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
                                     </DockPanel>
                                     <controls:LabeledSlider Value="{Binding PedalClutchSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.99" TickFrequency="0.01"
                                         Label="Smoothing α" StringFormat="{}{0:F2}" SectionColor="#FFFF9800" />
@@ -1371,7 +1371,7 @@
 
                             <Button Content="Save Pedal Configuration" x:Name="SavePedalBtn" Click="OnSavePedalConfig"
                                     Margin="0,16,0,0" Padding="16,8" HorizontalAlignment="Left"
-                                    Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}"
+                                    Background="{DynamicResource BgInput}" Foreground="{DynamicResource TextBrush}"
                                     BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
                                     Cursor="Hand" FontSize="14" FontWeight="SemiBold" />
                         </StackPanel>
@@ -1380,7 +1380,7 @@
                     </StackPanel>
                     <StackPanel x:Name="Ped_Haptics" Visibility="Collapsed">
                     <TextBlock Text="Only if your pedals have vibration motors (seat pad: see Seat Haptics). Skip this otherwise. Choose the hardware you have, connect it and run a test. If you own both, each keeps running once connected — the switch only changes which one you are setting up."
-                               FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
+                               FontSize="12" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
                     <WrapPanel Orientation="Horizontal" Margin="0,0,0,12">
                         <RadioButton x:Name="HapticTabMoza" GroupName="PedalHapticHw" Checked="OnPedalHapticTabChanged"
                                      Style="{StaticResource HapticTabStyle}" Margin="0,0,8,6">
@@ -1402,13 +1402,13 @@
                     <StackPanel Margin="0,0,0,20">
 
                     <!-- MOZA PHF Pedal Haptic Feedback (RS102 kit + RS103 modules) -->
-                    <Border x:Name="MozaHapticCard" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14"
+                    <Border x:Name="MozaHapticCard" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
                             <!-- Header: status dot + title, Enabled on the right -->
                             <DockPanel Margin="0,0,0,8">
                                 <CheckBox DockPanel.Dock="Right" Content="Enabled" IsChecked="{Binding MozaPhfEnabled, Mode=TwoWay}"
-                                          Foreground="{StaticResource TextDimBrush}" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                          Foreground="{DynamicResource TextDimBrush}" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0" />
                                 <Ellipse Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center" Fill="{DynamicResource UiGood}"
                                          Opacity="{Binding MozaPhfIsConnected, Converter={StaticResource BoolToOpacity}}" />
                                 <TextBlock Text="MOZA PHF PEDAL HAPTICS" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiOrange}"
@@ -1421,20 +1421,20 @@
                             </Border>
 
                             <TextBlock Text="Plug the PHF control box into the PC by USB — the app finds and connects to it automatically. MOZA's own software must be closed: only one program can use the box at a time."
-                                       FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
+                                       FontSize="12" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
 
                             <!-- Fitted modules -->
-                            <TextBlock Text="MODULES FITTED" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4" />
+                            <TextBlock Text="MODULES FITTED" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4" />
                             <WrapPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <CheckBox Content="Brake" IsChecked="{Binding MozaPhfBrakeModule, Mode=TwoWay}"
-                                          Foreground="{StaticResource TextBrush}" FontSize="13" Margin="0,0,18,6" VerticalAlignment="Center" />
+                                          Foreground="{DynamicResource TextBrush}" FontSize="13" Margin="0,0,18,6" VerticalAlignment="Center" />
                                 <CheckBox Content="Throttle" IsChecked="{Binding MozaPhfThrottleModule, Mode=TwoWay}"
-                                          Foreground="{StaticResource TextBrush}" FontSize="13" Margin="0,0,18,6" VerticalAlignment="Center" />
+                                          Foreground="{DynamicResource TextBrush}" FontSize="13" Margin="0,0,18,6" VerticalAlignment="Center" />
                                 <CheckBox Content="Clutch" IsChecked="{Binding MozaPhfClutchModule, Mode=TwoWay}"
-                                          Foreground="{StaticResource TextBrush}" FontSize="13" Margin="0,0,18,6" VerticalAlignment="Center" />
+                                          Foreground="{DynamicResource TextBrush}" FontSize="13" Margin="0,0,18,6" VerticalAlignment="Center" />
                             </WrapPanel>
                             <TextBlock Text="Tick each pedal with a module on it (the kit has one, each add-on module adds another). Unticked pedals stay silent."
-                                       FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                       FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,12" />
 
                             <!-- Module test -->
                             <Border Background="{DynamicResource UiC_FF1E2227}" CornerRadius="{DynamicResource UiR6}" Padding="12,10"
@@ -1442,7 +1442,7 @@
                                 <StackPanel>
                                     <TextBlock Text="TEST A MODULE" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiGood}" />
                                     <TextBlock Text="Live effects pause while a test runs — press Stop when done." FontSize="11"
-                                               Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,8" />
+                                               Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,8" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="70" />
@@ -1453,12 +1453,12 @@
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
                                         </Grid.RowDefinitions>
-                                        <TextBlock Grid.Row="0" Text="Strength" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="0" Text="Strength" FontSize="12" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                         <Slider Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
                                                 Value="{Binding MozaPhfTestIntensity, Mode=TwoWay}" VerticalAlignment="Center" />
                                         <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding MozaPhfTestIntensity, StringFormat='{}{0}%'}"
                                                    FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiGood}" VerticalAlignment="Center" TextAlignment="Right" />
-                                        <TextBlock Grid.Row="1" Text="Pitch" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,6,0,0" />
+                                        <TextBlock Grid.Row="1" Text="Pitch" FontSize="12" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,6,0,0" />
                                         <Slider Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
                                                 Value="{Binding MozaPhfTestFrequency, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,6,0,0" />
                                         <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding MozaPhfTestFrequency, StringFormat='{}{0} Hz'}"
@@ -1486,17 +1486,17 @@
                             </Border>
 
                             <!-- Connection details: rarely needed now that it auto-connects -->
-                            <Expander Header="Connection details" Margin="0,12,0,0" Foreground="{StaticResource TextDimBrush}" FontSize="12">
+                            <Expander Header="Connection details" Margin="0,12,0,0" Foreground="{DynamicResource TextDimBrush}" FontSize="12">
                                 <StackPanel Margin="0,8,0,0">
-                                    <TextBlock Text="Port" FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4" />
+                                    <TextBlock Text="Port" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4" />
                                     <ComboBox ItemsSource="{Binding MozaPhfAvailableDevices}"
                                               SelectedItem="{Binding MozaPhfSelectedDevice, Mode=TwoWay}"
                                               Height="30" HorizontalAlignment="Stretch" MaxWidth="420"
-                                              Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}" />
+                                              Background="{DynamicResource BgInput}" Foreground="{DynamicResource TextBrush}" />
                                     <WrapPanel Orientation="Horizontal" Margin="0,8,0,0">
                                         <Button Content="⟳ Refresh" Command="{Binding RefreshMozaPhfCommand}"
                                                 Height="30" Padding="10,0" Margin="0,0,8,6"
-                                                Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}"
+                                                Background="{DynamicResource BgInput}" Foreground="{DynamicResource TextBrush}"
                                                 BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" Cursor="Hand" FontSize="12" />
                                         <Button Content="Connect" Command="{Binding ConnectMozaPhfCommand}"
                                                 Visibility="{Binding MozaPhfIsConnected, Converter={StaticResource InvertBoolToVis}}"
@@ -1514,7 +1514,7 @@
                         </StackPanel>
                     </Border>
                     <!-- Osoyoo Serial Pedal Haptic Device -->
-                    <Border x:Name="SerialHapticCard" Visibility="Collapsed" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16"
+                    <Border x:Name="SerialHapticCard" Visibility="Collapsed" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
                             <DockPanel VerticalAlignment="Center" Margin="0,0,0,12">
@@ -1524,7 +1524,7 @@
                                 <TextBlock Text="DIY SERIAL HAPTIC BOX" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource UiOrange}" VerticalAlignment="Center" />
                             </DockPanel>
                             <TextBlock Text="Home-built pedal vibration box: an Osoyoo Arduino Uno (or compatible serial device) driving a brake and a gas motor. No clutch."
-                                       FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                                       FontSize="12" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
                             <TextBlock Text="Note: COM ports are for this vibration box only — your USB pedals connect as a DirectInput device (Input tab) and need no COM port."
                                        FontSize="11" Foreground="{DynamicResource UiOrange}" TextWrapping="Wrap" Margin="0,0,0,12" />
 
@@ -1535,17 +1535,17 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <TextBlock Grid.Column="0" Text="COM Port:" FontSize="13" Foreground="{StaticResource TextDimBrush}"
+                                <TextBlock Grid.Column="0" Text="COM Port:" FontSize="13" Foreground="{DynamicResource TextDimBrush}"
                                            VerticalAlignment="Center" Margin="0,0,8,0" />
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding OsoyooAvailablePorts}"
                                           SelectedItem="{Binding OsoyooSelectedPort, Mode=TwoWay}"
                                           MinWidth="120" Height="30" VerticalAlignment="Center"
-                                          Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}" />
+                                          Background="{DynamicResource BgInput}" Foreground="{DynamicResource TextBrush}" />
 
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
                                     <Button Content="⟳" Command="{Binding RefreshOsoyooPortsCommand}"
                                             Width="30" Height="30" Padding="0"
-                                            Background="{StaticResource BgInput}" Foreground="{StaticResource TextBrush}"
+                                            Background="{DynamicResource BgInput}" Foreground="{DynamicResource TextBrush}"
                                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
                                             Cursor="Hand" FontSize="16" ToolTip="Refresh COM ports" />
 
@@ -1563,7 +1563,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <TextBlock Text="{Binding OsoyooConnectionStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                            <TextBlock Text="{Binding OsoyooConnectionStatus}" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                        Margin="0,8,0,0" TextWrapping="Wrap" />
 
                             <!-- Motor Test Panel -->
@@ -1572,14 +1572,14 @@
                                 <StackPanel>
                                     <TextBlock Text="TEST A MOTOR" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiGood}" />
                                     <TextBlock Text="Live effects pause while a test runs — press Stop when done." FontSize="11"
-                                               Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,8" />
+                                               Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,8" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="Intensity:" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                        <TextBlock Grid.Column="0" Text="Intensity:" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                                    VerticalAlignment="Center" Margin="0,0,8,0" />
                                         <Slider Grid.Column="1" Minimum="0" Maximum="255" TickFrequency="5"
                                                 Value="{Binding OsoyooTestIntensity, Mode=TwoWay}"
@@ -1611,15 +1611,15 @@
                     </StackPanel>
                     <StackPanel x:Name="Ped_Tune" Visibility="Collapsed">
                     <TextBlock Text="How strong each pedal effect feels. Connect your pedal haptics on the Haptics tab first."
-                               FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
+                               FontSize="12" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
 
                     <!-- ── 1. EFFECT GAINS — every pedal haptic device ── -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,14"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,14"
                             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                         <StackPanel>
                             <TextBlock Text="EFFECT GAINS" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiText}" />
                             <TextBlock Text="Applies to every connected pedal haptic device. Each effect feeds its pedal, then the master gain scales that pedal (0-2x)."
-                                       FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,12" />
+                                       FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,12" />
 
                             <Grid controls:ResponsiveColumns.StackBelow="640">
                                 <Grid.ColumnDefinitions>
@@ -1666,7 +1666,7 @@
                     </Border>
 
                     <!-- ── 2. MOZA PHF — per-effect strength + pitch (PHF only) ── -->
-                    <Border x:Name="PhfFrequencyBox" Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,20"
+                    <Border x:Name="PhfFrequencyBox" Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,20"
                             BorderThickness="1" BorderBrush="{DynamicResource UiC_5547A15C}">
                         <StackPanel>
                             <DockPanel LastChildFill="True">
@@ -1681,7 +1681,7 @@
                                 <StackPanel>
                                     <TextBlock Text="MOZA PHF EFFECTS" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiGood}" />
                                     <TextBlock Text="Choose which pedal(s) each effect plays on, then fine-tune it. Strength: 100% = default, 0% = off. Pitch: the vibration frequency. Only pedals with a module fitted vibrate."
-                                               FontSize="11" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                               FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                 </StackPanel>
                             </DockPanel>
 
@@ -1725,12 +1725,12 @@
                                                         <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
                                                     </Grid.RowDefinitions>
-                                                    <TextBlock Grid.Row="0" Text="Strength" FontSize="11" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Row="0" Text="Strength" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                                     <Slider Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True"
                                                             Value="{Binding Strength, Mode=TwoWay}" VerticalAlignment="Center" />
                                                     <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding Strength, StringFormat='{}{0}%'}" FontSize="12" FontWeight="SemiBold"
                                                                Foreground="{DynamicResource UiGood}" VerticalAlignment="Center" TextAlignment="Right" />
-                                                    <TextBlock Grid.Row="1" Text="Pitch" FontSize="11" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                                    <TextBlock Grid.Row="1" Text="Pitch" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,4,0,0" />
                                                     <Slider Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
                                                             Value="{Binding Frequency, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,4,0,0" />
                                                     <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Frequency, StringFormat='{}{0} Hz'}" FontSize="12"
@@ -1754,14 +1754,14 @@
             <ScrollViewer x:Name="ButtonsPanel" VerticalScrollBarVisibility="Auto" Padding="24,20" Visibility="Collapsed">
                 <StackPanel>
 
-                    <TextBlock Text="Configure wheel and button box inputs for in-app actions." FontSize="14" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,20" TextWrapping="Wrap" />
+                    <TextBlock Text="Configure wheel and button box inputs for in-app actions." FontSize="14" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,20" TextWrapping="Wrap" />
 
                     <!-- Snapshot Button Card -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,16"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,16"
                             BorderThickness="1" BorderBrush="{DynamicResource UiC_33E3B341}">
                         <StackPanel>
                             <TextBlock Text="SNAPSHOT BUTTON" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiC_FFE3B341}" Margin="0,0,0,4" />
-                            <TextBlock Text="Press while driving to auto-save a telemetry snapshot" FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" />
+                            <TextBlock Text="Press while driving to auto-save a telemetry snapshot" FontSize="13" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" />
 
                             <Grid Margin="0,0,0,8">
                                 <Grid.ColumnDefinitions>
@@ -1775,16 +1775,16 @@
                             </Grid>
                             <TextBlock Text="{Binding SnapshotAssignStatus}" FontSize="13" Foreground="{DynamicResource UiWarn}" FontWeight="Bold" Visibility="{Binding SnapshotAssignStatus, Converter={StaticResource NotEmptyToVis}}" />
                             <TextBlock Text="{Binding ButtonDetectionText}" FontSize="13" Foreground="{DynamicResource UiWarn}" FontWeight="Bold" />
-                            <TextBlock Text="Uses your FFB wheel device. Select a button easy to reach while driving." FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,6,0,0" />
+                            <TextBlock Text="Uses your FFB wheel device. Select a button easy to reach while driving." FontSize="12" Foreground="{DynamicResource TextDimBrush}" Margin="0,6,0,0" />
                         </StackPanel>
                     </Border>
 
                     <!-- Panic Stop Button Card -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,16"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="20,16" Margin="0,0,0,16"
                             BorderThickness="1" BorderBrush="{DynamicResource UiC_33FF7B72}">
                         <StackPanel>
                             <TextBlock Text="PANIC STOP BUTTON" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiSalmon}" Margin="0,0,0,4" />
-                            <TextBlock Text="Assign a button on a SEPARATE device (e.g. button box) as hardware panic stop. Immediately zeros all FFB output." FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" />
+                            <TextBlock Text="Assign a button on a SEPARATE device (e.g. button box) as hardware panic stop. Immediately zeros all FFB output." FontSize="13" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" />
 
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
@@ -1833,7 +1833,7 @@
                 <StackPanel>
 
                     <TextBlock Text="Only for Assetto Corsa (the original game). AC won't share your wheel with this app, so the app gives AC a virtual wheel (vJoy) and keeps the real one for force feedback. AC EVO, ACC, RaceRoom and Le Mans Ultimate need none of this."
-                               FontSize="13" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap" />
+                               FontSize="13" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" TextWrapping="Wrap" />
 
                     <!-- Not on AC: say so up front -->
                     <Border Background="{DynamicResource UiC_1A79C0FF}" BorderBrush="{DynamicResource UiC_6679C0FF}" BorderThickness="1" CornerRadius="{DynamicResource UiR6}" Padding="12,10" Margin="0,0,0,16"
@@ -1848,15 +1848,15 @@
                          Always visible on purpose: driver install and axis
                          binding need neither the game selected nor running.
                          (Live bridge state engages on its own once AC runs.) -->
-                    <Border Background="{StaticResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="{DynamicResource UiR8}" Padding="16,14" Margin="0,0,0,16"
                             BorderThickness="1" BorderBrush="{DynamicResource UiC_3347A15C}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock Text="ONE-TIME SETUP — WORK THROUGH THE TABS LEFT TO RIGHT" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource UiLime}" VerticalAlignment="Center" />
                                 <TextBlock Text="{Binding GameDisplayName}" FontSize="11"
-                                           Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                           Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </DockPanel>
-                            <TextBlock FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10"
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,10"
                                        Text="The game and this app can't share your wheel, so the app makes a virtual wheel for the game. Your real wheel stays plugged into the app for its force." />
 
                             <WrapPanel Orientation="Horizontal" Margin="0,0,0,16">
@@ -1894,7 +1894,7 @@
                                     </Run>
                                 </TextBlock>
                             </WrapPanel>
-                            <TextBlock Text="{Binding VJoyDriverStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                            <TextBlock Text="{Binding VJoyDriverStatus}" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                        TextWrapping="Wrap" Margin="18,4,0,10"
                                        Visibility="{Binding VJoyDriverStatus, Converter={StaticResource NotEmptyToVis}}" />
 
@@ -1910,26 +1910,26 @@
                             <TextBlock Text="Press each pedal — all three bars should move:" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiText}" Margin="0,0,0,4" />
                             <StackPanel Margin="18,0,0,0">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                                    <TextBlock Text="Gas" Width="52" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Gas" Width="52" FontSize="12" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                     <ProgressBar Value="{Binding SetupPedalGas, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="{DynamicResource UiGood}" />
                                     <TextBlock Text="{Binding SetupPedalGas, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="{DynamicResource UiGood}" Margin="4,0,0,0" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                                    <TextBlock Text="Brake" Width="52" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Brake" Width="52" FontSize="12" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                     <ProgressBar Value="{Binding SetupPedalBrake, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="{DynamicResource UiBad}" />
                                     <TextBlock Text="{Binding SetupPedalBrake, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="{DynamicResource UiBad}" Margin="4,0,0,0" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                    <TextBlock Text="Clutch" Width="52" FontSize="12" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Clutch" Width="52" FontSize="12" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                     <ProgressBar Value="{Binding SetupPedalClutch, Mode=OneWay}" Minimum="0" Maximum="1" Height="12" Width="140" Foreground="{DynamicResource UiOrange}" />
                                     <TextBlock Text="{Binding SetupPedalClutch, Mode=OneWay, StringFormat=' {0:P0}'}" FontSize="12" Foreground="{DynamicResource UiOrange}" Margin="4,0,0,0" />
                                 </StackPanel>
-                                <TextBlock FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,6">
+                                <TextBlock FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,6">
                                     <Run Text="Reading from: " /><Run Text="{Binding SetupPedalSource, Mode=OneWay}" FontWeight="Bold" />
                                     <Run Text="  (your min/max/deadzone from Devices → Pedals apply here too)" />
                                 </TextBlock>
                                 <TextBlock Text="Bars not moving? Pick your pedal device and map the axes in Pedals." FontSize="11"
-                                           Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,6" />
+                                           Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,2,0,6" />
                                 <Button Content="Open Pedals settings" Click="OnOpenPedalsSection" HorizontalAlignment="Left"
                                         Height="28" Padding="10,0" Margin="0,0,0,10"
                                         Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
@@ -1940,7 +1940,7 @@
                             <StackPanel x:Name="Ac_Buttons" Visibility="Collapsed">
                             <TextBlock Text="Wheel buttons (gears, pits, lights…): press to assign each task, then push them to the game on the Apply to AC tab." FontSize="13" FontWeight="Bold" Foreground="{DynamicResource UiText}" Margin="0,0,0,4" TextWrapping="Wrap" />
                             <WrapPanel Orientation="Horizontal" Margin="18,0,0,4">
-                                <TextBlock Text="{Binding VJoyButtonsText}" FontSize="11" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding VJoyButtonsText}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" TextWrapping="Wrap" />
                                 <Button Content="Match buttons to wheel" Command="{Binding MatchVJoyButtonsCommand}"
                                         Height="26" Padding="10,0" Margin="8,0,0,0"
                                         Background="{DynamicResource UiInput}" Foreground="{DynamicResource UiText}"
@@ -1957,7 +1957,7 @@
                                         BorderThickness="0" Cursor="Hand" FontSize="11"
                                         ToolTip="Repairs a scrambled map: every vJoy slot follows its own wheel button again. Task list is kept." />
                             </WrapPanel>
-                            <TextBlock Margin="18,0,0,4" FontSize="11" Foreground="{StaticResource TextDimBrush}">
+                            <TextBlock Margin="18,0,0,4" FontSize="11" Foreground="{DynamicResource TextDimBrush}">
                                 <Run Text="Last wheel press: " /><Run Text="{Binding LastWheelButtonText, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource UiText}" />
                             </TextBlock>
                             <ItemsControl ItemsSource="{Binding AcTaskRows}" Margin="18,0,0,0">
@@ -1965,7 +1965,7 @@
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                             <TextBlock Text="{Binding DisplayName}" Width="130" FontSize="12" Foreground="{DynamicResource UiText}" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding Assignment, Mode=OneWay}" Width="190" FontSize="11" Foreground="{StaticResource TextDimBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Assignment, Mode=OneWay}" Width="190" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                             <Button Content="Press to assign" Command="{Binding DataContext.CaptureAcTaskCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding Section}"
                                                     Height="26" Padding="10,0" Margin="8,0,0,0"
@@ -1994,10 +1994,10 @@
                                         BorderThickness="0" Cursor="Hand" FontSize="12"
                                         ToolTip="Switches steering, pedals and your assigned button tasks in the game's settings file to the virtual wheel. Keyboard lines and everything else untouched; a backup is kept." />
                             </StackPanel>
-                            <TextBlock Text="{Binding VJoyBindStatus}" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                            <TextBlock Text="{Binding VJoyBindStatus}" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                        TextWrapping="Wrap" Margin="18,4,0,10" />
 
-                            <TextBlock FontSize="12" Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,0"
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,0"
                                        Text="Then in the game's controls screen (stock options or Content Manager) check 'vJoy Device' owns steering, gas, brake, clutch and your tasks — and leave the game's force sliders at 100%. Its output goes nowhere, but this app reads the game's torque signal, which needs the gain up. After that, just drive." />
                             </StackPanel>
                         </StackPanel>

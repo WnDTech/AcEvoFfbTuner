@@ -76,7 +76,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- ═══ LEFT: SEARCH + ARTICLE LIST ═══ -->
-        <Border Grid.Column="0" Background="{StaticResource BgPanel}"
+        <Border Grid.Column="0" Background="{DynamicResource BgPanel}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
             <Grid Margin="16,20,16,14">
                 <Grid.RowDefinitions>
@@ -89,7 +89,7 @@
                 <TextBlock Grid.Row="0" Text="HELP GUIDE" FontSize="12" FontWeight="Bold"
                            Foreground="{DynamicResource UiAccent}" Margin="0,0,0,4" />
                 <TextBlock Grid.Row="1" Text="Search or pick a topic" FontSize="12"
-                           Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,12" />
+                           Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,12" />
 
                 <Border Grid.Row="2" Background="{DynamicResource UiPanel}" CornerRadius="{DynamicResource UiR8}"
                         BorderThickness="1" BorderBrush="{DynamicResource UiBorder}">
@@ -158,7 +158,7 @@
                 </Border>
 
                 <TextBlock x:Name="CountText" Grid.Row="3" FontSize="11"
-                           Foreground="{StaticResource TextDimBrush}" Margin="4,8,0,0" />
+                           Foreground="{DynamicResource TextDimBrush}" Margin="4,8,0,0" />
             </Grid>
         </Border>
 

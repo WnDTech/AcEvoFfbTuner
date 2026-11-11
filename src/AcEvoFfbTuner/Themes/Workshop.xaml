@@ -238,4 +238,18 @@
     <SolidColorBrush x:Key="UiC_FFFFB74D" Color="#FFE2531D" />
     <SolidColorBrush x:Key="UiC_FFFFB86B" Color="#FFE2531D" />
     <SolidColorBrush x:Key="UiC_FFFFFFFF" Color="#FF3A3D40" />
+    <!-- Colours used from code-behind -->
+    <SolidColorBrush x:Key="UiC_33484F58" Color="#33C9C6BF" />
+    <SolidColorBrush x:Key="UiC_FF1B3A2A" Color="#442E7D32" />
+    <SolidColorBrush x:Key="UiC_FF22223A" Color="#442F6F86" />
+    <SolidColorBrush x:Key="UiC_FF22262C" Color="#FFF1EFEB" />
+    <SolidColorBrush x:Key="UiC_FF3A1A1A" Color="#44C62828" />
+    <SolidColorBrush x:Key="UiC_FF3A3413" Color="#44A87012" />
+    <SolidColorBrush x:Key="UiC_FF3D2E00" Color="#44A87012" />
+    <SolidColorBrush x:Key="UiC_FFE0E0E0" Color="#FF3A3D40" />
+    <SolidColorBrush x:Key="UiC_FFE67E22" Color="#FFE2531D" />
+    <SolidColorBrush x:Key="UiC_FFF0AD4E" Color="#FFE2531D" />
+    <SolidColorBrush x:Key="UiC_FFF85151" Color="#FFC62828" />
+    <SolidColorBrush x:Key="UiC_FFFFF088" Color="#FF3A3D40" />
+    <SolidColorBrush x:Key="UiHighlightCardBg" Color="#FFF1EFEB" />
 </ResourceDictionary>

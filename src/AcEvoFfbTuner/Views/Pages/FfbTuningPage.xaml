@@ -16,10 +16,10 @@
         </Grid.RowDefinitions>
 
         <!-- ═══ PROFILE SUMMARY BAR ═══ -->
-        <Border Grid.Row="0" Background="{StaticResource BgCard}" Padding="24,10"
+        <Border Grid.Row="0" Background="{DynamicResource BgCard}" Padding="24,10"
                 BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="CAR" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
+                <TextBlock Text="CAR" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
                 <!-- One text: the placeholder used to stay visible under the car name and overlap it. -->
                 <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,24,0"
@@ -45,12 +45,12 @@
 
                 <Border Width="1" Background="{DynamicResource BorderBrush}" Margin="0,2,24,2" />
 
-                <TextBlock Text="WHEEL" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
+                <TextBlock Text="WHEEL" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,24,0">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
                             <Setter Property="Text" Value="{Binding DeviceName, FallbackValue='No device', TargetNullValue='No device'}" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsDeviceConnected}" Value="True">
@@ -63,7 +63,7 @@
 
                 <Border Width="1" Background="{DynamicResource BorderBrush}" Margin="0,2,24,2" />
 
-                <TextBlock Text="PROFILE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
+                <TextBlock Text="PROFILE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Text="{Binding SelectedProfile.Name, FallbackValue='No profile', TargetNullValue='No profile'}"
                            FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"
@@ -71,19 +71,19 @@
 
                 <Border Width="1" Background="{DynamicResource BorderBrush}" Margin="0,2,24,2" />
 
-                <TextBlock Text="PEAK" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
+                <TextBlock Text="PEAK" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Text="{Binding OutputGainNmText}" FontSize="14" FontWeight="SemiBold"
                            Foreground="{DynamicResource UiAccent}" VerticalAlignment="Center" />
 
                 <Border Width="1" Background="{DynamicResource BorderBrush}" Margin="0,2,24,2" />
 
-                <TextBlock Text="MIX" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextDimBrush}"
+                <TextBlock Text="MIX" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding SelectedMixMode}" Value="Replace">
                                     <Setter Property="Foreground" Value="{DynamicResource UiInfo}" />
@@ -112,8 +112,8 @@
                 <StackPanel>
 
                     <!-- ═══ FILTER BAR: current game + search + section counter ═══ -->
-                    <Border Background="{StaticResource BgPanel}" CornerRadius="{DynamicResource UiR6}"
-                            BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                    <Border Background="{DynamicResource BgPanel}" CornerRadius="{DynamicResource UiR6}"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
                             Padding="14,10" Margin="0,0,0,16">
                         <DockPanel>
                             <Border DockPanel.Dock="Left"
@@ -126,13 +126,13 @@
                                 </StackPanel>
                             </Border>
                             <TextBlock x:Name="FilterCounter" DockPanel.Dock="Right"
-                                       Text="" FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                       Text="" FontSize="12" Foreground="{DynamicResource TextDimBrush}"
                                        VerticalAlignment="Center" Margin="10,0,0,0" />
                             <TextBox x:Name="SearchBox" FontSize="13" Padding="6,4" MinHeight="26"
-                                     Background="{StaticResource BgCard}"
-                                     Foreground="{StaticResource TextBrush}"
-                                     BorderBrush="{StaticResource BorderBrush}"
-                                     CaretBrush="{StaticResource TextBrush}"
+                                     Background="{DynamicResource BgCard}"
+                                     Foreground="{DynamicResource TextBrush}"
+                                     BorderBrush="{DynamicResource BorderBrush}"
+                                     CaretBrush="{DynamicResource TextBrush}"
                                      SelectionBrush="#66F0883E"
                                      TextChanged="SearchBox_TextChanged"
                                      ToolTip="Filter sections by title (e.g. 'flatspot', 'curb', 'wet')"
@@ -141,77 +141,77 @@
                     </Border>
 
                     <controls:SectionCard Title="OVERALL STRENGTH &amp; WHEEL" Tag="Output"
-                                          SectionBrush="{StaticResource SectionOutput}"
+                                          SectionBrush="{DynamicResource SectionOutput}"
                                           Selectable="True" IsSelected="True" ToolTip="How strong the wheel is overall, clipping, your wheelbase, end-stops and force direction.">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="How strong the wheel is overall, clipping, your wheelbase, end-stops and force direction." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="STEERING WEIGHT &amp; CENTRE" Tag="Steering"
-                                          SectionBrush="{StaticResource SectionTyreForces}"
+                                          SectionBrush="{DynamicResource SectionTyreForces}"
                                           Selectable="True" ToolTip="How heavy the steering is, how it feels around straight-ahead, and straight-line stability.">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="How heavy the steering is, how it feels around straight-ahead, and straight-line stability." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="CORNERING &amp; FRONT GRIP" Tag="Grip"
-                                          SectionBrush="{StaticResource SectionTyreSlip}"
+                                          SectionBrush="{DynamicResource SectionTyreSlip}"
                                           Selectable="True" ToolTip="Feeling the front tyres load up, reach the limit and start to understeer.">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Feeling the front tyres load up, reach the limit and start to understeer." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="OVERSTEER &amp; SLIDES" Tag="Oversteer"
-                                          SectionBrush="{StaticResource SectionGripFeel}"
+                                          SectionBrush="{DynamicResource SectionGripFeel}"
                                           Selectable="True" ToolTip="The rear stepping out, slide warnings, and how the wheel self-steers into countersteer.">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="The rear stepping out, slide warnings, and how the wheel self-steers into countersteer." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="BRAKING &amp; ACCELERATION" Tag="Braking"
-                                          SectionBrush="{StaticResource SectionCrash}"
+                                          SectionBrush="{DynamicResource SectionCrash}"
                                           Selectable="True" ToolTip="Steering weight under braking, lock-ups, ABS, wheelspin and traction control.">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Steering weight under braking, lock-ups, ABS, wheelspin and traction control." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="KERBS, ROAD &amp; OFF-TRACK" Tag="Surfaces"
-                                          SectionBrush="{StaticResource SectionVibration}"
+                                          SectionBrush="{DynamicResource SectionVibration}"
                                           Selectable="True" ToolTip="Rumble strips, bumps, road texture, grass, gravel and dirt.">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Rumble strips, bumps, road texture, grass, gravel and dirt." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="ENGINE &amp; CHASSIS RUMBLE" Tag="Engine"
-                                          SectionBrush="{StaticResource SectionLfe}"
+                                          SectionBrush="{DynamicResource SectionLfe}"
                                           Selectable="True" ToolTip="Low-frequency rumble from engine and suspension (LFE), and gear shifts.">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Low-frequency rumble from engine and suspension (LFE), and gear shifts." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="SMOOTHNESS &amp; DAMPING" Tag="Smoothness"
-                                          SectionBrush="{StaticResource SectionDamping}"
+                                          SectionBrush="{DynamicResource SectionDamping}"
                                           Selectable="True" ToolTip="Grainy, notchy, oscillating or twitchy wheel? Resistance and filtering live here.">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Grainy, notchy, oscillating or twitchy wheel? Resistance and filtering live here." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="PARKED &amp; LOW SPEED" Tag="Parked"
-                                          SectionBrush="{StaticResource SectionDamping}"
+                                          SectionBrush="{DynamicResource SectionDamping}"
                                           Selectable="True" ToolTip="Steering resistance when stopped or crawling (pits, grid). Fades out by ~1.2 km/h. All games.">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Steering resistance when stopped or crawling (pits, grid). Fades out by ~1.2 km/h. All games." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="CRASHES &amp; TYRE DAMAGE" Tag="Crashes"
-                                          SectionBrush="{StaticResource SectionCrash}"
+                                          SectionBrush="{DynamicResource SectionCrash}"
                                           Selectable="True" ToolTip="Wall and car impacts, blowouts, pressure loss and damage pull.">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Wall and car impacts, blowouts, pressure loss and damage pull." />
                         </controls:SectionCard.SummaryContent>
                     </controls:SectionCard>
                     <controls:SectionCard Title="WET WEATHER" Tag="WetWeather"
-                                          SectionBrush="{StaticResource SectionWetWeather}"
+                                          SectionBrush="{DynamicResource SectionWetWeather}"
                                           Selectable="True" ToolTip="Rain: less road and kerb detail, wider slip curves, hydroplaning.">
                         <controls:SectionCard.SummaryContent>
                             <TextBlock FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Text="Rain: less road and kerb detail, wider slip curves, hydroplaning." />
@@ -222,21 +222,21 @@
 
             <!-- ═══ RIGHT: SELECTED SECTION DETAIL (sliders for the clicked section) ═══ -->
             <Border Grid.Column="1" Margin="0,16,24,20"
-                    Background="{StaticResource BgPanel}"
-                    BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                    Background="{DynamicResource BgPanel}"
+                    BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
                     CornerRadius="{DynamicResource UiR10}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,20,24,20">
                     <StackPanel>
                         <!-- Section header -->
                         <DockPanel>
                             <Border x:Name="DetailHeaderAccent" DockPanel.Dock="Left" Width="4"
-                                    CornerRadius="{DynamicResource UiR2}" Background="{StaticResource SectionOutput}"
+                                    CornerRadius="{DynamicResource UiR2}" Background="{DynamicResource SectionOutput}"
                                     VerticalAlignment="Stretch" />
                             <TextBlock x:Name="DetailHeader" Text="OVERALL STRENGTH &amp; WHEEL" FontSize="18" FontWeight="Bold"
-                                       Foreground="{StaticResource SectionOutput}"
+                                       Foreground="{DynamicResource SectionOutput}"
                                        VerticalAlignment="Center" Margin="12,0,0,0" />
                         </DockPanel>
-                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,12,0,16" />
+                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,12,0,16" />
 
                         <!-- OVERALL STRENGTH & WHEEL -->
                         <StackPanel x:Name="DtlOutput">
@@ -248,51 +248,51 @@
                                 Description="Final multiplier for every force. Shown with the peak torque your wheelbase can deliver at the current limit."
                                 LowLabel="Lighter wheel" HighLabel="Heavier wheel"
                                 DefaultValue="{Binding BuiltInDefaults.OutputGain}"
-                                SectionColor="{StaticResource SectionOutput}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding MaxForceLimit, Mode=TwoWay}" Minimum="0.1" Maximum="1.0" TickFrequency="0.01"
                                 Label="Max Force Limit (clipping knee)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 DisplayText="{Binding MaxForceLimitNmText}" ValueWidth="110"
                                 Description="Forces above this are rounded off smoothly instead of hard-clipping. The real ceiling is halfway between this and 100% (0.80 → peak 90%). On ACC, Force Gain is applied after this limit."
                                 LowLabel="Compresses earlier, more headroom" HighLabel="Compresses later, more peak force"
                                 DefaultValue="{Binding BuiltInDefaults.SoftClipThreshold}"
-                                SectionColor="{StaticResource SectionOutput}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding ForceSensitivity, Mode=TwoWay}" Minimum="1" Maximum="1000" TickFrequency="1"
                                 Label="Sensitivity (input divisor)" StringFormat="{}{0:F0}" LabelAbove="True"
                                 IsLogarithmic="True"
                                 Description="First gain stage. This divides the incoming force, so a LOWER number gives a STRONGER wheel. 1000 = neutral."
                                 LowLabel="Stronger (more amplified)" HighLabel="Weaker (neutral at 1000)"
                                 DefaultValue="{Binding BuiltInDefaults.NormalizationScale}"
-                                SectionColor="{StaticResource SectionOutput}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding CoreForceMultiplier, Mode=TwoWay}" Minimum="0" Maximum="4" TickFrequency="0.05"
                                 Label="Main Force Gain" StringFormat="{}{0:F2}x" LabelAbove="True"
                                 Description="Scales the game's steering-column torque (RaceRoom SteeringForce, LMU shaft torque, AC1 FFB). 1.0 = game force as-is."
                                 LowLabel="Lighter" HighLabel="Heavier"
-                                SectionColor="{StaticResource SectionOutput}" Visibility="{Binding IsCoreForceVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionOutput}" Visibility="{Binding IsCoreForceVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding ForceScale, Mode=TwoWay}" Minimum="0.1" Maximum="200" TickFrequency="0.1"
                                 Label="LMU Force Scale" StringFormat="{}{0:F1}" LabelAbove="True"
                                 IsLogarithmic="True"
                                 Description="LMU only. Normalises LMU's shaft torque. HIGHER = HEAVIER here (it is used as 120 / value). Values of 120 or more all behave the same."
                                 LowLabel="Lighter" HighLabel="Heavier"
-                                SectionColor="{StaticResource SectionOutput}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionOutput}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding ForceGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.05"
                                 Label="Force Gain (ACC)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="ACC only. Multiplies the whole output AFTER the force limiter, so high values hard-clip at the wheel."
                                 LowLabel="Lighter" HighLabel="Heavier (clips above ~1 output)"
                                 DefaultValue="{Binding BuiltInDefaults.Slip.ForceGain}"
-                                SectionColor="{StaticResource SectionOutput}" Visibility="{Binding IsAssettoCorsaCompetizione, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionOutput}" Visibility="{Binding IsAssettoCorsaCompetizione, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Your wheelbase" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <controls:LabeledSlider Value="{Binding WheelMaxTorqueNm, Mode=TwoWay}" Minimum="1" Maximum="25" TickFrequency="0.5"
                                 Label="Wheelbase Max Torque" StringFormat="{}{0:F1} Nm" LabelAbove="True"
                                 Description="Only used to show Nm readouts. 5.5 = Moza R5, 9 = R9, 12 = R12, 15 = R15."
                                 LowLabel="" HighLabel=""
                                 DefaultValue="{Binding BuiltInDefaults.WheelMaxTorqueNm}"
-                                SectionColor="{StaticResource SectionOutput}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding SteeringLockDegrees, Mode=TwoWay}" Minimum="180" Maximum="1080" TickFrequency="10"
                                 Label="Steering Rotation" StringFormat="{}{0:F0}°" LabelAbove="True"
                                 Description="Your wheel's total rotation, lock to lock. Match it to the game/car."
                                 LowLabel="Quicker steering" HighLabel="Slower steering"
                                 DefaultValue="{Binding BuiltInDefaults.SteeringLockDegrees}"
-                                SectionColor="{StaticResource SectionOutput}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,22" />
                             <DockPanel Margin="0,6,0,10">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding SoftLockEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
@@ -305,7 +305,7 @@
                                 Description="0.5 = gentle cushion, 1.0 = firm end-stop. Above ~1.2 it is already at full force."
                                 LowLabel="Soft cushion" HighLabel="Hard wall"
                                 DefaultValue="{Binding BuiltInDefaults.SoftLock.Strength}"
-                                SectionColor="{StaticResource SectionOutput}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,22" />
                             <TextBlock Text="Auto-Gain (make every car feel similar)" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" />
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding AutoGainEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
@@ -319,7 +319,7 @@
                                 Description="Target level Auto-Gain aims for. Only used while Auto-Gain is on."
                                 LowLabel="Lighter target" HighLabel="Heavier target"
                                 DefaultValue="{Binding BuiltInDefaults.AutoGain.Scale}"
-                                SectionColor="{StaticResource SectionOutput}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionOutput}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Mix mode, response curve &amp; direction fixes" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <TextBlock Text="Mix Mode" Style="{StaticResource SubSectionHeader}" Margin="0,4,0,4" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}">
@@ -377,34 +377,34 @@
                                 LowLabel="Lighter, less centring" HighLabel="Heavier, stronger centring"
                                 ShowCheckBox="True" IsChecked="{Binding MzFrontEnabled}"
                                 DefaultValue="{Binding BuiltInDefaults.MzFront.Gain}"
-                                SectionColor="{StaticResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding MzScale, Mode=TwoWay}" Minimum="1" Maximum="300" TickFrequency="0.5"
                                 Label="Mz Scale (divisor)" StringFormat="{}{0:F1}" LabelAbove="True"
                                 IsLogarithmic="True"
                                 Description="Divides the raw Mz from the game. LOWER = HEAVIER. Below the car's own peak it stops mattering because auto-normalisation takes over. Forced to 5 on ACC."
                                 LowLabel="Heavier" HighLabel="Lighter"
                                 DefaultValue="{Binding BuiltInDefaults.MzScale}"
-                                SectionColor="{StaticResource SectionTyreForces}" Visibility="{Binding IsAcEvo, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreForces}" Visibility="{Binding IsAcEvo, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding FyFrontGain, Mode=TwoWay}" Minimum="-2" Maximum="2" TickFrequency="0.01"
                                 Label="Cornering Load (Fy)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Adds the weight of the car leaning on the front tyres in corners. Faded out near centre (see Centre Blend)."
                                 LowLabel="Less cornering weight" HighLabel="More cornering weight"
                                 ShowCheckBox="True" IsChecked="{Binding FyFrontEnabled}"
                                 DefaultValue="{Binding BuiltInDefaults.FyFront.Gain}"
-                                SectionColor="{StaticResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding FyScale, Mode=TwoWay}" Minimum="100" Maximum="20000" TickFrequency="100"
                                 Label="Fy Scale (divisor)" StringFormat="{}{0:F0}" LabelAbove="True"
                                 IsLogarithmic="True"
                                 Description="Divides raw lateral force. LOWER = HEAVIER cornering load."
                                 LowLabel="Heavier" HighLabel="Lighter"
                                 DefaultValue="{Binding BuiltInDefaults.FyScale}"
-                                SectionColor="{StaticResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding WheelLoadWeighting, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Wheel Load Weighting" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="How much tyre load shapes the force. 0 = simple average, 1 = scales with how loaded each axle is (heavier under braking/downforce)."
                                 LowLabel="Even, consistent" HighLabel="Follows load transfer"
                                 DefaultValue="{Binding BuiltInDefaults.WheelLoadWeighting}"
-                                SectionColor="{StaticResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding UseNativeTorqueSign}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
@@ -432,19 +432,19 @@
                                 Description="Shapes how force builds from straight-ahead. 1.0 = linear; higher = lighter at centre with a sharper build-up."
                                 LowLabel="Linear, direct" HighLabel="Soft centre, progressive"
                                 DefaultValue="{Binding BuiltInDefaults.Advanced.CenterKneePower}"
-                                SectionColor="{StaticResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding CenterBlendDegrees, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                                 Label="Centre Blend" StringFormat="{}{0:F1}°" LabelAbove="True"
                                 Description="Steering angle over which cornering load (Fy) fades in. Stops Fy buzz on the straights."
                                 LowLabel="Fy right from centre" HighLabel="Fy only once turned in"
                                 DefaultValue="{Binding BuiltInDefaults.Advanced.CenterBlendDegrees}"
-                                SectionColor="{StaticResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreForces}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding CenterSharpnessDegrees, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                                 Label="Centre Sharpness" StringFormat="{}{0:F1}°" LabelAbove="True"
                                 Description="Steering angle at which centring reaches full strength. 0 = crispest. (RaceRoom reports road-wheel angle, so values act stronger there.)"
                                 LowLabel="Crisp, notchy centre" HighLabel="Soft, vague centre"
                                 DefaultValue="{Binding BuiltInDefaults.Advanced.CenterSharpnessDegrees}"
-                                SectionColor="{StaticResource SectionTyreForces}" Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreForces}" Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Straight-line stability" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <DockPanel Margin="0,6,0,10">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding GyroEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
@@ -458,18 +458,18 @@
                                 Description="Start around 0.3. Output is capped, so above ~1 there is little change. Flip negative if it feels wrong in your game."
                                 LowLabel="Less / reversed" HighLabel="More stable"
                                 DefaultValue="{Binding BuiltInDefaults.Gyro.Gain}"
-                                SectionColor="{StaticResource SectionTyreForces}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreForces}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StraightGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
                                 Label="Straight Stability" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Extra damping near centre above 80 km/h. Does not touch corner feel."
                                 LowLabel="Off" HighLabel="Planted straights"
                                 DefaultValue="0"
-                                SectionColor="{StaticResource SectionTyreForces}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreForces}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding CenterDampFloor, Mode=TwoWay}" Minimum="0" Maximum="0.1" TickFrequency="0.005"
                                 Label="Centre Damping Floor" StringFormat="{}{0:F3}" LabelAbove="True"
                                 Description="Minimum damping right at centre. 0 = legacy. LMU profiles use 0.03 for on-centre stability."
                                 LowLabel="Free on centre" HighLabel="Settled on centre"
-                                SectionColor="{StaticResource SectionTyreForces}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreForces}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                         </StackPanel>
 
                         <!-- CORNERING & FRONT GRIP -->
@@ -481,19 +481,19 @@
                                 Description="Adds force as the tyres slide sideways. Lets you feel the limit approaching."
                                 LowLabel="Subtle" HighLabel="Pronounced"
                                 DefaultValue="{Binding BuiltInDefaults.Slip.SlipAngleGain}"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsSlipEnhancerVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsSlipEnhancerVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding SlipAngleShapeGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Peak Grip Bump" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Adds a small rise in force just before peak grip, then a drop-off past it — the classic &quot;going light&quot; understeer cue."
                                 LowLabel="Linear, no bump" HighLabel="Clear peak and drop-off"
                                 DefaultValue="{Binding BuiltInDefaults.Slip.SlipAngleShapeGain}"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsSlipEnhancerVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsSlipEnhancerVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding SlipThreshold, Mode=TwoWay}" Minimum="0" Maximum="0.3" TickFrequency="0.005"
                                 Label="Slip Trigger Point" StringFormat="{}{0:F3}" LabelAbove="True"
                                 Description="How much slip is needed before slip effects start. Above ~0.3 they never fire."
                                 LowLabel="Reacts early" HighLabel="Only at big slides"
                                 DefaultValue="{Binding BuiltInDefaults.Slip.SlipThreshold}"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsSlipEnhancerVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsSlipEnhancerVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsSlipEnhancerVisible, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding SlipUseFrontOnly}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
@@ -506,70 +506,70 @@
                                 Description="Grainy 30-50 Hz texture as the fronts reach the limit — the rubber tearing before steering goes light. 0.15 subtle, 0.5 strong."
                                 LowLabel="Off" HighLabel="Strong grain"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.ScrubGain}"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsAcEvo, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsAcEvo, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding SlipGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.05"
                                 Label="Tyre Slip Vibration" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Vibration when tyres are slipping. Scaled by Vibration Master (Kerbs section)."
                                 LowLabel="Off" HighLabel="Strong buzz"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.SlipGain}"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsSlipVibrationVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsSlipVibrationVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding TyreGripScale, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.05"
                                 Label="Grip Loss Lightening (RaceRoom)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="How much the wheel lightens as front grip falls. 1 = full grip = full force, no grip = 10%. (Capped at 1 — higher values inverted the force.)"
                                 LowLabel="Constant weight" HighLabel="Goes light on understeer"
                                 DefaultValue="1"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding GripScaleGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Lock/Spin Lightening (LMU)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="How much centring fades when the fronts lock or spin. LMU's own torque already lightens for normal understeer."
                                 LowLabel="Always full force" HighLabel="Fades fully at hard lock-up"
                                 DefaultValue="0.6"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding TyreTempGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Cold/Hot Tyre Texture (LMU)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Faint texture from tyres under 75°C or over 105°C. Very subtle even at 1."
                                 LowLabel="Off" HighLabel="Max (still subtle)"
                                 DefaultValue="0"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Cornering weight from G-force" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsDynamicEffectsSectionVisible, Converter={StaticResource BoolToVis}}" />
                             <controls:LabeledSlider Value="{Binding CorneringForce, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Lateral G Weight" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Adds force from lateral G — a sense of how hard the car is cornering. Capped, so above ~1 changes little."
                                 LowLabel="Off" HighLabel="More corner load"
                                 DefaultValue="{Binding BuiltInDefaults.Dynamic.LateralGGain}"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsDynamicEffectsSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsDynamicEffectsSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Tyre flex (sidewall &amp; contact patch)" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsLoadFlexVisible, Converter={StaticResource BoolToVis}}" />
                             <controls:LabeledSlider Value="{Binding TyreFlexGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Sidewall Flex" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Subtle force from the tyre carcass flexing on fast weight shifts: turn-in, braking, kerbs."
                                 LowLabel="Rigid tyre" HighLabel="Rubbery, alive"
                                 DefaultValue="{Binding BuiltInDefaults.TyreFlex.FlexGain}"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsAcEvo, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsAcEvo, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding LoadFlexGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Contact Patch Feel" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Feel the tyre footprint growing/shrinking under load and slip."
                                 LowLabel="Off" HighLabel="More load texture"
                                 DefaultValue="{Binding BuiltInDefaults.TyreFlex.LoadFlexGain}"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsLoadFlexVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsLoadFlexVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Detailed tyre flex" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsLoadFlexVisible, Converter={StaticResource BoolToVis}}" />
                             <controls:LabeledSlider Value="{Binding CarcassStiffness, Mode=TwoWay}" Minimum="0.1" Maximum="3" TickFrequency="0.01"
                                 Label="Carcass Stiffness" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Higher = stiffer tyre, less flex feel."
                                 LowLabel="Soft, more flex" HighLabel="Stiff, less flex"
                                 DefaultValue="{Binding BuiltInDefaults.TyreFlex.CarcassStiffness}"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsAcEvo, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsAcEvo, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding FlexSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.9" TickFrequency="0.01"
                                 Label="Flex Smoothing" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Smoothing on flex forces."
                                 LowLabel="Raw, responsive" HighLabel="Smooth, laggy"
                                 DefaultValue="{Binding BuiltInDefaults.TyreFlex.FlexSmoothing}"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsLoadFlexVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsLoadFlexVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding ContactPatchWeight, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Weight Transfer Influence" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="How much lateral load transfer changes the contact-patch feel."
                                 LowLabel="Less" HighLabel="More"
                                 DefaultValue="{Binding BuiltInDefaults.TyreFlex.ContactPatchWeight}"
-                                SectionColor="{StaticResource SectionTyreSlip}" Visibility="{Binding IsContactPatchWeightVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionTyreSlip}" Visibility="{Binding IsContactPatchWeightVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                         </StackPanel>
 
                         <!-- OVERSTEER & SLIDES -->
@@ -580,43 +580,43 @@
                                 Description="Low rumble (12-25 Hz) when the rear tyres lose grip — early oversteer warning."
                                 LowLabel="Off" HighLabel="Strong warning"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.RearSlipGain}"
-                                SectionColor="{StaticResource SectionGripFeel}" Visibility="{Binding IsRearSlipWarningVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionGripFeel}" Visibility="{Binding IsRearSlipWarningVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding SelfSteerGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.05"
                                 Label="Slide Self-Steer (LMU)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="How much of LMU's slide torque you feel pulling into countersteer. 1 = full game force (can yank to lock in a spin)."
                                 LowLabel="Wheel goes light in slides" HighLabel="Full countersteer pull"
                                 DefaultValue="0.5"
-                                SectionColor="{StaticResource SectionGripFeel}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionGripFeel}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding RearFyScale, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.05"
                                 Label="Rear Slip Texture (LMU)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Oversteer texture from rear lateral force + yaw acceleration. Capped, so above ~1 adds little."
                                 LowLabel="Off" HighLabel="Strong"
                                 DefaultValue="0"
-                                SectionColor="{StaticResource SectionGripFeel}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionGripFeel}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding RearGripDetailGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.05"
                                 Label="Rear Grip Drop (LMU)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Adds to the rear warning as rear grip falls."
                                 LowLabel="Off" HighLabel="Strong"
                                 DefaultValue="0"
-                                SectionColor="{StaticResource SectionGripFeel}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionGripFeel}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding YawOnsetGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
                                 Label="Slide Onset Kick (LMU)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Short steering kick as a slide starts. Needs Onset Threshold above 0."
                                 LowLabel="Off" HighLabel="Bigger kick"
                                 DefaultValue="0"
-                                SectionColor="{StaticResource SectionGripFeel}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionGripFeel}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding YawOnsetThreshold, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                                 Label="Onset Threshold (LMU)" StringFormat="{}{0:F1} rad/s²" LabelAbove="True"
                                 Description="Yaw acceleration needed to fire the kick. 0 = never. Start near 2."
                                 LowLabel="Fires on small twitches" HighLabel="Only big snaps"
                                 DefaultValue="0"
-                                SectionColor="{StaticResource SectionGripFeel}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionGripFeel}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding CarRotationForce, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Yaw Rate Force" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Adds force from how fast the car is rotating. Helps feel slides and direction changes."
                                 LowLabel="Off" HighLabel="More rotation feel"
                                 DefaultValue="{Binding BuiltInDefaults.Dynamic.YawRateGain}"
-                                SectionColor="{StaticResource SectionGripFeel}" Visibility="{Binding IsDynamicEffectsSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionGripFeel}" Visibility="{Binding IsDynamicEffectsSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Rear axle channels" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" />
                             <controls:LabeledSlider Value="{Binding MzRearGain, Mode=TwoWay}" Minimum="-2" Maximum="2" TickFrequency="0.01"
                                 Label="Rear Self-Aligning (Mz)" StringFormat="{}{0:F2}" LabelAbove="True"
@@ -624,14 +624,14 @@
                                 LowLabel="Off/reversed" HighLabel="More rear feel"
                                 ShowCheckBox="True" IsChecked="{Binding MzRearEnabled}"
                                 DefaultValue="{Binding BuiltInDefaults.MzRear.Gain}"
-                                SectionColor="{StaticResource SectionGripFeel}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionGripFeel}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding FyRearGain, Mode=TwoWay}" Minimum="-2" Maximum="2" TickFrequency="0.01"
                                 Label="Rear Lateral Load (Fy)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Rear cornering force."
                                 LowLabel="Off/reversed" HighLabel="More"
                                 ShowCheckBox="True" IsChecked="{Binding FyRearEnabled}"
                                 DefaultValue="{Binding BuiltInDefaults.FyRear.Gain}"
-                                SectionColor="{StaticResource SectionGripFeel}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionGripFeel}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                         </StackPanel>
 
                         <!-- BRAKING & ACCELERATION -->
@@ -644,69 +644,69 @@
                                 LowLabel="Less" HighLabel="More brake weight"
                                 ShowCheckBox="True" IsChecked="{Binding FxFrontEnabled}"
                                 DefaultValue="{Binding BuiltInDefaults.FxFront.Gain}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding FxScale, Mode=TwoWay}" Minimum="100" Maximum="20000" TickFrequency="100"
                                 Label="Fx Scale (divisor)" StringFormat="{}{0:F0}" LabelAbove="True"
                                 IsLogarithmic="True"
                                 Description="Divides raw Fx. LOWER = stronger braking/accel feel."
                                 LowLabel="Stronger" HighLabel="Weaker"
                                 DefaultValue="{Binding BuiltInDefaults.FxScale}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding BrakeBoostGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Brake Weight Boost" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Extra steering weight when braking (front tyres loading up). RaceRoom updates live; other games apply on profile save."
                                 LowLabel="Off" HighLabel="Heavy under braking"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsBrakeBoostVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsBrakeBoostVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding BrakeBoostThreshold, Mode=TwoWay}" Minimum="0" Maximum="0.5" TickFrequency="0.01"
                                 Label="Boost Starts At (pedal)" StringFormat="{}{0:P0}" LabelAbove="True"
                                 Description="Brake pedal position where the boost begins."
                                 LowLabel="Light touch" HighLabel="Only hard braking"
                                 DefaultValue="0.1"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsBrakeBoostVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsBrakeBoostVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding BrakeLoadBias, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Front Load Brake Bias (LMU)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Blends real front-tyre load into the braking boost. 0 = simple boost only."
                                 LowLabel="Simple boost" HighLabel="Follows real front load"
                                 DefaultValue="0"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding AccelerationBrakingForce, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Longitudinal G Weight" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Adds force from braking/acceleration G — weight transfer."
                                 LowLabel="Off" HighLabel="More"
                                 DefaultValue="{Binding BuiltInDefaults.Dynamic.LongitudinalGGain}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsDynamicEffectsSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsDynamicEffectsSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Lock-ups &amp; wheelspin" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <controls:LabeledSlider Value="{Binding SlipRatioGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Lock-up / Wheelspin Feel" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Adds force when wheels lock under braking or spin on throttle."
                                 LowLabel="Subtle" HighLabel="Pronounced"
                                 DefaultValue="{Binding BuiltInDefaults.Slip.SlipRatioGain}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsSlipEnhancerVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsSlipEnhancerVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding FlatspotGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
                                 Label="Flatspot Thump (RaceRoom)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Once-per-revolution thump after flatspotting a tyre."
                                 LowLabel="Off" HighLabel="Strong"
                                 DefaultValue="1"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="ABS" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" />
                             <controls:LabeledSlider Value="{Binding AbsGain, Mode=TwoWay}" Minimum="0" Maximum="3" TickFrequency="0.05"
                                 Label="ABS Vibration" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="ABS pulses in the wheel when ABS works. Above ~2 the pulses start clipping."
                                 LowLabel="Off" HighLabel="Strong pulses"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.AbsGain}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding AbsPulseAmplitude, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="ABS Pulse Punch" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="How sharp each pulse is. Gentle cars ~0.10, aggressive ~0.25-0.50."
                                 LowLabel="Soft pulses" HighLabel="Sharp pulses"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.AbsPulseAmplitude}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding BrakePressureGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
                                 Label="Brake Bite Texture (RaceRoom)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Subtle texture from brake pressure telemetry."
                                 LowLabel="Off" HighLabel="More bite"
                                 DefaultValue="1"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding SynthAbsEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
@@ -727,13 +727,13 @@
                                 Description="Start around 0.5."
                                 LowLabel="Subtle" HighLabel="Noticeable"
                                 DefaultValue="{Binding BuiltInDefaults.TcWheel.Gain}"
-                                SectionColor="{StaticResource SectionCrash}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding TcFeelGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
                                 Label="TC Release (RaceRoom)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Force release when TC cuts power."
                                 LowLabel="Off" HighLabel="More"
                                 DefaultValue="1"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding SynthTcEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
@@ -751,63 +751,63 @@
                                 Description="Volume knob for all vibrations (kerbs, slip, road, ABS)."
                                 LowLabel="Quiet" HighLabel="Loud"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.MasterGain}"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Kerbs &amp; rumble strips" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <controls:LabeledSlider Value="{Binding CurbGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.05"
                                 Label="Kerb Strikes" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Kerb and rumble-strip hits. A small suspension kerb term stays even at 0."
                                 LowLabel="Barely there" HighLabel="Big hits"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.KerbGain}"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding RoadTextureGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
                                 Label="Kerb &amp; Bump Knocks (LMU)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Kerb, bump and slip texture in the steering force — short knocks that never pull the wheel aside."
                                 LowLabel="Off" HighLabel="Full detail"
                                 DefaultValue="1"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding RoadTextureDecayMs, Mode=TwoWay}" Minimum="3" Maximum="80" TickFrequency="1"
                                 Label="Knock Sharpness (LMU)" StringFormat="{}{0:F0} ms" LabelAbove="True"
                                 Description="How long each knock lasts. 15 = crisp; 40+ feels lazy."
                                 LowLabel="Sharp, rigid hits" HighLabel="Soft, rounded rumble"
                                 DefaultValue="15"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Road surface &amp; bumps" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <controls:LabeledSlider Value="{Binding RoadGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.05"
                                 Label="Road Vibration" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Road surface vibration."
                                 LowLabel="Smooth road" HighLabel="Rough road"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.RoadGain}"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding SuspensionRoadGain, Mode=TwoWay}" Minimum="0" Maximum="5" TickFrequency="0.05"
                                 Label="Suspension Road Texture" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Road texture from suspension movement, mixed into the main force."
                                 LowLabel="Smooth" HighLabel="Bumpy"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.SuspensionRoadGain}"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding RoadCompressionGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
                                 Label="Road Compression (RaceRoom)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Crests and compressions make the steering heavier, dips make it lighter — always in the direction you are already steering. 1 = ±25% weight."
                                 LowLabel="Off" HighLabel="Heavy crests"
                                 DefaultValue="1"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding BumpTwistGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
                                 Label="Bump Twist (RaceRoom)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Steering kick when one front wheel hits a bump harder than the other. Smooth tarmac stays silent."
                                 LowLabel="Off" HighLabel="Strong kicks"
                                 DefaultValue="0.5"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding RoadFeel, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Bump Feel" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Force from rapid suspension compression (bumps, kerbs, crests)."
                                 LowLabel="Off" HighLabel="Strong bumps"
                                 DefaultValue="{Binding BuiltInDefaults.Dynamic.SuspensionGain}"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsDynamicEffectsSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsDynamicEffectsSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding SuspRoadScale, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
                                 Label="Suspension Road Layer (LMU)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Extra suspension-delta road layer on top of the built-in kerb/road envelopes."
                                 LowLabel="Off" HighLabel="Stronger"
                                 DefaultValue="1"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsLeMansUltimate, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding UseMixerSuspRoad}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
@@ -821,19 +821,19 @@
                                 Description="How much you feel when you leave the track. 0.5 subtle, 1.0 strong."
                                 LowLabel="Off" HighLabel="Strong rumble"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.OfftrackGain}"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding OfftrackSeverityScale, Mode=TwoWay}" Minimum="0" Maximum="10" TickFrequency="0.1"
                                 Label="Off-Track Roughness" StringFormat="{}{0:F1}" LabelAbove="True"
                                 Description="How violent the grass/gravel texture is."
                                 LowLabel="Gentle" HighLabel="Violent"
                                 DefaultValue="{Binding BuiltInDefaults.Vibrations.OfftrackSeverityScale}"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsVibrationSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding SurfaceFeelGain, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.05"
                                 Label="Surface Material Feel (RaceRoom)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Rumble by surface: gravel coarse, grass softer, rumble strip sharp."
                                 LowLabel="Off" HighLabel="Strong"
                                 DefaultValue="1"
-                                SectionColor="{StaticResource SectionVibration}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionVibration}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                         </StackPanel>
 
                         <!-- ENGINE & CHASSIS RUMBLE -->
@@ -851,38 +851,38 @@
                                 Description="Output is capped, so above ~0.6 changes little at full rumble."
                                 LowLabel="Quiet" HighLabel="Strong"
                                 DefaultValue="{Binding BuiltInDefaults.Lfe.Gain}"
-                                SectionColor="{StaticResource SectionLfe}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionLfe}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding LfeFrequency, Mode=TwoWay}" Minimum="3" Maximum="30" TickFrequency="0.5"
                                 Label="Rumble Pitch" StringFormat="{}{0:F1} Hz" LabelAbove="True"
                                 Description="Base frequency (actual pitch varies with the game's update rate)."
                                 LowLabel="Deep thump" HighLabel="Fast buzz"
                                 DefaultValue="{Binding BuiltInDefaults.Lfe.Frequency}"
-                                SectionColor="{StaticResource SectionLfe}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionLfe}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding LfeRpmDrive, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Engine RPM Drive" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="How much engine RPM drives the rumble (no effect on ACC)."
                                 LowLabel="Ignores RPM" HighLabel="Revs-driven"
                                 DefaultValue="{Binding BuiltInDefaults.Lfe.RpmDrive}"
-                                SectionColor="{StaticResource SectionLfe}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionLfe}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding EngineTorqueLfeMod, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.05"
                                 Label="Engine Torque Drive (RaceRoom)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Rumble follows actual engine torque."
                                 LowLabel="Constant" HighLabel="Follows torque"
                                 DefaultValue="1"
-                                SectionColor="{StaticResource SectionLfe}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionLfe}" Visibility="{Binding IsRaceroom, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Detailed LFE" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <controls:LabeledSlider Value="{Binding LfeSuspensionDrive, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Suspension Drive" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="How much suspension movement drives the rumble."
                                 LowLabel="Less" HighLabel="More reactive to bumps"
                                 DefaultValue="{Binding BuiltInDefaults.Lfe.SuspensionDrive}"
-                                SectionColor="{StaticResource SectionLfe}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionLfe}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding LfeSpeedScaling, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Speed Drive" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="How much speed drives the rumble."
                                 LowLabel="Less" HighLabel="More at speed"
                                 DefaultValue="{Binding BuiltInDefaults.Lfe.SpeedScaling}"
-                                SectionColor="{StaticResource SectionLfe}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionLfe}" Margin="0,0,0,22" />
                             <TextBlock Text="Gear shifts" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <DockPanel Margin="0,6,0,10">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding GearChangeMuteEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
@@ -902,69 +902,69 @@
                                 Description="Resists fast wheel movement — the main fix for oscillation and grainy FFB. 0.15 default, 0.25-0.40 calms a nervous wheel."
                                 LowLabel="Free, lively" HighLabel="Thick, calm"
                                 DefaultValue="{Binding BuiltInDefaults.Damping.ViscousDamping}"
-                                SectionColor="{StaticResource SectionDamping}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding SpeedDamping, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Speed Damping" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Damping that grows with car speed. Damping is capped, so above ~0.5 changes little."
                                 LowLabel="Light at speed" HighLabel="Heavy at speed"
                                 DefaultValue="{Binding BuiltInDefaults.Damping.SpeedDamping}"
-                                SectionColor="{StaticResource SectionDamping}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding FrictionLevel, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Friction" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Constant drag when turning the wheel. Capped, so above ~0.5 changes little."
                                 LowLabel="Slippery" HighLabel="Draggy"
                                 DefaultValue="{Binding BuiltInDefaults.Damping.Friction}"
-                                SectionColor="{StaticResource SectionDamping}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding InertiaWeight, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Inertia" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Resists quick direction changes, like a heavier steering rack."
                                 LowLabel="Light, flicky" HighLabel="Heavy, weighty"
                                 DefaultValue="{Binding BuiltInDefaults.Damping.Inertia}"
-                                SectionColor="{StaticResource SectionDamping}" Visibility="{Binding IsDampingTuningVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Visibility="{Binding IsDampingTuningVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Detailed damping" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsDampingTuningVisible, Converter={StaticResource BoolToVis}}" />
                             <controls:LabeledSlider Value="{Binding DampingSpeedReference, Mode=TwoWay}" Minimum="50" Maximum="500" TickFrequency="5"
                                 Label="Speed Damping Full At" StringFormat="{}{0:F0} km/h" LabelAbove="True"
                                 Description="Car speed where Speed Damping reaches full strength."
                                 LowLabel="Kicks in early" HighLabel="Kicks in late"
                                 DefaultValue="{Binding BuiltInDefaults.Damping.MaxSpeedReference}"
-                                SectionColor="{StaticResource SectionDamping}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Visibility="{Binding IsDampingSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding SteerVelocityReference, Mode=TwoWay}" Minimum="1" Maximum="50" TickFrequency="1"
                                 Label="Steering Speed Reference" StringFormat="{}{0:F0}" LabelAbove="True"
                                 Description="Normalises steering speed for damping. Higher = less damping on fast inputs."
                                 LowLabel="More damping on quick hands" HighLabel="Less damping on quick hands"
                                 DefaultValue="{Binding BuiltInDefaults.Advanced.SteerVelocityReference}"
-                                SectionColor="{StaticResource SectionDamping}" Visibility="{Binding IsDampingTuningVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Visibility="{Binding IsDampingTuningVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding VelocityDeadzone, Mode=TwoWay}" Minimum="0" Maximum="0.5" TickFrequency="0.01"
                                 Label="Damping Deadzone" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Steering speed below which damping does nothing. Helps stop centre bounce-back."
                                 LowLabel="Damps everything" HighLabel="Only fast moves"
                                 DefaultValue="{Binding BuiltInDefaults.Advanced.VelocityDeadzone}"
-                                SectionColor="{StaticResource SectionDamping}" Visibility="{Binding IsDampingTuningVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Visibility="{Binding IsDampingTuningVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Filtering" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <controls:LabeledSlider Value="{Binding MaxSlewRate, Mode=TwoWay}" Minimum="0.03" Maximum="1.0" TickFrequency="0.01"
                                 Label="Detail Sharpness (slew limit)" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Max change per frame for detail effects (kerbs, slip, vibration). Default 0.85."
                                 LowLabel="Rounded, muted" HighLabel="Sharp transients"
                                 DefaultValue="{Binding BuiltInDefaults.Advanced.MaxSlewRate}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding NoiseFloor, Mode=TwoWay}" Minimum="0" Maximum="0.05" TickFrequency="0.0005"
                                 Label="Noise Floor" StringFormat="{}{0:F4}" LabelAbove="True"
                                 Description="Forces below this are silenced, so the wheel sits still when it should."
                                 LowLabel="Every tiny detail" HighLabel="Quiet, may lose detail"
                                 DefaultValue="{Binding BuiltInDefaults.Advanced.NoiseFloor}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding CoreSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.5" TickFrequency="0.01"
                                 Label="Steering Force Smoothing" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Smooths the main column force. 0.15 light; 0.5 sluggish. Tames grainy LMU torque."
                                 LowLabel="Raw" HighLabel="Smooth, laggy"
                                 DefaultValue="0"
-                                SectionColor="{StaticResource SectionDamping}" Visibility="{Binding IsColumnSmoothingVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Visibility="{Binding IsColumnSmoothingVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding DetailSmoothing, Mode=TwoWay}" Minimum="0" Maximum="0.8" TickFrequency="0.01"
                                 Label="Texture Smoothing" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Smooths vibrations/texture. 0.3 keeps rumble strips; 0.8 kills texture."
                                 LowLabel="Raw texture" HighLabel="Smooth, muted"
                                 DefaultValue="0"
-                                SectionColor="{StaticResource SectionDamping}" Visibility="{Binding IsColumnSmoothingVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Visibility="{Binding IsColumnSmoothingVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                         </StackPanel>
 
                         <!-- PARKED & LOW SPEED -->
@@ -975,99 +975,99 @@
                                 Description="Overall tyre scrub when stationary. 0 = off."
                                 LowLabel="Free" HighLabel="Heavy"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.Gain}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionEngineOffScale, Mode=TwoWay}" Minimum="0" Maximum="2" TickFrequency="0.01"
                                 Label="Engine Off Weight" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Multiplier with engine off (no power steering)."
                                 LowLabel="Lighter" HighLabel="Heavier"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.EngineOffScale}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionEngineOnScale, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Engine On Weight" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Multiplier with engine running (power assist)."
                                 LowLabel="Lighter" HighLabel="Heavier"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.EngineOnScale}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <TextBlock Text="Elastic friction model" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionMaxElasticStretch, Mode=TwoWay}" Minimum="0.001" Maximum="0.05" TickFrequency="0.001"
                                 Label="Elastic Twist" StringFormat="{}{0:F3}" LabelAbove="True"
                                 Description="How far the tyre twists before breaking free."
                                 LowLabel="Snappy breakaway" HighLabel="Rubbery twist"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.MaxElasticStretch}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionSpringStiffness, Mode=TwoWay}" Minimum="1" Maximum="50" TickFrequency="0.5"
                                 Label="Spring Stiffness" StringFormat="{}{0:F1}" LabelAbove="True"
                                 Description="How quickly resistance builds while twisting."
                                 LowLabel="Soft build" HighLabel="Stiff build"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.SpringStiffness}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionKineticFrictionBase, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Sliding Friction" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Drag after the tyre breaks free."
                                 LowLabel="Slides free" HighLabel="Stays draggy"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.KineticFrictionBase}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionEngineOffDamping, Mode=TwoWay}" Minimum="0" Maximum="0.5" TickFrequency="0.01"
                                 Label="Engine Off Damping" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Absorbs motor buzz with engine off."
                                 LowLabel="Lively" HighLabel="Damped"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.EngineOffDamping}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionEngineOnDamping, Mode=TwoWay}" Minimum="0" Maximum="0.2" TickFrequency="0.005"
                                 Label="Engine On Damping" StringFormat="{}{0:F3}" LabelAbove="True"
                                 Description="Damping with engine running."
                                 LowLabel="Lively" HighLabel="Damped"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.EngineOnDamping}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionActiveDecay, Mode=TwoWay}" Minimum="0.5" Maximum="1" TickFrequency="0.01"
                                 Label="Hold While Turning" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="How long twist is held while turning. Use 0.5-0.8 on very strong bases."
                                 LowLabel="Stable, lets go" HighLabel="Holds twist"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.ActiveDecay}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionReturnDecay, Mode=TwoWay}" Minimum="0.1" Maximum="0.99" TickFrequency="0.01"
                                 Label="Hold On Return" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Decay when the spring pulls back. Lower kills oscillation faster."
                                 LowLabel="Kills oscillation" HighLabel="Springy"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.ReturnDecay}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionOutputSmoothAlpha, Mode=TwoWay}" Minimum="0.05" Maximum="1" TickFrequency="0.01"
                                 Label="Output Raw-ness" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="1.0 = no smoothing."
                                 LowLabel="Smooth" HighLabel="Raw, notchy"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.OutputSmoothAlpha}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <TextBlock Text="Stationary detail (tyre twist texture)" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionBreakoutGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Breakout Judder" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Stick-slip judder as the tyre catches and releases."
                                 LowLabel="Off" HighLabel="Pronounced"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.BreakoutGain}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionBreakoutFrequencyHz, Mode=TwoWay}" Minimum="20" Maximum="70" TickFrequency="1"
                                 Label="Judder Pitch" StringFormat="{}{0:F0} Hz" LabelAbove="True"
                                 Description="Judder frequency."
                                 LowLabel="Low judder" HighLabel="High judder"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.BreakoutFrequencyHz}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionScrubGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Scrub Grain" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Tread texture while twisting the stationary tyre."
                                 LowLabel="Off" HighLabel="Grainy"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.ScrubGain}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionLoadAsymmetryGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Left/Right Load Difference" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Subtle weight from front load imbalance."
                                 LowLabel="Off" HighLabel="Noticeable"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.LoadAsymmetryGain}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding StaticFrictionPressureSensitivity, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Tyre Pressure Feel" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Low pressure = heavier and grainier."
                                 LowLabel="Off" HighLabel="Strong"
                                 DefaultValue="{Binding BuiltInDefaults.StaticFriction.PressureSensitivity}"
-                                SectionColor="{StaticResource SectionDamping}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionDamping}" Margin="0,0,0,22" />
                             <DockPanel Margin="0,6,0,10">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding StaticFrictionSurfaceResponseEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
@@ -1093,25 +1093,25 @@
                                 Description="0.3 subtle nudge, 0.6 noticeable, 1.0 full."
                                 LowLabel="Nudge" HighLabel="Full kick"
                                 DefaultValue="{Binding BuiltInDefaults.Crash.ImpactGain}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding CrashSafetyClamp, Mode=TwoWay}" Minimum="0.1" Maximum="1.0" TickFrequency="0.01"
                                 Label="Safety Clamp" StringFormat="{}{0:P0}" LabelAbove="True"
                                 Description="Hard cap on kick size. Has no effect if it is above Impact Kick."
                                 LowLabel="Tight cap (safer)" HighLabel="Loose cap"
                                 DefaultValue="{Binding BuiltInDefaults.Crash.SafetyClamp}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding CrashTriggerThresholdG, Mode=TwoWay}" Minimum="1" Maximum="10" TickFrequency="0.1"
                                 Label="Trigger Threshold" StringFormat="{}{0:F1} G" LabelAbove="True"
                                 Description="G spike needed to count as a crash. 3 G typical contact, 5 G heavy."
                                 LowLabel="Triggers on light taps" HighLabel="Only big hits"
                                 DefaultValue="{Binding BuiltInDefaults.Crash.TriggerThresholdG}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding CrashDecayRate, Mode=TwoWay}" Minimum="0.5" Maximum="0.98" TickFrequency="0.01"
                                 Label="Kick Length" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="How quickly the kick fades. 0.88 quick punch, 0.95 longer shake."
                                 LowLabel="Short punch" HighLabel="Long shake"
                                 DefaultValue="{Binding BuiltInDefaults.Crash.DecayRate}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Safety override (hazard mode)" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" />
                             <Border Background="{DynamicResource UiC_33FF4444}" CornerRadius="{DynamicResource UiR6}" Padding="12,10" Margin="0,4,0,8">
                                 <StackPanel>
@@ -1131,7 +1131,7 @@
                                 Description="No crash forces below this speed (stops pit-lane false triggers)."
                                 LowLabel="Always active" HighLabel="Only at speed"
                                 DefaultValue="{Binding BuiltInDefaults.Crash.MinSpeedKmh}"
-                                SectionColor="{StaticResource SectionCrash}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Margin="0,0,0,22" />
                             <TextBlock Text="Tyre condition" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" />
                             <DockPanel Margin="0,6,0,10" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding TyreConditionEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
@@ -1145,32 +1145,32 @@
                                 Description="Shake when a tyre bursts."
                                 LowLabel="Off" HighLabel="Violent"
                                 DefaultValue="{Binding BuiltInDefaults.TyreCondition.BlowoutVibrationGain}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding TyreConditionPressureLossGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Pressure Loss Rumble" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Low rumble as pressure drops."
                                 LowLabel="Off" HighLabel="Strong"
                                 DefaultValue="{Binding BuiltInDefaults.TyreCondition.PressureLossGain}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding TyreConditionDamageAsymmetryGain, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Damage Pull" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Steady pull toward the more damaged side."
                                 LowLabel="Off" HighLabel="Strong pull"
                                 DefaultValue="{Binding BuiltInDefaults.TyreCondition.DamageAsymmetryGain}"
-                                SectionColor="{StaticResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Blowout thresholds" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsCrashSectionVisible, Converter={StaticResource BoolToVis}}" />
                             <controls:LabeledSlider Value="{Binding TyreConditionBlowoutThreshold, Mode=TwoWay}" Minimum="0.2" Maximum="0.7" TickFrequency="0.01"
                                 Label="Blowout Pressure" StringFormat="{}{0:P0}" LabelAbove="True"
                                 Description="Pressure (vs normal) below which a blowout can occur."
                                 LowLabel="Only near-flat tyres" HighLabel="Bursts sooner"
                                 DefaultValue="{Binding BuiltInDefaults.TyreCondition.BlowoutPressureThreshold}"
-                                SectionColor="{StaticResource SectionCrash}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding TyreConditionMaxBlowoutAmplitude, Mode=TwoWay}" Minimum="0" Maximum="0.5" TickFrequency="0.01"
                                 Label="Max Blowout Shake" StringFormat="{}{0:F2}" LabelAbove="True"
                                 Description="Peak blowout amplitude. 0.25 moderate, 0.5 violent."
                                 LowLabel="Mild" HighLabel="Violent"
                                 DefaultValue="{Binding BuiltInDefaults.TyreCondition.MaxBlowoutAmplitude}"
-                                SectionColor="{StaticResource SectionCrash}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionCrash}" Margin="0,0,0,22" />
                         </StackPanel>
 
                         <!-- WET WEATHER -->
@@ -1198,44 +1198,44 @@
                                 Description="How much road vibration is removed in the wet."
                                 LowLabel="Full road feel" HighLabel="Road feel removed"
                                 DefaultValue="{Binding BuiltInDefaults.WetWeather.RoadVibSuppression}"
-                                SectionColor="{StaticResource SectionWetWeather}" Visibility="{Binding IsWetWeatherSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionWetWeather}" Visibility="{Binding IsWetWeatherSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding WetWeatherCurbSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Kerb Reduction" StringFormat="{}{0:P0}" LabelAbove="True"
                                 Description="How much kerb vibration is removed in the wet."
                                 LowLabel="Full kerbs" HighLabel="Kerbs removed"
                                 DefaultValue="{Binding BuiltInDefaults.WetWeather.CurbSuppression}"
-                                SectionColor="{StaticResource SectionWetWeather}" Visibility="{Binding IsWetWeatherSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionWetWeather}" Visibility="{Binding IsWetWeatherSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding WetWeatherScrubSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Scrub Reduction" StringFormat="{}{0:P0}" LabelAbove="True"
                                 Description="How much tyre scrub texture is removed in the wet."
                                 LowLabel="Full scrub" HighLabel="Scrub removed"
                                 DefaultValue="{Binding BuiltInDefaults.WetWeather.ScrubSuppression}"
-                                SectionColor="{StaticResource SectionWetWeather}" Visibility="{Binding IsWetWeatherSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionWetWeather}" Visibility="{Binding IsWetWeatherSectionVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <TextBlock Text="Detailed wet weather" Style="{StaticResource SubSectionHeader}" Margin="0,18,0,8" Visibility="{Binding IsWetWeatherSectionVisible, Converter={StaticResource BoolToVis}}" />
                             <controls:LabeledSlider Value="{Binding WetWeatherManualIntensity, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Manual Intensity" StringFormat="{}{0:P0}" LabelAbove="True"
                                 Description="Wetness when auto-detect is off."
                                 LowLabel="Dry" HighLabel="Heavy rain"
                                 DefaultValue="{Binding BuiltInDefaults.WetWeather.ManualIntensity}"
-                                SectionColor="{StaticResource SectionWetWeather}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionWetWeather}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding WetWeatherPeakSlipAngleMultiplier, Mode=TwoWay}" Minimum="1" Maximum="3" TickFrequency="0.05"
                                 Label="Wet Slip Curve Width" StringFormat="{}{0:F2}x" LabelAbove="True"
                                 Description="Peak grip arrives at bigger slip angles in the wet."
                                 LowLabel="Dry curve" HighLabel="Wide wet curve"
                                 DefaultValue="{Binding BuiltInDefaults.WetWeather.PeakSlipAngleMultiplier}"
-                                SectionColor="{StaticResource SectionWetWeather}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionWetWeather}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding WetWeatherDampingReduction, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Damping Reduction" StringFormat="{}{0:P0}" LabelAbove="True"
                                 Description="Less speed damping in the wet."
                                 LowLabel="Same as dry" HighLabel="Much lighter"
                                 DefaultValue="{Binding BuiltInDefaults.WetWeather.DampingReduction}"
-                                SectionColor="{StaticResource SectionWetWeather}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionWetWeather}" Visibility="{Binding IsTyreChannelGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding WetWeatherNoiseFloorSuppression, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.01"
                                 Label="Noise Floor Boost" StringFormat="{}{0:P0}" LabelAbove="True"
                                 Description="Masks fine detail lost on a wet surface."
                                 LowLabel="Keep detail" HighLabel="Mask detail"
                                 DefaultValue="{Binding BuiltInDefaults.WetWeather.NoiseFloorSuppression}"
-                                SectionColor="{StaticResource SectionWetWeather}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionWetWeather}" Margin="0,0,0,22" />
                             <DockPanel Margin="0,6,0,10">
                                 <CheckBox DockPanel.Dock="Left" IsChecked="{Binding WetWeatherHydroplaningEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
                                 <StackPanel>
@@ -1248,13 +1248,13 @@
                                 Description="Speed above which hydroplaning builds."
                                 LowLabel="Early onset" HighLabel="Only very fast"
                                 DefaultValue="{Binding BuiltInDefaults.WetWeather.HydroplaningSpeedThreshold}"
-                                SectionColor="{StaticResource SectionWetWeather}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionWetWeather}" Margin="0,0,0,22" />
                             <controls:LabeledSlider Value="{Binding WetWeatherHydroplaningMaxAttenuation, Mode=TwoWay}" Minimum="0" Maximum="0.8" TickFrequency="0.01"
                                 Label="Hydroplaning Lightness" StringFormat="{}{0:P0}" LabelAbove="True"
                                 Description="Max force loss while hydroplaning."
                                 LowLabel="Subtle" HighLabel="Severe"
                                 DefaultValue="{Binding BuiltInDefaults.WetWeather.HydroplaningMaxAttenuation}"
-                                SectionColor="{StaticResource SectionWetWeather}" Margin="0,0,0,22" />
+                                SectionColor="{DynamicResource SectionWetWeather}" Margin="0,0,0,22" />
                         </StackPanel>
 
                     </StackPanel>
