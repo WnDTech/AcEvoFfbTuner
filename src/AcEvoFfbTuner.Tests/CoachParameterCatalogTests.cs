@@ -167,7 +167,7 @@ public class CoachParameterCatalogTests
     [InlineData("SteeringLockDegrees", CoachGame.AcEvo, false)]
     [InlineData("SlipAngleGain", CoachGame.Raceroom, true)]
     [InlineData("SlipAngleShapeGain", CoachGame.Raceroom, true)]
-    [InlineData("SlipAngleGain", CoachGame.LeMansUltimate, false)]
+    [InlineData("SlipAngleGain", CoachGame.LeMansUltimate, true)]
     [InlineData("SlipAngleGain", CoachGame.AssettoCorsa, false)]
     public void NewSliders_Applicability(string name, CoachGame game, bool expected)
         => Assert.Equal(expected, CoachParameterCatalog.IsApplicable(Get(name), game));

@@ -767,12 +767,24 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
             }
 
             int mg = gear switch { -1 => 0, 0 => 1, _ => gear + 1 };
-            float slipA = (float)(speedMs >= 0.5 ? Math.Clamp(Math.Atan2(vx, -vz), -0.30, 0.30) : 0);
+            float[] slipAngles = WheelSlipAngles(latGroundVel, lonGroundVel, speedMs, vx, vz);
             float speedKmh = (float)(speedMs * 3.6);
 
             // ── Use real wheel data when available, fall back to synthesis ──
-            // Estimate tire loads from physics when wheel data is zero
-            if (tireLoads[0] < 1f && tireLoads[1] < 1f && tireLoads[2] < 1f && tireLoads[3] < 1f)
+            // The shipped game sends mTireLoad (+104), mLateralForce (+88) and
+            // mLongitudinalForce (+96) as exact zeros (verified live 2026-11-11,
+            // whole 90 s drive, player slot). mSuspensionForce (+16) IS live
+            // (fronts ~4.3 kN, rears ~7.2 kN at 180 km/h, LMGT3) and carries real
+            // aero + weight transfer — use it as the wheel load before the
+            // generic 1400 kg synthesis below.
+            bool loadsZero = tireLoads[0] < 1f && tireLoads[1] < 1f && tireLoads[2] < 1f && tireLoads[3] < 1f;
+            if (loadsZero && suspForce[0] + suspForce[1] + suspForce[2] + suspForce[3] > 2000f)
+            {
+                for (int wi = 0; wi < 4; wi++)
+                    tireLoads[wi] = Math.Clamp(suspForce[wi], 0f, 50000f);
+                loadsZero = false;
+            }
+            if (loadsZero)
             {
                 float speedSq = (float)(speedMs * speedMs);
                 float aeroF = 0.8f * speedSq * 0.40f;
@@ -942,7 +954,7 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
                 FinalFf = totalForce,
                 Heading = _lmuHeading,
                 SlipRatio = slipRatio,
-                SlipAngle = [slipA, slipA, slipA, slipA],
+                SlipAngle = slipAngles,
                 Mz = [totalForce, totalForce, 0f, 0f],
                 Fx = [synFx[0], synFx[1], synFx[2], synFx[3]],
                 Fy = [synFy[0], synFy[1], synFy[2], synFy[3]],
@@ -1817,6 +1829,30 @@ public sealed class LmuSharedMemoryReader : ISharedMemoryReader, ICarPositionSou
     }
 
     private static bool IsFinite(double d) => !double.IsNaN(d) && !double.IsInfinity(d);
+
+    /// <summary>
+    /// Per-wheel slip angle from mLateralGroundVel / mLongitudinalGroundVel, which are
+    /// in the tyre's own frame (lon ≈ −speed; verified live 2026-11-11). Same sign as the
+    /// legacy body sideslip atan2(vx, −vz) (92% of sliding frames), clamped to ±0.30.
+    /// Falls back to body sideslip on every wheel if the ground velocities are absent.
+    /// </summary>
+    internal static float[] WheelSlipAngles(float[] latGroundVel, float[] lonGroundVel, double speedMs,
+        double bodyVx = 0, double bodyVz = 0)
+    {
+        var a = new float[4];
+        if (speedMs < 3.0) return a;
+        bool live = false;
+        for (int wi = 0; wi < 4; wi++)
+            if (Math.Abs(lonGroundVel[wi]) > 1f) live = true;
+        for (int wi = 0; wi < 4; wi++)
+        {
+            double ang = live
+                ? Math.Atan2(latGroundVel[wi], Math.Max(Math.Abs(lonGroundVel[wi]), 0.5))
+                : Math.Atan2(bodyVx, -bodyVz);
+            a[wi] = (float)Math.Clamp(ang, -0.30, 0.30);
+        }
+        return a;
+    }
     private static string Trunc(string? s, int n) => s == null || s.Length <= n ? s ?? "" : s[..n] + "…";
     private static byte[] CopyStr(string src, int d)
     {

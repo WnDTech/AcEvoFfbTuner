@@ -55,8 +55,8 @@ public static class CoachParameterCatalog
     /// <summary>Slip enhancer: all but AC1 (no slip data).</summary>
     private static readonly CoachGame[] SlipEnh = [
         CoachGame.AcEvo, CoachGame.Raceroom, CoachGame.LeMansUltimate, CoachGame.AssettoCorsaCompetizione];
-    /// <summary>Slip-angle effects: real or modelled per-axle slip angle (EVO/ACC tyre data, R3E bicycle model). Not LMU (single body sideslip) or AC1.</summary>
-    private static readonly CoachGame[] SlipAngleGames = [CoachGame.AcEvo, CoachGame.AssettoCorsaCompetizione, CoachGame.Raceroom];
+    /// <summary>Slip-angle effects: real or modelled per-axle slip angle (EVO/ACC tyre data, R3E bicycle model, LMU per-wheel ground velocity). Not AC1.</summary>
+    private static readonly CoachGame[] SlipAngleGames = [CoachGame.AcEvo, CoachGame.AssettoCorsaCompetizione, CoachGame.Raceroom, CoachGame.LeMansUltimate];
     private static readonly CoachGame[] Column = [CoachGame.Raceroom, CoachGame.LeMansUltimate];
     private static readonly CoachGame[] CoreForce = [CoachGame.Raceroom, CoachGame.LeMansUltimate, CoachGame.AssettoCorsa];
     private static readonly CoachGame[] BrakeBoost = [
@@ -66,8 +66,8 @@ public static class CoachParameterCatalog
     private static readonly CoachGame[] RearSlip = [CoachGame.AcEvo, CoachGame.Raceroom, CoachGame.LeMansUltimate];
     private static readonly CoachGame[] SlipVib = [CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.LeMansUltimate];
     private static readonly CoachGame[] LoadFlex = [
-        CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.AssettoCorsaCompetizione, CoachGame.Raceroom];
-    private static readonly CoachGame[] ContactPatch = [CoachGame.AcEvo, CoachGame.AssettoCorsaCompetizione, CoachGame.Raceroom];
+        CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.AssettoCorsaCompetizione, CoachGame.Raceroom, CoachGame.LeMansUltimate];
+    private static readonly CoachGame[] ContactPatch = [CoachGame.AcEvo, CoachGame.AssettoCorsaCompetizione, CoachGame.Raceroom, CoachGame.LeMansUltimate];
     private static readonly CoachGame[] Damping = [CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.LeMansUltimate];
     private static readonly CoachGame[] DampTuning = [
         CoachGame.AcEvo, CoachGame.AssettoCorsa, CoachGame.LeMansUltimate, CoachGame.AssettoCorsaCompetizione];
@@ -135,7 +135,7 @@ public static class CoachParameterCatalog
                 "feel", "Legacy +15% high-steer boost for the pre-Historic-Update fixed SAT drop. Off = feel the Historic Update's own dynamic SAT curve."),
             // ── Cornering & Front Grip ──
             E("SlipAngleGain", 0f, 2f, SlipAngleGames, "UI: Cornering & Front Grip -> Slip Angle Feel",
-                "low_detail", "Force add as tyres slide sideways. EVO/ACC real tyre slip; R3E per-axle model (front ~0.08 rad at the limit). LMU only has body sideslip (unreliable); AC1 has no slip data."),
+                "low_detail", "Force add as tyres slide sideways. EVO/ACC real tyre slip; R3E per-axle model (front ~0.08 rad at the limit). LMU per-wheel slip from tyre ground velocity (front ~0.03 rad in hard corners, ~0.06 near the limit); AC1 has no slip data."),
             E("SlipAngleShapeGain", 0f, 2f, SlipAngleGames, "UI: Cornering & Front Grip -> Peak Grip Bump",
                 "low_detail", "Peak-grip rise and drop-off (understeer cue)."),
             E("SlipThreshold", 0f, 0.3f, SlipEnh, "UI: Cornering & Front Grip -> Slip Trigger Point",
@@ -549,7 +549,7 @@ public static class CoachParameterCatalog
         CoachGame.Raceroom =>
             "R3E pipeline (R3eFfbPipeline): game SteeringForce column torque -> CoreForceMultiplier -> grip lightening (TyreGripScale) + BrakeBoost -> centering override (CenterSharpnessDegrees) -> output gain; DETAIL path (slip enhancer, dynamic effects, vibrations, LFE, R3E flatspot/surface/brake/TC effects -> MaxSlewRate). R3E does NOT use the channel mixer: Mz/Fx/Fy gains + scales, LUT, CenterKneePower, CenterBlendDegrees and AutoGain have no effect. Damping, crash, tyre condition and wet weather are not applied. Slip angles are per-axle (front/rear) from a bicycle model with a learned wheelbase, so SlipAngleGain/SlipAngleShapeGain work; front slip is ~0.08 rad at the limit, so a SlipThreshold above ~0.10 only fires past the limit. Slip vibration is zeroed by the reader.",
         CoachGame.LeMansUltimate =>
-            "LMU pipeline (LmuFfbPipeline): shaft torque normalised by ForceScale (used as 120/value, HIGHER = HEAVIER) -> CoreForceMultiplier -> grip/lock fade (GripScaleGain) + BrakeBoost/BrakeLoadBias -> native torque sign (SelfSteerGain for slides) -> output gain; DETAIL: road texture (RoadTextureGain/Decay), SuspRoadScale, rear-slip warning (RearFyScale/RearGripDetailGain), slide-onset kick (YawOnset*), vibrations, LFE. Damping section applies (CenterDampFloor 0.03 typical). LMU does NOT use the channel mixer (Mz/Fx/Fy gains, scales, LUT, CenterKnee/Blend, AutoGain), crash, tyre condition or wet weather. Keep SlipAngleGain 0.",
+            "LMU pipeline (LmuFfbPipeline): shaft torque normalised by ForceScale (used as 120/value, HIGHER = HEAVIER) -> CoreForceMultiplier -> grip/lock fade (GripScaleGain) + BrakeBoost/BrakeLoadBias -> native torque sign (SelfSteerGain for slides) -> output gain; DETAIL: road texture (RoadTextureGain/Decay), SuspRoadScale, rear-slip warning (RearFyScale/RearGripDetailGain), slide-onset kick (YawOnset*), vibrations, LFE. Damping section applies (CenterDampFloor 0.03 typical). LMU does NOT use the channel mixer (Mz/Fx/Fy gains, scales, LUT, CenterKnee/Blend, AutoGain), crash, tyre condition or wet weather. Slip angle is real per-wheel (tyre ground velocity, front ~0.03 rad hard cornering, ~0.06 near the limit) so SlipAngleGain works with SlipThreshold ~0.04-0.06.",
         CoachGame.AcEvo =>
             "EVO pipeline (FfbPipeline base): real per-wheel Mz/Fx/Fy -> channel mixer (gains, scales, WheelLoadWeighting) -> LUT/CenterKneePower -> damping -> output gain -> crash -> tyre condition -> noise gate (core is zero-latency); DETAIL: slip enhancer, dynamic effects, tyre flex, scrub/rear-slip/vibrations, LFE -> MaxSlewRate. MzFrontGain POSITIVE. BrakeBoost is NOT used in EVO. Every section applies.",
         CoachGame.AssettoCorsa =>

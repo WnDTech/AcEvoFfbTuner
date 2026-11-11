@@ -183,7 +183,7 @@ Anything listed under ""NOT available"" must never be suggested for that game.
         var gameNotes = isColumn
             ? @"- Column-force game: the game supplies total steering-column torque (no per-wheel Mz/Fx/Fy mixing)
 - Strength comes from CoreForceMultiplier and OutputGain (LMU also ForceScale, HIGHER = heavier)
-- LMU slip angle is a single body-sideslip value (unreliable) — keep SlipAngleGain 0 in LMU. R3E computes real per-axle slip angles (front/rear), so Slip Angle Feel / Peak Grip Bump work there; R3E front slip at the limit is ~0.08 rad, so Slip Trigger Point above ~0.10 means slip-angle effects only fire past the limit
+- LMU slip angle is read per wheel from tyre ground velocity (front ~0.03 rad in hard corners, ~0.06 near the limit) — Slip Trigger Point above ~0.06 means slip-angle effects rarely fire in LMU. R3E computes real per-axle slip angles (front/rear), so Slip Angle Feel / Peak Grip Bump work there; R3E front slip at the limit is ~0.08 rad, so Slip Trigger Point above ~0.10 means slip-angle effects only fire past the limit
 - See the Pipeline Path and Tunable parameters table for exactly what applies"
             : @"- Per-wheel game: see the Pipeline Path below (AC1 has NO tyre-force data; ACC overrides several gains)
 - EVO/ACC: MzFrontGain POSITIVE. BrakeBoost is not used in EVO
@@ -469,7 +469,7 @@ Anything listed under ""NOT available"" must never be suggested for that game.
         var gameSpecific = isColumn
             ? @"- Column-force game: total steering-column torque, no per-wheel Mz/Fx/Fy mixing
 - CoreForceMultiplier (0–4) and OutputGain set strength; LMU ForceScale is HIGHER = heavier
-- LMU slip angle is a single body-sideslip value (unreliable) — keep SlipAngleGain 0 in LMU. R3E computes real per-axle slip angles (front/rear), so Slip Angle Feel / Peak Grip Bump work there; R3E front slip at the limit is ~0.08 rad, so Slip Trigger Point above ~0.10 means slip-angle effects only fire past the limit
+- LMU slip angle is read per wheel from tyre ground velocity (front ~0.03 rad in hard corners, ~0.06 near the limit) — Slip Trigger Point above ~0.06 means slip-angle effects rarely fire in LMU. R3E computes real per-axle slip angles (front/rear), so Slip Angle Feel / Peak Grip Bump work there; R3E front slip at the limit is ~0.08 rad, so Slip Trigger Point above ~0.10 means slip-angle effects only fire past the limit
 - CenterSharpnessDegrees: higher = softer centre, 0 = crispest"
             : @"- Per-wheel game: AC1 has NO tyre-force/slip data (use CoreForceMultiplier, damping, vibrations)
 - EVO/ACC: MzFrontGain positive; centre feel via CenterKneePower / CenterBlendDegrees
