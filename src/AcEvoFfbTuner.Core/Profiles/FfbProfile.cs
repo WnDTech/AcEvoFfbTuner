@@ -78,6 +78,10 @@ public sealed class FfbProfile
     /// </summary>
     public MozaMotorConfig MozaMotor { get; set; } = new();
 
+    /// <summary>Logitech TrueForce stream force scale (0.2–2.0). Null = profile
+    /// predates the field; the current slider value is kept on load.</summary>
+    public float? TrueForceForceScale { get; set; }
+
     public LutCurveDto LutCurve { get; set; } = LutCurveDto.Linear();
 
     public int SteeringLockDegrees { get; set; } = 900;
@@ -310,10 +314,12 @@ public sealed class FfbProfile
         pipeline.LfeGenerator.RpmDrive = Lfe.RpmDrive;
 
         pipeline.Equalizer.MasterEnabled = Equalizer.Enabled;
+        pipeline.Equalizer.ApplyToCore = Equalizer.ApplyToCore;
         for (int i = 0; i < FfbEqualizer.BandInfo.Length; i++)
         {
             pipeline.Equalizer.SetBandGain(i, Equalizer.GetGain(i));
         }
+        pipeline.Equalizer.SnapToTargets();
 
         pipeline.TyreFlex.FlexGain = TyreFlex.FlexGain;
         pipeline.TyreFlex.CarcassStiffness = TyreFlex.CarcassStiffness;
@@ -589,7 +595,8 @@ public sealed class FfbProfile
         };
         Equalizer = new EqConfig
         {
-            Enabled = pipeline.Equalizer.MasterEnabled
+            Enabled = pipeline.Equalizer.MasterEnabled,
+            ApplyToCore = pipeline.Equalizer.ApplyToCore
         };
         for (int i = 0; i < FfbEqualizer.BandInfo.Length; i++)
         {
@@ -1077,7 +1084,7 @@ public sealed class FfbProfile
         if (Version < 8)
         {
             var oldEq = Equalizer;
-            Equalizer = new EqConfig { Enabled = oldEq.Enabled };
+            Equalizer = new EqConfig { Enabled = oldEq.Enabled, ApplyToCore = oldEq.ApplyToCore };
             if (oldEq.BandGains.Length >= 5)
             {
                 Equalizer.SetGain(0, oldEq.GetGain(0));
@@ -1487,6 +1494,9 @@ public sealed class LfeConfig
 public sealed class EqConfig
 {
     public bool Enabled { get; set; } = false;
+
+    /// <summary>true (default) = EQ shapes the whole force (steering + effects); false = effects only.</summary>
+    public bool ApplyToCore { get; set; } = true;
 
     private readonly float[] _bandGains = new float[FfbEqualizer.BandInfo.Length];
 

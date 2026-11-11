@@ -350,16 +350,19 @@ public static class HelpCatalog
                     Hsl("Max Attenuation", "0 – 0.8", "Maximum force reduction while hydroplaning. 0.3 = subtle lightness, 0.6 = noticeable force loss, 0.8 = severe aquaplaning — the wheel suddenly goes weightless."))
             ),
 
-            A("Equalizer", "Shaping the final force signal by frequency — 10 bands and what they feel like",
+            A("Equalizer", "Shaping the force at your wheel by frequency — 10 bands and what they feel like",
                 new[] { "equalizer", "eq", "band", "frequency", "hz", "boost", "cut", "texture", "weight", "curve" },
                 S("What the equalizer does",
-                    P("The equalizer shapes the final force signal right before it reaches the wheel — like an audio EQ, but for force. Each of the 10 vertical sliders covers a frequency range of the force signal. Boosting a band makes that kind of force stronger; cutting it removes it."),
+                    P("The equalizer works like an audio EQ, but for force. Each of the 10 vertical sliders covers one frequency range. Boosting a band makes that kind of force stronger; cutting it weakens it. By default ('Whole force' ticked) it shapes everything sent to the wheel: the game's own steering torque plus the app's effects. In sims like RaceRoom and Le Mans Ultimate almost all the feel lives in the game's torque, so this is the mode where the EQ is clearly felt."),
+                    P("Untick 'Whole force' to shape only the app's added effects (road, kerbs, slip, ABS, LFE). The game's steering torque then passes through untouched. This is subtle, because effects are a small part of the total force."),
+                    P("Each sim sends force updates at its own rate: EVO and AC about 333 Hz, RaceRoom about 400 Hz, and Le Mans Ultimate varies. The EQ measures the rate live and adapts its filters. A band the game is too slow to carry is greyed out on the page and switched off. Your setting is kept and works again in a faster sim. The current rate is shown at the top of the page."),
+                    P("Move bands by 4 to 6 dB to judge them; 1 to 2 dB is hard to feel. Slider changes fade in over a fraction of a second, so it is safe to adjust while driving. Very large boosts are soft-limited so effects can't slam the wheel."),
                     P("Start flat (0 dB on every band) and adjust one band at a time while driving. The bands are tuned to the app's own effect frequencies, so each one maps to a recognisable feeling."),
                     Note("Tip", "A flat EQ with good master settings is often the best starting point. Use the EQ for broad 'character' changes (heavy vs light wheel, smooth vs detailed) rather than fixing a single effect — specific effects have their own sliders on the FFB Tuning page.")),
                 S("The 10 bands",
-                    Hsl("Steer Weight — 2 Hz", "-12 to +12 dB", "The very lowest, heaviest forces: overall steering resistance and parking-lot effort. Boost = a heavier, weightier wheel; cut = a lighter, freer wheel."),
+                    Hsl("Steer Weight — 2 Hz", "-12 to +12 dB", "The very lowest forces. Overall steering weight (boost = heavier wheel, cut = lighter). In effects-only mode: only slow effects such as LFE rumble."),
                     Hsl("Weight Transfer — 4 Hz", "-12 to +12 dB", "Body roll, brake dive and acceleration squat. Boost = more sense of the car pitching and leaning under load changes."),
-                    Hsl("Self Align — 8 Hz", "-12 to +12 dB", "The self-centering torque: how firmly the wheel returns to centre and how grip balance feels. Boost = stronger, more present centre; cut = a softer, more relaxed centre."),
+                    Hsl("Self Align — 8 Hz", "-12 to +12 dB", "The self-centering torque build-up: how firmly the wheel returns to centre. Boost = stronger, more present centre; cut = a softer, more relaxed centre."),
                     Hsl("Steering Precision — 12 Hz", "-12 to +12 dB", "Small corrections and line tracking. Boost = the wheel feels more 'connected' and precise on minor inputs; too much can feel nervous."),
                     Hsl("Turn-In Response — 18 Hz", "-12 to +12 dB", "Initial bite and direction changes. Boost = a sharper, more eager response when you first turn the wheel into a corner."),
                     Hsl("Road Texture — 25 Hz", "-12 to +12 dB", "Tarmac grain and surface roughness. Boost = more of the constant fine surface detail; cut = a smoother, more 'polished' feel."),
@@ -371,7 +374,7 @@ public static class HelpCatalog
                     B("Use the Enable checkbox to A/B the whole EQ instantly.",
                         "A boost of +3 to +6 dB on Self Align and Steering Precision with a small cut on Wheel Chatter is a common 'crisp centre' starting point.",
                         "If the wheel feels harsh, cut the 50 Hz and 70 Hz bands first — they carry the harshest impacts.",
-                        "If the wheel feels dead at low speed, boost the 2 Hz and 4 Hz bands."))
+                        "If the wheel feels light overall, boost the 2 Hz band a few dB. Large low-band boosts add a lot of force, so watch the clipping meter."))
             ),
 
             A("FFB Coach", "The AI tuning assistant that reads your telemetry and recommends changes",

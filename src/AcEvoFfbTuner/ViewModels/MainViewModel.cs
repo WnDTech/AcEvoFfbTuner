@@ -450,6 +450,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _eqEnabled;
 
     [ObservableProperty]
+    private bool _eqApplyToCore = true;
+
+    [ObservableProperty]
     private float _eqBand0Gain;
 
     [ObservableProperty]

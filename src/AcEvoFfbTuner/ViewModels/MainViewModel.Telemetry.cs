@@ -1054,6 +1054,11 @@ public sealed partial class MainViewModel
         AutoStart = _appSettings.AutoStart;
         IsPerCarAutoLoadEnabled = _appSettings.PerCarAutoLoadEnabled;
         TooltipsEnabled = _appSettings.TooltipsEnabled;
+        TrueForceEnabled = _appSettings.TrueForceEnabled;
+        ShowForceHeatmap = _appSettings.ShowForceHeatmap;
+        ShowTrackEdges = _appSettings.ShowTrackEdges;
+        ShowSatelliteMap = _appSettings.ShowSatelliteMap;
+        ShowDiagnostics = _appSettings.ShowDiagnostics;
         AutoProfileUpgrade = _appSettings.AutoProfileUpgrade;
         ThemeMode = _appSettings.ThemeName;
         VoiceEnabled = _appSettings.VoiceEnabled;

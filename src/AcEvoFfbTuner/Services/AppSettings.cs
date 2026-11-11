@@ -95,6 +95,15 @@ public sealed class AppSettings
     /// <summary>OLED screen layout: 0 = Gear + Speed, 1 = Speed only.</summary>
     public int OledScreen { get; set; }
 
+    /// <summary>TrueForce stream enabled (Devices page). Device-level, app-wide.</summary>
+    public bool TrueForceEnabled { get; set; } = true;
+
+    // Telemetry / Track Map display toggles — UI preferences, app-wide.
+    public bool ShowForceHeatmap { get; set; }
+    public bool ShowTrackEdges { get; set; }
+    public bool ShowSatelliteMap { get; set; }
+    public bool ShowDiagnostics { get; set; }
+
     /// <summary>Experimental: drive TrueForce wheels (RS50/G PRO/G923) through    /// DirectInput force instead of the HID TrueForce stream — the stream never
     /// engages, so no contention with the game's stream, and DI effects carry
     /// the force. Applies at the next connect.</summary>

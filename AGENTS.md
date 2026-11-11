@@ -16,6 +16,14 @@ Our goal is to **fix the code** so we can establish a reliable baseline profile 
 - Backups of profiles must use the `*.json.bak` extension (never enumerated by the app). NEVER create new `*.json` files with near-identical names.
 - Per-car auto-load matches `CarMatch` by EXACT string (case-insensitive) with priority PerCarAndTrack > PerTrack > PerCar > PerGame > General. A General profile with non-empty matches loads for NOTHING — wire scope + matches deliberately (`lemansultimate` is the LMU game string).
 
+### Persist Every User-Adjustable Setting — Profile vs Settings File
+Every setting the user can change (slider, checkbox, dropdown, FFB or otherwise) MUST be saved and restored. Decide where it belongs when you add it:
+- **Profile** (`FfbProfile.cs`, per car/track/game): anything that changes how the car FEELS — FFB, damping, LUT, EQ, haptics/vibration gains, HF8, TrueForce force scale, wheel torque/lock. Must round-trip: written on save (`UpdateFromPipeline` for pipeline values, `SaveProfileMetadata`/`SaveNonPipelineSettings` for VM-only values) AND read back on load (`ApplyToPipeline` + the VM load in `MainViewModel.Profile.cs`). New nullable/defaulted fields must not change feel for older profiles that lack them.
+- **Settings file** (`AppSettings.cs` → `settings.json`, app-wide): hardware/device on-off, UI/display toggles, theme, voice, buttons, accounts — anything that must NOT flip when a car profile auto-loads. Load in `LoadAppSettings()`, save in the property's `On…Changed` hook.
+- Settings with no pipeline home (e.g. `MozaMotor`, `AcSynth`) must survive Save As / wizard / diag saves — never reset to defaults on a new profile.
+- The UI default must match what the hardware/pipeline actually runs at startup, and the value must be pushed to the device/pipeline on connect, not only when the user edits it.
+- State in your summary which home you chose (profile or settings file) and why.
+
 ### Git — Do NOT Commit or Push Unless Asked
 - **Never commit or push unless the user explicitly asks.** No exceptions.
 - Only stage files and run builds during the iterative coding loop.

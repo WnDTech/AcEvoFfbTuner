@@ -44,6 +44,69 @@ public partial class EqualizerPage : UserControl
         EqSliderGrid.SizeChanged += (s, e) => UpdateEqCurve();
 
         Loaded += OnEqualizerPageLoaded;
+        Unloaded += (_, _) => _liveTimer.Stop();
+        _liveTimer.Tick += (_, _) => UpdateLiveInfo();
+    }
+
+    private readonly Border?[] _levelFill = new Border?[10];
+    private readonly TextBlock?[] _levelText = new TextBlock?[10];
+
+    /// <summary>Insert a small "energy in this band" meter above each slider (once).</summary>
+    private void EnsureLevelBar(int i)
+    {
+        if (_levelFill[i] != null || _eqSliders[i]?.Parent is not StackPanel panel) return;
+        var track = new Border
+        {
+            Width = 60, Height = 6, CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Center,
+            Background = new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF)),
+            ToolTip = "Share of the force's energy in this band right now (~1 s window). A band with little energy has little for the EQ to boost."
+        };
+        var fill = new Border
+        {
+            Width = 0, Height = 6, CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Left,
+            Background = new SolidColorBrush(Color.FromArgb(0xDD, 0xFF, 0xA5, 0x00))
+        };
+        track.Child = fill;
+        var txt = new TextBlock { FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 1, 0, 4), Opacity = 0.8 };
+        txt.SetResourceReference(TextBlock.ForegroundProperty, "UiTextDim");
+        int at = panel.Children.IndexOf(_eqSliders[i]!);
+        panel.Children.Insert(at, txt);
+        panel.Children.Insert(at, track);
+        _levelFill[i] = fill;
+        _levelText[i] = txt;
+    }
+
+    private readonly System.Windows.Threading.DispatcherTimer _liveTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+
+    /// <summary>Show the current game's real EQ rate and grey out bands it cannot carry.</summary>
+    private void UpdateLiveInfo()
+    {
+        if (DataContext is not AcEvoFfbTuner.ViewModels.MainViewModel vm) return;
+        var (rate, maxHz, supported) = vm.GetEqLiveInfo();
+        int off = 0;
+        for (int i = 0; i < 10; i++)
+        {
+            if (_eqSliders[i]?.Parent is not FrameworkElement panel) continue;
+            bool ok = supported[i];
+            if (!ok) off++;
+            panel.Opacity = ok ? 1.0 : 0.35;
+            panel.IsEnabled = ok; // can't drag a band the game can't carry
+            ToolTipService.SetShowOnDisabled(panel, true);
+            panel.ToolTip = ok ? null :
+                $"Not available in this game: it updates at ~{rate:F0} Hz, which can only carry content up to ~{maxHz:F0} Hz. Your setting is kept and returns automatically in a faster sim.";
+        }
+        // Live spectrum: meter under each band header = share of force energy in that band.
+        var (fast, _, totFast, _) = vm.GetEqSpectrum();
+        for (int i = 0; i < 10; i++)
+        {
+            EnsureLevelBar(i);
+            float pct = totFast > 1e-5f ? 100f * fast[i] / totFast : 0f;
+            if (_levelFill[i] is { } fill) fill.Width = Math.Clamp(pct, 0f, 100f) * 0.6;
+            if (_levelText[i] is { } txt) txt.Text = supported[i] ? $"{pct:F0}% energy" : "n/a";
+        }
+        EqRateText.Text = off == 0
+            ? $"Game rate ≈ {rate:F0} Hz · all bands available"
+            : $"Game rate ≈ {rate:F0} Hz · bands above {maxHz:F0} Hz unavailable ({off})";
     }
 
     private void OnEqualizerPageLoaded(object sender, RoutedEventArgs e)
@@ -75,6 +138,8 @@ public partial class EqualizerPage : UserControl
 
         UpdateAllEqSliderColors();
         UpdateEqCurve();
+        UpdateLiveInfo();
+        _liveTimer.Start();
     }
 
     private void EqSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

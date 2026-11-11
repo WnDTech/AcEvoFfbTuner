@@ -19,6 +19,7 @@ public sealed class R3eFfbPipeline : FfbPipeline
 {
     public R3eFfbPipeline()
     {
+        Equalizer.SetSampleRate(400f); // seed only — the EQ measures R3E's real rate
         // R3E's centering force matches the steer sign (force = +sign(steer) * |F|).
         // Without this, GripGuard misclassifies the centering force as "pulling
         // away" and clamps it whenever front slip exceeds the peak angle — the
@@ -664,14 +665,15 @@ public sealed class R3eFfbPipeline : FfbPipeline
             stageSubMods += tcVib;
         }
 
-        // EQ (biquad filters on detail path only)
-        detailForce = Equalizer.Process(detailForce);
-
         // DC blocker: remove low-frequency bias from detail path
         // (prevents turn-correlated suspension EMAs from pushing wheel away from center)
         float dcBlocked = detailForce - _dcBlockSmooth;
         _dcBlockSmooth += dcBlocked * 0.02f;
         detailForce = dcBlocked;
+
+        // EQ AFTER the DC blocker: a ~1.3 Hz blocker after the EQ would cancel
+        // the user's Steer Weight / low-band boosts. Rate self-measured (~400 Hz).
+        detailForce = Equalizer.Process(detailForce);
 
         // Direction-based suppression: prevent detail from reversing core
         // at small steer angles where core force is naturally weak.
@@ -759,6 +761,10 @@ public sealed class R3eFfbPipeline : FfbPipeline
 
         float filteredCore = ApplyGearShiftFilter(coreOutput, deltaTime, raw.Gear, raw.EngineRpm, GearSpikeThreshold);
         float finalOutput = filteredCore + detailForce;
+        // Whole-force EQ (default mode): shapes steering + effects together, after every
+        // detail clamp/slew stage so nothing downstream undoes it. Exact pass-through
+        // when the EQ is off, flat, or in effects-only mode.
+        finalOutput = Equalizer.ProcessFinal(finalOutput);
         float stagePreClip = finalOutput;
 
         // Soft clip

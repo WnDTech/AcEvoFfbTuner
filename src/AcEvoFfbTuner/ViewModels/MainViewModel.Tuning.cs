@@ -215,6 +215,18 @@ public sealed partial class MainViewModel
 
     // ── EQ bands ──────────────────────────────────────────────────────────
     partial void OnEqEnabledChanged(bool value) => _pipeline.Equalizer.MasterEnabled = value;
+    partial void OnEqApplyToCoreChanged(bool value) => _pipeline.Equalizer.ApplyToCore = value;
+
+    /// <summary>Live EQ status for the Equalizer page: rate the current game's pipeline runs at and which bands it can carry.</summary>
+    public (float[] Fast, float[] Slow, float TotalFast, float TotalSlow) GetEqSpectrum() => _pipeline.Equalizer.GetSpectrum();
+
+    public (float SampleRate, float MaxHz, bool[] Supported) GetEqLiveInfo()
+    {
+        var eq = _pipeline.Equalizer;
+        var sup = new bool[AcEvoFfbTuner.Core.FfbProcessing.FfbEqualizer.BandCount];
+        for (int i = 0; i < sup.Length; i++) sup[i] = eq.IsBandSupported(i);
+        return (eq.SampleRate, eq.MaxSupportedHz, sup);
+    }
     partial void OnEqBand0GainChanged(float value) => _pipeline.Equalizer.SetBandGain(0, value);
     partial void OnEqBand1GainChanged(float value) => _pipeline.Equalizer.SetBandGain(1, value);
     partial void OnEqBand2GainChanged(float value) => _pipeline.Equalizer.SetBandGain(2, value);

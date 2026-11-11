@@ -523,6 +523,32 @@ public partial class TelemetryPage : UserControl
             sb.AppendLine($"FyPeak:             {autoNorm.FyPeak:F2}  (auto: {autoNorm.FyAutoActive})  manual={autoNorm.ManualFyScale:F0}  effective={autoNorm.EffectiveFyScale:F1}");
             sb.AppendLine($"DampingFloors:      Viscous={Math.Max(p.Damping.ViscousCoefficient, 0.04f):F3}  Friction={Math.Max(p.Damping.FrictionLevel, 0.02f):F3}");
             sb.AppendLine();
+            {
+                var eq = p.Equalizer;
+                var dg = eq.GetDiagnostics();
+                sb.AppendLine($"--- EQUALIZER ---");
+                sb.AppendLine($"Enabled:            {eq.MasterEnabled}  Mode: {(eq.ApplyToCore ? "Whole force" : "Effects only")}");
+                sb.AppendLine($"MeasuredRate:       {eq.SampleRate:F0} Hz  (bands up to {eq.MaxSupportedHz:F0} Hz usable)");
+                var bands = new System.Text.StringBuilder();
+                for (int bi = 0; bi < AcEvoFfbTuner.Core.FfbProcessing.FfbEqualizer.BandCount; bi++)
+                {
+                    var info = AcEvoFfbTuner.Core.FfbProcessing.FfbEqualizer.BandInfo[bi];
+                    bands.Append($"{info.CenterHz:0}Hz={eq.GetBandGain(bi):+0.0;-0.0;0}{(eq.IsBandSupported(bi) ? "" : "(off)")} ");
+                }
+                sb.AppendLine($"Bands:              {bands.ToString().TrimEnd()}");
+                sb.AppendLine($"WholeForce RMS:     in={dg.FinalInRms:F4}  change={dg.FinalDeltaRms:F4}  ({(dg.FinalInRms > 1e-6f ? 100f * dg.FinalDeltaRms / dg.FinalInRms : 0f):F1}% of signal)");
+                sb.AppendLine($"Effects RMS:        in={dg.EffectsInRms:F4}  change={dg.EffectsDeltaRms:F4}");
+                var sp = eq.GetSpectrum();
+                sb.AppendLine($"Spectrum (~10 s, whole force entering EQ; per-band RMS and % of total RMS {sp.TotalSlow:F4}):");
+                for (int bi = 0; bi < AcEvoFfbTuner.Core.FfbProcessing.FfbEqualizer.BandCount; bi++)
+                {
+                    var info = AcEvoFfbTuner.Core.FfbProcessing.FfbEqualizer.BandInfo[bi];
+                    float pct = sp.TotalSlow > 1e-6f ? 100f * sp.Slow[bi] / sp.TotalSlow : 0f;
+                    string bar = new string('#', (int)Math.Clamp(pct / 2.5f, 0f, 40f));
+                    sb.AppendLine($"  {info.CenterHz,5:0} Hz {info.Name,-18} rms={sp.Slow[bi]:F4} {pct,5:F1}% {(eq.IsBandSupported(bi) ? bar : "(unavailable)")}");
+                }
+                sb.AppendLine();
+            }
             sb.AppendLine($"--- SLIP ENHANCER ---");
             sb.AppendLine($"SlipRatioGain:      {p.SlipEnhancer.SlipRatioGain:F2}");
             sb.AppendLine($"SlipAngleGain:      {p.SlipEnhancer.SlipAngleGain:F2}");

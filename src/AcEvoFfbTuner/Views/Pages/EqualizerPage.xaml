@@ -14,7 +14,14 @@
                     <CheckBox IsChecked="{Binding EqEnabled}" VerticalAlignment="Center" ToolTip="Enable or disable the FFB equalizer" />
                 </StackPanel>
             </DockPanel>
-            <TextBlock Text="10-band parametric EQ for the FFB force signal. Boost or cut frequency ranges to shape how forces feel through the wheel." FontSize="13" Foreground="{DynamicResource UiTextDim}" Margin="0,0,0,16" TextWrapping="Wrap" />
+            <TextBlock Text="10-band EQ for the force sent to your wheel. By default it shapes the whole force (the game's steering torque plus the app's effects), so every band changes what you feel. Untick 'Whole force' to shape only the app's added effects. Gain changes fade in smoothly, so it's safe to adjust while driving." FontSize="13" Foreground="{DynamicResource UiTextDim}" Margin="0,0,0,10" TextWrapping="Wrap" />
+            <DockPanel Margin="0,0,0,16">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <CheckBox IsChecked="{Binding EqApplyToCore}" VerticalAlignment="Center" ToolTip="On: EQ shapes the whole force (steering + effects). Off: only the app's added effects are shaped; the game's steering force passes untouched." />
+                    <TextBlock Text="Whole force (steering + effects)" FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0" />
+                </StackPanel>
+                <TextBlock x:Name="EqRateText" Text="Waiting for game…" FontSize="12" Foreground="{DynamicResource UiTextDim}" HorizontalAlignment="Right" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </DockPanel>
 
             <Border Background="{DynamicResource UiCard}" CornerRadius="{DynamicResource UiR8}" Padding="12,16" Margin="0,0,0,12">
                 <Grid x:Name="EqSliderGrid">
@@ -37,7 +44,7 @@
                         <TextBlock Text="2 Hz" FontSize="13" Foreground="{DynamicResource UiTextDim}" HorizontalAlignment="Center" Margin="0,0,0,6" />
                         <Slider x:Name="EqSlider0" Style="{StaticResource VerticalEqSlider}" Value="{Binding EqBand0Gain}" Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True" Height="320" Margin="0,0,0,4" ValueChanged="EqSlider_ValueChanged" />
                         <TextBlock x:Name="EqValueLabel0" Text="{Binding EqBand0Gain, StringFormat='{}{0:F1} dB'}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource UiC_FF90CAF9}" HorizontalAlignment="Center" Margin="0,2,0,4" />
-                        <TextBlock Text="Heavy resistance,&#x0A;parking effort" FontSize="11" Foreground="{DynamicResource UiC_FF777777}" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                        <TextBlock Text="Heavy resistance,&#x0A;overall weight" FontSize="11" Foreground="{DynamicResource UiC_FF777777}" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
                     </StackPanel>
 
                     <!-- Band 1: Weight Transfer (4 Hz) -->
@@ -127,7 +134,7 @@
             </Border>
 
             <Border Background="{DynamicResource UiPanel}" CornerRadius="{DynamicResource UiR4}" Padding="12,8" Margin="0,4,0,0">
-                <TextBlock Text="Tip: Start flat (0 dB), then boost/cut one band at a time while driving. The EQ shapes the final force signal right before it reaches the wheel. 10-band parametric at ~333 Hz sample rate." FontSize="12" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" />
+                <TextBlock Text="Tip: Start flat (0 dB), then move one band by 4 to 6 dB at a time while driving. Changes of 1 to 2 dB are hard to feel. Boosting low bands adds a lot of force, so watch clipping. Each sim sends force updates at its own rate (EVO/AC ≈333 Hz, R3E ≈400 Hz, LMU varies). The EQ measures that rate live and greys out any band the game is too slow to carry. A greyed band keeps its setting and comes back on its own in a faster sim. Big boosts are soft-limited so effects can't slam the wheel." FontSize="12" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" />
             </Border>
         </StackPanel>
     </ScrollViewer>

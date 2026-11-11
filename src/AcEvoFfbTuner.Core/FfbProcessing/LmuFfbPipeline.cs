@@ -141,7 +141,7 @@ public sealed class LmuFfbPipeline : FfbPipeline
         // On-center damping authority (Plan B5 consumer): shared Damping
         // instance default is 0 (EVO legacy); LMU opts into 0.03.
         Damping.CenterDampFloor = 0.03f;
-        Equalizer.SetSampleRate(250f);
+        Equalizer.SetSampleRate(250f); // seed only — the EQ measures LMU's real rate
     }
 
     /// <summary>Core smoothing factor (EMA alpha). 0 = no smoothing (raw). 0.1 = light. 0.5 = heavy. Zero-impact default.</summary>
@@ -152,7 +152,6 @@ public sealed class LmuFfbPipeline : FfbPipeline
 
     private float _prevSmoothedCore;
     private float _prevSmoothedDetail;
-    private float _lastEqRate = 250f;
     private float _peakHold;
     private float _clipRate;
     private int _clipCount;
@@ -416,14 +415,6 @@ public sealed class LmuFfbPipeline : FfbPipeline
         }
         _prevDetailOutput = raw.SpeedKmh < 0.5f ? 0f : detailForce;
 
-        // Keep EQ coefficients matched to the LMU physics rate (Plan B3).
-        // SetSampleRate recalculates only when the rate actually changed.
-        float eqRate = 1f / Math.Max(PhysicsDt, 1e-4f);
-        if (Math.Abs(eqRate - _lastEqRate) > 1f)
-        {
-            Equalizer.SetSampleRate(eqRate);
-            _lastEqRate = eqRate;
-        }
 
         OnDetailForceProcessed(coreForce, ref detailForce);
         detailForce += texture;
@@ -446,6 +437,10 @@ public sealed class LmuFfbPipeline : FfbPipeline
         // ═══════════════════════════════════════════════════════════════════════
         float filteredCore = ApplyGearShiftFilter(coreForce, deltaTime, raw.Gear, raw.EngineRpm, GearSpikeThreshold);
         float finalOutput = filteredCore + detailForce;
+        // Whole-force EQ (default mode): shapes steering + effects together, after every
+        // detail clamp/slew stage so nothing downstream undoes it. Exact pass-through
+        // when the EQ is off, flat, or in effects-only mode.
+        finalOutput = Equalizer.ProcessFinal(finalOutput);
         float stagePreClip = finalOutput;
 
         finalOutput = OutputClipper.Process(finalOutput, out bool isClipping);
@@ -665,6 +660,5 @@ public sealed class LmuFfbPipeline : FfbPipeline
         _clipRate = 0f;
         _clipCount = 0;
         _clipTotal = 0;
-        _lastEqRate = 250f;
     }
 }

@@ -388,6 +388,10 @@ public class FfbPipeline
         float deltaTime = 1f / 60f;
         float filteredCore = ApplyGearShiftFilter(coreOutput, deltaTime, raw.Gear, raw.EngineRpm, GearSpikeThreshold);
         float finalOutput = filteredCore + detailForce;
+        // Whole-force EQ (default mode): shapes steering + effects together, after every
+        // detail clamp/slew stage so nothing downstream undoes it. Exact pass-through
+        // when the EQ is off, flat, or in effects-only mode.
+        finalOutput = Equalizer.ProcessFinal(finalOutput);
         float stagePreClip = finalOutput;
 
         // Output clipper (soft clip at threshold)

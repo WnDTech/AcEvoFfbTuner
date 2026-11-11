@@ -161,6 +161,18 @@ public sealed partial class MainViewModel
         // so persist the slider value explicitly (runs after CreateFromPipeline).
         profile.Slip.ForceGain = ForceGain;
         profile.Hf8.OutputRateHz = Hf8OutputRateHz;
+        profile.TrueForceForceScale = TrueForceForceScale;
+        // Device / synth settings with no pipeline home: a NEW profile built
+        // from the pipeline (Save As, wizard, diag) would otherwise reset
+        // them to defaults — carry the active profile's values across.
+        var src = SelectedProfile;
+        if (src != null && !ReferenceEquals(src, profile))
+        {
+            profile.MozaMotor = System.Text.Json.JsonSerializer.Deserialize<MozaMotorConfig>(
+                System.Text.Json.JsonSerializer.Serialize(src.MozaMotor)) ?? new();
+            profile.AcSynth = System.Text.Json.JsonSerializer.Deserialize<AcSynthConfig>(
+                System.Text.Json.JsonSerializer.Serialize(src.AcSynth)) ?? new();
+        }
         profile.LastTelemetrySnapshot = _telemetryLoop.CaptureTelemetrySnapshot();
     }
 
@@ -532,6 +544,8 @@ public sealed partial class MainViewModel
         ForceSensitivity = profile.NormalizationScale;
         MaxForceLimit = profile.SoftClipThreshold;
         WheelMaxTorqueNm = profile.WheelMaxTorqueNm;
+        if (profile.TrueForceForceScale is float tfScale && float.IsFinite(tfScale))
+            TrueForceForceScale = Math.Clamp(tfScale, 0.2f, 2.0f);
         MzFrontGain = profile.MzFront.Gain;
         MzFrontEnabled = profile.MzFront.Enabled;
         FxFrontGain = profile.FxFront.Gain;
@@ -644,6 +658,7 @@ public sealed partial class MainViewModel
         VelocityDeadzone = profile.Advanced.VelocityDeadzone;
         LowSpeedSmoothKmh = profile.Advanced.LowSpeedSmoothKmh;
         EqEnabled = profile.Equalizer.Enabled;
+        EqApplyToCore = profile.Equalizer.ApplyToCore;
         EqBand0Gain = profile.Equalizer.GetGain(0);
         EqBand1Gain = profile.Equalizer.GetGain(1);
         EqBand2Gain = profile.Equalizer.GetGain(2);
@@ -877,6 +892,7 @@ public sealed partial class MainViewModel
         VelocityDeadzone = _pipeline.Damping.VelocityDeadzone;
         LowSpeedSmoothKmh = _pipeline.ChannelMixer.LowSpeedSmoothKmh;
         EqEnabled = _pipeline.Equalizer.MasterEnabled;
+        EqApplyToCore = _pipeline.Equalizer.ApplyToCore;
         EqBand0Gain = _pipeline.Equalizer.GetBandGain(0);
         EqBand1Gain = _pipeline.Equalizer.GetBandGain(1);
         EqBand2Gain = _pipeline.Equalizer.GetBandGain(2);
@@ -1215,6 +1231,7 @@ public sealed partial class MainViewModel
         _pipeline.Damping.VelocityDeadzone = VelocityDeadzone;
         _pipeline.ChannelMixer.LowSpeedSmoothKmh = LowSpeedSmoothKmh;
         _pipeline.Equalizer.MasterEnabled = EqEnabled;
+        _pipeline.Equalizer.ApplyToCore = EqApplyToCore;
         _pipeline.Equalizer.SetBandGain(0, EqBand0Gain);
         _pipeline.Equalizer.SetBandGain(1, EqBand1Gain);
         _pipeline.Equalizer.SetBandGain(2, EqBand2Gain);

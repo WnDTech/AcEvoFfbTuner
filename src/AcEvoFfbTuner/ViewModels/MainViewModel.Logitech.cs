@@ -18,11 +18,18 @@ public sealed partial class MainViewModel
 
     // ── TrueForce stream (RS50 / G PRO direct FFB, no G HUB) ──
     [ObservableProperty] private bool _trueForceEnabled = true;
-    [ObservableProperty] private float _trueForceForceScale = 0.5f;
+    // Matches LogitechTrueForceProvider.ForceScale's default so the slider
+    // shows what the wheel actually runs before any profile sets it.
+    [ObservableProperty] private float _trueForceForceScale = 0.8f;
     [ObservableProperty] private string _trueForceStatus = "TrueForce stream: not connected";
 
     partial void OnTrueForceEnabledChanged(bool value)
     {
+        if (_appSettings.TrueForceEnabled != value)
+        {
+            _appSettings.TrueForceEnabled = value;
+            _appSettings.Save();
+        }
         var tf = ActiveTrueForceProvider;
         if (tf == null) return;
         if (value) tf.Resume();
@@ -41,6 +48,12 @@ public sealed partial class MainViewModel
         tf.ForceScale = value;
         AddSystemLog($"TrueForce force scale: {value:F2}");
     }
+
+    // App-wide display toggles — persisted so they survive restarts.
+    partial void OnShowForceHeatmapChanged(bool value) { if (_appSettings.ShowForceHeatmap != value) { _appSettings.ShowForceHeatmap = value; _appSettings.Save(); } }
+    partial void OnShowTrackEdgesChanged(bool value) { if (_appSettings.ShowTrackEdges != value) { _appSettings.ShowTrackEdges = value; _appSettings.Save(); } }
+    partial void OnShowSatelliteMapChanged(bool value) { if (_appSettings.ShowSatelliteMap != value) { _appSettings.ShowSatelliteMap = value; _appSettings.Save(); } }
+    partial void OnShowDiagnosticsChanged(bool value) { if (_appSettings.ShowDiagnostics != value) { _appSettings.ShowDiagnostics = value; _appSettings.Save(); } }
 
     private void UpdateTrueForceStatus()
     {
@@ -86,7 +99,11 @@ public sealed partial class MainViewModel
 
     private void OnTrueForceStatusTick(object? sender, EventArgs e)
     {
-        if (_telemetryLoop.ActiveProvider is not LogitechTrueForceProvider) return;
+        if (_telemetryLoop.ActiveProvider is not LogitechTrueForceProvider tf) return;
+        // Keep the stream in step with the UI: the provider is created with
+        // its own defaults, and the OnChanged hooks only fire on edits.
+        if (tf.ForceScale != TrueForceForceScale) tf.ForceScale = TrueForceForceScale;
+        if (!TrueForceEnabled && !tf.IsPaused) tf.Pause();
         UpdateTrueForceStatus();
     }
 
