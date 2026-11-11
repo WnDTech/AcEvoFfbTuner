@@ -79,7 +79,7 @@
             <Style x:Key="SubSectionHeader" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="15" />
                 <Setter Property="FontWeight" Value="Bold" />
-                <Setter Property="Foreground" Value="White" />
+                <Setter Property="Foreground" Value="{DynamicResource UiC_FFFFFFFF}" />
                 <Setter Property="Margin" Value="0,10,0,4" />
             </Style>
 
@@ -249,7 +249,7 @@
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter Property="Background" Value="{DynamicResource AccentHoverBg}" />
-                                    <Setter Property="Foreground" Value="White" />
+                                    <Setter Property="Foreground" Value="{DynamicResource UiC_FFFFFFFF}" />
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="Background" Value="{DynamicResource AccentSelectedBg}" />

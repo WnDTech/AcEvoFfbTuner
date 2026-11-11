@@ -31,20 +31,20 @@
     <SolidColorBrush x:Key="HoverOverlayBrush" Color="#14000000" />
     <SolidColorBrush x:Key="PopupBorderBrush" Color="#FFA9A59D" />
     <SolidColorBrush x:Key="PopupBg" Color="#FFF8F7F4" />
-    <SolidColorBrush x:Key="SectionTyreForces" Color="#FF24272A" />
-    <SolidColorBrush x:Key="SectionTyreSlip" Color="#FF24272A" />
-    <SolidColorBrush x:Key="SectionGripFeel" Color="#FF24272A" />
-    <SolidColorBrush x:Key="SectionDamping" Color="#FF24272A" />
-    <SolidColorBrush x:Key="SectionDynamic" Color="#FF24272A" />
-    <SolidColorBrush x:Key="SectionTyreFlex" Color="#FF24272A" />
-    <SolidColorBrush x:Key="SectionOutput" Color="#FF24272A" />
-    <SolidColorBrush x:Key="SectionVibration" Color="#FF24272A" />
-    <SolidColorBrush x:Key="SectionCurb" Color="#FF24272A" />
-    <SolidColorBrush x:Key="SectionOfftrack" Color="#FF24272A" />
-    <SolidColorBrush x:Key="SectionLfe" Color="#FF24272A" />
-    <SolidColorBrush x:Key="SectionSignal" Color="#FF24272A" />
+    <SolidColorBrush x:Key="SectionTyreForces" Color="#FF2F6F86" />
+    <SolidColorBrush x:Key="SectionTyreSlip" Color="#FF1F7A5C" />
+    <SolidColorBrush x:Key="SectionGripFeel" Color="#FF3C7A2E" />
+    <SolidColorBrush x:Key="SectionDamping" Color="#FF9A6A10" />
+    <SolidColorBrush x:Key="SectionDynamic" Color="#FFB4501E" />
+    <SolidColorBrush x:Key="SectionTyreFlex" Color="#FF2F5F9A" />
+    <SolidColorBrush x:Key="SectionOutput" Color="#FFB4501E" />
+    <SolidColorBrush x:Key="SectionVibration" Color="#FF6B4FA0" />
+    <SolidColorBrush x:Key="SectionCurb" Color="#FF5E4596" />
+    <SolidColorBrush x:Key="SectionOfftrack" Color="#FF8A5A3C" />
+    <SolidColorBrush x:Key="SectionLfe" Color="#FFB8432F" />
+    <SolidColorBrush x:Key="SectionSignal" Color="#FF2F6F86" />
     <SolidColorBrush x:Key="SectionCrash" Color="#FFC62828" />
-    <SolidColorBrush x:Key="SectionWetWeather" Color="#FF24272A" />
+    <SolidColorBrush x:Key="SectionWetWeather" Color="#FF2F7D93" />
     <SolidColorBrush x:Key="TabHoverBg" Color="#FFDDDAD3" />
     <SolidColorBrush x:Key="TabSelectedBorder" Color="#FFE2531D" />
     <SolidColorBrush x:Key="SliderTrackBg" Color="#FFD3D0C9" />
@@ -53,9 +53,9 @@
     <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#FF8A877F" />
     <SolidColorBrush x:Key="ScrollThumbDragBrush" Color="#FFE2531D" />
     <SolidColorBrush x:Key="ScrollBarTrack" Color="#0A000000" />
-    <SolidColorBrush x:Key="ToolTipBg" Color="#FF2B2E31" />
-    <SolidColorBrush x:Key="ToolTipBorder" Color="#FF2B2E31" />
-    <SolidColorBrush x:Key="ToolTipText" Color="#FFECEBE7" />
+    <SolidColorBrush x:Key="ToolTipBg" Color="#FFF8F7F4" />
+    <SolidColorBrush x:Key="ToolTipBorder" Color="#FFA9A59D" />
+    <SolidColorBrush x:Key="ToolTipText" Color="#FF24272A" />
     <SolidColorBrush x:Key="ExpanderArrowBrush" Color="#FF6A6D70" />
     <SolidColorBrush x:Key="UiText" Color="#FF24272A" />
     <SolidColorBrush x:Key="UiTextDim" Color="#FF6A6D70" />
@@ -150,27 +150,27 @@
     <SolidColorBrush x:Key="UiC_88FFD600" Color="#88A87012" />
     <SolidColorBrush x:Key="UiC_AAE6EDF3" Color="#AA3A3D40" />
     <SolidColorBrush x:Key="UiC_AAFF9800" Color="#AAE2531D" />
-    <SolidColorBrush x:Key="UiC_CC1A1A2E" Color="#CC2F6F86" />
+    <SolidColorBrush x:Key="UiC_CC1A1A2E" Color="#CCF1EFEB" />
     <SolidColorBrush x:Key="UiC_CC552200" Color="#CCE2531D" />
     <SolidColorBrush x:Key="UiC_CC8B0000" Color="#CCC62828" />
-    <SolidColorBrush x:Key="UiC_D0101418" Color="#D02F6F86" />
+    <SolidColorBrush x:Key="UiC_D0101418" Color="#D0F1EFEB" />
     <SolidColorBrush x:Key="UiC_DD0D0D0D" Color="#DDE7E5E0" />
-    <SolidColorBrush x:Key="UiC_DD161B22" Color="#DD2F6F86" />
-    <SolidColorBrush x:Key="UiC_E0101418" Color="#E02F6F86" />
+    <SolidColorBrush x:Key="UiC_DD161B22" Color="#DDF1EFEB" />
+    <SolidColorBrush x:Key="UiC_E0101418" Color="#E0F1EFEB" />
     <SolidColorBrush x:Key="UiC_EE0D0D0D" Color="#EEE7E5E0" />
-    <SolidColorBrush x:Key="UiC_F00D1117" Color="#F02F6F86" />
-    <SolidColorBrush x:Key="UiC_FF000000" Color="#FFE7E5E0" />
+    <SolidColorBrush x:Key="UiC_F00D1117" Color="#F0E7E5E0" />
+    <SolidColorBrush x:Key="UiC_FF000000" Color="#FF24272A" />
     <SolidColorBrush x:Key="UiC_FF0033FF" Color="#FF2F6F86" />
     <SolidColorBrush x:Key="UiC_FF00BCD4" Color="#FF2F6F86" />
     <SolidColorBrush x:Key="UiC_FF00C853" Color="#FF2F6F86" />
     <SolidColorBrush x:Key="UiC_FF00E600" Color="#FF2F6F86" />
-    <SolidColorBrush x:Key="UiC_FF0D1B2A" Color="#442F6F86" />
-    <SolidColorBrush x:Key="UiC_FF0F1117" Color="#442F6F86" />
-    <SolidColorBrush x:Key="UiC_FF11161C" Color="#442F6F86" />
-    <SolidColorBrush x:Key="UiC_FF12161D" Color="#442F6F86" />
-    <SolidColorBrush x:Key="UiC_FF151525" Color="#442F6F86" />
-    <SolidColorBrush x:Key="UiC_FF151B23" Color="#442F6F86" />
-    <SolidColorBrush x:Key="UiC_FF1A1A2E" Color="#442F6F86" />
+    <SolidColorBrush x:Key="UiC_FF0D1B2A" Color="#FFF1EFEB" />
+    <SolidColorBrush x:Key="UiC_FF0F1117" Color="#FFE7E5E0" />
+    <SolidColorBrush x:Key="UiC_FF11161C" Color="#FFF1EFEB" />
+    <SolidColorBrush x:Key="UiC_FF12161D" Color="#FFF1EFEB" />
+    <SolidColorBrush x:Key="UiC_FF151525" Color="#FFF1EFEB" />
+    <SolidColorBrush x:Key="UiC_FF151B23" Color="#FFF1EFEB" />
+    <SolidColorBrush x:Key="UiC_FF1A1A2E" Color="#FFF1EFEB" />
     <SolidColorBrush x:Key="UiC_FF1A1D24" Color="#FFF1EFEB" />
     <SolidColorBrush x:Key="UiC_FF1B3A1B" Color="#442E7D32" />
     <SolidColorBrush x:Key="UiC_FF1E2227" Color="#FFF1EFEB" />

@@ -738,7 +738,7 @@ namespace AcEvoFfbTuner.Controls
             itemStyle.Setters.Add(new Setter(PaddingProperty, new Thickness(24, 6, 24, 6)));
             var itemHoverTrigger = new Trigger { Property = IsMouseOverProperty, Value = true };
             itemHoverTrigger.Setters.Add(new Setter(BackgroundProperty, ThemeManager.Brush("#FF333355")));
-            itemHoverTrigger.Setters.Add(new Setter(ForegroundProperty, Brushes.White));
+            itemHoverTrigger.Setters.Add(new Setter(ForegroundProperty, ThemeManager.Brush("#FFFFFFFF")));
             itemStyle.Triggers.Add(itemHoverTrigger);
             var itemDisabledTrigger = new Trigger { Property = IsEnabledProperty, Value = false };
             itemDisabledTrigger.Setters.Add(new Setter(ForegroundProperty, ThemeManager.Brush("#FF888888")));

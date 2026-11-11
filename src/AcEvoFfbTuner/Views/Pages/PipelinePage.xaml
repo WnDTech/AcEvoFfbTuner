@@ -151,7 +151,10 @@
 
         <!-- ═══ MAIN FLOW (vertical page scroll; each lane scrolls horizontally) ═══ -->
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8,4,8,0">
-            <StackPanel>
+            <!-- Scales with the window like the header: laid out at a fixed design width, then
+                 uniformly scaled to fit (lanes no longer scroll sideways). -->
+            <Viewbox Stretch="Uniform" StretchDirection="Both" VerticalAlignment="Top">
+            <StackPanel Width="1100">
 
                 <!-- LEGEND -->
                 <TextBlock FontSize="11" Foreground="{DynamicResource UiC_FF607D8B}" Margin="8,0,0,2" TextWrapping="Wrap">
@@ -426,6 +429,7 @@
                 </Border>
 
             </StackPanel>
+            </Viewbox>
         </ScrollViewer>
     </DockPanel>
 </UserControl>

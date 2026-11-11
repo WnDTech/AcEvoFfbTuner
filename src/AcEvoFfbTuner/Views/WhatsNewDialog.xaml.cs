@@ -91,7 +91,7 @@ public partial class WhatsNewDialog : Window
                 Text = entry.Title,
                 FontSize = 16,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = System.Windows.Media.Brushes.White,
+                Foreground = AcEvoFfbTuner.Services.ThemeManager.Brush("#FFFFFFFF"),
                 Margin = new Thickness(0, 0, 0, 10),
                 TextWrapping = TextWrapping.Wrap
             });
