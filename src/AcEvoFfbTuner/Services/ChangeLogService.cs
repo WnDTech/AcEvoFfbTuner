@@ -50,6 +50,33 @@ public static class ChangeLogService
     [
         new ChangeLogEntry
         {
+            Version = "1.29.0-beta.8",
+            Date = new DateTime(2026, 11, 12),
+            Title = "Car Character, a smarter equalizer and settings that stick",
+            Features =
+            [
+                "Car Character (LMU and RaceRoom, off by default): scales each car's strength from how much torque it really makes, so light cars stay light and heavy cars stay heavy without heavy cars clipping. Two sliders: Keep Car Differences and Heaviest Car Limit. Tune your profile on a typical car of the class",
+                "Car torque fingerprints: the app learns each car's typical and peak steering torque as you drive (shown under Wheelbase Max Torque on the FFB Tuning page)",
+                "Community fingerprints: learned cars are shared anonymously (car name, class and torque numbers only) so other drivers get a head start on cars they have not driven yet",
+                "Equalizer: new 'Whole force' option (on by default) shapes the full force at your wheel, not just the added effects, so every band is clearly felt",
+            ],
+            Improvements =
+            [
+                "Equalizer adapts its filters to each sim's real update rate and greys out bands the game cannot deliver",
+                "Equalizer changes fade in smoothly, so it is safe to adjust while driving",
+                "TrueForce force scale is saved per profile, and the slider default matches what the wheel actually runs",
+                "TrueForce on/off and the Telemetry and Track Map display toggles are remembered between restarts",
+                "Workshop themes: muted section colours are back on the FFB Tuning page, and the Pipeline page scales with the window",
+            ],
+            Fixes =
+            [
+                "Save As, the Setup Wizard and diagnostic saves no longer reset Moza motor and AC1 synth settings to defaults",
+                "Light theme: several headers, buttons, menus and What's New titles were hard to read",
+                "Pipeline page: orange labels on a teal background were hard to read",
+            ],
+        },
+        new ChangeLogEntry
+        {
             Version = "1.29.0-beta.7",
             Date = new DateTime(2026, 11, 11),
             Title = "LMU car names, per-wheel slip and a cleaner Live Map",

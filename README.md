@@ -105,6 +105,16 @@ A full parametric EQ running at the physics sample rate (~333 Hz) with biquad fi
 
 Each band supports -12 dB to +12 dB gain with dynamic heat-map colors and EQ curve visualization overlay.
 
+- **Whole force or effects only** — by default the EQ shapes the full force at the wheel (game steering torque + effects); untick to shape only the app's added effects
+- **Adaptive rate** — measures each sim's real update rate (EVO/AC ~333 Hz, RaceRoom ~400 Hz, LMU varies), redesigns its filters to match and greys out bands the game cannot deliver
+- **Click-free** — gain changes fade in, safe to adjust while driving
+
+### Car Character & Torque Fingerprints
+
+- **Torque fingerprints** — learns each car's typical and peak steering torque per sim as you drive
+- **Community store** — learned cars are shared anonymously (car name, class, torque numbers) to a public store, so cars you have not driven yet start with real data
+- **Car Character** (LMU, RaceRoom; off by default) — scales each car's strength from its real torque relative to its class, keeping light cars light and heavy cars heavy without heavy cars clipping (Keep Car Differences, Heaviest Car Limit)
+
 ### Live Auto-Tuner
 
 Real-time automatic FFB parameter correction while driving:
