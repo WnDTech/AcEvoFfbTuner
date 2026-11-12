@@ -199,9 +199,13 @@ public sealed class LmuFfbPipeline : FfbPipeline
         float manualScale = Math.Max(120f / Math.Max(ForceScale, 0.01f), 1f);
         _lmuPeak = Math.Max(_lmuPeak * LmuPeakDecay, magnitude);
         float effectiveScale = manualScale;
-        if (CompressionPower <= 1.001f && _lmuPeak > AutoMinPeak)
+        // Car Character owns per-car peak management when active: the rolling-peak
+        // auto-norm would flatten every car to the same peak, which is exactly what it
+        // is there to avoid. The soft clip downstream still guards spikes.
+        if (!CarCharacterActive && CompressionPower <= 1.001f && _lmuPeak > AutoMinPeak)
             effectiveScale = Math.Max(effectiveScale, _lmuPeak / Math.Max(AutoTarget, 0.01f));
-        float coreNorm = signedTorque * MasterGain / effectiveScale;
+        float ccGain = CarCharacterActive ? CarCharacterGain : 1f;
+        float coreNorm = signedTorque * MasterGain * ccGain / effectiveScale;
 
         // Damping with deterministic physics dt (Plan B3). Shared instance
         // carries CenterDampFloor=0.03 (LMU ctor) + straight-line props.

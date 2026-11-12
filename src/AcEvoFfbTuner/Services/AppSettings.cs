@@ -48,6 +48,14 @@ public sealed class AppSettings
     public string HubAuthorName { get; set; } = "";
     public string HubAuthorId { get; set; } = "";
 
+    // Car torque fingerprints — community store (no UI; app-wide, must not flip with a
+    // profile). Downloads read the public GitHub store directly; uploads go to hub.php,
+    // which pools them and publishes to GitHub with a server-side token (never shipped).
+    public bool ShareCarFingerprints { get; set; } = true;
+    /// <summary>Random per-install id so one install counts as one contributor. Not tied to any account.</summary>
+    public string FingerprintInstallId { get; set; } = "";
+    public string FingerprintStoreBaseUrl { get; set; } = "https://raw.githubusercontent.com/WnDTech/ffb-car-fingerprints/main";
+
     // Test Drive — Discord sign-in, application status, tasks, Podium
     public string BetaApiBaseUrl { get; set; } = "https://ffbtuner.wndtech.tips/api/beta.php";
 

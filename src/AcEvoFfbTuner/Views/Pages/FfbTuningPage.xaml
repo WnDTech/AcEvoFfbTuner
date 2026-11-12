@@ -287,6 +287,31 @@
                                 LowLabel="" HighLabel=""
                                 DefaultValue="{Binding BuiltInDefaults.WheelMaxTorqueNm}"
                                 SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,22" />
+                            <TextBlock Text="{Binding CarFingerprintText}" FontSize="12.5" Foreground="{DynamicResource UiTextDim}"
+                                       TextWrapping="Wrap" Margin="0,-12,0,18"
+                                       ToolTip="Learns how much torque each car really produces (your laps plus anonymous community data)." />
+                            <StackPanel Visibility="{Binding IsColumnForceGame, Converter={StaticResource BoolToVis}}" Margin="0,0,0,10">
+                                <DockPanel Margin="0,0,0,8">
+                                    <CheckBox DockPanel.Dock="Left" IsChecked="{Binding CarCharacterEnabled}" VerticalAlignment="Top" Margin="0,3,12,0" />
+                                    <StackPanel>
+                                        <TextBlock Text="Car Character (LMU, RaceRoom)" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Text="Scales each car from its learned torque so light cars stay light and heavy cars stay heavy, without heavy cars clipping. Tune this profile on a typical car of the class. Turns itself off for profiles matched to one car." FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <StackPanel Visibility="{Binding CarCharacterEnabled, Converter={StaticResource BoolToVis}}">
+                                    <controls:LabeledSlider Value="{Binding CarCharacterKeep, Mode=TwoWay}" Minimum="0" Maximum="1" TickFrequency="0.05"
+                                        Label="Keep Car Differences" StringFormat="{}{0:P0}" LabelAbove="True"
+                                        Description="0% = every car has the same peak. 100% = the real difference between cars."
+                                        LowLabel="All cars equal" HighLabel="Real differences"
+                                        SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,22" />
+                                    <controls:LabeledSlider Value="{Binding CarCharacterMaxPeak, Mode=TwoWay}" Minimum="1" Maximum="1.5" TickFrequency="0.05"
+                                        Label="Heaviest Car Limit" StringFormat="{}{0:F2}×" LabelAbove="True"
+                                        Description="How much stronger than a typical car the heaviest car may get. 1.00 = never heavier than the car you tuned on."
+                                        LowLabel="No heavier" HighLabel="+50%"
+                                        SectionColor="{DynamicResource SectionOutput}" Margin="0,0,0,12" />
+                                    <TextBlock Text="{Binding CarCharacterStatus}" FontSize="12.5" Foreground="{DynamicResource UiTextDim}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </StackPanel>
                             <controls:LabeledSlider Value="{Binding SteeringLockDegrees, Mode=TwoWay}" Minimum="180" Maximum="1080" TickFrequency="10"
                                 Label="Steering Rotation" StringFormat="{}{0:F0}°" LabelAbove="True"
                                 Description="Your wheel's total rotation, lock to lock. Match it to the game/car."

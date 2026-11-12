@@ -216,6 +216,94 @@ public sealed partial class MainViewModel
         _discordPresence.Attach(newLoop);
     }
 
+    /// <summary>Car Character Phase 1 readout (~1 Hz). Values are game-native units, so they
+    /// are only comparable between cars of the same game.</summary>
+    private void UpdateCarFingerprintText()
+    {
+        long now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (now - _lastFingerprintUiTicks < System.Diagnostics.Stopwatch.Frequency) return;
+        _lastFingerprintUiTicks = now;
+
+        var fp = _carFingerprints.Active;
+        if (fp == null) return;
+        string learn = fp.IsConverged
+            ? "learned ✓"
+            : $"learning… {fp.ValidSeconds / 60:F1}/{AcEvoFfbTuner.Core.Profiles.CarTorqueFingerprint.ConvergedSeconds / 60:F1} min, {fp.Laps}/{AcEvoFfbTuner.Core.Profiles.CarTorqueFingerprint.ConvergedLaps} lap";
+        string ratio = "";
+        float refP99 = _carFingerprints.ReferenceP99(fp.Game, fp.CarClass);
+        if (fp.IsConverged && refP99 > 0 && fp.P99 > 0)
+            ratio = $" · {fp.P99 / refP99:F2}× {(string.IsNullOrEmpty(fp.CarClass) ? fp.Game : fp.CarClass)} median";
+        // Until this car is learned locally, show the pooled community fingerprint if there is one.
+        var community = _carFingerprints.GetCommunity(fp.Game, fp.Car);
+        if (!fp.IsConverged && community is { P99: > 0 } && community.Signal == fp.Signal)
+        {
+            string cRatio = refP99 > 0 ? $" · {community.P99 / refP99:F2}× {(string.IsNullOrEmpty(fp.CarClass) ? fp.Game : fp.CarClass)} median" : "";
+            CarFingerprintText = $"{fp.Car}: typical {community.P50:G3} · peak (P99) {community.P99:G3} game units{cRatio} · community ({community.Contributors} drivers) · your data {learn}";
+            return;
+        }
+        CarFingerprintText = fp.P99 > 0
+            ? $"{fp.Car}: typical {fp.P50:G3} · peak (P99) {fp.P99:G3} game units{ratio} · {fp.Laps} laps · {learn}"
+            : $"{fp.Car}: {learn} (counts above {AcEvoFfbTuner.Core.Profiles.CarTorqueFingerprintStore.MinSpeedKmh:F0} km/h, out of the pits)";
+    }
+
+    /// <summary>
+    /// Car Character Phase 2 (~4 Hz). Computes the target per-car gain from fingerprints and
+    /// slews the pipeline toward it. Inactive (gain 1) when: off, game is not LMU/R3E, the
+    /// loaded profile is matched to THIS car (it was tuned for it), or the car / its class
+    /// reference is not known yet.
+    /// </summary>
+    private void UpdateCarCharacterGain(FfbRawData? raw, FfbProcessedData? processed)
+    {
+        long now = System.Diagnostics.Stopwatch.GetTimestamp();
+        double dt = _lastCarCharacterTicks == 0 ? 0
+            : (now - _lastCarCharacterTicks) / (double)System.Diagnostics.Stopwatch.Frequency;
+        if (dt < 0.25 && _lastCarCharacterTicks != 0) return;
+        _lastCarCharacterTicks = now;
+
+        string reason = "";
+        float target = 1f;
+        bool active = false;
+        float carRatio = 0f;
+        string refLabel = "";
+        var fp = _carFingerprints.Active;
+        bool profileForThisCar = fp != null && SelectedProfile is { } sp && !string.IsNullOrWhiteSpace(sp.CarMatch)
+            && (string.Equals(sp.CarMatch, DetectedCarModel, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(sp.CarMatch, fp.Car, StringComparison.OrdinalIgnoreCase));
+
+        if (!CarCharacterEnabled) reason = "";
+        else if (!IsColumnForceGame) reason = "Car Character: LMU and RaceRoom only for now.";
+        else if (fp == null) reason = "Car Character: waiting for a car.";
+        else if (profileForThisCar) reason = $"Car Character: off for {fp.Car} — this profile is tuned for this car.";
+        else
+        {
+            float carP = _carFingerprints.EstimatedInputP99(fp.Game, fp.Car);
+            float refP = _carFingerprints.ReferenceInputP99(fp.Game, fp.CarClass);
+            if (carP <= 0) reason = $"Car Character: learning {fp.Car} (no data yet) — strength unchanged.";
+            else if (refP <= 0) reason = "Car Character: needs at least two known cars in this class/game — strength unchanged.";
+            else
+            {
+                target = CarCharacterNormaliser.TargetGain(carP, refP, CarCharacterKeep, CarCharacterMaxPeak);
+                active = true;
+                carRatio = carP / refP;
+                refLabel = string.IsNullOrEmpty(fp.CarClass) ? fp.Game : fp.CarClass;
+            }
+        }
+
+        if (!active) target = 1f;
+        bool parked = raw == null || raw.SpeedKmh < 5f;
+        bool hold = processed != null && Math.Abs(processed.CoreForce) > 0.6f;
+        _carCharacterGain = CarCharacterNormaliser.Step(_carCharacterGain, target, (float)Math.Min(dt, 1.0), hold, parked);
+
+        // Stay active while easing back to 1 after a car change so the force never steps.
+        bool pipelineActive = active || Math.Abs(_carCharacterGain - 1f) > 0.001f;
+        _pipeline.CarCharacterGain = _carCharacterGain;
+        _pipeline.CarCharacterActive = pipelineActive;
+        CarCharacterStatus = active
+            ? $"Car Character: {fp!.Car} is {carRatio:F2}× the {refLabel} median → strength ×{_carCharacterGain:F2}"
+              + (Math.Abs(_carCharacterGain - target) > 0.005f ? $" (easing to ×{target:F2})" : "")
+            : reason;
+    }
+
     private void OnUiUpdate(object? sender, EventArgs e)
     {
         var raw = _telemetryLoop.LatestRaw;
@@ -236,6 +324,9 @@ public sealed partial class MainViewModel
 
         // vJoy button capture for the mapping editor (press-to-assign).
         try { CaptureVJoyButtonTick(); } catch { }
+
+        UpdateCarFingerprintText();
+        UpdateCarCharacterGain(raw, processed);
 
         int lockDeg = SteeringLockDegrees;
         if (lockDeg <= 0) lockDeg = 900;

@@ -162,6 +162,9 @@ public sealed partial class MainViewModel
         profile.Slip.ForceGain = ForceGain;
         profile.Hf8.OutputRateHz = Hf8OutputRateHz;
         profile.TrueForceForceScale = TrueForceForceScale;
+        profile.CarCharacterEnabled = CarCharacterEnabled;
+        profile.CarCharacterKeep = CarCharacterKeep;
+        profile.CarCharacterMaxPeak = CarCharacterMaxPeak;
         // Device / synth settings with no pipeline home: a NEW profile built
         // from the pipeline (Save As, wizard, diag) would otherwise reset
         // them to defaults — carry the active profile's values across.
@@ -546,6 +549,10 @@ public sealed partial class MainViewModel
         WheelMaxTorqueNm = profile.WheelMaxTorqueNm;
         if (profile.TrueForceForceScale is float tfScale && float.IsFinite(tfScale))
             TrueForceForceScale = Math.Clamp(tfScale, 0.2f, 2.0f);
+        // Car Character: absent in older profiles → off, so their feel is unchanged.
+        CarCharacterKeep = profile.CarCharacterKeep is float cck && float.IsFinite(cck) ? Math.Clamp(cck, 0f, 1f) : 0.7f;
+        CarCharacterMaxPeak = profile.CarCharacterMaxPeak is float ccm && float.IsFinite(ccm) ? Math.Clamp(ccm, 1f, 1.5f) : 1.2f;
+        CarCharacterEnabled = profile.CarCharacterEnabled ?? false;
         MzFrontGain = profile.MzFront.Gain;
         MzFrontEnabled = profile.MzFront.Enabled;
         FxFrontGain = profile.FxFront.Gain;

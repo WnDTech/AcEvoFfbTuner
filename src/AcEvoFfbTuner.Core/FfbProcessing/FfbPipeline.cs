@@ -47,6 +47,12 @@ public class FfbPipeline
     public float MasterGain { get; set; } = 1.0f;
     public float CompressionPower { get; set; } = 1.0f;
 
+    /// <summary>Car Character (Phase 2): per-car core gain pushed by the app. Only the LMU and
+    /// R3E pipelines consume it (their own files); the base EVO/ACC Process never reads it,
+    /// so it is zero-impact there. Default inactive / 1.0.</summary>
+    public bool CarCharacterActive { get; set; } = false;
+    public float CarCharacterGain { get; set; } = 1.0f;
+
     public bool AutoGainEnabled { get; set; } = false;
     public float AutoGainScale { get; set; } = 1.0f;
     public virtual bool GearShiftFilterEnabled { get; set; } = false;

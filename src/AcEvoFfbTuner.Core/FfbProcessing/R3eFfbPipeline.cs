@@ -431,7 +431,8 @@ public sealed class R3eFfbPipeline : FfbPipeline
         // R3E's SteeringForcePercentage is already a 0-1 normalized signal
         // (unlike EVO's raw Mz which has arbitrary units requiring scaling).
         // Dividing by ForceScale (=700-1500 for EVO) would kill the signal.
-        float coreNorm = magnitude * coreDirection * MasterGain;
+        float ccGain = CarCharacterActive ? CarCharacterGain : 1f; // Car Character (no-op when off)
+        float coreNorm = magnitude * coreDirection * MasterGain * ccGain;
 
         // Centering override (smoothstep at small steer angles)
         float corePostCenter = ApplyCenteringOverride(coreNorm, raw);

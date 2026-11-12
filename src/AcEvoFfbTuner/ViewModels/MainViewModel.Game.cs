@@ -322,7 +322,7 @@ public sealed partial class MainViewModel
             if (value != SupportedGame.None && _profileManager.ActiveProfile != null)
                 _profileManager.ActiveProfile.ApplyToPipeline(_pipeline);
 
-            var newLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
+            var newLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager) { Fingerprints = _carFingerprints };
             WireTelemetryLoopEvents(newLoop);
             _telemetryLoop = newLoop;
             // Fresh pedal sources come with defaults — re-apply the persisted

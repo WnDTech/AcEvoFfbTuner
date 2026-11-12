@@ -82,6 +82,14 @@ public sealed class FfbProfile
     /// predates the field; the current slider value is kept on load.</summary>
     public float? TrueForceForceScale { get; set; }
 
+    /// <summary>Car Character (LMU + RaceRoom): per-car strength from learned torque
+    /// fingerprints. Null = profile predates it → OFF (feel unchanged).</summary>
+    public bool? CarCharacterEnabled { get; set; }
+    /// <summary>0 = every car same peak, 1 = full real difference. Null → 0.7.</summary>
+    public float? CarCharacterKeep { get; set; }
+    /// <summary>Heaviest allowed peak vs the reference car. Null → 1.2.</summary>
+    public float? CarCharacterMaxPeak { get; set; }
+
     public LutCurveDto LutCurve { get; set; } = LutCurveDto.Linear();
 
     public int SteeringLockDegrees { get; set; } = 900;

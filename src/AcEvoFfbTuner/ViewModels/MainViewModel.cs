@@ -1365,6 +1365,33 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _detectedCarModel = "";
 
+    /// <summary>Car Character Phase 1: learned per-car torque fingerprints (measurement only;
+    /// own file car-fingerprints.json — learned data, not a profile or app setting).</summary>
+    private readonly AcEvoFfbTuner.Core.Profiles.CarTorqueFingerprintStore _carFingerprints = new();
+    private long _lastFingerprintUiTicks;
+    private FingerprintSyncService? _fingerprintSync;
+
+    // Car Character Phase 2 (LMU + RaceRoom). Profile-owned (changes feel): saved in
+    // SaveProfileMetadata, loaded in the profile VM load. Gain is computed ~1 Hz in
+    // UpdateCarCharacterGain and pushed to the pipeline.
+    [ObservableProperty]
+    private bool _carCharacterEnabled;
+    [ObservableProperty]
+    private float _carCharacterKeep = 0.7f;
+    [ObservableProperty]
+    private float _carCharacterMaxPeak = 1.2f;
+    [ObservableProperty]
+    private string _carCharacterStatus = "";
+    private float _carCharacterGain = 1f;
+    private long _lastCarCharacterTicks;
+
+    // No OnCarCharacterEnabledChanged reset: switching off eases the gain back to 1 in
+    // UpdateCarCharacterGain (snaps only when parked), so the wheel never steps mid-corner.
+
+    /// <summary>One-line readout of the current car's torque fingerprint.</summary>
+    [ObservableProperty]
+    private string _carFingerprintText = "Car torque fingerprint: drive a car to start learning.";
+
     /// <summary>The car for display (LMU: the model, not the entry). Matching keeps DetectedCarModel.</summary>
     [ObservableProperty]
     private string _detectedCarDisplayName = "";
@@ -1681,7 +1708,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _pipeline = CreatePipeline(SelectedGame);
         _deviceManager = new FfbDeviceManager();
         _acVJoyBridgeEnabled = _appSettings.AcVJoyBridgeEnabled;
-        _telemetryLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager);
+        _telemetryLoop = new TelemetryLoop(_reader, _pipeline, _deviceManager) { Fingerprints = _carFingerprints };
         // Hardware setup lives in its own stores (settings.json + pedal_config.json),
         // deliberately independent of FFB profiles: changing car/track/profile must
         // never lose wheel/pedal/vJoy configuration. Re-apply it to the fresh sources.
@@ -1690,6 +1717,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _coachService = new FfbCoachService(_profileManager, _pipeline);
         InitializeAiCoach();
         HubClient = new HubClient(_appSettings.HubApiBaseUrl, _appSettings.HubApiKey);
+        _fingerprintSync = new FingerprintSyncService(_carFingerprints, _appSettings);
         BetaClient = new BetaClient(_appSettings.BetaApiBaseUrl);
 
         _deviceManager.DeviceRequiresReconnect += () => Application.Current?.Dispatcher.BeginInvoke(() =>
@@ -3749,6 +3777,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _gameRecordingService.Dispose();
         _discordPresence.Dispose();
         _telemetryLoop.Dispose();
+        _fingerprintSync?.Dispose();
+        _carFingerprints.SaveNow();
         _deviceManager.Dispose();
         _reader.Dispose();
         _aiAnalyzer?.Dispose();

@@ -140,6 +140,22 @@ public sealed class TelemetryLoop : IDisposable
     public bool VJoyBridgeEnabled { get; set; }
 
 
+    /// <summary>Car Character Phase 1 torque fingerprint store. Shared across loop
+    /// instances (the VM recreates the loop on game switch); null = not measuring.</summary>
+    public Profiles.CarTorqueFingerprintStore? Fingerprints { get; set; }
+    private float _fpLastTorque = float.NaN;
+    private float _fpLastSpeed = float.NaN;
+
+    /// <summary>Game key for fingerprints, from the reader type (never shared across games).</summary>
+    public string FingerprintGameKey => _reader switch
+    {
+        LmuSharedMemoryReader => "LMU",
+        RaceroomSharedMemoryReader => "R3E",
+        AccSharedMemoryReader => "ACC",
+        AssettoCorsaSharedMemoryReader => "AC",
+        _ => "EVO",
+    };
+
     public float LatestPhysicalWheelNormalized => _latestPhysicalWheelNorm;
     public bool IsR3eAiControlled { get; private set; }
 
@@ -657,6 +673,30 @@ public sealed class TelemetryLoop : IDisposable
                     var processed = _pipeline.Process(raw);
 
                     UpdateTrackPosition(raw);
+
+                    // Car Character Phase 1: read-only torque fingerprint (no pipeline
+                    // feedback). A frame whose torque AND speed are bit-identical to the
+                    // previous one is a paused/frozen shared-memory page — skip it.
+                    if (Fingerprints is { } fpStore)
+                    {
+                        // R3E: raw steering_force (independent of in-game FFB settings), NOT
+                        // RawFinalFf — that is steering_force_percentage, which includes the
+                        // user's FFB multiplier and so cannot be pooled across users.
+                        var (fpSignal, fpTorque) = _reader switch
+                        {
+                            RaceroomSharedMemoryReader fpR3e => ("r3e.steering_force", fpR3e.RawSteeringForce),
+                            LmuSharedMemoryReader => ("lmu.shaft_torque", processed.RawFinalFf),
+                            AccSharedMemoryReader => ("acc.finalff", processed.RawFinalFf),
+                            AssettoCorsaSharedMemoryReader => ("ac.synth", processed.RawFinalFf),
+                            _ => ("evo.finalff", processed.RawFinalFf),
+                        };
+                        bool frozen = fpTorque == _fpLastTorque && raw.SpeedKmh == _fpLastSpeed;
+                        _fpLastTorque = fpTorque;
+                        _fpLastSpeed = raw.SpeedKmh;
+                        fpStore.AddSample(FingerprintGameKey, DetectedCarDisplayName, _lastDetectedCarClass, fpSignal,
+                            fpTorque, raw.SpeedKmh, raw.IsInPitLane, frozen, raw.CurrentLap, raw.FfbStrength,
+                            processed.RawFinalFf);
+                    }
 
                     _latestNpos = raw.Npos;
 
